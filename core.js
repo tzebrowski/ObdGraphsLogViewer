@@ -99,6 +99,7 @@ getEl('fileInput').addEventListener('change', e => {
 
 // Data Processing
 function processData(data) {
+    // 1. Sort & Parse
     rawData = data.sort((a,b) => a.t - b.t); 
     const signals = {};
     let minT = Infinity, maxT = -Infinity;
@@ -113,11 +114,18 @@ function processData(data) {
     globalStartTime = minT;
     logDuration = (maxT - minT) / 1000;
     
+    // 2. Update Info & Globals
     getEl('fileInfo').innerText = `${logDuration.toFixed(1)}s | ${Object.keys(signals).length} signals`;
-    
-    initSliders(logDuration);
     availableSignals = Object.keys(signals).sort();
-    
+
+    // 3. CLEANUP (Fixes your issue)
+    activeHighlight = null; // Clear old red zones
+    getEl('scanResults').innerHTML = ''; // Clear list
+    getEl('scanResults').style.display = 'none';
+    getEl('scanCount').innerText = ''; // Clear count text
+
+    // 4. Initialize UI Components
+    initSliders(logDuration);
     resetFilters();
     renderSignals(signals);
     renderChart(signals);
@@ -255,7 +263,6 @@ function renderChart() {
         type: 'line', 
         data: { datasets: window.currentDatasets },
         plugins: [{
-            // Custom Plugin for Drawing Red Zones
             id: 'anomalyHighlighter',
             beforeDatasetsDraw(chart) {
                 if (!activeHighlight) return;
@@ -265,10 +272,8 @@ function renderChart() {
                 const x2 = x.getPixelForValue(globalStartTime + (activeHighlight.end * 1000));
 
                 ctx.save();
-                // Red Zone
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
                 ctx.fillRect(x1, top, x2 - x1, bottom - top);
-                // Borders
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
                 ctx.lineWidth = 1;
                 ctx.setLineDash([5, 5]);
