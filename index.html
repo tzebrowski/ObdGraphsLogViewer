@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyGiulia Log Viewer v11 (Modular)</title>
+    <title>MyGiulia Log Viewer v12</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
@@ -18,7 +18,7 @@
 
 <div class="app-container">
     <div class="sidebar" id="sidebar">
-        <h2>MyGiulia Viewer <span class="version">v11</span></h2>
+        <h2>MyGiulia Viewer <span class="version">v12</span></h2>
         
         <div class="control-group">
             <h3 class="group-header">Log Source <span class="config-link" onclick="toggleConfig()">(Drive Config)</span></h3>
@@ -38,6 +38,13 @@
 
         <div class="control-group anomaly-box">
             <h3>Anomaly Scanner</h3>
+            
+            <div style="margin-bottom: 10px;">
+                <select id="anomalyTemplate" onchange="applyTemplate()" class="template-select">
+                    <option value="">-- Load a Template --</option>
+                </select>
+            </div>
+
             <div id="filtersContainer"></div>
             <button class="btn btn-add" onclick="addFilterRow()">+ Add Condition</button>
             <button class="btn btn-primary mt-10" onclick="scanAnomalies()">Scan Log</button>

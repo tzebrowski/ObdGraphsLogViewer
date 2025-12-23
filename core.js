@@ -1,6 +1,42 @@
 // --- UTILITIES ---
 const getEl = id => document.getElementById(id);
 
+// --- PREDEFINED TEMPLATES ---
+const ANOMALY_TEMPLATES = {
+    "high_load_retard": {
+        name: "High Load / Spark Retard",
+        rules: [
+            { sig: "Accelerator Pedal Position", op: ">", val: 50 },
+            { sig: "Intake Manifold Pressure Measured", op: ">", val: 2200 },
+            { sig: "Spark Advance", op: "<", val: 0 }
+        ]
+    },
+    "lean_in_boost": {
+        name: "Lean Mixture under Boost (Dangerous)",
+        rules: [
+            { sig: "Intake Manifold Pressure Measured", op: ">", val: 1500 },
+            { sig: "Lambda Sensor 1", op: ">", val: 1.0 }
+        ]
+    },
+    "boost_leak_rich": {
+        name: "Potential Boost Leak (Rich Trim)",
+        rules: [
+            { sig: "Intake Manifold Pressure Measured", op: ">", val: 2000 },
+            { sig: "Short Fuel Trim", op: "<", val: -15 }
+        ]
+    }
+};
+
+// --- SIGNAL ALIAS MAPPINGS (THE FIX) ---
+// This prevents "Camshaft Overlap" from being selected for "Intake Manifold"
+const SIGNAL_MAPPINGS = {
+    "Intake Manifold Pressure": ["Manifold Abs", "MAP", "Intake Press", "Boost Pressure"],
+    "Accelerator Pedal Position": ["Pedal Pos", "APP", "Throttle Pos", "TPS"],
+    "Spark Advance": ["Ignition Timing", "Timing Adv", "Spark Angle"],
+    "Lambda Sensor 1": ["O2 Sensor", "Equivalence Ratio", "AFR", "Lambda"],
+    "Short Fuel Trim": ["SFT", "STFT", "Short Term"]
+};
+
 // --- GOOGLE DRIVE INTEGRATION ---
 let tokenClient, gapiInited = false, gisInited = false;
 const storedClientId = localStorage.getItem('alfa_clientId');
@@ -19,7 +55,6 @@ function saveConfig() {
     alert("Keys Saved! Please refresh the page.");
 }
 
-// Init Google APIs
 window.onload = function() { 
     if(window.google) gisLoaded(); 
     if(window.gapi) gapiLoaded(); 
@@ -99,7 +134,6 @@ getEl('fileInput').addEventListener('change', e => {
 
 // Data Processing
 function processData(data) {
-    // 1. Sort & Parse
     rawData = data.sort((a,b) => a.t - b.t); 
     const signals = {};
     let minT = Infinity, maxT = -Infinity;
@@ -114,42 +148,86 @@ function processData(data) {
     globalStartTime = minT;
     logDuration = (maxT - minT) / 1000;
     
-    // 2. Update Info & Globals
     getEl('fileInfo').innerText = `${logDuration.toFixed(1)}s | ${Object.keys(signals).length} signals`;
     availableSignals = Object.keys(signals).sort();
-
-    // 3. CLEANUP (Fixes your issue)
-    activeHighlight = null; // Clear old red zones
-    getEl('scanResults').innerHTML = ''; // Clear list
+    
+    // Cleanup old data
+    activeHighlight = null; 
+    getEl('scanResults').innerHTML = '';
     getEl('scanResults').style.display = 'none';
-    getEl('scanCount').innerText = ''; // Clear count text
+    getEl('scanCount').innerText = '';
 
-    // 4. Initialize UI Components
     initSliders(logDuration);
-    resetFilters();
+    initTemplatesUI();
+    
     renderSignals(signals);
     renderChart(signals);
 }
 
 
-// --- DYNAMIC ANOMALY SCANNER ---
-function resetFilters() {
+// --- ANOMALY SCANNER & TEMPLATES ---
+function initTemplatesUI() {
+    const sel = getEl('anomalyTemplate');
+    sel.innerHTML = '<option value="">-- Load a Template --</option>';
+    Object.keys(ANOMALY_TEMPLATES).forEach(key => {
+        sel.innerHTML += `<option value="${key}">${ANOMALY_TEMPLATES[key].name}</option>`;
+    });
     getEl('filtersContainer').innerHTML = '';
     addFilterRow(); 
-    addFilterRow();
 }
 
-function addFilterRow() {
+// --- FIXED FUNCTION HERE ---
+function applyTemplate() {
+    const key = getEl('anomalyTemplate').value;
+    if(!key) return;
+    const template = ANOMALY_TEMPLATES[key];
+    getEl('filtersContainer').innerHTML = '';
+
+    template.rules.forEach(rule => {
+        let bestSig = "";
+        
+        // 1. Check for Exact Match first
+        if (availableSignals.includes(rule.sig)) {
+            bestSig = rule.sig;
+        } 
+        // 2. Use Strict Aliases (Fixes the Camshaft/Intake mixup)
+        else {
+            const allowedAliases = SIGNAL_MAPPINGS[rule.sig] || [];
+            
+            // Loop through our allowed aliases for this specific signal
+            for (let alias of allowedAliases) {
+                // Find a signal in the file that contains this alias
+                const found = availableSignals.find(s => 
+                    s.toLowerCase().includes(alias.toLowerCase())
+                );
+                
+                if (found) {
+                    bestSig = found;
+                    break; // Stop once we find a valid match
+                }
+            }
+        }
+        
+        // If bestSig is still empty, it means the data is missing from the file.
+        // The UI will show the "empty" dropdown so the user sees it's missing.
+        addFilterRow(bestSig, rule.op, rule.val);
+    });
+    
+    setTimeout(scanAnomalies, 100);
+}
+
+function addFilterRow(sigName = "", operator = ">", value = "") {
     const container = getEl('filtersContainer');
     const div = document.createElement('div'); div.className = 'filter-row';
     
     const selSig = document.createElement('select'); selSig.className = 'sig-select';
-    selSig.innerHTML = '<option value="">Signal...</option>' + availableSignals.map(k=>`<option value="${k}">${k}</option>`).join('');
+    selSig.innerHTML = '<option value="">Signal...</option>' + availableSignals.map(k=>`<option value="${k}" ${k===sigName?'selected':''}>${k}</option>`).join('');
     
     const selOp = document.createElement('select'); selOp.className = 'op'; 
-    selOp.innerHTML = '<option value=">">></option><option value="<"><</option>';
+    selOp.innerHTML = `<option value=">" ${operator==='>'?'selected':''}>></option><option value="<" ${operator==='<'?'selected':''}><</option>`;
     
     const inpVal = document.createElement('input'); inpVal.type = 'number'; inpVal.placeholder = 'Val';
+    if(value !== "") inpVal.value = value;
     
     const rm = document.createElement('span'); rm.className = 'remove-row'; rm.innerHTML = '×'; 
     rm.onclick = () => container.removeChild(div);
@@ -177,7 +255,6 @@ function scanAnomalies() {
 
     rawData.forEach(p => {
         currentState[p.s] = p.v;
-        
         let allMatch = true;
         for (let c of criteria) {
             const cv = currentState[c.sig];
@@ -196,7 +273,6 @@ function scanAnomalies() {
         }
     });
 
-    // Render Results
     const resDiv = getEl('scanResults'), cntDiv = getEl('scanCount');
     resDiv.innerHTML = ''; resDiv.style.display = 'block';
     cntDiv.innerText = `${foundRanges.length} anomalies found`;
@@ -218,13 +294,10 @@ function scanAnomalies() {
 }
 
 function zoomToRange(startSec, endSec) {
-    activeHighlight = { start: startSec, end: endSec }; // Set Highlight
-    
-    // Calculate Zoom with buffer
+    activeHighlight = { start: startSec, end: endSec }; 
     const buffer = 1.0; 
     let s = startSec - buffer; if(s < 0) s=0;
     let e = endSec + buffer; if(e > logDuration) e=logDuration;
-    
     rStart.value = s; rEnd.value = e;
     updateSliderUI(true);
 }
@@ -267,20 +340,12 @@ function renderChart() {
             beforeDatasetsDraw(chart) {
                 if (!activeHighlight) return;
                 const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-                
                 const x1 = x.getPixelForValue(globalStartTime + (activeHighlight.start * 1000));
                 const x2 = x.getPixelForValue(globalStartTime + (activeHighlight.end * 1000));
-
                 ctx.save();
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
-                ctx.fillRect(x1, top, x2 - x1, bottom - top);
-                ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(x1, top); ctx.lineTo(x1, bottom);
-                ctx.moveTo(x2, top); ctx.lineTo(x2, bottom);
-                ctx.stroke();
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.15)'; ctx.fillRect(x1, top, x2 - x1, bottom - top);
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+                ctx.beginPath(); ctx.moveTo(x1, top); ctx.lineTo(x1, bottom); ctx.moveTo(x2, top); ctx.lineTo(x2, bottom); ctx.stroke();
                 ctx.restore();
             }
         }],
@@ -288,12 +353,7 @@ function renderChart() {
             responsive: true, maintainAspectRatio: false, animation: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                x: { 
-                    type: 'time', 
-                    time: { unit: 'second', displayFormats: { second: 'mm:ss' } }, 
-                    min: startT, max: endT, 
-                    ticks: { maxRotation: 0 } 
-                },
+                x: { type: 'time', time: { unit: 'second', displayFormats: { second: 'mm:ss' } }, min: startT, max: endT, ticks: { maxRotation: 0 } },
                 y: { position: 'left' }
             },
             plugins: { 
@@ -309,34 +369,26 @@ function renderChart() {
     });
 }
 
-// --- SYNC LOGIC ---
 function syncSliderFromChart({chart}) {
     const minVal = chart.scales.x.min, maxVal = chart.scales.x.max;
     const s = Math.max(0, (minVal - globalStartTime) / 1000);
     const e = Math.min(logDuration, (maxVal - globalStartTime) / 1000);
-    
     rStart.value = s; rEnd.value = e;
     txtStart.innerText = s.toFixed(1)+'s'; txtEnd.innerText = e.toFixed(1)+'s';
-    
     const ps = (s/logDuration)*100, pe = (e/logDuration)*100;
     getEl('sliderHighlight').style.left = ps+"%"; getEl('sliderHighlight').style.width = (pe-ps)+"%";
 }
 
 function initSliders(max) { 
-    rStart.max = max; rEnd.max = max; 
-    rStart.value = 0; rEnd.value = max; 
-    updateSliderUI(false); 
+    rStart.max = max; rEnd.max = max; rStart.value = 0; rEnd.value = max; updateSliderUI(false); 
 }
 
 function updateSliderUI(updateChart = true) {
     let v1 = parseFloat(rStart.value), v2 = parseFloat(rEnd.value);
     if (v1 > v2) { [v1, v2] = [v2, v1]; rStart.value = v1; rEnd.value = v2; }
-    
     txtStart.innerText = v1.toFixed(1)+'s'; txtEnd.innerText = v2.toFixed(1)+'s';
-    
     const ps = (v1/rStart.max)*100, pe = (v2/rEnd.max)*100;
     getEl('sliderHighlight').style.left = ps+"%"; getEl('sliderHighlight').style.width = (pe-ps)+"%";
-    
     if(updateChart && chartInstance) {
         chartInstance.options.scales.x.min = globalStartTime + (v1*1000);
         chartInstance.options.scales.x.max = globalStartTime + (v2*1000);
@@ -350,8 +402,7 @@ rEnd.addEventListener('input', () => updateSliderUI(true));
 function resetZoom() { 
     activeHighlight = null; 
     document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
-    initSliders(logDuration); 
-    updateSliderUI(true); 
+    initSliders(logDuration); updateSliderUI(true); 
 }
 
 function toggleAllSignals(s) {
