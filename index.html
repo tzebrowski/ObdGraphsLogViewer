@@ -3,111 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyGiulia Log Viewer</title>
+    <title>MyGiulia Log Viewer v11 (Modular)</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
-    
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; font-size: 15px; }
-        .app-container { display: flex; height: 100vh; width: 100vw; }
-        
-        /* Sidebar */
-        .sidebar {
-            width: 380px; background: #f8f9fa; border-right: 1px solid #ddd;
-            display: flex; flex-direction: column; padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: margin-left 0.3s ease; z-index: 10;
-        }
-        .sidebar.collapsed { margin-left: -380px; }
-        .sidebar h2 { margin-top: 0; color: #9a0000; font-size: 1.4em; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
-        
-        .control-group { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
-        .control-group h3 { font-size: 0.95em; margin-bottom: 10px; color: #444; text-transform: uppercase; font-weight:700; letter-spacing: 0.5px; }
 
-        /* Buttons & Inputs */
-        .btn {
-            background: white; border: 1px solid #ccc; padding: 6px 12px; cursor: pointer;
-            border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-weight: 600; color: #333; width: 100%;
-        }
-        .btn:hover { background: #f0f0f0; }
-        .btn-primary { background: #9a0000; color: white; border: none; }
-        .btn-primary:hover { background: #cc0000; }
-        .btn-sm { width: auto; padding: 2px 8px; font-size: 0.8em; }
-        .btn-add { background: #e2e6ea; border: 1px dashed #aaa; color: #555; font-size: 0.8em; margin-top: 5px; }
-        
-        input[type=text], input[type=password], input[type=number] { width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-
-        /* Anomaly Scanner */
-        #filtersContainer { max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
-        .filter-row { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; }
-        .filter-row select { flex: 2; padding: 4px; border: 1px solid #ccc; border-radius: 3px; max-width: 150px; }
-        .filter-row select.op { flex: 0 0 45px; }
-        .filter-row input { flex: 1; padding: 4px; }
-        .remove-row { color: #999; cursor: pointer; font-weight: bold; padding: 0 5px; }
-        .remove-row:hover { color: red; }
-
-        .results-list { max-height: 120px; overflow-y: auto; margin-top: 10px; border: 1px solid #ddd; background: #fff; border-radius: 4px; display:none; }
-        .result-item { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 0.9em; display: flex; justify-content: space-between; }
-        .result-item:hover { background: #ffebeb; color: #9a0000; }
-        .result-item.selected { background: #ffebeb; border-left: 3px solid #9a0000; } /* Highlight in list */
-        .result-count { font-size: 0.8em; color: #666; margin-top: 5px; text-align: right; }
-
-        /* Sliders */
-        .slider-wrapper { position: relative; height: 30px; margin-top: 10px; }
-        input[type=range] { position: absolute; width: 100%; pointer-events: none; -webkit-appearance: none; background: transparent; z-index: 2; }
-        input[type=range]::-webkit-slider-thumb {
-            pointer-events: all; width: 18px; height: 18px; -webkit-appearance: none; 
-            background: #9a0000; border-radius: 50%; cursor: pointer; margin-top: -7px; 
-            border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-        }
-        .slider-track { width: 100%; height: 4px; background: #ddd; position: absolute; top: 6px; border-radius: 2px; }
-        .slider-highlight { height: 4px; background: #9a0000; position: absolute; top: 6px; opacity: 0.5; z-index: 1; }
-
-        /* Signal List */
-        .signal-list { flex: 1; overflow-y: auto; border: 1px solid #e9ecef; background: white; padding: 10px; }
-        .signal-list label { display: flex; align-items: center; padding: 4px 0; cursor: pointer; border-bottom: 1px solid #f9f9f9; font-size: 0.9em; }
-        .signal-list label:hover { background: #f8f9fa; }
-
-        /* Main Content */
-        .main-content { flex: 1; position: relative; background: white; display: flex; flex-direction: column; }
-        .toolbar { position: absolute; top: 15px; left: 15px; z-index: 20; display: flex; gap: 10px; }
-        .toolbar .btn { width: auto; }
-        #chartContainer { position: relative; width: 100%; height: 100%; flex-grow: 1; cursor: grab; }
-        #chartContainer:active { cursor: grabbing; }
-        
-        #configPanel { display: none; margin-bottom: 10px; background: #fff5f5; padding: 10px; border-radius: 4px; border: 1px solid #ffdcdc; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="app-container">
     <div class="sidebar" id="sidebar">
-        <h2>MyGiulia Log Viewer <span style="font-size:0.5em; opacity:0.6;">v11</span></h2>
+        <h2>MyGiulia Viewer <span class="version">v11</span></h2>
         
         <div class="control-group">
-            <h3 style="display:flex; justify-content:space-between;">Log Source <span onclick="toggleConfig()" style="cursor:pointer; color:#9a0000; font-size:0.8em;">(Drive Config)</span></h3>
+            <h3 class="group-header">Log Source <span class="config-link" onclick="toggleConfig()">(Drive Config)</span></h3>
             <div id="configPanel">
                 <input type="text" id="gClientId" placeholder="Client ID">
                 <input type="password" id="gApiKey" placeholder="API Key">
                 <button class="btn" onclick="saveConfig()">Save Keys</button>
             </div>
-            <div style="display:flex; gap:5px;">
-                <button id="authBtn" class="btn btn-primary" onclick="handleAuth()" style="flex:1;">Drive Scan</button>
-                <button class="btn" onclick="document.getElementById('fileInput').click()" style="flex:1;">Local File</button>
+            <div class="button-row">
+                <button id="authBtn" class="btn btn-primary" onclick="handleAuth()">Drive Scan</button>
+                <button class="btn" onclick="document.getElementById('fileInput').click()">Local File</button>
             </div>
             <input type="file" id="fileInput" accept=".json" style="display:none;">
-            <div id="driveList" style="margin-top:5px; max-height:100px; overflow-y:auto; border:1px solid #eee; display:none;"></div>
-            <div id="fileInfo" style="margin-top:5px; font-size:0.8em; color:#666;"></div>
+            <div id="driveList" class="drive-list"></div>
+            <div id="fileInfo" class="status-text"></div>
         </div>
 
-        <div class="control-group" style="background: #fffdfd; border:1px solid #ffeeba; padding:10px; border-radius:4px;">
+        <div class="control-group anomaly-box">
             <h3>Anomaly Scanner</h3>
             <div id="filtersContainer"></div>
             <button class="btn btn-add" onclick="addFilterRow()">+ Add Condition</button>
-            <button class="btn btn-primary" onclick="scanAnomalies()" style="margin-top:10px;">Scan Log</button>
+            <button class="btn btn-primary mt-10" onclick="scanAnomalies()">Scan Log</button>
             <div id="scanCount" class="result-count"></div>
             <div id="scanResults" class="results-list"></div>
         </div>
@@ -120,17 +53,17 @@
                 <input type="range" id="rangeStart" min="0" max="100" value="0" step="0.1">
                 <input type="range" id="rangeEnd" min="0" max="100" value="100" step="0.1">
             </div>
-            <div style="display:flex; justify-content:space-between; margin-top:2px; font-size:0.8em; color:#555;">
+            <div class="time-labels">
                 <span id="txtStart">0.0s</span>
                 <span id="txtEnd">0.0s</span>
             </div>
-            <button class="btn" onclick="resetZoom()" style="margin-top:5px; font-size:0.8em;">Reset View</button>
+            <button class="btn mt-5" onclick="resetZoom()">Reset View</button>
         </div>
 
-        <div class="control-group" style="flex:1; border-bottom:none; display:flex; flex-direction:column;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+        <div class="control-group flex-grow">
+            <div class="group-header-row">
                 <h3>Signals</h3>
-                <div style="display:flex; gap:5px;">
+                <div class="button-row-sm">
                     <button class="btn btn-sm" onclick="toggleAllSignals(true)">All</button>
                     <button class="btn btn-sm" onclick="toggleAllSignals(false)">None</button>
                 </div>
@@ -150,283 +83,7 @@
     </div>
 </div>
 
-<script>
-    const getEl = id => document.getElementById(id);
+<script src="core.js"></script>
 
-    // --- GOOGLE DRIVE ---
-    let tokenClient, gapiInited=false, gisInited=false;
-    const storedClientId = localStorage.getItem('alfa_clientId');
-    const storedApiKey = localStorage.getItem('alfa_apiKey');
-    if(storedClientId) getEl('gClientId').value = storedClientId;
-    if(storedApiKey) getEl('gApiKey').value = storedApiKey;
-
-    function toggleConfig() { const p=getEl('configPanel'); p.style.display=p.style.display==='block'?'none':'block'; }
-    function saveConfig() { 
-        localStorage.setItem('alfa_clientId', getEl('gClientId').value);
-        localStorage.setItem('alfa_apiKey', getEl('gApiKey').value);
-        alert("Keys Saved! Please refresh.");
-    }
-    window.onload = function() { if(window.google) gisLoaded(); if(window.gapi) gapiLoaded(); };
-    function gapiLoaded() { gapi.load('client', initGapi); }
-    async function initGapi() { 
-        const k=getEl('gApiKey').value; if(!k)return;
-        await gapi.client.init({ apiKey: k, discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"] });
-        gapiInited=true; 
-    }
-    function gisLoaded() { 
-        const c=getEl('gClientId').value; if(!c)return;
-        tokenClient = google.accounts.oauth2.initTokenClient({ client_id: c, scope: 'https://www.googleapis.com/auth/drive.readonly', callback: '' });
-        gisInited=true; 
-    }
-    function handleAuth() {
-        if(!gapiInited || !gisInited) { alert("Configure Keys first!"); return; }
-        tokenClient.callback = async (r) => { if(r.error) throw r; await listFiles(); };
-        gapi.client.getToken() === null ? tokenClient.requestAccessToken({prompt: 'consent'}) : tokenClient.requestAccessToken({prompt: ''});
-    }
-    async function listFiles() {
-        getEl('driveList').style.display='block';
-        getEl('driveList').innerHTML = '<div style="padding:5px;">Scanning...</div>';
-        try {
-            const res = await gapi.client.drive.files.list({ pageSize:10, fields:"files(id,name)", q:"mimeType='application/json' and trashed=false", orderBy:'createdTime desc' });
-            let h = ''; res.result.files.forEach(f => {
-                h += `<div style="padding:5px; border-bottom:1px solid #eee; cursor:pointer;" onclick="loadDriveFile('${f.id}')">${f.name}</div>`;
-            });
-            getEl('driveList').innerHTML = h;
-        } catch(e) { getEl('driveList').innerHTML = 'Error: '+e.message; }
-    }
-    async function loadDriveFile(id) {
-        getEl('fileInfo').innerText = "Downloading...";
-        const r = await gapi.client.drive.files.get({ fileId: id, alt: 'media' });
-        processData(r.result);
-    }
-
-    // --- MAIN LOGIC ---
-    let chartInstance = null;
-    let rawData = [];
-    let globalStartTime = 0, logDuration = 0;
-    let availableSignals = [];
-    let activeHighlight = null; // Stores {start, end} in seconds
-
-    const rStart = getEl('rangeStart'), rEnd = getEl('rangeEnd');
-    const txtStart = getEl('txtStart'), txtEnd = getEl('txtEnd');
-
-    function toggleSidebar() { getEl('sidebar').classList.toggle('collapsed'); setTimeout(()=>chartInstance?.resize(), 350); }
-    function toggleFullScreen() { 
-        const e = getEl('mainContent'); 
-        !document.fullscreenElement ? e.requestFullscreen() : document.exitFullscreen(); 
-    }
-
-    getEl('fileInput').addEventListener('change', e => {
-        const f = e.target.files[0]; if(!f) return;
-        const r = new FileReader();
-        r.onload = ev => { try { processData(JSON.parse(ev.target.result)); } catch(err){ alert("Invalid JSON"); } };
-        r.readAsText(f);
-    });
-
-    function processData(data) {
-        rawData = data.sort((a,b) => a.t - b.t); 
-        const signals = {};
-        let minT = Infinity, maxT = -Infinity;
-
-        rawData.forEach(p => {
-            if(!signals[p.s]) signals[p.s] = [];
-            signals[p.s].push({x: p.t, y: p.v});
-            if(p.t < minT) minT = p.t;
-            if(p.t > maxT) maxT = p.t;
-        });
-
-        globalStartTime = minT;
-        logDuration = (maxT - minT) / 1000;
-        
-        getEl('fileInfo').innerText = `${logDuration.toFixed(1)}s | ${Object.keys(signals).length} signals`;
-        
-        initSliders(logDuration);
-        availableSignals = Object.keys(signals).sort();
-        resetFilters();
-        renderSignals(signals);
-        renderChart(signals);
-    }
-
-    // --- DYNAMIC SCANNER ---
-    function resetFilters() {
-        getEl('filtersContainer').innerHTML = '';
-        addFilterRow(); addFilterRow();
-    }
-    function addFilterRow() {
-        const container = getEl('filtersContainer');
-        const div = document.createElement('div'); div.className = 'filter-row';
-        const selSig = document.createElement('select'); selSig.className = 'sig-select';
-        selSig.innerHTML = '<option value="">Signal...</option>' + availableSignals.map(k=>`<option value="${k}">${k}</option>`).join('');
-        const selOp = document.createElement('select'); selOp.className = 'op'; selOp.innerHTML = '<option value=">">></option><option value="<"><</option>';
-        const inpVal = document.createElement('input'); inpVal.type = 'number'; inpVal.placeholder = 'Val';
-        const rm = document.createElement('span'); rm.className = 'remove-row'; rm.innerHTML = '×'; rm.onclick = ()=>container.removeChild(div);
-        div.append(selSig, selOp, inpVal, rm); container.append(div);
-    }
-
-    function scanAnomalies() {
-        activeHighlight = null; // Reset highlight on new scan
-        const rows = document.querySelectorAll('.filter-row');
-        const criteria = [];
-        rows.forEach(r => {
-            const sig=r.querySelector('.sig-select').value, op=r.querySelector('.op').value, val=parseFloat(r.querySelector('input').value);
-            if(sig && !isNaN(val)) criteria.push({sig,op,val});
-        });
-
-        if(criteria.length===0) { alert("Define conditions."); return; }
-
-        const foundRanges = [];
-        let currentState = {}, inEvent = false, eventStart = 0;
-
-        rawData.forEach(p => {
-            currentState[p.s] = p.v;
-            let allMatch = true;
-            for (let c of criteria) {
-                const cv = currentState[c.sig];
-                if (cv === undefined) { allMatch = false; break; }
-                if (!((c.op === '>') ? (cv > c.val) : (cv < c.val))) { allMatch = false; break; }
-            }
-            if (allMatch) { if(!inEvent) { inEvent = true; eventStart = p.t; } }
-            else { if(inEvent) { inEvent = false; if(p.t - eventStart > 100) foundRanges.push({start: eventStart, end: p.t}); } }
-        });
-
-        const resDiv = getEl('scanResults'), cntDiv = getEl('scanCount');
-        resDiv.innerHTML = ''; resDiv.style.display = 'block';
-        cntDiv.innerText = `${foundRanges.length} anomalies found`;
-
-        if (foundRanges.length === 0) { resDiv.innerHTML = '<div style="padding:10px;">None found.</div>'; return; }
-
-        foundRanges.forEach((range, idx) => {
-            const s = (range.start - globalStartTime) / 1000, e = (range.end - globalStartTime) / 1000;
-            const d = document.createElement('div'); d.className = 'result-item';
-            d.innerHTML = `<span>Event ${idx+1}</span> <b>${s.toFixed(1)}s - ${e.toFixed(1)}s</b>`;
-            d.onclick = function() {
-                // Remove selected class from others
-                document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
-                d.classList.add('selected');
-                zoomToRange(s, e);
-            };
-            resDiv.appendChild(d);
-        });
-    }
-
-    function zoomToRange(startSec, endSec) {
-        // Set Highlight Variable
-        activeHighlight = { start: startSec, end: endSec };
-
-        // Zoom logic
-        const buffer = 1.0; 
-        let s = startSec - buffer; if(s < 0) s=0;
-        let e = endSec + buffer; if(e > logDuration) e=logDuration;
-        rStart.value = s; rEnd.value = e;
-        updateSliderUI(true);
-    }
-
-    // --- CHART ---
-    function renderSignals(signals) {
-        const list = getEl('signalList'); list.innerHTML = '';
-        const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
-        let cIdx = 0;
-        window.currentDatasets = [];
-
-        Object.keys(signals).sort().forEach(key => {
-            const isImp = key.includes("Boost") || key.includes("RPM") || key.includes("Pedal") || key.includes("Trim") || key.includes("Advance");
-            const color = colors[cIdx++ % colors.length];
-            window.currentDatasets.push({ label: key, data: signals[key], borderColor: color, borderWidth: 2, pointRadius:0, hidden: !isImp });
-
-            const lbl = document.createElement('label');
-            lbl.innerHTML = `<input type="checkbox" data-key="${key}" ${isImp?'checked':''}> <span style="display:inline-block;width:10px;height:10px;background:${color};margin-right:8px;"></span> ${key}`;
-            lbl.querySelector('input').addEventListener('change', function() {
-                const ds = chartInstance.data.datasets.find(d => d.label === key);
-                if(ds) { ds.hidden = !this.checked; chartInstance.update(); }
-            });
-            list.appendChild(lbl);
-        });
-    }
-
-    function renderChart() {
-        const ctx = getEl('telemetryChart').getContext('2d');
-        if(chartInstance) chartInstance.destroy();
-        const startT = globalStartTime;
-        const endT = globalStartTime + (logDuration * 1000);
-
-        chartInstance = new Chart(ctx, {
-            type: 'line', data: { datasets: window.currentDatasets },
-            plugins: [{
-                id: 'anomalyHighlighter',
-                beforeDatasetsDraw(chart) {
-                    if (!activeHighlight) return;
-                    const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-                    
-                    const x1 = x.getPixelForValue(globalStartTime + (activeHighlight.start * 1000));
-                    const x2 = x.getPixelForValue(globalStartTime + (activeHighlight.end * 1000));
-
-                    ctx.save();
-                    // Draw Red Highlight
-                    ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
-                    ctx.fillRect(x1, top, x2 - x1, bottom - top);
-                    // Draw Border Lines
-                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([5, 5]);
-                    ctx.beginPath();
-                    ctx.moveTo(x1, top); ctx.lineTo(x1, bottom);
-                    ctx.moveTo(x2, top); ctx.lineTo(x2, bottom);
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }],
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    x: { type: 'time', time: { unit: 'second', displayFormats: { second: 'mm:ss' } }, min: startT, max: endT, ticks: { maxRotation: 0 } },
-                    y: { position: 'left' }
-                },
-                plugins: { 
-                    legend: { display: false }, 
-                    tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}` } },
-                    zoom: {
-                        limits: { x: { min: startT, max: endT, minRange: 1000 } },
-                        pan: { enabled: true, mode: 'x', onPan: syncSliderFromChart },
-                        zoom: { wheel: { enabled: true }, mode: 'x', drag: { enabled: false }, onZoom: syncSliderFromChart }
-                    }
-                }
-            }
-        });
-    }
-    
-    function syncSliderFromChart({chart}) {
-        const minVal = chart.scales.x.min, maxVal = chart.scales.x.max;
-        const s = Math.max(0, (minVal - globalStartTime) / 1000);
-        const e = Math.min(logDuration, (maxVal - globalStartTime) / 1000);
-        rStart.value = s; rEnd.value = e;
-        txtStart.innerText = s.toFixed(1)+'s'; txtEnd.innerText = e.toFixed(1)+'s';
-        const ps = (s/logDuration)*100, pe = (e/logDuration)*100;
-        getEl('sliderHighlight').style.left = ps+"%"; getEl('sliderHighlight').style.width = (pe-ps)+"%";
-    }
-    function initSliders(max) { rStart.max = max; rEnd.max = max; rStart.value = 0; rEnd.value = max; updateSliderUI(false); }
-    function updateSliderUI(updateChart = true) {
-        let v1 = parseFloat(rStart.value), v2 = parseFloat(rEnd.value);
-        if (v1 > v2) { [v1, v2] = [v2, v1]; rStart.value = v1; rEnd.value = v2; }
-        txtStart.innerText = v1.toFixed(1)+'s'; txtEnd.innerText = v2.toFixed(1)+'s';
-        const ps = (v1/rStart.max)*100, pe = (v2/rEnd.max)*100;
-        getEl('sliderHighlight').style.left = ps+"%"; getEl('sliderHighlight').style.width = (pe-ps)+"%";
-        if(updateChart && chartInstance) {
-            chartInstance.options.scales.x.min = globalStartTime + (v1*1000);
-            chartInstance.options.scales.x.max = globalStartTime + (v2*1000);
-            chartInstance.update('none');
-        }
-    }
-    rStart.addEventListener('input', () => updateSliderUI(true)); rEnd.addEventListener('input', () => updateSliderUI(true));
-    function resetZoom() { 
-        activeHighlight = null; 
-        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
-        initSliders(logDuration); updateSliderUI(true); 
-    }
-    function toggleAllSignals(s) {
-        document.querySelectorAll('#signalList input').forEach(i => { i.checked = s; });
-        if (chartInstance) { chartInstance.data.datasets.forEach(ds => { ds.hidden = !s; }); chartInstance.update(); }
-    }
-</script>
 </body>
 </html>
