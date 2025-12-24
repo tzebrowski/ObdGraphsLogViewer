@@ -1,0 +1,24 @@
+{
+  "high_load_retard": {
+    "name": "High Load / Spark Retard",
+    "rules": [
+      { "sig": "Accelerator Pedal Position", "op": ">", "val": 50 },
+      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2200 },
+      { "sig": "Spark Advance", "op": "<", "val": 0 }
+    ]
+  },
+  "lean_in_boost": {
+    "name": "Lean Mixture under Boost (Dangerous)",
+    "rules": [
+      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 1500 },
+      { "sig": "Lambda Sensor 1", "op": ">", "val": 1.0 }
+    ]
+  },
+  "boost_leak_rich": {
+    "name": "Potential Boost Leak (Rich Trim)",
+    "rules": [
+      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2000 },
+      { "sig": "Short Fuel Trim", "op": "<", "val": -15 }
+    ]
+  }
+}

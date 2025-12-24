@@ -1,5 +1,3 @@
-// chart.js
-
 const ChartManager = {
     render: () => {
         if (AppState.chartInstance) AppState.chartInstance.destroy();

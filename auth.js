@@ -1,5 +1,3 @@
-// auth.js
-
 const Auth = {
     init: () => {
         const cId = localStorage.getItem('alfa_clientId');

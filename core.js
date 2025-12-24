@@ -1,5 +1,3 @@
-// main.js
-
 const DataProcessor = {
     handleLocalFile: (event) => {
         const file = event.target.files[0];
@@ -33,15 +31,31 @@ const DataProcessor = {
         DOM.get('fileInfo').innerText = `${AppState.logDuration.toFixed(1)}s | ${AppState.availableSignals.length} signals`;
         
         UI.reset();
-        Templates.initUI();
+        Templates.initUI(); // This uses ANOMALY_TEMPLATES, so they must be loaded by now
         Sliders.init(AppState.logDuration);
         UI.renderSignalList();
         ChartManager.render();
     }
 };
 
-// --- INITIALIZATION ---
-window.onload = function() {
+// --- CONFIG LOADER ---
+async function loadConfiguration() {
+    try {
+        const response = await fetch('templates.json');
+        if (!response.ok) throw new Error("Failed to load templates.json");
+        ANOMALY_TEMPLATES = await response.json();
+        console.log("Templates loaded:", Object.keys(ANOMALY_TEMPLATES));
+    } catch (error) {
+        console.error("Error loading config:", error);
+        alert("Warning: Could not load anomaly templates. Scanner may not work.");
+    }
+}
+
+window.onload = async function() {
+    // 1. Load external JSON config first
+    await loadConfiguration();
+
+    // 2. Initialize App
     Auth.init();
     UI.init();
     
