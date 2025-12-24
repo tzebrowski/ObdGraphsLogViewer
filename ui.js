@@ -131,11 +131,14 @@ const Scanner = {
         let currentState = {}, inEvent = false, eventStart = 0;
 
         AppState.rawData.forEach(p => {
-            currentState[p.s] = p.v;
+            currentState[p.s] = p.v; // Update signal state
+            
             let allMatch = true;
             for (let c of criteria) {
                 const currentVal = currentState[c.sig];
-                if (currentVal === undefined) { allMatch = false; break; }
+                // Strict check: if we haven't seen the signal yet, it's not a match
+                if (currentVal === undefined) { allMatch = false; break; } 
+                
                 const isMatch = (c.op === '>') ? (currentVal > c.val) : (currentVal < c.val);
                 if (!isMatch) { allMatch = false; break; }
             }
@@ -145,10 +148,16 @@ const Scanner = {
             } else {
                 if (inEvent) {
                     inEvent = false;
-                    if (p.t - eventStart > 100) foundRanges.push({ start: eventStart, end: p.t });
+                    // FIX 1: Ensure duration is strictly positive (allow > 0) or keep 100 if you want debounce
+                    if (p.t - eventStart > 0) foundRanges.push({ start: eventStart, end: p.t }); 
                 }
             }
         });
+
+        if (inEvent && AppState.rawData.length > 0) {
+            foundRanges.push({ start: eventStart, end: AppState.rawData[AppState.rawData.length - 1].t });
+        }
+
         Scanner.displayResults(foundRanges);
     },
 

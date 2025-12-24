@@ -57,6 +57,9 @@ window.onload = async function() {
     Auth.init();
     UI.init();
     
+    // WIRE THE DEPENDENCY HERE:
+    Auth.onAuthSuccess = Drive.listFiles;
+
     // Bind Events
     DOM.get('fileInput').addEventListener('change', DataProcessor.handleLocalFile);
     DOM.get('rangeStart').addEventListener('input', Sliders.updateFromInput);
