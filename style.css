@@ -1,3 +1,16 @@
+
+:root {
+    /* Color Palette */
+    --primary-red: #9a0000;
+    --sidebar-bg: #f8f9fa;
+    --border-color: #dee2e6;
+    --text-main: #333;
+    --text-muted: #666;
+    --transition-speed: 0.3s;
+    --active-bg: #ffebeb;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+}
+
 /* Base Layout */
 body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; font-size: 15px; }
 .app-container { display: flex; height: 100vh; width: 100vw; }
@@ -130,4 +143,43 @@ input[type=range]::-webkit-slider-thumb {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.file-name { font-weight: 600; font-size: 0.9rem; }
+.file-meta { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 0.75rem; 
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.drive-file-row {
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.drive-file-row:hover { background: #fdfdfd; }
+
+.drive-file-row.active {
+    background: var(--active-bg);
+    border-left: 4px solid var(--primary-red);
+}
+
+
+.loading-overlay .btn {
+    width: auto;           /* Prevents stretching to full width */
+    min-width: 120px;     /* Gives it a professional, consistent size */
+    margin-top: 20px;
+    padding: 8px 24px;     /* Adds breathing room inside the button */
+    background-color: #fff;
+    color: var(--primary-red);
+    border: 1px solid var(--primary-red);
+    transition: all 0.2s ease;
+}
+
+.loading-overlay .btn:hover {
+    background-color: var(--active-bg); /* Slight tint on hover */
 }

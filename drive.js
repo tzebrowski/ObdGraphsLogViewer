@@ -1,149 +1,147 @@
-
+/**
+ * Drive Controller
+ * Refactored to use direct object referencing to prevent context loss.
+ */
 let activeLoadToken = 0;
 
 const Drive = {
-    getFolderId: async (folderName, parentId = 'root') => {
+    PATH_CONFIG: {
+        root: 'mygiulia',
+        sub: 'trips'
+    },
+
+    async findFolderId(name, parentId = 'root') {
         try {
-            const q = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${parentId}' in parents and trashed=false`;
-            const res = await gapi.client.drive.files.list({
-                q: q,
+            const query = `mimeType='application/vnd.google-apps.folder' and 
+                           (name = '${name}' or name = '${name.toLowerCase()}' or name = '${name.charAt(0).toUpperCase() + name.slice(1)}') 
+                           and '${parentId}' in parents and trashed=false`;
+            
+            const response = await gapi.client.drive.files.list({
+                q: query,
                 fields: 'files(id, name)',
                 pageSize: 1
             });
-            return res.result.files.length > 0 ? res.result.files[0].id : null;
-        } catch (e) {
-            console.error("Error finding folder:", folderName, e);
+            return response.result.files.length > 0 ? response.result.files[0].id : null;
+        } catch (error) {
+            console.error(`Drive: Error locating folder "${name}":`, error);
             return null;
         }
     },
 
-    listFiles: async () => {
+    async listFiles() {
         const listEl = DOM.get('driveList');
+        if (!listEl) return;
+        
         listEl.style.display = 'block';
-        listEl.innerHTML = '<div style="padding:5px;">Locating "mygiulia/trips"...</div>';
+        listEl.innerHTML = '<div class="status-msg">Searching for logs...</div>';
 
         try {
-            const rootFolderId = await Drive.getFolderId('mygiulia', 'root');
-            if (!rootFolderId) {
-                const altRoot = await Drive.getFolderId('MyGiulia', 'root');
-                if(!altRoot) {
-                    listEl.innerHTML = '<div style="padding:5px; color:orange;">Folder "mygiulia" (or MyGiulia) not found.</div>';
-                    return;
-                }
-                return Drive.scanSubFolder(altRoot, 'trips', listEl);
+           
+            const rootId = await Drive.findFolderId(Drive.PATH_CONFIG.root);
+            if (!rootId) {
+                listEl.innerHTML = `<div class="error-msg">Folder "${Drive.PATH_CONFIG.root}" not found.</div>`;
+                return;
             }
-            
-            await Drive.scanSubFolder(rootFolderId, 'trips', listEl);
 
-        } catch (e) {
-            console.error(e);
-            listEl.innerHTML = '<div style="padding:5px; color:red;">Error: ' + (e.result?.error?.message || e.message) + '</div>';
-            if(e.status === 401 || e.status === 403) gapi.client.setToken(null);
-        }
-    },
-
-    scanSubFolder: async (parentId, childName, listEl) => {
-        const targetFolderId = await Drive.getFolderId(childName, parentId);
-        if (!targetFolderId) {
-            const altTarget = await Drive.getFolderId('Trips', parentId);
-            if(!altTarget) {
-                 listEl.innerHTML = `<div style="padding:5px; color:orange;">Folder "${childName}" not found inside parent.</div>`;
-                 return;
+            const subFolderId = await Drive.findFolderId(Drive.PATH_CONFIG.sub, rootId);
+            if (!subFolderId) {
+                listEl.innerHTML = `<div class="error-msg">Subfolder "${Drive.PATH_CONFIG.sub}" not found.</div>`;
+                return;
             }
-            return Drive.fetchFiles(altTarget, listEl);
-        }
-        await Drive.fetchFiles(targetFolderId, listEl);
-    },
 
-    fetchFiles: async (folderId, listEl) => {
-        listEl.innerHTML = '<div style="padding:5px;">Scanning files...</div>';
+            await Drive.fetchJsonFiles(subFolderId, listEl);
 
-        const res = await gapi.client.drive.files.list({
-            pageSize: 20,
-            fields: "files(id, name, size, modifiedTime)",
-            q: `'${folderId}' in parents and name contains '.json' and trashed=false`,
-            orderBy: 'createdTime desc'
-        });
-
-        const files = res.result.files.filter(f => f.name.toLowerCase().endsWith('.json'));
-
-        if (files && files.length > 0) {
-            listEl.innerHTML = files.map(f => {
-                const size = f.size ? (f.size / 1024).toFixed(0) + ' KB' : '0 KB';
-                const date = f.modifiedTime ? new Date(f.modifiedTime).toLocaleString() : '';
-
-                return `
-                <div class="drive-file-row" onclick="Drive.loadFile('${f.id}', this)">
-                    <div style="font-weight:bold;">${f.name}</div>
-                    <div style="font-size:0.8em; color:#666; display:flex; justify-content:space-between;">
-                        <span>${date}</span>
-                        <span>${size}</span>
-                    </div>
-                </div>`;
-            }).join('');
-        } else {
-            listEl.innerHTML = '<div style="padding:5px;">No .json files found in folder.</div>';
+        } catch (error) {
+            // FIXED: Use Drive.handleApiError instead of this.handleApiError
+            Drive.handleApiError(error, listEl);
         }
     },
 
-    loadFile: async (id, element) => {
-       
-        if (element) {
-            document.querySelectorAll('.drive-file-row').forEach(row => {
-                row.style.background = ''; row.style.borderLeft = '';
+    async fetchJsonFiles(folderId, listEl) {
+        try {
+            const res = await gapi.client.drive.files.list({
+                pageSize: 25,
+                fields: "files(id, name, size, modifiedTime)",
+                q: `'${folderId}' in parents and name contains '.json' and trashed=false`,
+                orderBy: 'modifiedTime desc'
             });
-            element.style.background = '#ffebeb'; element.style.borderLeft = '3px solid #9a0000';
+
+            const files = res.result.files || [];
+            if (files.length === 0) {
+                listEl.innerHTML = '<div class="status-msg">No log files found.</div>';
+                return;
+            }
+            listEl.innerHTML = files.map(f => Drive.createFileRowHtml(f)).join('');
+        } catch (error) {
+            Drive.handleApiError(error, listEl);
+        }
+    },
+
+    createFileRowHtml(file) {
+        const size = file.size ? (file.size / 1024).toFixed(0) + ' KB' : 'Unknown';
+        const date = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString() : 'N/A';
+
+        return `
+            <div class="drive-file-row" onclick="Drive.loadFile('${file.id}', this)">
+                <div class="file-name">${file.name}</div>
+                <div class="file-meta">
+                    <span>${date}</span>
+                    <span>${size}</span>
+                </div>
+            </div>`;
+    },
+
+    async loadFile(id, element) {
+        if (element) {
+            document.querySelectorAll('.drive-file-row').forEach(r => r.classList.remove('active'));
+            element.classList.add('active');
         }
 
-        // --- CANCELLATION LOGIC START ---
-        activeLoadToken++; // Increment token for new request
-        const currentToken = activeLoadToken;
-
-        const handleCancel = () => {
-            // Invalidating the token effectively "cancels" the logic that runs after download
+        const currentToken = ++activeLoadToken;
+        const cancelTask = () => {
             activeLoadToken++; 
             UI.setLoading(false);
-            DOM.get('fileInfo').innerText = "Download cancelled.";
+            const fileInfo = DOM.get('fileInfo');
+            if (fileInfo) fileInfo.innerText = "Load cancelled.";
         };
-        // --- CANCELLATION LOGIC END ---
 
-        // Pass the cancel callback to UI
-        UI.setLoading(true, "Downloading from Drive...", handleCancel);
-        DOM.get('fileInfo').innerText = "Downloading...";
+        UI.setLoading(true, "Fetching from Drive...", cancelTask);
+        const fileInfo = DOM.get('fileInfo');
+        if (fileInfo) fileInfo.innerText = "Downloading...";
 
         try {
-            const res = await gapi.client.drive.files.get({ fileId: id, alt: 'media' });
+            const response = await gapi.client.drive.files.get({ fileId: id, alt: 'media' });
+            if (currentToken !== activeLoadToken) return;
 
-            // CHECK: Did the user cancel while we were waiting?
-            if (currentToken !== activeLoadToken) {
-                console.log("Ignored response from cancelled request");
-                return; 
-            }
-
-            // Remove Cancel button for the freezing phase
-            UI.setLoading(true, "Processing Data...", null); 
+            UI.setLoading(true, "Processing Log...", null);
 
             setTimeout(() => {
-                // Second check just in case
                 if (currentToken !== activeLoadToken) return;
-
                 try {
-                    DataProcessor.process(res.result);
-                    DOM.get('fileInfo').innerText = "Loaded remote file.";
+                    DataProcessor.process(response.result);
+                    const fileInfoFinish = DOM.get('fileInfo');
+                    if (fileInfoFinish) fileInfoFinish.innerText = "Drive log loaded successfully.";
                 } catch (err) {
-                    console.error(err);
-                    alert("Error processing file data.");
+                    alert("The file content is not a valid log format.");
                 } finally {
                     UI.setLoading(false);
                 }
             }, 50);
 
-        } catch (e) {
-            // Don't show error alerts if the user intentionally cancelled
+        } catch (error) {
             if (currentToken !== activeLoadToken) return;
-
             UI.setLoading(false);
-            alert("Error downloading file: " + (e.message || e.result?.error?.message));
+            alert(`Drive Error: ${error.result?.error?.message || error.message}`);
+        }
+    },
+
+    handleApiError(error, listEl) {
+        console.error("Drive API Error:", error);
+        if (error.status === 401 || error.status === 403) {
+            gapi.client.setToken(null);
+            if (listEl) listEl.innerHTML = '<div class="error-msg">Session expired. Please click "Drive Scan" again.</div>';
+        } else {
+            if (listEl) listEl.innerHTML = `<div class="error-msg">Search failed: ${error.message || 'Unknown error'}</div>`;
         }
     }
 };

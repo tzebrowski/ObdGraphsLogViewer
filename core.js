@@ -1,13 +1,11 @@
 const DataProcessor = {
-   // In core.js, replace handleLocalFile with this:
+
     handleLocalFile: (event) => {
         const file = event.target.files[0];
         if (!file) return;
         
-        // 1. Show Loading Screen
         UI.setLoading(true, "Parsing File...");
 
-        // 2. Use setTimeout to let the UI render the overlay before freezing
         setTimeout(() => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -43,12 +41,18 @@ const DataProcessor = {
         AppState.logDuration = (maxT - minT) / 1000;
         AppState.availableSignals = Object.keys(AppState.signals).sort();
 
+        // Update File Info display
         DOM.get('fileInfo').innerText = `${AppState.logDuration.toFixed(1)}s | ${AppState.availableSignals.length} signals`;
         
-        UI.reset();
-        Templates.initUI(); // This uses ANOMALY_TEMPLATES, so they must be loaded by now
-        Sliders.init(AppState.logDuration);
+        // UI Logic
+        UI.resetScannerUI(); 
         UI.renderSignalList();
+        
+        // Analysis Logic
+        Analysis.initTemplates(); 
+        
+        // Component Logic
+        Sliders.init(AppState.logDuration);
         ChartManager.render();
     }
 };
@@ -67,27 +71,36 @@ async function loadConfiguration() {
 }
 
 window.onload = async function() {
-    await loadConfiguration();
+    await loadConfiguration(); //
 
-    Auth.init();
-    UI.init();
+    Auth.init(); //
+    UI.init(); //
     
-    // WIRE THE DEPENDENCY HERE:
-    Auth.onAuthSuccess = Drive.listFiles;
+   Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
 
-    // Bind Events
-    DOM.get('fileInput').addEventListener('change', DataProcessor.handleLocalFile);
-    DOM.get('rangeStart').addEventListener('input', Sliders.updateFromInput);
-    DOM.get('rangeEnd').addEventListener('input', Sliders.updateFromInput);
+    // Use DOM helper to ensure listeners are bound correctly
+    const fileInput = DOM.get('fileInput');
+    if (fileInput) fileInput.addEventListener('change', DataProcessor.handleLocalFile); //
+    
+    const rangeStart = DOM.get('rangeStart');
+    if (rangeStart) rangeStart.addEventListener('input', Sliders.updateFromInput); //
+    
+    const rangeEnd = DOM.get('rangeEnd');
+    if (rangeEnd) rangeEnd.addEventListener('input', Sliders.updateFromInput); //
 };
 
-window.toggleConfig = Auth.toggleConfig;
-window.saveConfig = Auth.saveConfig;
-window.handleAuth = Auth.handleAuth;
-window.loadDriveFile = Drive.loadFile;
-window.toggleSidebar = UI.toggleSidebar;
-window.toggleFullScreen = UI.toggleFullScreen;
-window.toggleAllSignals = UI.toggleAllSignals;
-window.applyTemplate = Templates.apply;
-window.scanAnomalies =  Scanner.scan;
-window.resetZoom = Sliders.reset;
+// Global bindings for HTML onclick attributes
+window.saveConfig = () => Auth.saveConfig();
+window.handleAuth = () => Auth.handleAuth();
+window.loadDriveFile = () => Drive.loadFile();
+
+window.toggleConfig = () => UI.toggleConfig();
+window.toggleSidebar = () => UI.toggleSidebar();
+window.toggleFullScreen = () => UI.toggleFullScreen();
+window.toggleAllSignals = (check) => UI.toggleAllSignals(check);
+
+window.applyTemplate = () => Analysis.applyTemplate();
+window.scanAnomalies = () => Analysis.runScan();
+window.addFilterRow = () => Analysis.addFilterRow();
+
+window.resetZoom = () => Sliders.reset();

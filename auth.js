@@ -19,11 +19,6 @@ const Auth = {
         alert("Configuration Saved!");
     },
 
-    toggleConfig: () => {
-        const p = DOM.get('configPanel');
-        p.style.display = p.style.display === 'block' ? 'none' : 'block';
-    },
-
     initGapiClient: async () => {
         await gapi.client.init({ discoveryDocs: [Auth.DISCOVERY_DOC] });
         AppState.google.gapiInited = true;
