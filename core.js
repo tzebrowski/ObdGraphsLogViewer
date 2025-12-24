@@ -74,4 +74,5 @@ window.toggleSidebar = UI.toggleSidebar;
 window.toggleFullScreen = UI.toggleFullScreen;
 window.toggleAllSignals = UI.toggleAllSignals;
 window.applyTemplate = Templates.apply;
+window.scanAnomalies =  Scanner.scan;
 window.resetZoom = Sliders.reset;
