@@ -23,9 +23,9 @@
         <div class="control-group">
             <h3 class="group-header">Log Source <span class="config-link" onclick="toggleConfig()">(Drive Config)</span></h3>
             <div id="configPanel">
-                <input type="text" id="gClientId" placeholder="Client ID">
-                <input type="password" id="gApiKey" placeholder="API Key">
-                <button class="btn" onclick="saveConfig()">Save Keys</button>
+                <p style="font-size:0.8em; color:#666; margin-bottom:5px;">Enter your Google Cloud <b>Client ID</b> only.</p>
+                <input type="text" id="gClientId" placeholder="Your Client ID (apps.googleusercontent.com)">
+                <button class="btn" onclick="saveConfig()">Save Config</button>
             </div>
             <div class="button-row">
                 <button id="authBtn" class="btn btn-primary" onclick="handleAuth()">Drive Scan</button>
