@@ -52,10 +52,8 @@ async function loadConfiguration() {
 }
 
 window.onload = async function() {
-    // 1. Load external JSON config first
     await loadConfiguration();
 
-    // 2. Initialize App
     Auth.init();
     UI.init();
     
@@ -65,7 +63,6 @@ window.onload = async function() {
     DOM.get('rangeEnd').addEventListener('input', Sliders.updateFromInput);
 };
 
-// --- EXPOSE GLOBAL HELPERS FOR HTML CLICK HANDLERS ---
 window.toggleConfig = Auth.toggleConfig;
 window.saveConfig = Auth.saveConfig;
 window.handleAuth = Auth.handleAuth;
