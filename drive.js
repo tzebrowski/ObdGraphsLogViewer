@@ -1,3 +1,6 @@
+
+let activeLoadToken = 0;
+
 const Drive = {
     getFolderId: async (folderName, parentId = 'root') => {
         try {
@@ -84,22 +87,63 @@ const Drive = {
     },
 
     loadFile: async (id, element) => {
+       
         if (element) {
             document.querySelectorAll('.drive-file-row').forEach(row => {
-                row.style.background = '';
-                row.style.borderLeft = '';
+                row.style.background = ''; row.style.borderLeft = '';
             });
-            element.style.background = '#ffebeb';
-            element.style.borderLeft = '3px solid #9a0000';
+            element.style.background = '#ffebeb'; element.style.borderLeft = '3px solid #9a0000';
         }
-        
+
+        // --- CANCELLATION LOGIC START ---
+        activeLoadToken++; // Increment token for new request
+        const currentToken = activeLoadToken;
+
+        const handleCancel = () => {
+            // Invalidating the token effectively "cancels" the logic that runs after download
+            activeLoadToken++; 
+            UI.setLoading(false);
+            DOM.get('fileInfo').innerText = "Download cancelled.";
+        };
+        // --- CANCELLATION LOGIC END ---
+
+        // Pass the cancel callback to UI
+        UI.setLoading(true, "Downloading from Drive...", handleCancel);
         DOM.get('fileInfo').innerText = "Downloading...";
+
         try {
             const res = await gapi.client.drive.files.get({ fileId: id, alt: 'media' });
-            DataProcessor.process(res.result);
-            DOM.get('fileInfo').innerText = "Loaded remote file.";
+
+            // CHECK: Did the user cancel while we were waiting?
+            if (currentToken !== activeLoadToken) {
+                console.log("Ignored response from cancelled request");
+                return; 
+            }
+
+            // Remove Cancel button for the freezing phase
+            UI.setLoading(true, "Processing Data...", null); 
+
+            setTimeout(() => {
+                // Second check just in case
+                if (currentToken !== activeLoadToken) return;
+
+                try {
+                    DataProcessor.process(res.result);
+                    DOM.get('fileInfo').innerText = "Loaded remote file.";
+                } catch (err) {
+                    console.error(err);
+                    alert("Error processing file data.");
+                } finally {
+                    UI.setLoading(false);
+                }
+            }, 50);
+
         } catch (e) {
-            alert("Error downloading file: " + e.message);
+            // Don't show error alerts if the user intentionally cancelled
+            if (currentToken !== activeLoadToken) return;
+
+            UI.setLoading(false);
+            alert("Error downloading file: " + (e.message || e.result?.error?.message));
         }
     }
 };

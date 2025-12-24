@@ -9,6 +9,26 @@ const UI = {
         }
     },
 
+    setLoading: (isLoading, text = "Loading...", onCancel = null) => {
+        const el = document.getElementById('loadingOverlay');
+        const txt = document.getElementById('loadingText');
+        const btn = document.getElementById('cancelLoadBtn');
+
+        if (el && txt) {
+            txt.innerText = text;
+            el.style.display = isLoading ? 'flex' : 'none';
+            
+            // Logic for the Cancel button
+            if (isLoading && onCancel) {
+                btn.style.display = 'inline-block';
+                btn.onclick = onCancel;
+            } else {
+                btn.style.display = 'none';
+                btn.onclick = null;
+            }
+        }
+    },
+
     reset: () => {
         AppState.activeHighlight = null;
         DOM.get('scanResults').innerHTML = '';

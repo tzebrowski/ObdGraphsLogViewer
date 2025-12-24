@@ -1,15 +1,30 @@
 const DataProcessor = {
+   // In core.js, replace handleLocalFile with this:
     handleLocalFile: (event) => {
         const file = event.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const json = JSON.parse(e.target.result);
-                DataProcessor.process(json);
-            } catch (err) { alert("Invalid JSON file"); }
-        };
-        reader.readAsText(file);
+        
+        // 1. Show Loading Screen
+        UI.setLoading(true, "Parsing File...");
+
+        // 2. Use setTimeout to let the UI render the overlay before freezing
+        setTimeout(() => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    DataProcessor.process(json);
+                } catch (err) { 
+                    alert("Invalid JSON file"); 
+                } finally {
+                    // 3. Hide Loading Screen
+                    UI.setLoading(false);
+                    // Reset file input so same file can be selected again if needed
+                    DOM.get('fileInput').value = ''; 
+                }
+            };
+            reader.readAsText(file);
+        }, 50); // 50ms delay to allow DOM repaint
     },
 
     process: (data) => {

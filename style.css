@@ -98,3 +98,36 @@ input[type=range]::-webkit-slider-thumb {
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #999; }
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 9999; /* Sit on top of everything */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
+    color: #9a0000;
+    font-weight: bold;
+    cursor: wait;
+}
+
+.spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #9a0000;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
