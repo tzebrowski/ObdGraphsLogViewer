@@ -18,7 +18,8 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-
 /* Sidebar */
 /* Sidebar Container */
 .sidebar {
-
+    min-width: 380px; /* Minimum width allowed */
+    max-width: 600px; /* Maximum width allowed */
     width: 380px; background: #f8f9fa; border-right: 1px solid #ddd;
     display: flex; flex-direction: column; padding: 20px;
     box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: margin-left 0.3s ease; z-index: 10;
