@@ -78,8 +78,7 @@ const Analysis = {
 
         const aggregatedResults = [];
 
-        // Scan across all loaded files
-        AppState.files.forEach(file => {
+        AppState.files.forEach((file, fileIdx) => {
             let state = {}, inEvent = false, startT = 0;
             const ranges = [];
 
@@ -94,7 +93,8 @@ const Analysis = {
                     startT = p.t;
                 } else if (!match && inEvent) {
                     inEvent = false;
-                    ranges.push({ start: startT, end: p.t, fileName: file.name });
+                    // Capture the fileIdx for targeted highlighting
+                    ranges.push({ start: startT, end: p.t, fileName: file.name, fileIdx: fileIdx });
                 }
             });
             aggregatedResults.push(...ranges);
@@ -113,16 +113,20 @@ const Analysis = {
         countDiv.innerText = `${ranges.length} events found`;
 
         ranges.forEach((range, idx) => {
-            const s = (range.start - AppState.globalStartTime) / 1000;
-            const e = (range.end - AppState.globalStartTime) / 1000;
+            // Calculate seconds relative to the SPECIFIC file
+            const fileStart = AppState.files[range.fileIdx].startTime;
+            const s = (range.start - fileStart) / 1000;
+            const e = (range.end - fileStart) / 1000;
 
             const item = document.createElement('div');
             item.className = 'result-item';
             item.innerHTML = `<div><b>${range.fileName}</b></div> Event ${idx + 1}: ${s.toFixed(1)}s - ${e.toFixed(1)}s`;
+
             item.onclick = () => {
                 document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
                 item.classList.add('selected');
-                Sliders.zoomTo(s, e);
+                // Pass specific relative times and index
+                Sliders.zoomTo(s, e, range.fileIdx);
             };
             resDiv.appendChild(item);
         });

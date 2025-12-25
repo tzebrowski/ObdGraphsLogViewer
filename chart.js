@@ -132,14 +132,6 @@ const ChartManager = {
     },
 
     syncAll: ({ chart }) => {
-        const min = chart.scales.x.min;
-        const max = chart.scales.x.max;
-        AppState.chartInstances.forEach(other => {
-            // if (other === chart) return;
-            // other.options.scales.x.min = min;
-            // other.options.scales.x.max = max;
-            // other.update('none');
-        });
         if (typeof Sliders !== 'undefined') Sliders.syncFromChart({ chart });
     },
 
@@ -172,28 +164,38 @@ const ChartManager = {
     highlighterPlugin: {
         id: 'anomalyHighlighter',
         afterDraw(chart) {
-            const chartIdx = AppState.chartInstances.indexOf(chart);
-            if (chartIdx === -1 || ChartManager.activeChartIndex !== chartIdx || !ChartManager.hoverValue) return;
-
-            const file = AppState.files[chartIdx];
-            if (!file) return;
-
             const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const chartIdx = AppState.chartInstances.indexOf(chart);
             ctx.save();
-            const xPixel = x.getPixelForValue(ChartManager.hoverValue);
 
-            if (xPixel >= chart.chartArea.left && xPixel <= chart.chartArea.right) {
-                ctx.beginPath();
-                ctx.strokeStyle = '#9a0000';
-                ctx.lineWidth = 2;
-                ctx.moveTo(xPixel, top);
-                ctx.lineTo(xPixel, bottom);
-                ctx.stroke();
+            // Draw Scanner Selection only on the chart that detected the event
+            if (AppState.activeHighlight && AppState.activeHighlight.targetIndex === chartIdx) {
+                // Calculate pixel values based on the specific file's start time
+                const fileStart = AppState.files[chartIdx].startTime;
+                const startVal = fileStart + (AppState.activeHighlight.start * 1000);
+                const endVal = fileStart + (AppState.activeHighlight.end * 1000);
 
-                const timeSec = (ChartManager.hoverValue - file.startTime) / 1000;
-                ctx.fillStyle = '#000';
-                ctx.font = 'bold 10px sans-serif';
-                ctx.fillText(`${timeSec.toFixed(2)}s`, xPixel + 5, top + 12);
+                const x1 = x.getPixelForValue(startVal);
+                const x2 = x.getPixelForValue(endVal);
+
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+                ctx.fillRect(x1, top, x2 - x1, bottom - top);
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)';
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(x1, top, x2 - x1, bottom - top);
+            }
+
+            // 2. Draw Traveling Cursor (Marker Pipe) - remains localized to mouse
+            if (ChartManager.activeChartIndex === chartIdx && ChartManager.hoverValue) {
+                const xPixel = x.getPixelForValue(ChartManager.hoverValue);
+                if (xPixel >= chart.chartArea.left && xPixel <= chart.chartArea.right) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#9a0000';
+                    ctx.lineWidth = 2;
+                    ctx.moveTo(xPixel, top);
+                    ctx.lineTo(xPixel, bottom);
+                    ctx.stroke();
+                }
             }
             ctx.restore();
         }
@@ -209,6 +211,33 @@ const Sliders = {
         end.max = maxDuration;
         Sliders.updateUI(false);
     },
+
+    zoomTo: (startSec, endSec, targetIndex = null) => {
+        // 1. Store the highlight along with the specific chart index it belongs to
+        AppState.activeHighlight = {
+            start: startSec,
+            end: endSec,
+            targetIndex: targetIndex
+        };
+
+        if (targetIndex !== null && AppState.chartInstances[targetIndex]) {
+            const chart = AppState.chartInstances[targetIndex];
+            const fileStart = AppState.files[targetIndex].startTime; // Independent start time
+
+            chart.options.scales.x.min = fileStart + (startSec * 1000);
+            chart.options.scales.x.max = fileStart + (endSec * 1000);
+            chart.update('none'); // Update only this instance
+        };
+
+        // 3. Update the physical slider UI
+        const { start, end } = Sliders.els;
+        if (start && end) {
+            start.value = startSec;
+            end.value = endSec;
+            Sliders.updateVis(startSec, endSec);
+        }
+    },
+
     syncFromChart: ({ chart }) => {
         const { start, end } = Sliders.els;
         const s = Math.max(0, (chart.scales.x.min - AppState.globalStartTime) / 1000);
