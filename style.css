@@ -13,7 +13,12 @@
 
 /* Base Layout */
 body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; font-size: 15px; }
-.app-container { display: flex; height: 100vh; width: 100vw; }
+.app-container { 
+    overflow: hidden;
+    display: flex; 
+    height: 100vh; 
+    width: 100vw; 
+}
 
 /* Sidebar */
 /* Sidebar Container */
@@ -194,4 +199,20 @@ input[type=range]::-webkit-slider-thumb {
 
 .loading-overlay .btn:hover {
     background-color: var(--active-bg); /* Slight tint on hover */
+}
+
+
+/* The Resize Handle */
+.resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: #dee2e6;
+    height: 100vh;
+    z-index: 100;
+    transition: background 0.2s;
+}
+
+.resizer:hover, .resizer:active {
+    background: var(--primary-red);
+    width: 6px;
 }

@@ -1,6 +1,7 @@
 const UI = {
     get elements() {
         return {
+            resizer: document.getElementById('resizer'),
             sidebar: document.getElementById('sidebar'),
             loadingOverlay: document.getElementById('loadingOverlay'),
             loadingText: document.getElementById('loadingText'),
@@ -22,7 +23,49 @@ const UI = {
         if (AppState.chartInstance) AppState.chartInstance.resize();
     },
 
-    init() { /* Removed manual style overrides to let CSS handle layout */ },
+    init() {
+        UI.initResizer();
+    },
+
+    initResizer() {
+        const resizer = UI.elements.resizer;
+        const sidebar = UI.elements.sidebar;
+        let isResizing = false;
+
+        if (!resizer || !sidebar) return;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            // Add a temporary overlay to prevent iframe/chart interference while dragging
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            // Calculate new width based on mouse position
+            let newWidth = e.clientX;
+
+            // Constraints (matches CSS min/max)
+            if (newWidth >= 250 && newWidth <= 600) {
+                sidebar.style.width = `${newWidth}px`;
+                
+                // Trigger chart resize in real-time or debounced
+                if (AppState.chartInstance) {
+                    AppState.chartInstance.resize();
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            }
+        });
+    },
 
     setLoading(isLoading, text = "Loading...", onCancel = null) {
         const { loadingOverlay, loadingText, cancelBtn } = this.elements;
