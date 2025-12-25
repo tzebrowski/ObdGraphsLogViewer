@@ -220,12 +220,12 @@ input[type=range]::-webkit-slider-thumb {
 #chartContainer {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 20px;
-    overflow-y: auto; /* Allow scrolling multiple charts */
-    height: 100%;
+    height: 100%; /* Spans full height of mainContent */
+    overflow: hidden; /* Stops page from scrolling so charts must fit */
+    padding: 10px;
+    gap: 10px;
+    box-sizing: border-box;
 }
-
 .chart-wrapper {
     flex: 0 0 400px; /* Each chart gets at least 400px height */
     background: #fff;
@@ -288,20 +288,48 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 .canvas-wrapper {
-    flex-grow: 1;
+    flex: 1;
     position: relative;
-    padding: 5px;
+    min-height: 0;
 }
 
 
 .chart-card-compact {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
+    flex: 1; /* Equal vertical sharing among all loaded logs */
     display: flex;
     flex-direction: column;
+    min-height: 0; /* Critical: allows flexbox to force the canvas area to shrink */
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+
+/* style.css Updates */
+#chartContainer {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+    height: 100%; /* Shared height logic */
+    box-sizing: border-box;
+    background: #f1f3f5;
+    overflow: hidden; /* Prevent container scroll to force sharing */
+}
+
+
+.chart-header-sm {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 10px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
     flex-shrink: 0;
-    height: 250px; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 15px; /* Added spacing between independent charts */
+}
+
+.canvas-wrapper {
+    flex-grow: 1;
+    position: relative;
+    min-height: 0; /* Allows the canvas to shrink correctly within the card */
 }

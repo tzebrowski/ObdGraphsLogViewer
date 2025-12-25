@@ -14,7 +14,7 @@ const DataProcessor = {
     handleLocalFile: (event) => {
         const files = Array.from(event.target.files);
         if (files.length === 0) return;
-        
+
         UI.setLoading(true, `Parsing ${files.length} Files...`);
         let loaded = 0;
         files.forEach(file => {
@@ -22,7 +22,7 @@ const DataProcessor = {
             reader.onload = (e) => {
                 try {
                     DataProcessor.process(JSON.parse(e.target.result), file.name);
-                } catch (err) { 
+                } catch (err) {
                     console.error("Invalid JSON:", file.name);
                 }
                 loaded++;
@@ -74,11 +74,11 @@ const DataProcessor = {
 
 window.ChartManager = ChartManager; // Expose globally for HTML onclick handlers
 
-window.onload = async function() {
+window.onload = async function () {
     await loadConfiguration();
     Auth.init();
     UI.init();
-    
+
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
 
     const fileInput = DOM.get('fileInput');
@@ -93,11 +93,11 @@ window.ChartManager = ChartManager; // Ensure global access for the remove butto
 
 window.ChartManager = ChartManager; // Expose globally for HTML onclick handlers
 
-window.onload = async function() {
+window.onload = async function () {
     await loadConfiguration();
     Auth.init();
     UI.init();
-    
+
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
 
     const fileInput = DOM.get('fileInput');
@@ -113,7 +113,7 @@ window.onload = async function() {
 // Global onclick bindings
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
-window.toggleFullScreen = () => UI.toggleFullScreen(); 
+window.toggleFullScreen = () => UI.toggleFullScreen();
 window.toggleAllSignals = (check) => UI.toggleAllSignals(check);
 
 window.saveConfig = () => Auth.saveConfig();

@@ -6,29 +6,20 @@ const ChartManager = {
     hoverValue: null,
     activeChartIndex: null,
 
-   render: () => {
+    render: () => {
         const container = DOM.get('chartContainer');
         if (!container) return;
 
-        // Cleanup existing instances to prevent memory leaks and ghost interactions
         AppState.chartInstances.forEach(c => c.destroy());
         AppState.chartInstances = [];
-        container.innerHTML = ''; 
+        container.innerHTML = '';
 
-        // If no files left, reset global state and exit
-        if (AppState.files.length === 0) {
-            AppState.globalStartTime = 0;
-            AppState.logDuration = 0;
-            const info = DOM.get('fileInfo');
-            if (info) info.innerText = "No logs loaded.";
-            return;
-        }
+        if (AppState.files.length === 0) return;
 
-        // Always re-sync global time based on whatever is now at index 0
-        const primaryFile = AppState.files[0];
-        AppState.globalStartTime = primaryFile.startTime;
-        AppState.logDuration = primaryFile.duration;
-        AppState.availableSignals = primaryFile.availableSignals;
+        // Re-sync Global Reference (Primary File)
+        const primary = AppState.files[0];
+        AppState.globalStartTime = primary.startTime;
+        AppState.logDuration = primary.duration;
 
         AppState.files.forEach((file, idx) => {
             const wrapper = document.createElement('div');
@@ -39,12 +30,14 @@ const ChartManager = {
                     <button class="btn-remove" onclick="ChartManager.removeFile(${idx})">×</button>
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="chart-${idx}"></canvas>
+                    <canvas id="chart-${idx}" tabindex="0"></canvas>
                 </div>
             `;
             container.appendChild(wrapper);
 
-            ChartManager.createInstance(document.getElementById(`chart-${idx}`), file, idx);
+            const canvas = document.getElementById(`chart-${idx}`);
+            ChartManager.createInstance(canvas, file, idx);
+            ChartManager.initKeyboardControls(canvas, idx); // Pass index for context
         });
 
         if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
@@ -53,17 +46,15 @@ const ChartManager = {
     createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
 
-        // Add event listeners locally to this canvas
         canvas.addEventListener('mousemove', (e) => {
             const chart = AppState.chartInstances[index];
             if (!chart) return;
-            
+
             const prevIndex = ChartManager.activeChartIndex;
             ChartManager.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
             ChartManager.activeChartIndex = index;
 
-            chart.draw(); 
-            // Trigger redraw on previous chart to hide its cursor
+            chart.draw();
             if (prevIndex !== null && prevIndex !== index && AppState.chartInstances[prevIndex]) {
                 AppState.chartInstances[prevIndex].draw();
             }
@@ -87,7 +78,7 @@ const ChartManager = {
             plugins: [ChartManager.highlighterPlugin],
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // Stretch to share full height
+                maintainAspectRatio: false, // Stretch vertically
                 animation: false,
                 scales: {
                     x: {
@@ -114,7 +105,7 @@ const ChartManager = {
         ChartManager.activeChartIndex = null;
 
         AppState.files.splice(index, 1);
-        
+
         ChartManager.render();
         UI.renderSignalList();
     },
@@ -131,11 +122,49 @@ const ChartManager = {
         if (typeof Sliders !== 'undefined') Sliders.syncFromChart({ chart });
     },
 
+    initKeyboardControls: (canvas, index) => {
+        canvas.addEventListener('keydown', (e) => {
+            const chart = AppState.chartInstances[index];
+            if (!chart) return;
+
+            const amount = e.shiftKey ? 0.05 : 0.01;
+            const xScale = chart.scales.x;
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    chart.pan({ x: chart.width * amount }, undefined, 'none');
+                    break;
+                case 'ArrowRight':
+                    chart.pan({ x: -chart.width * amount }, undefined, 'none');
+                    break;
+                case '+':
+                case '=':
+                    chart.zoom(1.1, undefined, 'none');
+                    break;
+                case '-':
+                case '_':
+                    chart.zoom(0.9, undefined, 'none');
+                    break;
+                case 'r':
+                case 'R':
+                    Sliders.reset();
+                    return;
+            }
+
+            // Move the pipe to the center of the new view during keyboard nav
+            ChartManager.hoverValue = (xScale.min + xScale.max) / 2;
+            ChartManager.activeChartIndex = index;
+
+            // Sync all charts and force redraw of marker
+            ChartManager.syncAll({ chart });
+            chart.draw();
+        });
+    },
+
     highlighterPlugin: {
         id: 'anomalyHighlighter',
         afterDraw(chart) {
             const chartIdx = AppState.chartInstances.indexOf(chart);
-            // Defensive check: verify chart index exists and is active
             if (chartIdx === -1 || ChartManager.activeChartIndex !== chartIdx || !ChartManager.hoverValue) return;
 
             const file = AppState.files[chartIdx];
@@ -160,7 +189,7 @@ const ChartManager = {
             }
             ctx.restore();
         }
-    }
+    },
 };
 
 const Sliders = {

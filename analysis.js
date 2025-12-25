@@ -5,9 +5,9 @@ const Analysis = {
 
         const options = Object.keys(ANOMALY_TEMPLATES)
             .map(k => `<option value="${k}">${ANOMALY_TEMPLATES[k].name}</option>`);
-        
+
         sel.innerHTML = '<option value="">-- Load a Template --</option>' + options.join('');
-        
+
         const filtersContainer = DOM.get('filtersContainer');
         if (filtersContainer) {
             filtersContainer.innerHTML = '';
@@ -21,8 +21,8 @@ const Analysis = {
 
         const div = document.createElement('div');
         div.className = 'filter-row';
-        
-        const options = AppState.availableSignals.map(k => 
+
+        const options = AppState.availableSignals.map(k =>
             `<option value="${k}" ${k === sigName ? 'selected' : ''}>${k}</option>`
         ).join('');
 
@@ -35,7 +35,7 @@ const Analysis = {
             <input type="number" placeholder="Val" value="${value}">
             <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
         `;
-        
+
         div.querySelector('.remove-row').onclick = () => div.remove();
         container.appendChild(div);
     },
@@ -46,23 +46,23 @@ const Analysis = {
 
         const key = templateSelect.value;
         if (!key) return;
-        
+
         const template = ANOMALY_TEMPLATES[key];
         const container = DOM.get('filtersContainer');
         if (container) container.innerHTML = '';
 
         template.rules.forEach(rule => {
             let bestSig = AppState.availableSignals.includes(rule.sig) ? rule.sig : "";
-            
+
             if (!bestSig) {
                 const aliases = (SIGNAL_MAPPINGS[rule.sig] || []).map(a => a.toLowerCase());
-                bestSig = AppState.availableSignals.find(s => 
+                bestSig = AppState.availableSignals.find(s =>
                     aliases.some(alias => s.toLowerCase().includes(alias))
                 ) || "";
             }
             this.addFilterRow(bestSig, rule.op, rule.val);
         });
-        
+
         setTimeout(() => this.runScan(), 100);
     },
 
@@ -77,7 +77,7 @@ const Analysis = {
         if (criteria.length === 0) return;
 
         const aggregatedResults = [];
-        
+
         // Scan across all loaded files
         AppState.files.forEach(file => {
             let state = {}, inEvent = false, startT = 0;
@@ -85,12 +85,12 @@ const Analysis = {
 
             file.rawData.forEach(p => {
                 state[p.s] = p.v;
-                const match = criteria.every(c => 
+                const match = criteria.every(c =>
                     state[c.sig] !== undefined && (c.op === '>' ? state[c.sig] > c.val : state[c.sig] < c.val)
                 );
 
                 if (match && !inEvent) {
-                    inEvent = true; 
+                    inEvent = true;
                     startT = p.t;
                 } else if (!match && inEvent) {
                     inEvent = false;
@@ -108,14 +108,14 @@ const Analysis = {
         const countDiv = DOM.get('scanCount');
         if (!resDiv || !countDiv) return;
 
-        resDiv.innerHTML = ''; 
+        resDiv.innerHTML = '';
         resDiv.style.display = 'block';
         countDiv.innerText = `${ranges.length} events found`;
 
         ranges.forEach((range, idx) => {
             const s = (range.start - AppState.globalStartTime) / 1000;
             const e = (range.end - AppState.globalStartTime) / 1000;
-            
+
             const item = document.createElement('div');
             item.className = 'result-item';
             item.innerHTML = `<div><b>${range.fileName}</b></div> Event ${idx + 1}: ${s.toFixed(1)}s - ${e.toFixed(1)}s`;

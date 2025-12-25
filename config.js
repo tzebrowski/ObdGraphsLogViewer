@@ -19,7 +19,7 @@ const AppState = {
     globalStartTime: 0,
     logDuration: 0,
     chartInstance: null,
-    activeHighlight: null, 
+    activeHighlight: null,
     google: {
         tokenClient: null,
         gapiInited: false,
