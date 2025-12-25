@@ -1,4 +1,3 @@
-// --- CONSTANTS ---
 const CHART_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
 
 const SIGNAL_MAPPINGS = {
@@ -9,7 +8,7 @@ const SIGNAL_MAPPINGS = {
     "Short Fuel Trim": ["SFT", "STFT", "Short Term"]
 };
 
-let ANOMALY_TEMPLATES = {}; 
+let ANOMALY_TEMPLATES = {};
 
 const AppState = {
     rawData: [],
@@ -26,9 +25,6 @@ const AppState = {
     }
 };
 
-// --- DOM HELPER ---
 const DOM = {
-    get: (id) => document.getElementById(id),
-    sidebar: document.getElementById('sidebar'),
-    chartCtx: document.getElementById('telemetryChart').getContext('2d'),
+    get: (id) => document.getElementById(id)
 };

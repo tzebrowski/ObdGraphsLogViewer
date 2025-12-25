@@ -1,4 +1,3 @@
-// auth.js
 const Auth = {
     SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
     DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
@@ -17,11 +16,6 @@ const Auth = {
         localStorage.setItem('alfa_clientId', cId);
         Auth.initTokenClient();
         alert("Configuration Saved!");
-    },
-
-    toggleConfig: () => {
-        const p = DOM.get('configPanel');
-        p.style.display = p.style.display === 'block' ? 'none' : 'block';
     },
 
     initGapiClient: async () => {

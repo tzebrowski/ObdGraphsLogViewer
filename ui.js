@@ -1,206 +1,112 @@
-// ui.js
-
 const UI = {
-    init: () => {
-        if (DOM.sidebar) {
-            DOM.sidebar.style.overflowY = 'auto';
-            DOM.sidebar.style.height = '100vh';
-            DOM.sidebar.style.paddingBottom = '50px';
+    get elements() {
+        return {
+            sidebar: document.getElementById('sidebar'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            loadingText: document.getElementById('loadingText'),
+            cancelBtn: document.getElementById('cancelLoadBtn'),
+            signalList: document.getElementById('signalList'),
+            mainContent: document.getElementById('mainContent'),
+            scanResults: document.getElementById('scanResults'),
+            scanCount: document.getElementById('scanCount')
+        };
+    },
+
+    toggleConfig() {
+        const p = DOM.get('configPanel');
+        if (!p) return;
+
+        const isHidden = p.style.display === 'none' || p.style.display === '';
+        p.style.display = isHidden ? 'block' : 'none';
+        
+        if (AppState.chartInstance) AppState.chartInstance.resize();
+    },
+
+    init() { /* Removed manual style overrides to let CSS handle layout */ },
+
+    setLoading(isLoading, text = "Loading...", onCancel = null) {
+        const { loadingOverlay, loadingText, cancelBtn } = this.elements;
+        if (!loadingOverlay || !loadingText) return;
+
+        loadingText.innerText = text;
+        loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+        
+        if (isLoading && onCancel) {
+            cancelBtn.style.display = 'inline-block';
+            cancelBtn.onclick = onCancel;
+        } else {
+            cancelBtn.style.display = 'none';
         }
     },
 
-    setLoading: (isLoading, text = "Loading...", onCancel = null) => {
-        const el = document.getElementById('loadingOverlay');
-        const txt = document.getElementById('loadingText');
-        const btn = document.getElementById('cancelLoadBtn');
-
-        if (el && txt) {
-            txt.innerText = text;
-            el.style.display = isLoading ? 'flex' : 'none';
-            
-            // Logic for the Cancel button
-            if (isLoading && onCancel) {
-                btn.style.display = 'inline-block';
-                btn.onclick = onCancel;
-            } else {
-                btn.style.display = 'none';
-                btn.onclick = null;
-            }
-        }
-    },
-
-    reset: () => {
+    resetScannerUI() {
         AppState.activeHighlight = null;
-        DOM.get('scanResults').innerHTML = '';
-        DOM.get('scanResults').style.display = 'none';
-        DOM.get('scanCount').innerText = '';
+        this.elements.scanResults.innerHTML = '';
+        this.elements.scanResults.style.display = 'none';
+        this.elements.scanCount.innerText = '';
     },
 
-    toggleSidebar: () => {
-        DOM.sidebar.classList.toggle('collapsed');
-        setTimeout(() => AppState.chartInstance?.resize(), 350);
+    toggleSidebar() {
+        const el = UI.elements
+        if (el.sidebar) {
+            el.sidebar.classList.toggle('collapsed');
+            setTimeout(() => AppState.chartInstance?.resize(), 350);
+        }
     },
 
-    toggleFullScreen: () => {
-        const el = DOM.get('mainContent');
-        !document.fullscreenElement ? el.requestFullscreen() : document.exitFullscreen();
+    toggleFullScreen() {
+        const content = UI.elements.mainContent;
+        if (!content) return;
+
+        if (!document.fullscreenElement) {
+            content.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
     },
 
-    renderSignalList: () => {
-        const list = DOM.get('signalList');
-        list.innerHTML = '';
-        let cIdx = 0;
+    renderSignalList() {
+        const container = this.elements.signalList;
+        container.innerHTML = '';
+        const fragment = document.createDocumentFragment();
 
-        AppState.availableSignals.forEach(key => {
+        AppState.availableSignals.forEach((key, idx) => {
             const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"].some(k => key.includes(k));
-            const color = CHART_COLORS[cIdx++ % CHART_COLORS.length];
+            const color = CHART_COLORS[idx % CHART_COLORS.length];
             
             const label = document.createElement('label');
+            label.className = 'signal-item';
             label.innerHTML = `
                 <input type="checkbox" data-key="${key}" ${isImportant ? 'checked' : ''}>
-                <span style="display:inline-block;width:10px;height:10px;background:${color};margin-right:8px;"></span>
-                ${key}
+                <span class="color-swatch" style="background:${color}; display:inline-block; width:10px; height:10px; margin-right:8px;"></span>
+                <span class="signal-name">${key}</span>
             `;
-            label.querySelector('input').addEventListener('change', function() {
-                const ds = AppState.chartInstance.data.datasets.find(d => d.label === key);
-                if (ds) { ds.hidden = !this.checked; AppState.chartInstance.update(); }
-            });
-            list.appendChild(label);
+            fragment.appendChild(label);
         });
+
+        container.appendChild(fragment);
+        container.onclick = (e) => {
+            if (e.target.tagName === 'INPUT') {
+                this.syncSignalVisibility(e.target.getAttribute('data-key'), e.target.checked);
+            }
+        };
     },
 
-    toggleAllSignals: (shouldCheck) => {
-        document.querySelectorAll('#signalList input').forEach(i => i.checked = shouldCheck);
+    syncSignalVisibility(key, isVisible) {
+        const ds = AppState.chartInstance?.data.datasets.find(d => d.label === key);
+        if (ds) {
+            ds.hidden = !isVisible;
+            AppState.chartInstance.update('none');
+        }
+    },
+
+    toggleAllSignals(shouldCheck) {
+        this.elements.signalList.querySelectorAll('input').forEach(i => i.checked = shouldCheck);
         if (AppState.chartInstance) {
             AppState.chartInstance.data.datasets.forEach(ds => ds.hidden = !shouldCheck);
             AppState.chartInstance.update();
         }
-    }
-};
-
-const Templates = {
-    initUI: () => {
-        const sel = DOM.get('anomalyTemplate');
-        sel.innerHTML = '<option value="">-- Load a Template --</option>';
-        Object.keys(ANOMALY_TEMPLATES).forEach(key => {
-            sel.innerHTML += `<option value="${key}">${ANOMALY_TEMPLATES[key].name}</option>`;
-        });
-        DOM.get('filtersContainer').innerHTML = '';
-        Templates.addFilterRow();
-    },
-
-    apply: () => {
-        const key = DOM.get('anomalyTemplate').value;
-        if (!key) return;
-        const template = ANOMALY_TEMPLATES[key];
-        DOM.get('filtersContainer').innerHTML = '';
-
-        template.rules.forEach(rule => {
-            let bestSig = "";
-            if (AppState.availableSignals.includes(rule.sig)) {
-                bestSig = rule.sig;
-            } else {
-                const aliases = SIGNAL_MAPPINGS[rule.sig] || [];
-                for (let alias of aliases) {
-                    const found = AppState.availableSignals.find(s => 
-                        s.toLowerCase().includes(alias.toLowerCase())
-                    );
-                    if (found) { bestSig = found; break; }
-                }
-            }
-            Templates.addFilterRow(bestSig, rule.op, rule.val);
-        });
-        setTimeout(Scanner.scan, 100);
-    },
-
-    addFilterRow: (sigName = "", operator = ">", value = "") => {
-        const container = DOM.get('filtersContainer');
-        const div = document.createElement('div');
-        div.className = 'filter-row';
-        const options = AppState.availableSignals.map(k => 
-            `<option value="${k}" ${k === sigName ? 'selected' : ''}>${k}</option>`
-        ).join('');
-
-        div.innerHTML = `
-            <select class="sig-select"><option value="">Signal...</option>${options}</select>
-            <select class="op">
-                <option value=">" ${operator === '>' ? 'selected' : ''}>></option>
-                <option value="<" ${operator === '<' ? 'selected' : ''}><</option>
-            </select>
-            <input type="number" placeholder="Val" value="${value}">
-            <span class="remove-row" onclick="this.parentElement.remove()">×</span>
-        `;
-        container.appendChild(div);
-    }
-};
-
-const Scanner = {
-    scan: () => {
-        AppState.activeHighlight = null;
-        const criteria = [];
-        document.querySelectorAll('.filter-row').forEach(row => {
-            const sig = row.querySelector('.sig-select').value;
-            const op = row.querySelector('.op').value;
-            const val = parseFloat(row.querySelector('input').value);
-            if (sig && !isNaN(val)) criteria.push({ sig, op, val });
-        });
-
-        if (criteria.length === 0) { alert("Please define conditions."); return; }
-
-        const foundRanges = [];
-        let currentState = {}, inEvent = false, eventStart = 0;
-
-        AppState.rawData.forEach(p => {
-            currentState[p.s] = p.v; // Update signal state
-            
-            let allMatch = true;
-            for (let c of criteria) {
-                const currentVal = currentState[c.sig];
-                // Strict check: if we haven't seen the signal yet, it's not a match
-                if (currentVal === undefined) { allMatch = false; break; } 
-                
-                const isMatch = (c.op === '>') ? (currentVal > c.val) : (currentVal < c.val);
-                if (!isMatch) { allMatch = false; break; }
-            }
-
-            if (allMatch) {
-                if (!inEvent) { inEvent = true; eventStart = p.t; }
-            } else {
-                if (inEvent) {
-                    inEvent = false;
-                    // FIX 1: Ensure duration is strictly positive (allow > 0) or keep 100 if you want debounce
-                    if (p.t - eventStart > 0) foundRanges.push({ start: eventStart, end: p.t }); 
-                }
-            }
-        });
-
-        if (inEvent && AppState.rawData.length > 0) {
-            foundRanges.push({ start: eventStart, end: AppState.rawData[AppState.rawData.length - 1].t });
-        }
-
-        Scanner.displayResults(foundRanges);
-    },
-
-    displayResults: (ranges) => {
-        const resDiv = DOM.get('scanResults');
-        const countDiv = DOM.get('scanCount');
-        resDiv.innerHTML = ''; resDiv.style.display = 'block';
-        countDiv.innerText = `${ranges.length} anomalies found`;
-
-        if (ranges.length === 0) { resDiv.innerHTML = '<div style="padding:10px;">None found.</div>'; return; }
-
-        ranges.forEach((range, idx) => {
-            const s = (range.start - AppState.globalStartTime) / 1000;
-            const e = (range.end - AppState.globalStartTime) / 1000;
-            const item = document.createElement('div');
-            item.className = 'result-item';
-            item.innerHTML = `<span>Event ${idx + 1}</span> <b>${s.toFixed(1)}s - ${e.toFixed(1)}s</b>`;
-            item.onclick = () => {
-                document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
-                item.classList.add('selected');
-                Sliders.zoomTo(s, e);
-            };
-            resDiv.appendChild(item);
-        });
     }
 };

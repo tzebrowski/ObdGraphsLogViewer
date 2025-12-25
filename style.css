@@ -1,9 +1,24 @@
+
+:root {
+    /* Color Palette */
+    --primary-red: #9a0000;
+    --sidebar-bg: #f8f9fa;
+    --border-color: #dee2e6;
+    --text-main: #333;
+    --text-muted: #666;
+    --transition-speed: 0.3s;
+    --active-bg: #ffebeb;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+}
+
 /* Base Layout */
 body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; font-size: 15px; }
 .app-container { display: flex; height: 100vh; width: 100vw; }
 
 /* Sidebar */
+/* Sidebar Container */
 .sidebar {
+
     width: 380px; background: #f8f9fa; border-right: 1px solid #ddd;
     display: flex; flex-direction: column; padding: 20px;
     box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: margin-left 0.3s ease; z-index: 10;
@@ -16,7 +31,16 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-
 /* Control Groups */
 .control-group { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; flex-shrink: 0; }
 .control-group.anomaly-box { background: #fffdfd; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px; }
-.control-group.flex-grow { flex: 1; border-bottom: none; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding-bottom: 0; }
+.control-group.flex-grow {
+    flex: 1; /* Occupy all remaining vertical space */
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Critical for inner scrolling to work in flexbox */
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
 
 h3 { font-size: 0.95em; margin-bottom: 10px; color: #444; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
 .group-header { display: flex; justify-content: space-between; }
@@ -130,4 +154,43 @@ input[type=range]::-webkit-slider-thumb {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.file-name { font-weight: 600; font-size: 0.9rem; }
+.file-meta { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 0.75rem; 
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.drive-file-row {
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.drive-file-row:hover { background: #fdfdfd; }
+
+.drive-file-row.active {
+    background: var(--active-bg);
+    border-left: 4px solid var(--primary-red);
+}
+
+
+.loading-overlay .btn {
+    width: auto;           /* Prevents stretching to full width */
+    min-width: 120px;     /* Gives it a professional, consistent size */
+    margin-top: 20px;
+    padding: 8px 24px;     /* Adds breathing room inside the button */
+    background-color: #fff;
+    color: var(--primary-red);
+    border: 1px solid var(--primary-red);
+    transition: all 0.2s ease;
+}
+
+.loading-overlay .btn:hover {
+    background-color: var(--active-bg); /* Slight tint on hover */
 }
