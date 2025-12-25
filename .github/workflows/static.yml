@@ -42,6 +42,13 @@ jobs:
             fi
           done
 
+      - name: Minify CSS
+        run: |
+          if [ -f "style.css" ]; then
+            # clean-css-cli is a fast Node-based CSS minifier
+            npx clean-css-cli -o style.css style.css
+          fi
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
