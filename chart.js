@@ -203,12 +203,24 @@ const ChartManager = {
 };
 
 const Sliders = {
-    get els() { return { start: DOM.get('rangeStart'), end: DOM.get('rangeEnd'), txtStart: DOM.get('txtStart'), txtEnd: DOM.get('txtEnd'), bar: DOM.get('sliderHighlight') }; },
+
+    get els() {
+        return {
+            start: DOM.get('rangeStart'),
+            end: DOM.get('rangeEnd'),
+            txtStart: DOM.get('txtStart'),
+            txtEnd: DOM.get('txtEnd'),
+            bar: DOM.get('sliderHighlight')
+        };
+    },
+
     init: (maxDuration) => {
         const { start, end } = Sliders.els;
         if (!start || !end) return;
         start.max = maxDuration;
         end.max = maxDuration;
+        start.value = 0;
+        end.value = maxDuration;
         Sliders.updateUI(false);
     },
 
@@ -273,8 +285,23 @@ const Sliders = {
         }
     },
     reset: () => {
+        // 1. Clear any scanner highlight boxes and selected list items
         AppState.activeHighlight = null;
-        Sliders.init(AppState.logDuration);
-        Sliders.updateUI(true);
-    }
+        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
+
+        // 2. Loop through every chart and reset to its specific file duration
+        AppState.chartInstances.forEach((chart, idx) => {
+            const file = AppState.files[idx];
+            if (file) {
+                chart.options.scales.x.min = file.startTime;
+                chart.options.scales.x.max = file.startTime + (file.duration * 1000);
+                chart.update('none');
+            }
+        });
+
+        // 3. Reset the slider UI based on the primary file
+        if (AppState.files.length > 0) {
+            Sliders.init(AppState.files[0].duration);
+        }
+    },
 };

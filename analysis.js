@@ -113,10 +113,10 @@ const Analysis = {
         countDiv.innerText = `${ranges.length} events found`;
 
         ranges.forEach((range, idx) => {
-            // Calculate seconds relative to the SPECIFIC file
-            const fileStart = AppState.files[range.fileIdx].startTime;
-            const s = (range.start - fileStart) / 1000;
-            const e = (range.end - fileStart) / 1000;
+            // Calculate relative seconds for THIS specific file
+            const file = AppState.files[range.fileIdx];
+            const s = (range.start - file.startTime) / 1000;
+            const e = (range.end - file.startTime) / 1000;
 
             const item = document.createElement('div');
             item.className = 'result-item';
@@ -125,7 +125,7 @@ const Analysis = {
             item.onclick = () => {
                 document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
                 item.classList.add('selected');
-                // Pass specific relative times and index
+                // Zoom only the targeted chart
                 Sliders.zoomTo(s, e, range.fileIdx);
             };
             resDiv.appendChild(item);
