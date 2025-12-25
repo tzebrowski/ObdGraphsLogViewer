@@ -15,6 +15,14 @@ const Analysis = {
         }
     },
 
+
+    init: () => {
+        Analysis.initTemplates();
+        // Set up the button listener if not already in HTML
+        const scanBtn = DOM.get('btnRunScan');
+        if (scanBtn) scanBtn.onclick = () => AnomalyScanner.runScan();
+    },
+
     addFilterRow(sigName = "", operator = ">", value = "") {
         const container = DOM.get('filtersContainer');
         if (!container) return;
