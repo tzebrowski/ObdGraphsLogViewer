@@ -6,15 +6,20 @@ const ChartManager = {
     hoverValue: null,
     activeChartIndex: null,
 
-    render: () => {
+  render: () => {
         const container = DOM.get('chartContainer');
         if (!container) return;
 
+        // Cleanup existing instances
         AppState.chartInstances.forEach(c => c.destroy());
         AppState.chartInstances = [];
         container.innerHTML = '';
 
-        if (AppState.files.length === 0) return;
+        if (AppState.files.length === 0) {
+            AppState.globalStartTime = 0;
+            AppState.logDuration = 0;
+            return;
+        }
 
         // Re-sync Global Reference (Primary File)
         const primary = AppState.files[0];
@@ -37,25 +42,34 @@ const ChartManager = {
 
             const canvas = document.getElementById(`chart-${idx}`);
             ChartManager.createInstance(canvas, file, idx);
-            ChartManager.initKeyboardControls(canvas, idx); // Pass index for context
+            ChartManager.initKeyboardControls(canvas, idx);
         });
 
         if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
     },
 
-    createInstance: (canvas, file, index) => {
+   createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
 
         canvas.addEventListener('mousemove', (e) => {
             const chart = AppState.chartInstances[index];
             if (!chart) return;
-
+            
             const prevIndex = ChartManager.activeChartIndex;
             ChartManager.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
             ChartManager.activeChartIndex = index;
 
-            chart.draw();
+            chart.draw(); 
             if (prevIndex !== null && prevIndex !== index && AppState.chartInstances[prevIndex]) {
+                AppState.chartInstances[prevIndex].draw();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            const prevIndex = ChartManager.activeChartIndex;
+            ChartManager.hoverValue = null;
+            ChartManager.activeChartIndex = null;
+            if (prevIndex !== null && AppState.chartInstances[prevIndex]) {
                 AppState.chartInstances[prevIndex].draw();
             }
         });
@@ -78,8 +92,12 @@ const ChartManager = {
             plugins: [ChartManager.highlighterPlugin],
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // Stretch vertically
+                maintainAspectRatio: false, // Stretch to share height
                 animation: false,
+                interaction: {
+                    mode: 'index',      // Shows all signal values in the "menu"
+                    intersect: false    // Triggers tooltip without needing to hover a specific dot
+                },
                 scales: {
                     x: {
                         type: 'time',
@@ -90,6 +108,13 @@ const ChartManager = {
                 },
                 plugins: {
                     legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        position: 'nearest',
+                        callbacks: {
+                            label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}`
+                        }
+                    },
                     zoom: {
                         pan: { enabled: true, mode: 'x', onPan: ChartManager.syncAll },
                         zoom: { wheel: { enabled: true }, mode: 'x', onZoom: ChartManager.syncAll }
@@ -105,7 +130,7 @@ const ChartManager = {
         ChartManager.activeChartIndex = null;
 
         AppState.files.splice(index, 1);
-
+        
         ChartManager.render();
         UI.renderSignalList();
     },
@@ -122,46 +147,33 @@ const ChartManager = {
         if (typeof Sliders !== 'undefined') Sliders.syncFromChart({ chart });
     },
 
-    initKeyboardControls: (canvas, index) => {
+   initKeyboardControls: (canvas, index) => {
         canvas.addEventListener('keydown', (e) => {
             const chart = AppState.chartInstances[index];
             if (!chart) return;
 
             const amount = e.shiftKey ? 0.05 : 0.01;
-            const xScale = chart.scales.x;
-
             switch (e.key) {
-                case 'ArrowLeft':
-                    chart.pan({ x: chart.width * amount }, undefined, 'none');
-                    break;
-                case 'ArrowRight':
-                    chart.pan({ x: -chart.width * amount }, undefined, 'none');
-                    break;
+                case 'ArrowLeft': chart.pan({ x: chart.width * amount }, undefined, 'none'); break;
+                case 'ArrowRight': chart.pan({ x: -chart.width * amount }, undefined, 'none'); break;
                 case '+':
-                case '=':
-                    chart.zoom(1.1, undefined, 'none');
-                    break;
+                case '=': chart.zoom(1.1, undefined, 'none'); break;
                 case '-':
-                case '_':
-                    chart.zoom(0.9, undefined, 'none');
-                    break;
+                case '_': chart.zoom(0.9, undefined, 'none'); break;
                 case 'r':
-                case 'R':
-                    Sliders.reset();
-                    return;
+                case 'R': Sliders.reset(); return;
+                default: return; 
             }
-
-            // Move the pipe to the center of the new view during keyboard nav
-            ChartManager.hoverValue = (xScale.min + xScale.max) / 2;
+            
+            // Sync pipe to center of view on keyboard move
+            ChartManager.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
             ChartManager.activeChartIndex = index;
-
-            // Sync all charts and force redraw of marker
             ChartManager.syncAll({ chart });
             chart.draw();
         });
     },
 
-    highlighterPlugin: {
+   highlighterPlugin: {
         id: 'anomalyHighlighter',
         afterDraw(chart) {
             const chartIdx = AppState.chartInstances.indexOf(chart);
