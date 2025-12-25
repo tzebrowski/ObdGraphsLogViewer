@@ -16,7 +16,9 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-
 .app-container { display: flex; height: 100vh; width: 100vw; }
 
 /* Sidebar */
+/* Sidebar Container */
 .sidebar {
+
     width: 380px; background: #f8f9fa; border-right: 1px solid #ddd;
     display: flex; flex-direction: column; padding: 20px;
     box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: margin-left 0.3s ease; z-index: 10;
@@ -29,7 +31,16 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-
 /* Control Groups */
 .control-group { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; flex-shrink: 0; }
 .control-group.anomaly-box { background: #fffdfd; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px; }
-.control-group.flex-grow { flex: 1; border-bottom: none; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding-bottom: 0; }
+.control-group.flex-grow {
+    flex: 1; /* Occupy all remaining vertical space */
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Critical for inner scrolling to work in flexbox */
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
 
 h3 { font-size: 0.95em; margin-bottom: 10px; color: #444; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
 .group-header { display: flex; justify-content: space-between; }

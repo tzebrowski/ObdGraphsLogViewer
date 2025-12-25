@@ -1,4 +1,3 @@
-// auth.js
 const Auth = {
     SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
     DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',

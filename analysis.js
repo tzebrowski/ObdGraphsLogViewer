@@ -1,7 +1,3 @@
-/**
- * Analysis Engine
- * Focus: Template management and Log Scanning logic.
- */
 const Analysis = {
     initTemplates() {
         const sel = DOM.get('anomalyTemplate');

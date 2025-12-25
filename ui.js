@@ -1,5 +1,4 @@
 const UI = {
-    // Use Getters to ensure elements are fetched only when accessed
     get elements() {
         return {
             sidebar: document.getElementById('sidebar'),
@@ -13,39 +12,21 @@ const UI = {
         };
     },
 
-    toggleConfig: () => {
+    toggleConfig() {
         const p = DOM.get('configPanel');
         if (!p) return;
 
-        // Check current state
         const isHidden = p.style.display === 'none' || p.style.display === '';
+        p.style.display = isHidden ? 'block' : 'none';
         
-        if (isHidden) {
-            p.style.display = 'block'; // Expand
-        } else {
-            p.style.display = 'none';  // Collapse and restore space
-        }
-
-        // Force Sidebar to recalculate its scroll height
-        const sidebar = DOM.get('sidebar');
-        if (sidebar) sidebar.style.display = 'flex'; 
+        if (AppState.chartInstance) AppState.chartInstance.resize();
     },
 
-    init() {
-        const el = this.elements; // Accessing the getter here
-        if (el.sidebar) {
-           el.sidebar.classList.add('flex-column-container');
-        }
-    },
+    init() { /* Removed manual style overrides to let CSS handle layout */ },
 
     setLoading(isLoading, text = "Loading...", onCancel = null) {
         const { loadingOverlay, loadingText, cancelBtn } = this.elements;
-        
-        // Safety check to prevent the TypeError if elements are missing
-        if (!loadingOverlay || !loadingText) {
-            console.error("UI Error: Loading elements not found in DOM.");
-            return;
-        }
+        if (!loadingOverlay || !loadingText) return;
 
         loadingText.innerText = text;
         loadingOverlay.style.display = isLoading ? 'flex' : 'none';
@@ -66,14 +47,21 @@ const UI = {
     },
 
     toggleSidebar() {
-        this.elements.sidebar.classList.toggle('collapsed');
-        // Ensure chart resizes after the CSS transition
-        setTimeout(() => AppState.chartInstance?.resize(), 350);
+        const el = UI.elements
+        if (el.sidebar) {
+            el.sidebar.classList.toggle('collapsed');
+            setTimeout(() => AppState.chartInstance?.resize(), 350);
+        }
     },
 
     toggleFullScreen() {
+        const content = UI.elements.mainContent;
+        if (!content) return;
+
         if (!document.fullscreenElement) {
-            this.elements.mainContent.requestFullscreen();
+            content.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
         } else {
             document.exitFullscreen();
         }
@@ -82,12 +70,10 @@ const UI = {
     renderSignalList() {
         const container = this.elements.signalList;
         container.innerHTML = '';
-        
-        const fragment = document.createDocumentFragment(); // Batch DOM updates
+        const fragment = document.createDocumentFragment();
 
         AppState.availableSignals.forEach((key, idx) => {
-            const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"]
-                .some(k => key.includes(k));
+            const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"].some(k => key.includes(k));
             const color = CHART_COLORS[idx % CHART_COLORS.length];
             
             const label = document.createElement('label');
@@ -97,26 +83,22 @@ const UI = {
                 <span class="color-swatch" style="background:${color}; display:inline-block; width:10px; height:10px; margin-right:8px;"></span>
                 <span class="signal-name">${key}</span>
             `;
-            
             fragment.appendChild(label);
         });
 
         container.appendChild(fragment);
-
-        // Event Delegation: One listener for all checkboxes
         container.onclick = (e) => {
             if (e.target.tagName === 'INPUT') {
-                const key = e.target.getAttribute('data-key');
-                this.syncSignalVisibility(key, e.target.checked);
+                this.syncSignalVisibility(e.target.getAttribute('data-key'), e.target.checked);
             }
         };
     },
 
     syncSignalVisibility(key, isVisible) {
-        const dataset = AppState.chartInstance?.data.datasets.find(d => d.label === key);
-        if (dataset) {
-            dataset.hidden = !isVisible;
-            AppState.chartInstance.update('none'); 
+        const ds = AppState.chartInstance?.data.datasets.find(d => d.label === key);
+        if (ds) {
+            ds.hidden = !isVisible;
+            AppState.chartInstance.update('none');
         }
     },
 

@@ -1,7 +1,3 @@
-/**
- * Drive Controller
- * Refactored to use direct object referencing to prevent context loss.
- */
 let activeLoadToken = 0;
 
 const Drive = {
