@@ -19,7 +19,7 @@ const UI = {
 
         const isHidden = p.style.display === 'none' || p.style.display === '';
         p.style.display = isHidden ? 'block' : 'none';
-        
+
         if (AppState.chartInstance) AppState.chartInstance.resize();
     },
 
@@ -50,7 +50,7 @@ const UI = {
             // Constraints (matches CSS min/max)
             if (newWidth >= 250 && newWidth <= 600) {
                 sidebar.style.width = `${newWidth}px`;
-                
+
                 // Trigger chart resize in real-time or debounced
                 if (AppState.chartInstance) {
                     AppState.chartInstance.resize();
@@ -73,7 +73,7 @@ const UI = {
 
         loadingText.innerText = text;
         loadingOverlay.style.display = isLoading ? 'flex' : 'none';
-        
+
         if (isLoading && onCancel) {
             cancelBtn.style.display = 'inline-block';
             cancelBtn.onclick = onCancel;
@@ -111,26 +111,32 @@ const UI = {
     },
 
     renderSignalList() {
-        const container = this.elements.signalList;
+        const container = document.getElementById('signalList');
+        if (!container) return;
         container.innerHTML = '';
+
+        // Use available signals from the primary file or the global state
+        const signals = AppState.availableSignals || [];
         const fragment = document.createDocumentFragment();
 
-        AppState.availableSignals.forEach((key, idx) => {
+        signals.forEach((key, idx) => {
             const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"].some(k => key.includes(k));
             const color = CHART_COLORS[idx % CHART_COLORS.length];
-            
+
             const label = document.createElement('label');
             label.className = 'signal-item';
             label.innerHTML = `
                 <input type="checkbox" data-key="${key}" ${isImportant ? 'checked' : ''}>
-                <span class="color-swatch" style="background:${color}; display:inline-block; width:10px; height:10px; margin-right:8px;"></span>
+                <span class="color-swatch" style="background:${color};"></span>
                 <span class="signal-name">${key}</span>
             `;
             fragment.appendChild(label);
         });
 
         container.appendChild(fragment);
-        container.onclick = (e) => {
+
+        // Event Delegation for checkboxes
+        container.onchange = (e) => {
             if (e.target.tagName === 'INPUT') {
                 this.syncSignalVisibility(e.target.getAttribute('data-key'), e.target.checked);
             }
@@ -138,18 +144,27 @@ const UI = {
     },
 
     syncSignalVisibility(key, isVisible) {
-        const ds = AppState.chartInstance?.data.datasets.find(d => d.label === key);
-        if (ds) {
-            ds.hidden = !isVisible;
-            AppState.chartInstance.update('none');
-        }
+        // Loop through ALL active chart instances to update visibility
+        AppState.chartInstances.forEach(chart => {
+            const dataset = chart.data.datasets.find(d => d.label === key);
+            if (dataset) {
+                dataset.hidden = !isVisible;
+            }
+        });
+
+        // Trigger a batch update for all charts without re-animating
+        AppState.chartInstances.forEach(chart => chart.update('none'));
     },
 
     toggleAllSignals(shouldCheck) {
-        this.elements.signalList.querySelectorAll('input').forEach(i => i.checked = shouldCheck);
-        if (AppState.chartInstance) {
-            AppState.chartInstance.data.datasets.forEach(ds => ds.hidden = !shouldCheck);
-            AppState.chartInstance.update();
-        }
+        const container = document.getElementById('signalList');
+        if (!container) return;
+
+        container.querySelectorAll('input').forEach(i => i.checked = shouldCheck);
+
+        AppState.chartInstances.forEach(chart => {
+            chart.data.datasets.forEach(ds => ds.hidden = !shouldCheck);
+            chart.update('none');
+        });
     }
 };

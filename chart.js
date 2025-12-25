@@ -1,12 +1,8 @@
-/**
- * chart.js
- * Independent timelines per chart with optional synchronization.
- */
 const ChartManager = {
     hoverValue: null,
     activeChartIndex: null,
 
-  render: () => {
+    render: () => {
         const container = DOM.get('chartContainer');
         if (!container) return;
 
@@ -48,18 +44,18 @@ const ChartManager = {
         if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
     },
 
-   createInstance: (canvas, file, index) => {
+    createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
 
         canvas.addEventListener('mousemove', (e) => {
             const chart = AppState.chartInstances[index];
             if (!chart) return;
-            
+
             const prevIndex = ChartManager.activeChartIndex;
             ChartManager.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
             ChartManager.activeChartIndex = index;
 
-            chart.draw(); 
+            chart.draw();
             if (prevIndex !== null && prevIndex !== index && AppState.chartInstances[prevIndex]) {
                 AppState.chartInstances[prevIndex].draw();
             }
@@ -130,7 +126,7 @@ const ChartManager = {
         ChartManager.activeChartIndex = null;
 
         AppState.files.splice(index, 1);
-        
+
         ChartManager.render();
         UI.renderSignalList();
     },
@@ -147,7 +143,7 @@ const ChartManager = {
         if (typeof Sliders !== 'undefined') Sliders.syncFromChart({ chart });
     },
 
-   initKeyboardControls: (canvas, index) => {
+    initKeyboardControls: (canvas, index) => {
         canvas.addEventListener('keydown', (e) => {
             const chart = AppState.chartInstances[index];
             if (!chart) return;
@@ -162,9 +158,9 @@ const ChartManager = {
                 case '_': chart.zoom(0.9, undefined, 'none'); break;
                 case 'r':
                 case 'R': Sliders.reset(); return;
-                default: return; 
+                default: return;
             }
-            
+
             // Sync pipe to center of view on keyboard move
             ChartManager.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
             ChartManager.activeChartIndex = index;
@@ -173,7 +169,7 @@ const ChartManager = {
         });
     },
 
-   highlighterPlugin: {
+    highlighterPlugin: {
         id: 'anomalyHighlighter',
         afterDraw(chart) {
             const chartIdx = AppState.chartInstances.indexOf(chart);

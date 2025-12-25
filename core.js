@@ -68,6 +68,7 @@ const DataProcessor = {
         }
 
         DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
+        UI.renderSignalList();
         ChartManager.render();
     }
 };
@@ -106,9 +107,6 @@ window.onload = async function () {
         fileInput.addEventListener('change', DataProcessor.handleLocalFile);
     }
 };
-
-
-
 
 // Global onclick bindings
 window.toggleConfig = () => UI.toggleConfig();
