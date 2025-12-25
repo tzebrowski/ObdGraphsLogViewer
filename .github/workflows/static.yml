@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # Ensure this matches your default branch
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,24 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
+      - name: Minify JSON templates
+        run: |
+          if [ -f "templates.json" ]; then
+            jq -c . templates.json > templates.min.json
+            mv templates.min.json templates.json
+            echo "templates.json minimized."
+          fi
+
+      - name: Minify JavaScript files
+        run: |
+          # Loop through all JS files in the root and minify them in-place
+          for file in *.js; do
+            if [ -f "$file" ]; then
+              echo "Minifying $file..."
+              npx terser "$file" --compress --mangle -o "$file"
+            fi
+          done
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
