@@ -11,6 +11,8 @@ const SIGNAL_MAPPINGS = {
 let ANOMALY_TEMPLATES = {};
 
 const AppState = {
+    files: [], // Array of objects: { name, rawData, signals, duration, startTime }
+    chartInstances: [], // Array of Chart.js instances
     rawData: [],
     signals: {},
     availableSignals: [],

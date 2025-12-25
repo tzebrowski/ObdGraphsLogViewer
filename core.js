@@ -9,53 +9,70 @@ async function loadConfiguration() {
     }
 }
 
+// core.js - Final Multi-File Logic
 const DataProcessor = {
     handleLocalFile: (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
         
-        UI.setLoading(true, "Parsing File...");
-        setTimeout(() => {
+        UI.setLoading(true, `Parsing ${files.length} Files...`);
+        let loaded = 0;
+        files.forEach(file => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    DataProcessor.process(JSON.parse(e.target.result));
+                    DataProcessor.process(JSON.parse(e.target.result), file.name);
                 } catch (err) { 
-                    alert("Invalid JSON file");
-                } finally {
+                    console.error("Invalid JSON:", file.name);
+                }
+                loaded++;
+                if (loaded === files.length) {
                     UI.setLoading(false);
                     DOM.get('fileInput').value = '';
                 }
             };
             reader.readAsText(file);
-        }, 50);
+        });
     },
 
-    process: (data) => {
-        AppState.rawData = data.sort((a, b) => a.t - b.t);
-        AppState.signals = {};
+    process: (data, fileName) => {
+        const sorted = data.sort((a, b) => a.t - b.t);
+        const signals = {};
         let minT = Infinity, maxT = -Infinity;
 
-        AppState.rawData.forEach(p => {
-            if (!AppState.signals[p.s]) AppState.signals[p.s] = [];
-            AppState.signals[p.s].push({ x: p.t, y: p.v });
+        sorted.forEach(p => {
+            if (!signals[p.s]) signals[p.s] = [];
+            signals[p.s].push({ x: p.t, y: p.v });
             if (p.t < minT) minT = p.t;
             if (p.t > maxT) maxT = p.t;
         });
 
-        AppState.globalStartTime = minT;
-        AppState.logDuration = (maxT - minT) / 1000;
-        AppState.availableSignals = Object.keys(AppState.signals).sort();
+        const fileEntry = {
+            name: fileName,
+            rawData: sorted,
+            signals: signals,
+            startTime: minT,
+            duration: (maxT - minT) / 1000,
+            availableSignals: Object.keys(signals).sort()
+        };
 
-        DOM.get('fileInfo').innerText = `${AppState.logDuration.toFixed(1)}s | ${AppState.availableSignals.length} signals`;
-        
-        UI.resetScannerUI();
-        UI.renderSignalList();
-        Analysis.initTemplates();
-        Sliders.init(AppState.logDuration);
+        AppState.files.push(fileEntry);
+
+        // First file loaded sets global timeframe
+        if (AppState.files.length === 1) {
+            AppState.globalStartTime = minT;
+            AppState.logDuration = fileEntry.duration;
+            AppState.availableSignals = fileEntry.availableSignals;
+            UI.renderSignalList();
+            if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
+        }
+
+        DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
         ChartManager.render();
     }
 };
+
+window.ChartManager = ChartManager; // Expose globally for HTML onclick handlers
 
 window.onload = async function() {
     await loadConfiguration();
@@ -64,10 +81,34 @@ window.onload = async function() {
     
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
 
-    DOM.get('fileInput')?.addEventListener('change', DataProcessor.handleLocalFile);
-    DOM.get('rangeStart')?.addEventListener('input', Sliders.updateFromInput);
-    DOM.get('rangeEnd')?.addEventListener('input', Sliders.updateFromInput);
+    const fileInput = DOM.get('fileInput');
+    if (fileInput) {
+        fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
+        fileInput.addEventListener('change', DataProcessor.handleLocalFile);
+    }
 };
+
+// core.js
+window.ChartManager = ChartManager; // Ensure global access for the remove button
+
+window.ChartManager = ChartManager; // Expose globally for HTML onclick handlers
+
+window.onload = async function() {
+    await loadConfiguration();
+    Auth.init();
+    UI.init();
+    
+    Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
+
+    const fileInput = DOM.get('fileInput');
+    if (fileInput) {
+        fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
+        fileInput.addEventListener('change', DataProcessor.handleLocalFile);
+    }
+};
+
+
+
 
 // Global onclick bindings
 window.toggleConfig = () => UI.toggleConfig();

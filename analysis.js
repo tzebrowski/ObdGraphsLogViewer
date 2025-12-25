@@ -74,30 +74,33 @@ const Analysis = {
             val: parseFloat(row.querySelector('input').value)
         })).filter(c => c.sig && !isNaN(c.val));
 
-        if (criteria.length === 0) {
-            alert("Please define conditions.");
-            return;
-        }
+        if (criteria.length === 0) return;
 
-        const ranges = [];
-        let state = {}, inEvent = false, startT = 0;
+        const aggregatedResults = [];
+        
+        // Scan across all loaded files
+        AppState.files.forEach(file => {
+            let state = {}, inEvent = false, startT = 0;
+            const ranges = [];
 
-        AppState.rawData.forEach(p => {
-            state[p.s] = p.v;
-            const match = criteria.every(c => 
-                state[c.sig] !== undefined && (c.op === '>' ? state[c.sig] > c.val : state[c.sig] < c.val)
-            );
+            file.rawData.forEach(p => {
+                state[p.s] = p.v;
+                const match = criteria.every(c => 
+                    state[c.sig] !== undefined && (c.op === '>' ? state[c.sig] > c.val : state[c.sig] < c.val)
+                );
 
-            if (match && !inEvent) {
-                inEvent = true; 
-                startT = p.t;
-            } else if (!match && inEvent) {
-                inEvent = false;
-                ranges.push({ start: startT, end: p.t });
-            }
+                if (match && !inEvent) {
+                    inEvent = true; 
+                    startT = p.t;
+                } else if (!match && inEvent) {
+                    inEvent = false;
+                    ranges.push({ start: startT, end: p.t, fileName: file.name });
+                }
+            });
+            aggregatedResults.push(...ranges);
         });
 
-        this.renderResults(ranges);
+        this.renderResults(aggregatedResults);
     },
 
     renderResults(ranges) {
@@ -107,19 +110,15 @@ const Analysis = {
 
         resDiv.innerHTML = ''; 
         resDiv.style.display = 'block';
-        countDiv.innerText = `${ranges.length} anomalies found`;
-
-        if (ranges.length === 0) {
-            resDiv.innerHTML = '<div style="padding:10px;">None found.</div>';
-            return;
-        }
+        countDiv.innerText = `${ranges.length} events found`;
 
         ranges.forEach((range, idx) => {
             const s = (range.start - AppState.globalStartTime) / 1000;
             const e = (range.end - AppState.globalStartTime) / 1000;
+            
             const item = document.createElement('div');
             item.className = 'result-item';
-            item.innerHTML = `<span>Event ${idx + 1}</span> <b>${s.toFixed(1)}s - ${e.toFixed(1)}s</b>`;
+            item.innerHTML = `<div><b>${range.fileName}</b></div> Event ${idx + 1}: ${s.toFixed(1)}s - ${e.toFixed(1)}s`;
             item.onclick = () => {
                 document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
                 item.classList.add('selected');
