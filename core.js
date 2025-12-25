@@ -64,6 +64,7 @@ const DataProcessor = {
             AppState.logDuration = fileEntry.duration;
             AppState.availableSignals = fileEntry.availableSignals;
             UI.renderSignalList();
+            Analysis.init();
             if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
         }
 
@@ -98,6 +99,7 @@ window.onload = async function () {
     await loadConfiguration();
     Auth.init();
     UI.init();
+    Analysis.init();
 
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
 
