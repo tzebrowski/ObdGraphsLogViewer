@@ -2,42 +2,28 @@
     /* Color Palette */
     --primary-red: #9a0000;
     --sidebar-bg: #f8f9fa;
-    --border-color: #dee2e6;
-    --text-main: #333;
+    --border-color: #ddd; /* Combined duplicates */
+    --text-main: #333;    /* Combined duplicates */
     --text-muted: #666;
     --transition-speed: 0.3s;
     --active-bg: #ffebeb;
-    --shadow-sm: 0 2px 4px rgba(248, 7, 7, 0.05);
-
+    --shadow-sm: 0 2px 4px rgb(248 7 7 / 5%);
     --bg-color: #f4f7f6;
-    --card-bg: #ffffff;
-    --text-main: #333333;
-    --border-color: #dddddd;
-    --chart-canvas-bg: #ffffff;
+    --card-bg: #fff;
+    --chart-canvas-bg: #fff;
+    --text-color: #333; /* Added for the dark-theme variable reference */
 }
 
 body.dark-theme {
-    --border-color: #333333;
+    --border-color: #333;
     --bg-color: #121212;
-    --card-bg: #ffffff;
     --chart-canvas-bg: #1a1a1a;
-    --text-main: #333333;
 }
 
+/* Combined the duplicate sidebar selectors into one block */
 body.dark-theme .sidebar-left, 
 body.dark-theme .sidebar-right {
-    /* Increase weight for UI elements */
     font-weight: 500;
-    /* Improves legibility of light-on-dark text */
-    -webkit-font-smoothing: antialiased;
-    letter-spacing: 0.015em;
-}
-
-body.dark-theme .sidebar-left, 
-body.dark-theme .sidebar-right {
-    /* Increase weight for UI elements */
-    font-weight: 500;
-    /* Improves legibility of light-on-dark text */
     -webkit-font-smoothing: antialiased;
     letter-spacing: 0.015em;
 }
@@ -48,12 +34,6 @@ body.dark-theme .sidebar-right h4,
 body.dark-theme .modal-content h2 {
     color: var(--text-color) !important;
 }
-
-/* Make headers pop more */
-/* body.dark-theme h4 {
-    color: #FFFFFF;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-} */
 
 body {
     background-color: var(--bg-color);
@@ -107,7 +87,7 @@ html {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+    box-shadow: 2px 0 5px rgb(0 0 0 / 5%);
     transition: margin-left 0.3s ease;
     z-index: 10;
     height: 100vh;
@@ -191,9 +171,9 @@ h3 {
 }
 
 /* Inputs & Buttons */
-input[type=text],
-input[type=password],
-input[type=number] {
+input[type="text"],
+input[type="password"],
+input[type="number"] {
     width: 100%;
     padding: 6px;
     margin-bottom: 5px;
@@ -208,7 +188,7 @@ input[type=number] {
     padding: 6px 12px;
     cursor: pointer;
     border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
     font-weight: 600;
     color: #333;
     width: 100%;
@@ -225,7 +205,7 @@ input[type=number] {
 }
 
 .btn-primary:hover {
-    background: #cc0000;
+    background: #c00;
 }
 
 .btn-sm {
@@ -380,26 +360,26 @@ input[type=number] {
     margin-top: 10px;
 }
 
-input[type=range] {
+input[type="range"] {
     position: absolute;
     width: 100%;
     pointer-events: none;
-    -webkit-appearance: none;
+    appearance: none;
     background: transparent;
     z-index: 2;
 }
 
-input[type=range]::-webkit-slider-thumb {
+input[type="range"]::-webkit-slider-thumb {
     pointer-events: all;
     width: 18px;
     height: 18px;
-    -webkit-appearance: none;
+    appearance: none;
     background: #9a0000;
     border-radius: 50%;
     cursor: pointer;
     margin-top: -7px;
     border: 2px solid white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
 }
 
 .slider-track {
@@ -431,8 +411,7 @@ input[type=range]::-webkit-slider-thumb {
 /* Signal List */
 .signal-list {
     flex: 1;
-    overflow-y: auto;
-    overflow-x: auto;
+    overflow: auto;
     border: 1px solid #e9ecef;
     background: white;
     padding: 10px;
@@ -464,7 +443,7 @@ input[type=range]::-webkit-slider-thumb {
 
 .toolbar {
     position: absolute;
-    top: 0px;
+    top: 0;
     left: 15px;
     z-index: 20;
     display: flex;
@@ -500,7 +479,7 @@ input[type=range]::-webkit-slider-thumb {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgb(255 255 255 / 80%);
     z-index: 9999;
     /* Sit on top of everything */
     display: flex;
@@ -601,10 +580,7 @@ input[type=range]::-webkit-slider-thumb {
 
 
 #chartContainer {
-    padding-top: 40px;
-    padding-left: 5px;
-    padding-right: 5px;
-    padding-bottom: 5px;
+    padding: 40px 5px 5px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -677,7 +653,7 @@ input[type=range]::-webkit-slider-thumb {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgb(0 0 0 / 50%);
     margin-bottom: 20px;
 }
 
@@ -715,7 +691,7 @@ input[type=range]::-webkit-slider-thumb {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgb(0 0 0 / 70%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -728,7 +704,7 @@ input[type=range]::-webkit-slider-thumb {
     width: 90%;
     max-width: 600px;
     border-radius: 12px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 40px rgb(0 0 0 / 30%);
     animation: slideUp 0.3s ease-out;
 }
 
@@ -748,12 +724,6 @@ input[type=range]::-webkit-slider-thumb {
     margin-bottom: 20px;
 }
 
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 20px;
-}
 
 .info-card {
     background: #f8f9fa;
@@ -762,7 +732,7 @@ input[type=range]::-webkit-slider-thumb {
     border-left: 4px solid #9a0000;
 }
 
-.info-card h4 { margin: 0 0 5px 0; color: #9a0000; }
+.info-card h4 { margin: 0 0 5px; color: #9a0000; }
 .info-card p { font-size: 0.85rem; margin: 0; color: #666; }
 
 .technical-meta {
@@ -786,7 +756,7 @@ input[type=range]::-webkit-slider-thumb {
     color: white;
     border: none;
     cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgb(0 0 0 / 20%);
     font-weight: bold;
     z-index: 1500;
 }
@@ -810,7 +780,7 @@ input[type=range]::-webkit-slider-thumb {
     width: 56px;
     height: 56px;
     border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
     background: #fff;
     padding: 2px;
     object-fit: contain;
@@ -838,7 +808,7 @@ input[type=range]::-webkit-slider-thumb {
 
 /* Import Steps Styling */
 .import-steps {
-    margin: 10px 0 0 0;
+    margin: 10px 0 0;
     padding-left: 20px;
     font-size: 0.85rem;
     color: #444;
@@ -858,6 +828,7 @@ input[type=range]::-webkit-slider-thumb {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
+     margin-bottom: 20px;
 }
 
 /* Ensure full-width cards actually take full width */
@@ -871,7 +842,7 @@ input[type=range]::-webkit-slider-thumb {
 .sample-data-box {
     position: relative;
     border: 2px solid #e9ecef;
-    background: #ffffff;
+    background: #fff;
     padding: 20px;
     margin-top: 20px;
 }
@@ -899,7 +870,7 @@ input[type=range]::-webkit-slider-thumb {
 
 .btn-sample:hover {
     background: #0056b3;
-    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+    box-shadow: 0 4px 12px rgb(0 123 255 / 30%);
 }
 
 
