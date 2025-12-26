@@ -22,7 +22,7 @@ const DataProcessor = {
                 try {
                     DataProcessor.process(JSON.parse(e.target.result), file.name);
                 } catch (err) {
-                    console.error("Invalid JSON:", file.name);
+                    console.error(`Invalid JSON: ${file.name} Error: ${err.message}`);
                 }
                 loaded++;
                 if (loaded === files.length) {
