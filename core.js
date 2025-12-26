@@ -73,6 +73,12 @@ const DataProcessor = {
 };
 
 
+// Auto-load preference on startup
+window.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
+    UI.setTheme(savedTheme);
+});
+
 window.onload = async function () {
     await loadConfiguration();
     Auth.init();
@@ -109,3 +115,5 @@ window.addFilterRow = () => Analysis.addFilterRow();
 window.resetZoom = () => Sliders.reset();
 window.toggleInfo = () => UI.toggleInfo();
 window.loadSampleData = () => UI.loadSampleData();
+window.setTheme = (theme) => UI.setTheme(theme);
+

@@ -7,7 +7,73 @@
     --text-muted: #666;
     --transition-speed: 0.3s;
     --active-bg: #ffebeb;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 2px 4px rgba(248, 7, 7, 0.05);
+
+    --bg-color: #f4f7f6;
+    --card-bg: #ffffff;
+    --text-main: #333333;
+    --border-color: #dddddd;
+    --chart-canvas-bg: #ffffff;
+}
+
+body.dark-theme {
+    --border-color: #333333;
+    --bg-color: #121212;
+    --card-bg: #ffffff;
+    --chart-canvas-bg: #1a1a1a;
+    --text-main: #333333;
+}
+
+body.dark-theme .sidebar-left, 
+body.dark-theme .sidebar-right {
+    /* Increase weight for UI elements */
+    font-weight: 500;
+    /* Improves legibility of light-on-dark text */
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.015em;
+}
+
+body.dark-theme .sidebar-left, 
+body.dark-theme .sidebar-right {
+    /* Increase weight for UI elements */
+    font-weight: 500;
+    /* Improves legibility of light-on-dark text */
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.015em;
+}
+
+body.dark-theme label, 
+body.dark-theme .signal-item, 
+body.dark-theme .sidebar-right h4,
+body.dark-theme .modal-content h2 {
+    color: var(--text-color) !important;
+}
+
+/* Make headers pop more */
+/* body.dark-theme h4 {
+    color: #FFFFFF;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+} */
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    transition: background 0.3s ease;
+}
+
+
+canvas {
+    background-color: var(--chart-canvas-bg);
+}
+
+
+.btn-theme {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: 4px;
 }
 
 /* Base Layout */
@@ -607,12 +673,9 @@ input[type=range]::-webkit-slider-thumb {
     flex-direction: column;
     min-height: 0;
     /* Important: Allows charts to shrink smaller than default */
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
 
-    background-color: #1e1e1e;
-    border: 1px solid #333;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     margin-bottom: 20px;

@@ -45,9 +45,6 @@ const ChartManager = {
     createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
 
-        // Set a dark background for the canvas itself
-        canvas.style.backgroundColor = '#1a1a1a';
-
         canvas.addEventListener('mousemove', (e) => {
             const chart = AppState.chartInstances[index];
             if (!chart) return;

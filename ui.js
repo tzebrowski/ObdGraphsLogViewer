@@ -127,17 +127,17 @@ const UI = {
         const signals = AppState.availableSignals || [];
         const fragment = document.createDocumentFragment();
 
-        signals.forEach((key, idx) => {
-            const isImportant = DEFAULT_SIGNALS.some(k => key.includes(k));
+        signals.forEach((signal, idx) => {
+            const isImportant = DEFAULT_SIGNALS.some(k => signal.includes(k));
             const color = CHART_COLORS[idx % CHART_COLORS.length];
 
             const label = document.createElement('label');
             label.className = 'signal-item';
-          
+
             label.innerHTML = `
                 <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
-                <input type="checkbox" id="chk-${key}" data-key="${key}" ${isImportant ? 'checked' : ''}>
-                <label for="chk-${key}">${key}</label>
+                <input type="checkbox" id="chk-${idx}" data-key="${signal}" ${isImportant ? 'checked' : ''}>
+                <label for="chk-${idx}">${signal}</label>
             `;
 
             fragment.appendChild(label);
@@ -207,5 +207,35 @@ const UI = {
             btn.innerText = "📂 Load Sample Trip (JSON)";
             btn.disabled = false;
         }
+    },
+
+    setTheme: (theme) => {
+        const isDark = theme === 'dark';
+        const textColor = isDark ? '#F8F9FA' : '#333333';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+        document.body.classList.toggle('dark-theme', isDark);
+
+        document.getElementById('btn-theme-light')?.classList.toggle('active', !isDark);
+        document.getElementById('btn-theme-dark')?.classList.toggle('active', isDark);
+
+        Chart.defaults.color = textColor;
+        Chart.defaults.borderColor = gridColor;
+
+        AppState.chartInstances.forEach(chart => {
+            chart.options.scales.x.ticks.color = textColor;
+            chart.options.scales.y.ticks.color = textColor;
+            chart.options.scales.x.grid.color = gridColor;
+            chart.options.scales.y.grid.color = gridColor;
+            chart.options.plugins.legend.labels.color = textColor;
+            chart.update('none');
+        });
+
+        document.querySelectorAll('#signalList label').forEach(el => {
+            el.style.color = textColor;
+        });
+
+        localStorage.setItem('preferred-theme', theme);
     }
+
 };
