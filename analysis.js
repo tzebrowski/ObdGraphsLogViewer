@@ -101,7 +101,6 @@ const Analysis = {
                     startT = p.t;
                 } else if (!match && inEvent) {
                     inEvent = false;
-                    // Capture the fileIdx for targeted highlighting
                     ranges.push({ start: startT, end: p.t, fileName: file.name, fileIdx: fileIdx });
                 }
             });
@@ -121,7 +120,6 @@ const Analysis = {
         countDiv.innerText = `${ranges.length} events found`;
 
         ranges.forEach((range, idx) => {
-            // Calculate relative seconds for THIS specific file
             const file = AppState.files[range.fileIdx];
             const s = (range.start - file.startTime) / 1000;
             const e = (range.end - file.startTime) / 1000;
@@ -133,7 +131,6 @@ const Analysis = {
             item.onclick = () => {
                 document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
                 item.classList.add('selected');
-                // Zoom only the targeted chart
                 Sliders.zoomTo(s, e, range.fileIdx);
             };
             resDiv.appendChild(item);
