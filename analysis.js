@@ -20,7 +20,7 @@ const Analysis = {
         Analysis.initTemplates();
         // Set up the button listener if not already in HTML
         const scanBtn = DOM.get('btnRunScan');
-        if (scanBtn) scanBtn.onclick = () => AnomalyScanner.runScan();
+        if (scanBtn) scanBtn.onclick = () => Analysis.runScan();
     },
 
     addFilterRow(sigName = "", operator = ">", value = "") {
@@ -82,8 +82,11 @@ const Analysis = {
             val: parseFloat(row.querySelector('input').value)
         })).filter(c => c.sig && !isNaN(c.val));
 
-        if (criteria.length === 0) return;
-
+       if (criteria.length === 0) {
+            const countDiv = DOM.get('scanCount');
+            if (countDiv) countDiv.innerText = 'No criteria defined';
+            return;
+        }
         const aggregatedResults = [];
 
         AppState.files.forEach((file, fileIdx) => {
