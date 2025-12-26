@@ -113,12 +113,41 @@
             </div>
             <div class="modal-body">
                 <p class="app-description">
-                    <strong>My Giulia Telemetry Analyzer:</strong> A  tool for visualizing
+                    <strong>My Giulia Telemetry Analyzer:</strong> A professional tool for visualizing
                     and scanning vehicle OBD data. Compare multiple logs, sync timelines, and detect
                     mechanical anomalies automatically.
                 </p>
 
                 <div class="info-grid">
+                    <div class="info-card data-source-card" style="grid-column: span 2;">
+                        <h4>📱 Data Source</h4>
+                        <div class="data-source-flex">
+                            <img src="https://lh3.googleusercontent.com/d_S-jY_V_7z9_x_W5y_6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6=s128"
+                                alt="MyGiulia Logo" class="app-icon"
+                                onerror="this.src='https://img.icons8.com/color/96/google-play.png'">
+                            <div class="data-source-text">
+                                <p>Telemetry data is collected by the <strong>MyGiulia</strong> Android application.</p>
+                                <a href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia"
+                                    target="_blank" class="play-store-btn">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                                        alt="Get it on Google Play" height="30">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card" style="grid-column: span 2;">
+                        <h4>📥 How to Import Logs</h4>
+                        <ol class="import-steps">
+                            <li>Open <strong>MyGiulia</strong> on your Android device.</li>
+                            <li>Navigate to the <strong>Graph</strong> view and select <strong>Manage recorded
+                                    trips</strong>.
+                            </li>
+                            <li>Select your log and tap <strong>Send to Cloud</strong>.</li>
+                            <li>Upload the file here using the <strong>"Upload Log"</strong> button.</li>
+                        </ol>
+                    </div>
+
                     <div class="info-card">
                         <h4>🔍 Anomaly Scanning</h4>
                         <p>Uses logic templates to pinpoint events like boost leaks with contextual zoom.</p>
@@ -127,28 +156,11 @@
                         <h4>🔄 Multi-Sync</h4>
                         <p>Pan or zoom on any chart to automatically align all loaded logs.</p>
                     </div>
-
-                    <div class="info-card data-source-card">
-                        <h4>📱 Data Source</h4>
-                        <p>
-                            Telemetry data is collected by the <strong>MyGiulia</strong> Android application.
-                        </p>
-                        <a href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia&hl=pl&pli=1"
-                            target="_blank" class="play-store-link">
-                            View on Google Play →
-                        </a>
-                    </div>
-
-                    <div class="info-card">
-                        <h4>☁️ Cloud Integration</h4>
-                        <p>Securely save and load logs via Google Drive integration.</p>
-                    </div>
                 </div>
 
                 <div class="technical-meta">
-                    <span><strong>Version:</strong>1.0.0</span>
-                    <span><strong>Engine:</strong> Chart.js + Zoom Plugin</span>
-                    <span><strong>Status:</strong> All Systems Nominal</span>
+                    <span><strong>Version:</strong> 2.5.0</span>
+                    <span><strong>Compatible Format:</strong> MyGiulia JSON</span>
                 </div>
             </div>
         </div>
