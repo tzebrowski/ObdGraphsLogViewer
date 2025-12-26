@@ -398,7 +398,7 @@ input[type=range]::-webkit-slider-thumb {
 
 .toolbar {
     position: absolute;
-    top: 15px;
+    top: 0px;
     left: 15px;
     z-index: 20;
     display: flex;
@@ -534,15 +534,17 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 
-/* style.css - Add/Update styles */
 #chartContainer {
+    padding-top: 40px;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-bottom: 5px;
     display: flex;
     flex-direction: column;
     height: 100%;
     /* Spans full height of mainContent */
     overflow: hidden;
     /* Stops page from scrolling so charts must fit */
-    padding: 10px;
     gap: 10px;
     box-sizing: border-box;
 }
@@ -566,18 +568,6 @@ input[type=range]::-webkit-slider-thumb {
     border-bottom: 1px solid #eee;
 }
 
-
-
-
-/* Compact Multi-Chart Layout */
-#chartContainer {
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-    gap: 12px;
-    overflow-y: auto;
-    background: #f1f3f5;
-}
 
 #chartContainer:active {
     cursor: grabbing;
@@ -631,19 +621,6 @@ input[type=range]::-webkit-slider-thumb {
     border-radius: 4px;
 }
 
-#chartContainer {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    /* Spans full height of parent mainContent */
-    overflow: hidden;
-    /* Prevents scrolling so charts must shrink to fit */
-    padding: 10px;
-    gap: 10px;
-    box-sizing: border-box;
-}
-
-
 .chart-header-sm {
     display: flex;
     justify-content: space-between;
@@ -652,11 +629,4 @@ input[type=range]::-webkit-slider-thumb {
     background: #f8f9fa;
     border-bottom: 1px solid #eee;
     flex-shrink: 0;
-}
-
-.canvas-wrapper {
-    flex-grow: 1;
-    position: relative;
-    min-height: 0;
-    /* Allows the canvas to shrink correctly within the card */
 }

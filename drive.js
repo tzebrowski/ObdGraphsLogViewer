@@ -131,7 +131,7 @@ const Drive = {
     },
 
     handleApiError(error, listEl) {
-        console.error("Drive API Error:", error);
+        console.error("Drive API Error:", error);         
         if (error.status === 401 || error.status === 403) {
             gapi.client.setToken(null);
             if (listEl) listEl.innerHTML = '<div class="error-msg">Session expired. Please click "Drive Scan" again.</div>';
