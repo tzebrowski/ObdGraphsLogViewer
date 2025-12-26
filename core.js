@@ -88,7 +88,13 @@ window.onload = async function () {
     }
 };
 
-// Global onclick bindings
+window.onclick = (event) => {
+    const modal = document.getElementById('infoModal');
+    if (event.target === modal) {
+        UI.toggleInfo();
+    }
+};
+
 window.ChartManager = ChartManager; 
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
@@ -101,3 +107,4 @@ window.applyTemplate = () => Analysis.applyTemplate();
 window.scanAnomalies = () => Analysis.runScan();
 window.addFilterRow = () => Analysis.addFilterRow();
 window.resetZoom = () => Sliders.reset();
+window.toggleInfo = () => UI.toggleInfo();

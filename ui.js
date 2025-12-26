@@ -110,7 +110,14 @@ const UI = {
         }
     },
     
-   
+    toggleInfo: () => {
+        const modal = document.getElementById('infoModal');
+        if (!modal) return;
+        
+        const isHidden = modal.style.display === 'none';
+        modal.style.display = isHidden ? 'flex' : 'none';
+    },
+       
     renderSignalList() {
         const container = document.getElementById('signalList');
         if (!container) return;
