@@ -109,15 +109,15 @@ const UI = {
             document.exitFullscreen();
         }
     },
-    
+
     toggleInfo: () => {
         const modal = document.getElementById('infoModal');
         if (!modal) return;
-        
+
         const isHidden = modal.style.display === 'none';
         modal.style.display = isHidden ? 'flex' : 'none';
     },
-       
+
     renderSignalList() {
         const container = document.getElementById('signalList');
         if (!container) return;
@@ -174,5 +174,41 @@ const UI = {
             chart.data.datasets.forEach(ds => ds.hidden = !shouldCheck);
             chart.update('none');
         });
+    },
+
+    loadSampleData: async () => {
+        const sampleUrl = 'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
+
+        try {
+            // Show loading state
+            const btn = document.querySelector('.btn-sample');
+            const originalText = btn.innerText;
+            btn.innerText = "⌛ Downloading...";
+            btn.disabled = true;
+
+            const response = await fetch(sampleUrl);
+            if (!response.ok) throw new Error('Network response was not ok');
+
+            const data = await response.json();
+
+            // Pass to our existing DataProcessor
+            // We simulate a filename for the UI
+            DataProcessor.process(data, "sample-trip-giulia.json");
+
+            // Close the modal so the user sees the new chart
+            UI.toggleInfo();
+
+            // Reset button
+            btn.innerText = originalText;
+            btn.disabled = false;
+
+        } catch (error) {
+            console.error('Error loading sample:', error);
+            alert("Failed to load sample data. Please check your internet connection.");
+            const btn = document.querySelector('.btn-sample');
+            btn.innerText = "📂 Load Sample Trip (JSON)";
+            btn.disabled = false;
+        }
     }
+
 };

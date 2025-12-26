@@ -108,3 +108,4 @@ window.scanAnomalies = () => Analysis.runScan();
 window.addFilterRow = () => Analysis.addFilterRow();
 window.resetZoom = () => Sliders.reset();
 window.toggleInfo = () => UI.toggleInfo();
+window.loadSampleData = () => UI.loadSampleData();
