@@ -574,15 +574,6 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 
-.chart-header-sm {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 10px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #eee;
-}
-
 .chart-name {
     font-size: 0.75rem;
     font-weight: 700;
@@ -606,8 +597,8 @@ input[type=range]::-webkit-slider-thumb {
     flex: 1;
     position: relative;
     min-height: 0;
+    padding-bottom: 5px;
 }
-
 
 .chart-card-compact {
     flex: 1;

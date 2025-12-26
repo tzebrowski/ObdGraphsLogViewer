@@ -101,7 +101,22 @@ const ChartManager = {
                     }
                 },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end', // Keeps it tucked to the right
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            },
+                            filter: (item) => {
+                                const checkbox = document.querySelector(`#signalList input[data-key="${item.text}"]`);
+                                return checkbox ? checkbox.checked : false;
+                            }
+                        }
+                    },
                     tooltip: {
                         enabled: true,
                         position: 'nearest',
