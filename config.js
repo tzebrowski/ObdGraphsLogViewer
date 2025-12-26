@@ -10,13 +10,6 @@ const CHART_COLORS = [
     '#FF0000'  // Pure Red (Critical Errors)
 ];
 
-const getAlphaColor = (hex, alpha = 0.1) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
 const DEFAULT_SIGNALS = ["Boost", "Rpm", "Pedal", "Trim", "Spark", "Mass"];
 
 const SIGNAL_MAPPINGS = {
