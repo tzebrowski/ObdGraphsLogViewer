@@ -44,7 +44,7 @@ const ChartManager = {
 
     createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
-        
+
         // Set a dark background for the canvas itself
         canvas.style.backgroundColor = '#1a1a1a';
 
@@ -73,12 +73,17 @@ const ChartManager = {
 
         const datasets = file.availableSignals.map((key, idx) => {
             const isImportant = DEFAULT_SIGNALS.some(k => key.includes(k));
+            const color = CHART_COLORS[idx % CHART_COLORS.length];
             return {
                 label: key,
                 data: file.signals[key],
-                borderColor: CHART_COLORS[idx % CHART_COLORS.length],
-                borderWidth: 1.5,
-                pointRadius: 0,
+                borderColor: color,
+                backgroundColor: getAlphaColor(color, 0.25), // Subtle glow fill
+                borderWidth: 2,
+                pointRadius: 0, // Keeps lines clean
+                pointHoverRadius: 4,
+                tension: 0.3,   // Smooths out jagged sensor noise
+                fill: true,      // Adds the neon "area" look
                 hidden: !isImportant
             };
         });
@@ -122,6 +127,15 @@ const ChartManager = {
                     },
                     tooltip: {
                         enabled: true,
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#222',
+                        titleColor: '#fff',
+                        bodyColor: '#eee',
+                        borderColor: '#444',
+                        borderWidth: 1,
+                        padding: 10,
+                        bodyFont: { family: 'monospace' }, // Monospace looks "techy" for data
                         position: 'nearest',
                         callbacks: {
                             label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}`

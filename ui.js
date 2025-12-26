@@ -133,11 +133,13 @@ const UI = {
 
             const label = document.createElement('label');
             label.className = 'signal-item';
+          
             label.innerHTML = `
-                <input type="checkbox" data-key="${key}" ${isImportant ? 'checked' : ''}>
-                <span class="color-swatch" style="background:${color};"></span>
-                <span class="signal-name">${key}</span>
+                <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
+                <input type="checkbox" id="chk-${key}" data-key="${key}" ${isImportant ? 'checked' : ''}>
+                <label for="chk-${key}">${key}</label>
             `;
+
             fragment.appendChild(label);
         });
 

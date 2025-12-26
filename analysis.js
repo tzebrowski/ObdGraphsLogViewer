@@ -82,7 +82,7 @@ const Analysis = {
             val: parseFloat(row.querySelector('input').value)
         })).filter(c => c.sig && !isNaN(c.val));
 
-       if (criteria.length === 0) {
+        if (criteria.length === 0) {
             const countDiv = DOM.get('scanCount');
             if (countDiv) countDiv.innerText = 'No criteria defined';
             return;

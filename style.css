@@ -840,3 +840,25 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 
+
+#signalList .signal-item {
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+/* #signalList .signal-item:hover {
+    background: #2a2a2a;
+} */
+
+/* Custom checkbox color dots */
+.color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: inline-block;
+    box-shadow: 0 0 5px currentColor; /* Makes the dot "glow" */
+}
