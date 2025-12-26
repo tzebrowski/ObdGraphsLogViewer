@@ -9,7 +9,6 @@ async function loadConfiguration() {
     }
 }
 
-// core.js - Final Multi-File Logic
 const DataProcessor = {
     handleLocalFile: (event) => {
         const files = Array.from(event.target.files);
@@ -58,7 +57,6 @@ const DataProcessor = {
 
         AppState.files.push(fileEntry);
 
-        // First file loaded sets global timeframe
         if (AppState.files.length === 1) {
             AppState.globalStartTime = minT;
             AppState.logDuration = fileEntry.duration;
@@ -74,26 +72,6 @@ const DataProcessor = {
     }
 };
 
-window.ChartManager = ChartManager; // Expose globally for HTML onclick handlers
-
-window.onload = async function () {
-    await loadConfiguration();
-    Auth.init();
-    UI.init();
-
-    Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
-
-    const fileInput = DOM.get('fileInput');
-    if (fileInput) {
-        fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
-        fileInput.addEventListener('change', DataProcessor.handleLocalFile);
-    }
-};
-
-// core.js
-window.ChartManager = ChartManager; // Ensure global access for the remove button
-
-window.ChartManager = ChartManager; // Expose globally for HTML onclick handlers
 
 window.onload = async function () {
     await loadConfiguration();
@@ -111,6 +89,7 @@ window.onload = async function () {
 };
 
 // Global onclick bindings
+window.ChartManager = ChartManager; 
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
 window.toggleFullScreen = () => UI.toggleFullScreen();
