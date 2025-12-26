@@ -610,6 +610,12 @@ input[type=range]::-webkit-slider-thumb {
     background: white;
     border: 1px solid #dee2e6;
     border-radius: 4px;
+
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    margin-bottom: 20px;
 }
 
 .chart-header-sm {
@@ -798,37 +804,39 @@ input[type=range]::-webkit-slider-thumb {
 
 
 
+/* style.css */
 .sample-data-box {
-    margin-top: 15px;
-    padding: 12px;
-    background: #fff;
-    border: 1px dashed #ccc;
-    border-radius: 6px;
-    text-align: center;
+    position: relative;
+    border: 2px solid #e9ecef;
+    background: #ffffff;
+    padding: 20px;
+    margin-top: 20px;
 }
 
-.sample-data-box p {
-    font-size: 0.8rem;
-    color: #666;
-    margin-bottom: 10px;
+.sample-data-box::before {
+    content: "RECOMMENDED";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
 }
 
 .btn-sample {
-    background: #4a4a4a;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: background 0.2s;
+    background: #007bff;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .btn-sample:hover {
-    background: #333;
+    background: #0056b3;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
 }
 
-.btn-sample:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
+

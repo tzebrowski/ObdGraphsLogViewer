@@ -1,14 +1,21 @@
 const CHART_COLORS = [
-    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
-
-    '#003366', '#4B0082', '#004d40', '#3e2723', '#212121', '#b71c1c',
-
-    '#00e676', '#ffea00', '#d500f9', '#00b0ff', '#ff3d00', '#c6ff00',
-
-    '#827717', '#e65100', '#006064', '#5d4037', '#455a64', '#1a237e',
-
-    '#f06292', '#4db6ac', '#7986cb', '#a1887f', '#00acc1', '#f4511e'
+    '#00F2FF', // Electric Cyan (Boost/Turbo)
+    '#39FF14', // Neon Green (RPM)
+    '#FF007F', // Hot Pink (AFR/Lambda)
+    '#FFFF00', // Bright Yellow (Throttle)
+    '#BC13FE', // Neon Purple (Timing)
+    '#FF4D00', // Safety Orange (Temperatures)
+    '#00FF9F', // Spring Green
+    '#FFD700', // Gold
+    '#FF0000'  // Pure Red (Critical Errors)
 ];
+
+const getAlphaColor = (hex, alpha = 0.1) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 const DEFAULT_SIGNALS = ["Boost", "Rpm", "Pedal", "Trim", "Spark", "Mass"];
 

@@ -44,6 +44,9 @@ const ChartManager = {
 
     createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
+        
+        // Set a dark background for the canvas itself
+        canvas.style.backgroundColor = '#1a1a1a';
 
         canvas.addEventListener('mousemove', (e) => {
             const chart = AppState.chartInstances[index];
@@ -125,9 +128,24 @@ const ChartManager = {
                         }
                     },
                     zoom: {
-                        pan: { enabled: true, mode: 'x', onPan: ChartManager.syncAll },
-                        zoom: { wheel: { enabled: true }, mode: 'x', onZoom: ChartManager.syncAll }
-                    }
+                        pan: {
+                            enabled: true,
+                            mode: 'x', // Only pan left/right
+                            threshold: 10, // Minimum drag distance
+                            onPan: ChartManager.syncAll // Keeps charts aligned
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true, // Mouse wheel to zoom
+                                speed: 0.1
+                            },
+                            pinch: {
+                                enabled: true // Touch support
+                            },
+                            mode: 'x', // Only zoom time axis
+                            onZoom: ChartManager.syncAll // Keeps charts aligned
+                        }
+                    },
                 }
             }
         });
@@ -197,7 +215,7 @@ const ChartManager = {
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
                     ctx.fillRect(visibleXStart, top, drawWidth, bottom - top);
 
-                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)';
                     ctx.lineWidth = 1;
                     ctx.setLineDash([4, 4]);
 
