@@ -1,199 +1,218 @@
-/**
- * chart.js
- * Manages the Chart.js instance, keyboard navigation, 
- * and the dynamic traveling highlighter.
- */
-
 const ChartManager = {
-    hoverValue: null, // Tracks the current time position of the traveling cursor
+    hoverValue: null,
+    activeChartIndex: null,
 
-    /**
-     * Renders or updates the telemetry chart
-     */
     render: () => {
-        const canvas = DOM.get('telemetryChart');
-        if (!canvas) {
-            console.error("ChartManager: Canvas 'telemetryChart' not found.");
+        const container = DOM.get('chartContainer');
+        if (!container) return;
+
+        AppState.chartInstances.forEach(c => c.destroy());
+        AppState.chartInstances = [];
+        container.innerHTML = '';
+
+        if (AppState.files.length === 0) {
+            AppState.globalStartTime = 0;
+            AppState.logDuration = 0;
             return;
         }
+
+        const primary = AppState.files[0];
+        AppState.globalStartTime = primary.startTime;
+        AppState.logDuration = primary.duration;
+
+        AppState.files.forEach((file, idx) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-card-compact';
+            wrapper.innerHTML = `
+                <div class="chart-header-sm">
+                    <span class="chart-name">${file.name}</span>
+                    <button class="btn-remove" onclick="ChartManager.removeFile(${idx})">×</button>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="chart-${idx}" tabindex="0"></canvas>
+                </div>
+            `;
+            container.appendChild(wrapper);
+
+            const canvas = document.getElementById(`chart-${idx}`);
+            ChartManager.createInstance(canvas, file, idx);
+            ChartManager.initKeyboardControls(canvas, idx);
+        });
+
+        if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
+    },
+
+    createInstance: (canvas, file, index) => {
         const ctx = canvas.getContext('2d');
 
-        // Enable keyboard focus for the canvas
-        canvas.tabIndex = 0; 
-        ChartManager.initKeyboardControls(canvas);
-        ChartManager.initHoverTracking(canvas);
+        canvas.addEventListener('mousemove', (e) => {
+            const chart = AppState.chartInstances[index];
+            if (!chart) return;
 
-        if (AppState.chartInstance) {
-            AppState.chartInstance.destroy();
-        }
+            const prevIndex = ChartManager.activeChartIndex;
+            ChartManager.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
+            ChartManager.activeChartIndex = index;
 
-        // Map AppState signals to Chart.js datasets
-        const datasets = AppState.availableSignals.map((key, idx) => {
-            const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"].some(k => key.includes(k));
+            chart.draw();
+            if (prevIndex !== null && prevIndex !== index && AppState.chartInstances[prevIndex]) {
+                AppState.chartInstances[prevIndex].draw();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            const prevIndex = ChartManager.activeChartIndex;
+            ChartManager.hoverValue = null;
+            ChartManager.activeChartIndex = null;
+            if (prevIndex !== null && AppState.chartInstances[prevIndex]) {
+                AppState.chartInstances[prevIndex].draw();
+            }
+        });
+
+        const datasets = file.availableSignals.map((key, idx) => {
+            const isImportant = DEFAULT_SIGNALS.some(k => key.includes(k));
             return {
                 label: key,
-                data: AppState.signals[key],
+                data: file.signals[key],
                 borderColor: CHART_COLORS[idx % CHART_COLORS.length],
-                borderWidth: 2,
+                borderWidth: 1.5,
                 pointRadius: 0,
                 hidden: !isImportant
             };
         });
 
-        const startT = AppState.globalStartTime;
-        const endT = startT + (AppState.logDuration * 1000);
-
-        AppState.chartInstance = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: 'line',
             data: { datasets },
             plugins: [ChartManager.highlighterPlugin],
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: false, // Stretch to share height
                 animation: false,
-                interaction: { mode: 'index', intersect: false },
+                interaction: {
+                    mode: 'index',      // Shows all signal values in the "menu"
+                    intersect: false    // Triggers tooltip without needing to hover a specific dot
+                },
                 scales: {
                     x: {
                         type: 'time',
                         time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
-                        min: startT,
-                        max: endT,
-                        ticks: { maxRotation: 0 }
-                    },
-                    y: { position: 'left' }
+                        min: file.startTime,
+                        max: file.startTime + (file.duration * 1000)
+                    }
                 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { 
+                    tooltip: {
                         enabled: true,
-                        callbacks: { label: c => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}` } 
+                        position: 'nearest',
+                        callbacks: {
+                            label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}`
+                        }
                     },
                     zoom: {
-                        limits: { x: { min: startT, max: endT, minRange: 1000 } },
-                        pan: { enabled: true, mode: 'x', onPan: Sliders.syncFromChart },
-                        zoom: { 
-                            wheel: { enabled: true }, 
-                            mode: 'x', 
-                            onZoom: Sliders.syncFromChart 
-                        }
+                        pan: { enabled: true, mode: 'x', onPan: ChartManager.syncAll },
+                        zoom: { wheel: { enabled: true }, mode: 'x', onZoom: ChartManager.syncAll }
                     }
                 }
             }
         });
+        AppState.chartInstances[index] = chart;
     },
 
-    /**
-     * Mouse tracking for the traveling cursor
-     */
-    initHoverTracking: (canvas) => {
-        canvas.addEventListener('mousemove', (e) => {
-            if (!AppState.chartInstance) return;
-            const chart = AppState.chartInstance;
-            const xValue = chart.scales.x.getValueForPixel(e.offsetX);
-            
-            ChartManager.hoverValue = xValue;
-            chart.draw(); // Use draw() for high-performance cursor updates
-        });
+    removeFile: (index) => {
+        ChartManager.hoverValue = null;
+        ChartManager.activeChartIndex = null;
 
-        canvas.addEventListener('mouseleave', () => {
-            ChartManager.hoverValue = null;
-            if (AppState.chartInstance) AppState.chartInstance.draw();
-        });
+        AppState.files.splice(index, 1);
+
+        ChartManager.render();
+        UI.renderSignalList();
     },
 
-    /**
-     * Keyboard navigation: Arrow keys to pan, +/- to zoom, R to reset
-     */
-    initKeyboardControls: (canvas) => {
+    syncAll: ({ chart }) => {
+        if (typeof Sliders !== 'undefined') Sliders.syncFromChart({ chart });
+    },
+
+    initKeyboardControls: (canvas, index) => {
         canvas.addEventListener('keydown', (e) => {
-            if (!AppState.chartInstance) return;
+            const chart = AppState.chartInstances[index];
+            if (!chart) return;
 
-            const chart = AppState.chartInstance;
-            const xScale = chart.scales.x;
-            const amount = e.shiftKey ? 0.05 : 0.01; // Pan 5% or 1% of width
-
+            const amount = e.shiftKey ? 0.05 : 0.01;
             switch (e.key) {
-                case 'ArrowLeft':
-                    chart.pan({ x: chart.width * amount }, undefined, 'none');
-                    break;
-                case 'ArrowRight':
-                    chart.pan({ x: -chart.width * amount }, undefined, 'none');
-                    break;
+                case 'ArrowLeft': chart.pan({ x: chart.width * amount }, undefined, 'none'); break;
+                case 'ArrowRight': chart.pan({ x: -chart.width * amount }, undefined, 'none'); break;
                 case '+':
-                case '=':
-                    chart.zoom(1.1, undefined, 'none');
-                    break;
+                case '=': chart.zoom(1.1, undefined, 'none'); break;
                 case '-':
-                case '_':
-                    chart.zoom(0.9, undefined, 'none');
-                    break;
+                case '_': chart.zoom(0.9, undefined, 'none'); break;
                 case 'r':
-                case 'R':
-                    Sliders.reset();
-                    ChartManager.hoverValue = null;
-                    return;
-                default:
-                    return; 
+                case 'R': Sliders.reset(); return;
+                default: return;
             }
 
-            // Keep highlighter synced to the center of the view during keyboard navigation
-            ChartManager.hoverValue = (xScale.min + xScale.max) / 2;
-            
-            // Sync external sliders and redraw
-            Sliders.syncFromChart({ chart });
+            ChartManager.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
+            ChartManager.activeChartIndex = index;
+            ChartManager.syncAll({ chart });
             chart.draw();
         });
     },
 
-    /**
-     * Custom plugin to draw the traveling cursor and scanner selection
-     */
     highlighterPlugin: {
         id: 'anomalyHighlighter',
         afterDraw(chart) {
-            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
+            const chartIdx = AppState.chartInstances.indexOf(chart);
+
+            if (chartIdx === -1) return;
+
             ctx.save();
 
-            // 1. Draw Scanner Selection (Static dashed box)
-            if (AppState.activeHighlight) {
-                const startVal = AppState.globalStartTime + (AppState.activeHighlight.start * 1000);
-                const endVal = AppState.globalStartTime + (AppState.activeHighlight.end * 1000);
-                const x1 = x.getPixelForValue(startVal);
-                const x2 = x.getPixelForValue(endVal);
+            if (AppState.activeHighlight && AppState.activeHighlight.targetIndex === chartIdx) {
+                const file = AppState.files[chartIdx];
 
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
-                ctx.fillRect(x1, top, x2 - x1, bottom - top);
-                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                ctx.setLineDash([5, 5]);
-                ctx.strokeRect(x1, top, x2 - x1, bottom - top);
+                const pxStart = x.getPixelForValue(file.startTime + (AppState.activeHighlight.start * 1000));
+                const pxEnd = x.getPixelForValue(file.startTime + (AppState.activeHighlight.end * 1000));
+
+                const visibleXStart = Math.max(pxStart, left);
+                const visibleXEnd = Math.min(pxEnd, right);
+                const drawWidth = visibleXEnd - visibleXStart;
+
+                if (drawWidth > 0) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
+                    ctx.fillRect(visibleXStart, top, drawWidth, bottom - top);
+
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+
+                    if (pxStart >= left && pxStart <= right) {
+                        ctx.beginPath(); ctx.moveTo(pxStart, top); ctx.lineTo(pxStart, bottom); ctx.stroke();
+                    }
+                    if (pxEnd >= left && pxEnd <= right) {
+                        ctx.beginPath(); ctx.moveTo(pxEnd, top); ctx.lineTo(pxEnd, bottom); ctx.stroke();
+                    }
+                }
             }
 
-            // 2. Draw Traveling Cursor (Solid line with timestamp)
-            if (ChartManager.hoverValue) {
+            if (ChartManager.activeChartIndex === chartIdx && ChartManager.hoverValue) {
                 const xPixel = x.getPixelForValue(ChartManager.hoverValue);
                 if (xPixel >= chart.chartArea.left && xPixel <= chart.chartArea.right) {
                     ctx.beginPath();
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+                    ctx.strokeStyle = '#9a0000';
                     ctx.lineWidth = 2;
-                    ctx.setLineDash([]); // Solid line
                     ctx.moveTo(xPixel, top);
                     ctx.lineTo(xPixel, bottom);
                     ctx.stroke();
-
-                    // Display timestamp
-                    const timeSec = (ChartManager.hoverValue - AppState.globalStartTime) / 1000;
-                    ctx.fillStyle = '#000';
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.fillText(`${timeSec.toFixed(2)}s`, xPixel + 5, top + 15);
                 }
             }
             ctx.restore();
         }
-    }
+    },
 };
 
 const Sliders = {
-    // Dynamic accessors to ensure DOM elements exist when called
+
     get els() {
         return {
             start: DOM.get('rangeStart'),
@@ -214,21 +233,34 @@ const Sliders = {
         Sliders.updateUI(false);
     },
 
-    zoomTo: (startSec, endSec) => {
-        AppState.activeHighlight = { start: startSec, end: endSec };
+    zoomTo: (startSec, endSec, targetIndex = null) => {
+        AppState.activeHighlight = {
+            start: startSec,
+            end: endSec,
+            targetIndex: targetIndex
+        };
+
+        if (targetIndex !== null && AppState.chartInstances[targetIndex]) {
+            const chart = AppState.chartInstances[targetIndex];
+            const file = AppState.files[targetIndex];
+
+            const duration = endSec - startSec;
+            const padding = duration * 4.0;
+
+            const viewMin = Math.max(0, startSec - padding);
+            const viewMax = Math.min(file.duration, endSec + padding);
+
+            chart.options.scales.x.min = file.startTime + (viewMin * 1000);
+            chart.options.scales.x.max = file.startTime + (viewMax * 1000);
+            chart.update('none');
+        }
+
         const { start, end } = Sliders.els;
         if (start && end) {
-            start.value = Math.max(0, startSec - 1.0);
-            end.value = Math.min(AppState.logDuration, endSec + 1.0);
-            Sliders.updateUI(true);
+            start.value = startSec;
+            end.value = endSec;
+            Sliders.updateVis(startSec, endSec);
         }
-    },
-
-    reset: () => {
-        AppState.activeHighlight = null;
-        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
-        Sliders.init(AppState.logDuration);
-        Sliders.updateUI(true);
     },
 
     syncFromChart: ({ chart }) => {
@@ -239,41 +271,47 @@ const Sliders = {
         if (end) end.value = e;
         Sliders.updateVis(s, e);
     },
-
     updateFromInput: () => Sliders.updateUI(true),
-
     updateUI: (shouldUpdateChart) => {
         const { start, end } = Sliders.els;
         if (!start || !end) return;
-
         let v1 = parseFloat(start.value);
         let v2 = parseFloat(end.value);
-        
-        // Handle handle crossing
-        if (v1 > v2) { 
-            [v1, v2] = [v2, v1]; 
-            start.value = v1; 
-            end.value = v2; 
-        }
-
+        if (v1 > v2) [v1, v2] = [v2, v1];
         Sliders.updateVis(v1, v2);
-
-        if (shouldUpdateChart && AppState.chartInstance) {
-            AppState.chartInstance.options.scales.x.min = AppState.globalStartTime + (v1 * 1000);
-            AppState.chartInstance.options.scales.x.max = AppState.globalStartTime + (v2 * 1000);
-            AppState.chartInstance.update('none');
+        if (shouldUpdateChart) {
+            AppState.chartInstances.forEach(chart => {
+                chart.options.scales.x.min = AppState.globalStartTime + (v1 * 1000);
+                chart.options.scales.x.max = AppState.globalStartTime + (v2 * 1000);
+                chart.update('none');
+            });
         }
     },
-
     updateVis: (start, end) => {
         const { txtStart, txtEnd, bar, start: startEl } = Sliders.els;
         if (txtStart) txtStart.innerText = start.toFixed(1) + 's';
         if (txtEnd) txtEnd.innerText = end.toFixed(1) + 's';
-        
         const total = parseFloat(startEl?.max) || 100;
         if (bar) {
             bar.style.left = ((start / total) * 100) + "%";
             bar.style.width = (((end - start) / total) * 100) + "%";
         }
-    }
+    },
+    reset: () => {
+        AppState.activeHighlight = null;
+        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
+
+        AppState.chartInstances.forEach((chart, idx) => {
+            const file = AppState.files[idx];
+            if (file) {
+                chart.options.scales.x.min = file.startTime;
+                chart.options.scales.x.max = file.startTime + (file.duration * 1000);
+                chart.update('none');
+            }
+        });
+
+        if (AppState.files.length > 0) {
+            Sliders.init(AppState.files[0].duration);
+        }
+    },
 };

@@ -11,68 +11,88 @@ async function loadConfiguration() {
 
 const DataProcessor = {
     handleLocalFile: (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        UI.setLoading(true, "Parsing File...");
-        setTimeout(() => {
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
+
+        UI.setLoading(true, `Parsing ${files.length} Files...`);
+        let loaded = 0;
+        files.forEach(file => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    DataProcessor.process(JSON.parse(e.target.result));
-                } catch (err) { 
-                    alert("Invalid JSON file");
-                } finally {
+                    DataProcessor.process(JSON.parse(e.target.result), file.name);
+                } catch (err) {
+                    console.error("Invalid JSON:", file.name);
+                }
+                loaded++;
+                if (loaded === files.length) {
                     UI.setLoading(false);
                     DOM.get('fileInput').value = '';
                 }
             };
             reader.readAsText(file);
-        }, 50);
+        });
     },
 
-    process: (data) => {
-        AppState.rawData = data.sort((a, b) => a.t - b.t);
-        AppState.signals = {};
+    process: (data, fileName) => {
+        const sorted = data.sort((a, b) => a.t - b.t);
+        const signals = {};
         let minT = Infinity, maxT = -Infinity;
 
-        AppState.rawData.forEach(p => {
-            if (!AppState.signals[p.s]) AppState.signals[p.s] = [];
-            AppState.signals[p.s].push({ x: p.t, y: p.v });
+        sorted.forEach(p => {
+            if (!signals[p.s]) signals[p.s] = [];
+            signals[p.s].push({ x: p.t, y: p.v });
             if (p.t < minT) minT = p.t;
             if (p.t > maxT) maxT = p.t;
         });
 
-        AppState.globalStartTime = minT;
-        AppState.logDuration = (maxT - minT) / 1000;
-        AppState.availableSignals = Object.keys(AppState.signals).sort();
+        const fileEntry = {
+            name: fileName,
+            rawData: sorted,
+            signals: signals,
+            startTime: minT,
+            duration: (maxT - minT) / 1000,
+            availableSignals: Object.keys(signals).sort()
+        };
 
-        DOM.get('fileInfo').innerText = `${AppState.logDuration.toFixed(1)}s | ${AppState.availableSignals.length} signals`;
-        
-        UI.resetScannerUI();
+        AppState.files.push(fileEntry);
+
+        if (AppState.files.length === 1) {
+            AppState.globalStartTime = minT;
+            AppState.logDuration = fileEntry.duration;
+            AppState.availableSignals = fileEntry.availableSignals;
+            UI.renderSignalList();
+            Analysis.init();
+            if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
+        }
+
+        DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
         UI.renderSignalList();
-        Analysis.initTemplates();
-        Sliders.init(AppState.logDuration);
         ChartManager.render();
     }
 };
 
-window.onload = async function() {
+
+window.onload = async function () {
     await loadConfiguration();
     Auth.init();
     UI.init();
-    
+    Analysis.init();
+
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
 
-    DOM.get('fileInput')?.addEventListener('change', DataProcessor.handleLocalFile);
-    DOM.get('rangeStart')?.addEventListener('input', Sliders.updateFromInput);
-    DOM.get('rangeEnd')?.addEventListener('input', Sliders.updateFromInput);
+    const fileInput = DOM.get('fileInput');
+    if (fileInput) {
+        fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
+        fileInput.addEventListener('change', DataProcessor.handleLocalFile);
+    }
 };
 
 // Global onclick bindings
+window.ChartManager = ChartManager; 
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
-window.toggleFullScreen = () => UI.toggleFullScreen(); 
+window.toggleFullScreen = () => UI.toggleFullScreen();
 window.toggleAllSignals = (check) => UI.toggleAllSignals(check);
 
 window.saveConfig = () => Auth.saveConfig();

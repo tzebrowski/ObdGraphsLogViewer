@@ -1,5 +1,7 @@
 const CHART_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
 
+const DEFAULT_SIGNALS = ["Boost", "Rpm", "Pedal", "Trim", "Spark", "Mass"];
+
 const SIGNAL_MAPPINGS = {
     "Intake Manifold Pressure Measured": ["Manifold Abs", "MAP", "Intake Press", "Boost Pressure"],
     "Accelerator Pedal Position": ["Pedal Pos", "APP", "Throttle Pos", "TPS"],
@@ -11,13 +13,15 @@ const SIGNAL_MAPPINGS = {
 let ANOMALY_TEMPLATES = {};
 
 const AppState = {
+    files: [], // Array of objects: { name, rawData, signals, duration, startTime }
+    chartInstances: [], // Array of Chart.js instances
     rawData: [],
     signals: {},
     availableSignals: [],
     globalStartTime: 0,
     logDuration: 0,
     chartInstance: null,
-    activeHighlight: null, 
+    activeHighlight: null,
     google: {
         tokenClient: null,
         gapiInited: false,

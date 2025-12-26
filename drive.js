@@ -11,7 +11,7 @@ const Drive = {
             const query = `mimeType='application/vnd.google-apps.folder' and 
                            (name = '${name}' or name = '${name.toLowerCase()}' or name = '${name.charAt(0).toUpperCase() + name.slice(1)}') 
                            and '${parentId}' in parents and trashed=false`;
-            
+
             const response = await gapi.client.drive.files.list({
                 q: query,
                 fields: 'files(id, name)',
@@ -27,12 +27,12 @@ const Drive = {
     async listFiles() {
         const listEl = DOM.get('driveList');
         if (!listEl) return;
-        
+
         listEl.style.display = 'block';
         listEl.innerHTML = '<div class="status-msg">Searching for logs...</div>';
 
         try {
-           
+
             const rootId = await Drive.findFolderId(Drive.PATH_CONFIG.root);
             if (!rootId) {
                 listEl.innerHTML = `<div class="error-msg">Folder "${Drive.PATH_CONFIG.root}" not found.</div>`;
@@ -48,7 +48,6 @@ const Drive = {
             await Drive.fetchJsonFiles(subFolderId, listEl);
 
         } catch (error) {
-            // FIXED: Use Drive.handleApiError instead of this.handleApiError
             Drive.handleApiError(error, listEl);
         }
     },
@@ -78,7 +77,7 @@ const Drive = {
         const date = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString() : 'N/A';
 
         return `
-            <div class="drive-file-row" onclick="Drive.loadFile('${file.id}', this)">
+            <div class="drive-file-row" onclick="Drive.loadFile('${file.name}','${file.id}', this)">
                 <div class="file-name">${file.name}</div>
                 <div class="file-meta">
                     <span>${date}</span>
@@ -87,7 +86,7 @@ const Drive = {
             </div>`;
     },
 
-    async loadFile(id, element) {
+    async loadFile(fileName, id, element) {
         if (element) {
             document.querySelectorAll('.drive-file-row').forEach(r => r.classList.remove('active'));
             element.classList.add('active');
@@ -95,7 +94,7 @@ const Drive = {
 
         const currentToken = ++activeLoadToken;
         const cancelTask = () => {
-            activeLoadToken++; 
+            activeLoadToken++;
             UI.setLoading(false);
             const fileInfo = DOM.get('fileInfo');
             if (fileInfo) fileInfo.innerText = "Load cancelled.";
@@ -114,10 +113,11 @@ const Drive = {
             setTimeout(() => {
                 if (currentToken !== activeLoadToken) return;
                 try {
-                    DataProcessor.process(response.result);
+                    DataProcessor.process(response.result, fileName);
                     const fileInfoFinish = DOM.get('fileInfo');
                     if (fileInfoFinish) fileInfoFinish.innerText = "Drive log loaded successfully.";
                 } catch (err) {
+                    console.error(`The file content is not a valid log format. Error ${err.message}`)
                     alert("The file content is not a valid log format.");
                 } finally {
                     UI.setLoading(false);
@@ -132,7 +132,7 @@ const Drive = {
     },
 
     handleApiError(error, listEl) {
-        console.error("Drive API Error:", error);
+        console.error("Drive API Error:", error);         
         if (error.status === 401 || error.status === 403) {
             gapi.client.setToken(null);
             if (listEl) listEl.innerHTML = '<div class="error-msg">Session expired. Please click "Drive Scan" again.</div>';
