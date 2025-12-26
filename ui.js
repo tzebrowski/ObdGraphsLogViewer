@@ -109,7 +109,8 @@ const UI = {
             document.exitFullscreen();
         }
     },
-
+    
+   
     renderSignalList() {
         const container = document.getElementById('signalList');
         if (!container) return;
@@ -120,7 +121,7 @@ const UI = {
         const fragment = document.createDocumentFragment();
 
         signals.forEach((key, idx) => {
-            const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"].some(k => key.includes(k));
+            const isImportant = DEFAULT_SIGNALS.some(k => key.includes(k));
             const color = CHART_COLORS[idx % CHART_COLORS.length];
 
             const label = document.createElement('label');

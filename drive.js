@@ -117,6 +117,7 @@ const Drive = {
                     const fileInfoFinish = DOM.get('fileInfo');
                     if (fileInfoFinish) fileInfoFinish.innerText = "Drive log loaded successfully.";
                 } catch (err) {
+                    console.error(`The file content is not a valid log format. Error ${err.message}`)
                     alert("The file content is not a valid log format.");
                 } finally {
                     UI.setLoading(false);

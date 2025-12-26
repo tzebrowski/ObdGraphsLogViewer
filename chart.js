@@ -69,7 +69,7 @@ const ChartManager = {
         });
 
         const datasets = file.availableSignals.map((key, idx) => {
-            const isImportant = ["Boost", "RPM", "Pedal", "Trim", "Advance"].some(k => key.includes(k));
+            const isImportant = DEFAULT_SIGNALS.some(k => key.includes(k));
             return {
                 label: key,
                 data: file.signals[key],
