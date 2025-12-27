@@ -951,19 +951,19 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* Create the checkmark/indicator (hidden when not checked) */
-.checkmark:after {
+.checkmark::after {
     content: "";
     position: absolute;
     display: none;
 }
 
 /* Show the checkmark when checked */
-.custom-checkbox-container input:checked ~ .checkmark:after {
+.custom-checkbox-container input:checked ~ .checkmark::after {
     display: block;
 }
 
 /* Style the checkmark (the "L" shape) */
-.custom-checkbox-container .checkmark:after {
+.custom-checkbox-container .checkmark::after {
     left: 6px;
     top: 2px;
     width: 5px;
