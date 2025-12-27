@@ -3,13 +3,52 @@ import { AppState, DOM } from './config.js';
 export const Auth = {
     SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
     DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-    onAuthSuccess: null, // Placeholder for the callback
+    onAuthSuccess: null,
 
-    init: () => {
-        const cId = localStorage.getItem('alfa_clientId');
-        if (cId) DOM.get('gClientId').value = cId;
-        if (window.gapi) gapi.load('client', Auth.initGapiClient);
-        if (window.google) Auth.initTokenClient();
+    /**
+     * Dynamically injects Google scripts and waits for them to load.
+     */
+    loadGoogleScripts: () => {
+        return new Promise((resolve, reject) => {
+            // Check if already loaded to avoid duplicates
+            if (window.gapi && window.google) return resolve();
+
+            const gsi = document.createElement('script');
+            gsi.src = 'https://accounts.google.com/gsi/client';
+            gsi.async = true;
+            gsi.defer = true;
+            
+            const gapiScript = document.createElement('script');
+            gapiScript.src = 'https://apis.google.com/js/api.js';
+            gapiScript.async = true;
+            gapiScript.defer = true;
+
+            gapiScript.onload = () => resolve();
+            gapiScript.onerror = (e) => reject(new Error("Failed to load GAPI"));
+
+            document.head.appendChild(gsi);
+            document.head.appendChild(gapiScript);
+        });
+    },
+
+    init: async () => {
+        try {
+            await Auth.loadGoogleScripts();
+
+            const cId = localStorage.getItem('alfa_clientId');
+            if (cId) {
+                const input = DOM.get('gClientId');
+                if (input) input.value = cId;
+            }
+
+            gapi.load('client', async () => {
+                await Auth.initGapiClient();
+                Auth.initTokenClient();
+            });
+
+        } catch (error) {
+            console.error("Google Auth Initialization Error:", error);
+        }
     },
 
     saveConfig: () => {
@@ -27,7 +66,7 @@ export const Auth = {
 
     initTokenClient: () => {
         const cId = DOM.get('gClientId').value;
-        if (!cId) return;
+        if (!cId || !window.google) return;
 
         AppState.google.tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: cId,
@@ -50,8 +89,8 @@ export const Auth = {
         }
 
         const existingToken = gapi.client.getToken();
-        if (existingToken && Date.now() < existingToken.expires_at) {
-            // Decoupled: Call the callback instead of Drive directly
+     
+        if (existingToken && existingToken.expires_at && Date.now() < existingToken.expires_at) {
             if (Auth.onAuthSuccess) Auth.onAuthSuccess();
         } else {
             AppState.google.tokenClient.requestAccessToken({ prompt: '' });
@@ -59,8 +98,6 @@ export const Auth = {
     },
 
     onTokenReceived: async () => {
-        // Decoupled: Call the callback
         if (Auth.onAuthSuccess) await Auth.onAuthSuccess();
     }
 };
-
