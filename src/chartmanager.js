@@ -152,7 +152,8 @@ export const ChartManager = {
                                 size: 11
                             },
                             filter: (item) => {
-                                const checkbox = document.querySelector(`#signalList input[data-key="${item.text}"]`);
+                                const txt =  item.text.replace(/\r?\n|\r/g, " ");
+                                const checkbox = document.querySelector(`#signalList input[data-key="${txt}"]`);
                                 return checkbox ? checkbox.checked : false;
                             }
                         }

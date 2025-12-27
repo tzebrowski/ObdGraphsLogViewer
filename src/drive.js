@@ -57,7 +57,7 @@ export const Drive = {
         }
     },
 
-    async fetchJsonFiles(folderId, listEl) {
+     fetchJsonFiles: async (folderId, listEl) => {
         try {
             const res = await gapi.client.drive.files.list({
                 pageSize: 25,
@@ -71,7 +71,7 @@ export const Drive = {
                 listEl.innerHTML = '<div class="status-msg">No log files found.</div>';
                 return;
             }
-            listEl.innerHTML = files.map(f => Drive.createFileRowHtml(f)).join('');
+            listEl.innerHTML = files.map(f => Drive.renderFileRow(f)).join('');
         } catch (error) {
             Drive.handleApiError(error, listEl);
         }
@@ -101,7 +101,7 @@ export const Drive = {
         };
     },
 
-    createFileRowHtml(file) {
+    renderFileRow(file) {
         const size = file.size ? (file.size / 1024).toFixed(0) + ' KB' : 'Unknown';
         const { date, length } = Drive.getFileMetadata(file.name);
 

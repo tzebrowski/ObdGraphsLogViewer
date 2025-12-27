@@ -5,6 +5,7 @@ import { Analysis } from './analysis.js';
 import { ChartManager, Sliders } from './chartmanager.js';
 import { UI, InfoPage } from './ui.js';
 import { Drive } from './drive.js';
+import { FileHandler } from './fileHandler.js';
 
 export const DataProcessor = {
 
@@ -83,7 +84,6 @@ export const DataProcessor = {
     }
 };
 
-// Auto-load preference on startup
 window.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
     UI.setTheme(savedTheme);
@@ -97,6 +97,7 @@ window.onload = async function () {
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
     ChartManager.init();
     InfoPage.init();
+    FileHandler.init();
 
     const fileInput = DOM.get('fileInput');
     if (fileInput) {
@@ -111,8 +112,6 @@ window.onclick = (event) => {
         UI.toggleInfo();
     }
 };
-
-window.DataProcessor = DataProcessor;
 
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
@@ -129,8 +128,3 @@ window.loadSampleData = () => UI.loadSampleData();
 window.setTheme = (theme) => UI.setTheme(theme);
 window.removeFile = (f) => ChartManager.removeFile(f);
 window.loadFile = (a, b, c) => Drive.loadFile(a, b, c);
-
-
-
-
-
