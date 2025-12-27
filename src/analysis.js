@@ -1,10 +1,15 @@
-const Analysis = {
+import { Config, AppState, DOM, SIGNAL_MAPPINGS } from './config.js';
+import { UI } from './ui.js';
+import { Sliders } from './chartmanager.js';
+
+
+export const Analysis = {
     initTemplates() {
         const sel = DOM.get('anomalyTemplate');
         if (!sel) return;
 
-        const options = Object.keys(ANOMALY_TEMPLATES)
-            .map(k => `<option value="${k}">${ANOMALY_TEMPLATES[k].name}</option>`);
+        const options = Object.keys(Config.ANOMALY_TEMPLATES)
+            .map(k => `<option value="${k}">${Config.ANOMALY_TEMPLATES[k].name}</option>`);
 
         sel.innerHTML = '<option value="">-- Load a Template --</option>' + options.join('');
 
@@ -14,7 +19,6 @@ const Analysis = {
             this.addFilterRow();
         }
     },
-
 
     init: () => {
         Analysis.initTemplates();
@@ -55,7 +59,7 @@ const Analysis = {
         const key = templateSelect.value;
         if (!key) return;
 
-        const template = ANOMALY_TEMPLATES[key];
+        const template = Config.ANOMALY_TEMPLATES[key];
         const container = DOM.get('filtersContainer');
         if (container) container.innerHTML = '';
 
@@ -141,5 +145,5 @@ const Analysis = {
     }
 };
 
-window.Analysis = Analysis;
+
 

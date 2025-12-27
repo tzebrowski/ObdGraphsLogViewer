@@ -1,4 +1,7 @@
-const UI = {
+import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
+import { DataProcessor } from './core.js';
+
+export const UI = {
     get elements() {
         return {
             resizer: document.getElementById('resizer'),
@@ -219,9 +222,6 @@ const UI = {
         document.getElementById('btn-theme-light')?.classList.toggle('active', !isDark);
         document.getElementById('btn-theme-dark')?.classList.toggle('active', isDark);
 
-        Chart.defaults.color = textColor;
-        Chart.defaults.borderColor = gridColor;
-
         AppState.chartInstances.forEach(chart => {
             chart.options.scales.x.ticks.color = textColor;
             chart.options.scales.y.ticks.color = textColor;
@@ -238,5 +238,3 @@ const UI = {
         localStorage.setItem('preferred-theme', theme);
     }
 };
-
-window.UI = UI;

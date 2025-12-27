@@ -1,4 +1,6 @@
-const Auth = {
+import { AppState, DOM } from './config.js';
+
+export const Auth = {
     SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
     DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
     onAuthSuccess: null, // Placeholder for the callback
@@ -41,18 +43,18 @@ const Auth = {
     handleAuth: () => {
         if (!AppState.google.gapiInited || !AppState.google.gisInited) {
             Auth.initTokenClient();
-            if(!DOM.get('gClientId').value) {
+            if (!DOM.get('gClientId').value) {
                 alert("Please click 'Drive Config' and enter your Client ID first.");
                 return;
             }
         }
-        
+
         const existingToken = gapi.client.getToken();
         if (existingToken && Date.now() < existingToken.expires_at) {
-             // Decoupled: Call the callback instead of Drive directly
-             if (Auth.onAuthSuccess) Auth.onAuthSuccess();
+            // Decoupled: Call the callback instead of Drive directly
+            if (Auth.onAuthSuccess) Auth.onAuthSuccess();
         } else {
-            AppState.google.tokenClient.requestAccessToken({prompt: ''});
+            AppState.google.tokenClient.requestAccessToken({ prompt: '' });
         }
     },
 
@@ -62,4 +64,3 @@ const Auth = {
     }
 };
 
-window.Auth = Auth;

@@ -3,6 +3,15 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
+    {
+        ignores: [
+            "dist/**", 
+            "node_modules/**", 
+            "bin/**", 
+            "build/**",
+            "**/*.min.js"
+        ]
+    },
     js.configs.recommended,
     {
         languageOptions: {
@@ -10,23 +19,6 @@ export default [
             sourceType: "module",
             globals: {
                 ...globals.browser,
-                // Project Globals
-                Chart: "readonly",
-                AppState: "writable",
-                DOM: "readonly",
-                UI: "readonly",
-                ChartManager: "readonly",
-                Sliders: "readonly",
-                Analysis: "readonly",
-                CHART_COLORS: "readonly",
-                DataProcessor: "readonly",
-                Auth: "readonly",
-                Drive: "readonly",
-                loadConfiguration: "readonly",
-                ANOMALY_TEMPLATES: "writable",
-                SIGNAL_MAPPINGS: "readonly",
-                DEFAULT_SIGNALS: "readonly",
-
                 // GOOGLE SDK GLOBALS
                 gapi: "readonly",
                 google: "readonly"

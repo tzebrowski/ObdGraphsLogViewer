@@ -1,6 +1,10 @@
+import { DOM } from './config.js';
+import { UI } from './ui.js';
+import { DataProcessor } from './core.js';
+
 let activeLoadToken = 0;
 
-const Drive = {
+export const Drive = {
     PATH_CONFIG: {
         root: 'mygiulia',
         sub: 'trips'
@@ -77,7 +81,7 @@ const Drive = {
         const date = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString() : 'N/A';
 
         return `
-            <div class="drive-file-row" onclick="Drive.loadFile('${file.name}','${file.id}', this)">
+            <div class="drive-file-row" onclick="loadFile('${file.name}','${file.id}', this)">
                 <div class="file-name">${file.name}</div>
                 <div class="file-meta">
                     <span>${date}</span>
@@ -142,4 +146,3 @@ const Drive = {
     }
 };
 
-window.Drive = Drive;
