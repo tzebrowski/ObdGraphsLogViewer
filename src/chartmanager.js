@@ -1,5 +1,6 @@
 import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
 import { UI } from './ui.js';
+import Hammer from 'hammerjs';
 import {
     Chart,
     LineController,
@@ -20,6 +21,8 @@ export const ChartManager = {
     activeChartIndex: null,
 
     init: () => {
+        window.Hammer = Hammer;
+        
         Chart.register(
             LineController,
             LineElement,
