@@ -366,3 +366,7 @@ const Sliders = {
         }
     },
 };
+
+
+window.Sliders = Sliders;
+window.ChartManager = ChartManager;

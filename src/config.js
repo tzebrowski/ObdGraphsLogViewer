@@ -42,3 +42,11 @@ const AppState = {
 const DOM = {
     get: (id) => document.getElementById(id)
 };
+
+
+window.CHART_COLORS = CHART_COLORS;
+window.DEFAULT_SIGNALS = DEFAULT_SIGNALS;
+window.SIGNAL_MAPPINGS = SIGNAL_MAPPINGS;
+window.ANOMALY_TEMPLATES = ANOMALY_TEMPLATES;
+window.DOM = DOM;
+window.AppState = AppState;

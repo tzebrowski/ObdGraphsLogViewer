@@ -23,7 +23,7 @@ function createWindow() {
         }
     });
 
-    win.loadURL(`http://localhost:${PORT}/index.html`);
+    win.loadURL(`http://localhost:${PORT}/dist/index.html`);
 
     win.maximize();
 }

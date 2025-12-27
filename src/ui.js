@@ -237,5 +237,6 @@ const UI = {
 
         localStorage.setItem('preferred-theme', theme);
     }
-
 };
+
+window.UI = UI;

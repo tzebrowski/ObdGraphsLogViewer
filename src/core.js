@@ -1,8 +1,12 @@
+import templates from './templates.json'; 
+
 async function loadConfiguration() {
     try {
-        const response = await fetch('templates.json');
-        if (!response.ok) throw new Error("Missing templates.json");
-        ANOMALY_TEMPLATES = await response.json();
+       if (!templates) {
+            console.error("Config Loader: Error: Missing templates");
+            return;
+        }
+        ANOMALY_TEMPLATES = templates;
     } catch (error) {
         console.error("Config Loader:", error);
         ANOMALY_TEMPLATES = {};
@@ -101,12 +105,13 @@ window.onclick = (event) => {
     }
 };
 
-window.ChartManager = ChartManager; 
+window.DataProcessor = DataProcessor; 
+
+
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
 window.toggleFullScreen = () => UI.toggleFullScreen();
 window.toggleAllSignals = (check) => UI.toggleAllSignals(check);
-
 window.saveConfig = () => Auth.saveConfig();
 window.handleAuth = () => Auth.handleAuth();
 window.applyTemplate = () => Analysis.applyTemplate();

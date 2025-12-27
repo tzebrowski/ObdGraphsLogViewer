@@ -61,3 +61,5 @@ const Auth = {
         if (Auth.onAuthSuccess) await Auth.onAuthSuccess();
     }
 };
+
+window.Auth = Auth;

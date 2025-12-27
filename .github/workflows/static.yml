@@ -64,10 +64,13 @@ jobs:
             npx clean-css-cli -o style.css style.css
           fi
 
+      - name: Build
+        run: npx vite build --base ./
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: './dist'
 
   deploy:
     environment:

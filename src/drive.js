@@ -141,3 +141,5 @@ const Drive = {
         }
     }
 };
+
+window.Drive = Drive;

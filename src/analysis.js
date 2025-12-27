@@ -140,3 +140,6 @@ const Analysis = {
         });
     }
 };
+
+window.Analysis = Analysis;
+
