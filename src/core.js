@@ -3,7 +3,7 @@ import { Config, AppState, DOM } from './config.js';
 import { Auth } from './auth.js';
 import { Analysis } from './analysis.js';
 import { ChartManager, Sliders } from './chartmanager.js';
-import { UI } from './ui.js';
+import { UI, InfoPage } from './ui.js';
 import { Drive } from './drive.js';
 
 export const DataProcessor = {
@@ -96,6 +96,7 @@ window.onload = async function () {
     Analysis.init();
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
     ChartManager.init();
+    InfoPage.init();
 
     const fileInput = DOM.get('fileInput');
     if (fileInput) {
@@ -123,7 +124,7 @@ window.applyTemplate = () => Analysis.applyTemplate();
 window.scanAnomalies = () => Analysis.runScan();
 window.addFilterRow = () => Analysis.addFilterRow();
 window.resetZoom = () => Sliders.reset();
-window.toggleInfo = () => UI.toggleInfo();
+window.toggleInfo = () => InfoPage.toggleInfo();
 window.loadSampleData = () => UI.loadSampleData();
 window.setTheme = (theme) => UI.setTheme(theme);
 window.removeFile = (f) => ChartManager.removeFile(f);

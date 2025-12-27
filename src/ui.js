@@ -113,14 +113,6 @@ export const UI = {
         }
     },
 
-    toggleInfo: () => {
-        const modal = document.getElementById('infoModal');
-        if (!modal) return;
-
-        const isHidden = modal.style.display === 'none';
-        modal.style.display = isHidden ? 'flex' : 'none';
-    },
-
     renderSignalList() {
         const container = document.getElementById('signalList');
         if (!container) return;
@@ -196,10 +188,8 @@ export const UI = {
 
             DataProcessor.process(data, "sample-trip-giulia.json");
 
-            // Close the info modal
-            UI.toggleInfo();
+            InfoPage.toggleInfo();
 
-            // Reset button state
             btn.innerText = originalText;
             btn.disabled = false;
 
@@ -236,5 +226,56 @@ export const UI = {
         });
 
         localStorage.setItem('preferred-theme', theme);
+    }
+};
+
+export const InfoPage = {
+    STORAGE_KEY: 'hide_info_page',
+
+    init: () => {
+        const hideCheckbox = DOM.get('hideInfoCheckbox');
+        const closeBtn = DOM.get('closeInfoBtn');
+        const showBtn = DOM.get('showInfoBtn');
+
+        if (showBtn) {
+            showBtn.addEventListener('click', () => {
+                if (hideCheckbox) hideCheckbox.checked = false;
+                InfoPage.open();
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                if (hideCheckbox && hideCheckbox.checked) {
+                    localStorage.setItem(InfoPage.STORAGE_KEY, 'true');
+                } else {
+                    localStorage.removeItem(InfoPage.STORAGE_KEY);
+                }
+                InfoPage.close();
+            });
+        }
+
+        const userPrefersHide = localStorage.getItem(InfoPage.STORAGE_KEY) === 'true';
+        if (!userPrefersHide) {
+            InfoPage.open();
+        }
+    },
+
+    open: () => {
+        const modal = DOM.get('infoModal');
+        if (modal) modal.style.display = 'flex';
+    },
+
+    close: () => {
+        const modal = DOM.get('infoModal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    toggleInfo: () => {
+        const modal = document.getElementById('infoModal');
+        if (!modal) return;
+
+        const isHidden = modal.style.display === 'none';
+        modal.style.display = isHidden ? 'flex' : 'none';
     }
 };
