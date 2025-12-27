@@ -83,7 +83,6 @@ export const DataProcessor = {
     }
 };
 
-
 // Auto-load preference on startup
 window.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('preferred-theme') || 'dark';

@@ -17,7 +17,7 @@ export const Auth = {
             gsi.src = 'https://accounts.google.com/gsi/client';
             gsi.async = true;
             gsi.defer = true;
-            
+
             const gapiScript = document.createElement('script');
             gapiScript.src = 'https://apis.google.com/js/api.js';
             gapiScript.async = true;
@@ -89,7 +89,7 @@ export const Auth = {
         }
 
         const existingToken = gapi.client.getToken();
-     
+
         if (existingToken && existingToken.expires_at && Date.now() < existingToken.expires_at) {
             if (Auth.onAuthSuccess) Auth.onAuthSuccess();
         } else {

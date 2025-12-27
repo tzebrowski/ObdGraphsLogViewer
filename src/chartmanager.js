@@ -22,7 +22,7 @@ export const ChartManager = {
 
     init: () => {
         window.Hammer = Hammer;
-        
+
         Chart.register(
             LineController,
             LineElement,
