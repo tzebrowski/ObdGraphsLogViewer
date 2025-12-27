@@ -1,19 +1,26 @@
-import templates from './templates.json'; 
+import templates from './templates.json';
+import { Config, AppState, DOM } from './config.js';
+import { Auth } from './auth.js';
+import { Analysis } from './analysis.js';
+import { ChartManager, Sliders } from './chartmanager.js';
+import { UI } from './ui.js';
+import { Drive } from './drive.js';
 
-async function loadConfiguration() {
-    try {
-       if (!templates) {
-            console.error("Config Loader: Error: Missing templates");
-            return;
+export const DataProcessor = {
+
+    loadConfiguration: async () => {
+        try {
+            if (!templates) {
+                console.error("Config Loader: Error: Missing templates");
+                return;
+            }
+            Config.ANOMALY_TEMPLATES = templates;
+        } catch (error) {
+            console.error("Config Loader:", error);
+            Config.ANOMALY_TEMPLATES = {};
         }
-        ANOMALY_TEMPLATES = templates;
-    } catch (error) {
-        console.error("Config Loader:", error);
-        ANOMALY_TEMPLATES = {};
-    }
-}
+    },
 
-const DataProcessor = {
     handleLocalFile: (event) => {
         const files = Array.from(event.target.files);
         if (files.length === 0) return;
@@ -76,7 +83,6 @@ const DataProcessor = {
     }
 };
 
-
 // Auto-load preference on startup
 window.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
@@ -84,12 +90,12 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 window.onload = async function () {
-    await loadConfiguration();
+    await DataProcessor.loadConfiguration();
     Auth.init();
     UI.init();
     Analysis.init();
-
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
+    ChartManager.init();
 
     const fileInput = DOM.get('fileInput');
     if (fileInput) {
@@ -105,8 +111,7 @@ window.onclick = (event) => {
     }
 };
 
-window.DataProcessor = DataProcessor; 
-
+window.DataProcessor = DataProcessor;
 
 window.toggleConfig = () => UI.toggleConfig();
 window.toggleSidebar = () => UI.toggleSidebar();
@@ -121,4 +126,10 @@ window.resetZoom = () => Sliders.reset();
 window.toggleInfo = () => UI.toggleInfo();
 window.loadSampleData = () => UI.loadSampleData();
 window.setTheme = (theme) => UI.setTheme(theme);
+window.removeFile = (f) => ChartManager.removeFile(f);
+window.loadFile = (a, b, c) => Drive.loadFile(a, b, c);
+
+
+
+
 

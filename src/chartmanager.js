@@ -1,6 +1,41 @@
-const ChartManager = {
+import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
+import { UI } from './ui.js';
+import Hammer from 'hammerjs';
+import {
+    Chart,
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    TimeScale,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+} from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import zoomPlugin from 'chartjs-plugin-zoom';
+
+export const ChartManager = {
     hoverValue: null,
     activeChartIndex: null,
+
+    init: () => {
+        window.Hammer = Hammer;
+
+        Chart.register(
+            LineController,
+            LineElement,
+            PointElement,
+            LinearScale,
+            TimeScale,
+            Title,
+            Tooltip,
+            Legend,
+            Filler,
+            zoomPlugin
+        );
+    },
 
     render: () => {
         const container = DOM.get('chartContainer');
@@ -26,7 +61,7 @@ const ChartManager = {
             wrapper.innerHTML = `
                 <div class="chart-header-sm">
                     <span class="chart-name">${file.name}</span>
-                    <button class="btn-remove" onclick="ChartManager.removeFile(${idx})">×</button>
+                    <button class="btn-remove" onclick="removeFile(${idx})">×</button>
                 </div>
                 <div class="canvas-wrapper">
                     <canvas id="chart-${idx}" tabindex="0"></canvas>
@@ -262,7 +297,7 @@ const ChartManager = {
     },
 };
 
-const Sliders = {
+export const Sliders = {
 
     get els() {
         return {
@@ -366,7 +401,3 @@ const Sliders = {
         }
     },
 };
-
-
-window.Sliders = Sliders;
-window.ChartManager = ChartManager;

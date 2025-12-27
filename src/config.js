@@ -1,4 +1,4 @@
-const CHART_COLORS = [
+export const CHART_COLORS = [
     '#00F2FF', // Electric Cyan (Boost/Turbo)
     '#39FF14', // Neon Green (RPM)
     '#FF007F', // Hot Pink (AFR/Lambda)
@@ -10,9 +10,9 @@ const CHART_COLORS = [
     '#FF0000'  // Pure Red (Critical Errors)
 ];
 
-const DEFAULT_SIGNALS = ["Boost", "Rpm", "Pedal", "Trim", "Spark", "Mass"];
+export const DEFAULT_SIGNALS = ["Boost", "Rpm", "Pedal", "Trim", "Spark", "Mass"];
 
-const SIGNAL_MAPPINGS = {
+export const SIGNAL_MAPPINGS = {
     "Intake Manifold Pressure Measured": ["Manifold Abs", "MAP", "Intake Press", "Boost Pressure"],
     "Accelerator Pedal Position": ["Pedal Pos", "APP", "Throttle Pos", "TPS"],
     "Spark Advance": ["Ignition Timing", "Timing Adv", "Spark Angle"],
@@ -20,9 +20,11 @@ const SIGNAL_MAPPINGS = {
     "Short Fuel Trim": ["SFT", "STFT", "Short Term"]
 };
 
-let ANOMALY_TEMPLATES = {};
+export const Config = {
+    ANOMALY_TEMPLATES: {}
+}
 
-const AppState = {
+export const AppState = {
     files: [], // Array of objects: { name, rawData, signals, duration, startTime }
     chartInstances: [], // Array of Chart.js instances
     rawData: [],
@@ -39,14 +41,6 @@ const AppState = {
     }
 };
 
-const DOM = {
+export const DOM = {
     get: (id) => document.getElementById(id)
 };
-
-
-window.CHART_COLORS = CHART_COLORS;
-window.DEFAULT_SIGNALS = DEFAULT_SIGNALS;
-window.SIGNAL_MAPPINGS = SIGNAL_MAPPINGS;
-window.ANOMALY_TEMPLATES = ANOMALY_TEMPLATES;
-window.DOM = DOM;
-window.AppState = AppState;
