@@ -1,21 +1,21 @@
-name: Deploy to GitHub Pages
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: ["main"]
-  workflow_dispatch:
+    branches: [ "main", "master", "feat/*", "fix/*" ]
+    tags:
+      - 'v*' 
+  pull_request:
+    branches: [ "main", "master", "feat/*", "fix/*" ]
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
-  build:
+  
+  validate_and_build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,56 +28,30 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run ESLint
-        run: npx eslint . --ext .js
+        run: npx eslint src --ext .js
 
       - name: Run Stylelint
         run: npx stylelint "**/*.css" --config stylelint.config.mjs
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Minify JSON templates
-        run: |
-          if [ -f "templates.json" ]; then
-            jq -c . templates.json > templates.min.json
-            mv templates.min.json templates.json
-            echo "templates.json minimized."
-          fi
-
-      - name: Minify JavaScript files
-        run: |
-          # Loop through all JS files in the root and minify them in-place
-          for file in *.js; do
-            if [ -f "$file" ]; then
-              echo "Minifying $file..."
-              npx terser "$file" --compress --mangle -o "$file"
-            fi
-          done
-
-      - name: Minify CSS
-        run: |
-          if [ -f "style.css" ]; then
-            # clean-css-cli is a fast Node-based CSS minifier
-            npx clean-css-cli -o style.css style.css
-          fi
-
-      - name: Build
+      - name: Build Application
         run: npx vite build --base ./
 
-      - name: Upload artifact
+      - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
+
   deploy:
+    needs: validate_and_build
+    if: startsWith(github.ref, 'refs/tags/v') 
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
