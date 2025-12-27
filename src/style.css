@@ -525,6 +525,12 @@ input[type="range"]::-webkit-slider-thumb {
     margin-top: 4px;
 }
 
+
+.file-meta-header {
+    font-size: 0.75rem;
+    color: #9a0000;
+}
+
 .drive-file-row {
     padding: 10px;
     border-bottom: 1px solid #f0f0f0;

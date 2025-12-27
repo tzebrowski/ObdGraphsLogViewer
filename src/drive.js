@@ -5,6 +5,7 @@ import { DataProcessor } from './core.js';
 let activeLoadToken = 0;
 
 export const Drive = {
+
     PATH_CONFIG: {
         root: 'mygiulia',
         sub: 'trips'
@@ -76,16 +77,41 @@ export const Drive = {
         }
     },
 
+    getFileMetadata(fileName) {
+
+        const regex = /-(\d+)-(\d+)\.json$/;
+        const match = fileName.match(regex);
+
+        if (!match) return null;
+
+        const date = new Date(parseInt(match[1]));
+        const pad = (num) => num.toString().padStart(2, '0');
+
+        const day = pad(date.getDate());
+        const month = pad(date.getMonth() + 1);
+        const year = date.getFullYear();
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+
+        const formattedDate = `${day}-${month}-${year} ${hours}:${minutes}`;
+
+        return {
+            date: formattedDate,
+            length: match[2]
+        };
+    },
+
     createFileRowHtml(file) {
         const size = file.size ? (file.size / 1024).toFixed(0) + ' KB' : 'Unknown';
-        const date = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString() : 'N/A';
+        const { date, length } = Drive.getFileMetadata(file.name);
 
         return `
             <div class="drive-file-row" onclick="loadFile('${file.name}','${file.id}', this)">
                 <div class="file-name">${file.name}</div>
                 <div class="file-meta">
-                    <span>${date}</span>
-                    <span>${size}</span>
+                    <span class="file-meta-header">date: <strong>${date}</strong></span>
+                    <span class="file-meta-header">length: <strong>${length}s</strong></span>
+                    <span class="file-meta-header">size: <strong>${size}</strong></span>
                 </div>
             </div>`;
     },
@@ -136,7 +162,7 @@ export const Drive = {
     },
 
     handleApiError(error, listEl) {
-        console.error("Drive API Error:", error);         
+        console.error("Drive API Error:", error);
         if (error.status === 401 || error.status === 403) {
             gapi.client.setToken(null);
             if (listEl) listEl.innerHTML = '<div class="error-msg">Session expired. Please click "Drive Scan" again.</div>';
