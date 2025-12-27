@@ -109,6 +109,7 @@ export const Drive = {
             <div class="drive-file-row" onclick="loadFile('${file.name}','${file.id}', this)">
                 <div class="file-name">${file.name}</div>
                 <div class="file-meta">
+                    <i class="fab fa-google-drive"></i>    
                     <span class="file-meta-header">date: <strong>${date}</strong></span>
                     <span class="file-meta-header">length: <strong>${length}s</strong></span>
                     <span class="file-meta-header">size: <strong>${size}</strong></span>
