@@ -10,15 +10,15 @@
   "lean_in_boost": {
     "name": "Lean Mixture under Boost (Dangerous)",
     "rules": [
-      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 1500 },
+      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2200 },
       { "sig": "Lambda Sensor 1", "op": ">", "val": 1.0 }
     ]
   },
   "boost_leak_rich": {
     "name": "Potential Boost Leak (Rich Trim)",
     "rules": [
-      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2000 },
-      { "sig": "Short Fuel Trim", "op": "<", "val": -15 }
+      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2200 },
+      { "sig": "Short Fuel Trim", "op": "<", "val": -10 }
     ]
   }
 }
