@@ -236,7 +236,7 @@ export const UI = {
     initVersionInfo() {
         const container = DOM.get('appVersion');
         if (!container) return;
-        
+
         const { tag, repoUrl } = AppState.version;
 
         if (tag === 'dev') {
@@ -244,14 +244,14 @@ export const UI = {
             return;
         }
 
-        const tagHtml = tag 
-        ? `<a href="${repoUrl}/releases/tag/${tag}" 
+        const tagHtml = tag
+            ? `<a href="${repoUrl}/releases/tag/${tag}" 
               target="_blank" 
               class="version-badge-tag"
               title="View release notes for ${tag}">
               ${tag}
            </a>`
-        : '';
+            : '';
 
         container.innerHTML = `
             <div class="version-container">
