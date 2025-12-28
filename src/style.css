@@ -569,7 +569,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 
 #chartContainer {
-    padding: 40px 5px 5px;
+    padding: 40px 5px 30px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -983,4 +983,53 @@ input[type="range"]::-webkit-slider-thumb {
     margin-bottom: 0;
     border: none;
     pointer-events: none;
+}
+
+.version-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.version-badge-tag {
+    background-color: var(--telemetry-boost);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.version-badge-tag:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.app-version-container {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    z-index: 1000; /* Ensure it stays above the charts */
+    padding: 5px 15px;
+    background: var(--card-bg); /* Adapts to light/dark mode */
+    border-top-left-radius: 8px;
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.footer-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }

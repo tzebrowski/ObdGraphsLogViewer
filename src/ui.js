@@ -30,6 +30,7 @@ export const UI = {
 
     init() {
         UI.initResizer();
+        UI.initVersionInfo();
     },
 
     initResizer() {
@@ -232,28 +233,32 @@ export const UI = {
         localStorage.setItem('preferred-theme', theme);
     },
 
-    renderVersionInfo() {
+    initVersionInfo() {
         const container = DOM.get('appVersion');
         if (!container) return;
+        
+        const { tag, repoUrl } = AppState.version;
 
-        const { hash, repoUrl } = AppState.version;
-
-        if (hash === 'dev') {
+        if (tag === 'dev') {
             container.innerText = 'v.development';
             return;
         }
 
+        const tagHtml = tag 
+        ? `<a href="${repoUrl}/releases/tag/${tag}" 
+              target="_blank" 
+              class="version-badge-tag"
+              title="View release notes for ${tag}">
+              ${tag}
+           </a>`
+        : '';
+
         container.innerHTML = `
-            Version: <a href="${repoUrl}/commit/${hash}" 
-                        target="_blank" 
-                        title="View commit on GitHub"
-                        style="color: var(--text-muted); text-decoration: underline; font-family: monospace;">
-                        ${hash}
-                     </a>
+            <div class="version-container">
+                ${tagHtml}
+            </div>
         `;
     }
-
-
 };
 
 export const InfoPage = {

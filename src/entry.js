@@ -21,8 +21,7 @@ window.onload = async function () {
     ChartManager.init();
     InfoPage.init();
     DragnDrop.init();
-    UI.renderVersionInfo();
-    
+
     const fileInput = DOM.get('fileInput');
     if (fileInput) {
         fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
