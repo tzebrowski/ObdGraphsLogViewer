@@ -2,7 +2,7 @@ import { DOM } from './config.js';
 import { DataProcessor } from './core.js';
 import { UI } from './ui.js';
 
-export const FileHandler = {
+export const DragnDrop = {
     init: () => {
         const dropZone = DOM.get('dropZone');
         const fileInput = DOM.get('fileInput');
@@ -11,7 +11,7 @@ export const FileHandler = {
 
         dropZone.addEventListener('click', () => fileInput.click());
 
-        fileInput.addEventListener('change', (e) => FileHandler.handleFiles(e.target.files));
+        fileInput.addEventListener('change', (e) => DragnDrop.handleFiles(e.target.files));
 
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
@@ -29,8 +29,24 @@ export const FileHandler = {
 
         dropZone.addEventListener('drop', (e) => {
             const dt = e.dataTransfer;
-            FileHandler.handleFiles(dt.files);
+            DragnDrop.handleFiles(dt.files);
         });
+    },
+
+
+    toggleDropZone: () => {
+        console.error("1 !!!!!!!!!!!!!!!!!!!")
+        const dropZone = DOM.get('dropZone');
+
+        if (!dropZone) return;
+
+        const isHidden = dropZone.style.display === 'none';
+
+        if (isHidden) {
+            dropZone.style.display = 'flex';
+        } else {
+           dropZone.style.display = 'none';
+        }
     },
 
     handleFiles: (files) => {

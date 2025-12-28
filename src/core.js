@@ -5,7 +5,7 @@ import { Analysis } from './analysis.js';
 import { ChartManager, Sliders } from './chartmanager.js';
 import { UI, InfoPage } from './ui.js';
 import { Drive } from './drive.js';
-import { FileHandler } from './fileHandler.js';
+import { DragnDrop } from './dragndrop.js';
 
 export const DataProcessor = {
 
@@ -97,7 +97,7 @@ window.onload = async function () {
     Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
     ChartManager.init();
     InfoPage.init();
-    FileHandler.init();
+    DragnDrop.init();
 
     const fileInput = DOM.get('fileInput');
     if (fileInput) {

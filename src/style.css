@@ -77,13 +77,9 @@ html {
     width: 100vw;
 }
 
-/* Sidebar */
-/* Sidebar Container */
 .sidebar {
     min-width: 380px;
-    /* Minimum width allowed */
     max-width: 600px;
-    /* Maximum width allowed */
     width: 380px;
     background: #f8f9fa;
     border-right: 1px solid #ddd;
@@ -115,7 +111,6 @@ html {
     opacity: 0.6;
 }
 
-/* Control Groups */
 .control-group {
     margin-bottom: 15px;
     padding-bottom: 15px;
@@ -132,11 +127,9 @@ html {
 
 .control-group.flex-grow {
     flex: 1;
-    /* Occupy all remaining vertical space */
     display: flex;
     flex-direction: column;
     min-height: 0;
-    /* Critical for inner scrolling to work in flexbox */
     margin-bottom: 0;
     padding-bottom: 0;
     border-bottom: none;
@@ -173,7 +166,6 @@ h3 {
     font-weight: normal;
 }
 
-/* Inputs & Buttons */
 input[type="text"],
 input[type="password"],
 input[type="number"] {
@@ -243,7 +235,6 @@ input[type="number"] {
     margin-top: 10px;
 }
 
-/* Drive Config */
 #configPanel {
     display: none;
     margin-bottom: 10px;
@@ -267,7 +258,6 @@ input[type="number"] {
     color: #666;
 }
 
-/* Anomaly Scanner */
 .template-select {
     width: 100%;
     padding: 5px;
@@ -356,7 +346,6 @@ input[type="number"] {
     text-align: right;
 }
 
-/* Sliders */
 .slider-wrapper {
     position: relative;
     height: 30px;
@@ -411,7 +400,6 @@ input[type="range"]::-webkit-slider-thumb {
     color: #555;
 }
 
-/* Signal List */
 .signal-list {
     flex: 1;
     overflow: auto;
@@ -435,7 +423,6 @@ input[type="range"]::-webkit-slider-thumb {
     background: #f8f9fa;
 }
 
-/* Main Content & Chart */
 .main-content {
     flex: 1;
     position: relative;
@@ -457,7 +444,6 @@ input[type="range"]::-webkit-slider-thumb {
     width: auto;
 }
 
-/* Scrollbars */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -484,7 +470,6 @@ input[type="range"]::-webkit-slider-thumb {
     height: 100%;
     background: rgb(255 255 255 / 80%);
     z-index: 9999;
-    /* Sit on top of everything */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -553,12 +538,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 .loading-overlay .btn {
     width: auto;
-    /* Prevents stretching to full width */
     min-width: 120px;
-    /* Gives it a professional, consistent size */
     margin-top: 20px;
     padding: 8px 24px;
-    /* Adds breathing room inside the button */
     background-color: #fff;
     color: var(--primary-red);
     border: 1px solid var(--primary-red);
@@ -567,11 +549,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 .loading-overlay .btn:hover {
     background-color: var(--active-bg);
-    /* Slight tint on hover */
 }
 
 
-/* The Resize Handle */
 .resizer {
     width: 4px;
     cursor: col-resize;
@@ -593,16 +573,13 @@ input[type="range"]::-webkit-slider-thumb {
     display: flex;
     flex-direction: column;
     height: 100%;
-    /* Spans full height of mainContent */
     overflow: hidden;
-    /* Stops page from scrolling so charts must fit */
     gap: 10px;
     box-sizing: border-box;
 }
 
 .chart-wrapper {
     flex: 0 0 400px;
-    /* Each chart gets at least 400px height */
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -652,12 +629,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 .chart-card-compact {
     flex: 1;
-    /* Shares screen height equally among all files */
     display: flex;
     flex-direction: column;
     min-height: 0;
-    /* Important: Allows charts to shrink smaller than default */
-
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -691,8 +665,6 @@ input[type="range"]::-webkit-slider-thumb {
     border-radius: 10px;
 }
 
-
-/* Modal Overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -762,7 +734,6 @@ input[type="range"]::-webkit-slider-thumb {
     padding-top: 15px;
 }
 
-/* Floating Button */
 .floating-info-btn {
     position: fixed;
     bottom: 20px;
@@ -791,8 +762,6 @@ input[type="range"]::-webkit-slider-thumb {
     }
 }
 
-
-/* Data Source Container */
 .data-source-flex {
     display: flex;
     align-items: center;
@@ -800,7 +769,6 @@ input[type="range"]::-webkit-slider-thumb {
     margin-top: 10px;
 }
 
-/* Enhanced App Icon */
 .app-icon {
     width: 56px;
     height: 56px;
@@ -811,7 +779,6 @@ input[type="range"]::-webkit-slider-thumb {
     object-fit: contain;
 }
 
-/* Play Store Badge Button */
 .play-store-btn {
     display: inline-block;
     margin-top: 10px;
@@ -831,7 +798,6 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 
-/* Import Steps Styling */
 .import-steps {
     margin: 10px 0 0;
     padding-left: 20px;
@@ -848,7 +814,6 @@ input[type="range"]::-webkit-slider-thumb {
     color: #9a0000;
 }
 
-/* Grid adjustment for full-width cards */
 .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -856,14 +821,10 @@ input[type="range"]::-webkit-slider-thumb {
     margin-bottom: 20px;
 }
 
-/* Ensure full-width cards actually take full width */
 .info-card[style*="grid-column: span 2"] {
     grid-column: 1 / -1;
 }
 
-
-
-/* style.css */
 .sample-data-box {
     position: relative;
     border: 2px solid #e9ecef;
@@ -899,7 +860,6 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 
-
 #signalList .signal-item {
     display: flex;
     align-items: center;
@@ -908,11 +868,6 @@ input[type="range"]::-webkit-slider-thumb {
     transition: background 0.2s;
 }
 
-/* #signalList .signal-item:hover {
-    background: #2a2a2a;
-} */
-
-/* Custom checkbox color dots */
 .color-dot {
     width: 10px;
     height: 10px;
@@ -920,11 +875,9 @@ input[type="range"]::-webkit-slider-thumb {
     margin-right: 10px;
     display: inline-block;
     box-shadow: 0 0 5px currentColor;
-    /* Makes the dot "glow" */
 }
 
 
-/* Custom Checkbox Styling */
 .modal-preferences {
     display: flex;
     justify-content: space-between;
@@ -945,7 +898,6 @@ input[type="range"]::-webkit-slider-thumb {
     user-select: none;
 }
 
-/* Hide the default checkbox */
 .custom-checkbox-container input {
     position: absolute;
     opacity: 0;
@@ -954,7 +906,6 @@ input[type="range"]::-webkit-slider-thumb {
     width: 0;
 }
 
-/* Create a custom checkmark */
 .checkmark {
     position: absolute;
     top: 0;
@@ -966,29 +917,24 @@ input[type="range"]::-webkit-slider-thumb {
     transition: all 0.2s ease;
 }
 
-/* On hover, add a grey background color */
 .custom-checkbox-container:hover input~.checkmark {
     background-color: #ccc;
 }
 
-/* When the checkbox is checked, add the primary red background */
 .custom-checkbox-container input:checked~.checkmark {
     background-color: var(--primary-red);
 }
 
-/* Create the checkmark/indicator (hidden when not checked) */
 .checkmark::after {
     content: "";
     position: absolute;
     display: none;
 }
 
-/* Show the checkmark when checked */
 .custom-checkbox-container input:checked~.checkmark::after {
     display: block;
 }
 
-/* Style the checkmark (the "L" shape) */
 .custom-checkbox-container .checkmark::after {
     left: 6px;
     top: 2px;
@@ -999,8 +945,10 @@ input[type="range"]::-webkit-slider-thumb {
     transform: rotate(45deg);
 }
 
-
 .drop-zone {
+    justify-content: center;
+    align-items: center;
+    display: flex;
     border: 2px dashed var(--border-color);
     border-radius: 8px;
     padding: 4px;
@@ -1025,4 +973,15 @@ input[type="range"]::-webkit-slider-thumb {
 .drop-zone-content p span {
     color: var(--primary-red);
     text-decoration: underline;
+}
+
+.drop-zone.is-hidden {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    border: none;
+    pointer-events: none;
 }
