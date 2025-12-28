@@ -37,7 +37,9 @@ jobs:
         run: npx stylelint "**/*.css" --config stylelint.config.mjs
 
       - name: Build Application
-        run: npx vite build --base ./
+        run: |
+          export VITE_GIT_TAG=$(git describe --tags --match "v*" --abbrev=0 || echo "")
+          npx vite build --base ./
 
       - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
