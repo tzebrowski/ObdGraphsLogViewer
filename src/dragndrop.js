@@ -1,11 +1,12 @@
 import { DOM } from './config.js';
-import { DataProcessor } from './core.js';
+import { DataProcessor } from './dataprocesssor.js';
 import { UI } from './ui.js';
 
 export const DragnDrop = {
+   
     init: () => {
         const dropZone = DOM.get('dropZone');
-        const fileInput = DOM.get('fileInput');
+        const fileInput = DOM.get('fileInputDropZone');
 
         if (!dropZone || !fileInput) return;
 
@@ -35,7 +36,6 @@ export const DragnDrop = {
 
 
     toggleDropZone: () => {
-        console.error("1 !!!!!!!!!!!!!!!!!!!")
         const dropZone = DOM.get('dropZone');
 
         if (!dropZone) return;
@@ -45,7 +45,7 @@ export const DragnDrop = {
         if (isHidden) {
             dropZone.style.display = 'flex';
         } else {
-           dropZone.style.display = 'none';
+            dropZone.style.display = 'none';
         }
     },
 
@@ -76,5 +76,4 @@ export const DragnDrop = {
             }
         }, 50);
     }
-
 };

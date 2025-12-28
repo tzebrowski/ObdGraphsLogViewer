@@ -5,9 +5,6 @@ export const Auth = {
     DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
     onAuthSuccess: null,
 
-    /**
-     * Dynamically injects Google scripts and waits for them to load.
-     */
     loadGoogleScripts: () => {
         return new Promise((resolve, reject) => {
             // Check if already loaded to avoid duplicates

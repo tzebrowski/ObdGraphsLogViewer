@@ -1,6 +1,6 @@
 import { DOM } from './config.js';
 import { UI } from './ui.js';
-import { DataProcessor } from './core.js';
+import { DataProcessor } from './dataprocesssor.js';
 
 let activeLoadToken = 0;
 

@@ -633,7 +633,6 @@ input[type="range"]::-webkit-slider-thumb {
     flex-direction: column;
     min-height: 0;
     background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: 0 4px 15px rgb(0 0 0 / 50%);
     margin-bottom: 1px;

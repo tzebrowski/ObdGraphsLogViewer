@@ -1,5 +1,5 @@
 import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
-import { DataProcessor } from './core.js';
+import { DataProcessor } from './dataprocesssor.js';
 import { DragnDrop } from './dragndrop.js';
 
 export const UI = {
