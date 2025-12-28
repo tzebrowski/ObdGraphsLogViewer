@@ -1,4 +1,4 @@
-import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
+import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
 import { UI } from './ui.js';
 import Hammer from 'hammerjs';
 import {
@@ -105,7 +105,8 @@ export const ChartManager = {
 
         const datasets = file.availableSignals.map((key, idx) => {
             const isImportant = DEFAULT_SIGNALS.some(k => key.includes(k));
-            const color = CHART_COLORS[idx % CHART_COLORS.length];
+            const chartColors = getChartColors()
+            const color = chartColors[idx % chartColors.length];
             return {
                 label: key,
                 data: file.signals[key],

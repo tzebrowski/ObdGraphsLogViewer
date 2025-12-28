@@ -4,6 +4,7 @@
   "description": "Desktop Viewer for Alfa Romeo Telemetry",
   "main": "main.js",
   "scripts": {
+    "dev": "vite",
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"

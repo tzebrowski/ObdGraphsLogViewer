@@ -1,4 +1,4 @@
-import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
+import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { DragnDrop } from './dragndrop.js';
 
@@ -127,7 +127,8 @@ export const UI = {
 
         signals.forEach((signal, idx) => {
             const isImportant = DEFAULT_SIGNALS.some(k => signal.includes(k));
-            const color = CHART_COLORS[idx % CHART_COLORS.length];
+            const chartColors = getChartColors()
+            const color = chartColors[idx % chartColors.length];
 
             const label = document.createElement('label');
             label.className = 'signal-item';
@@ -229,7 +230,30 @@ export const UI = {
         });
 
         localStorage.setItem('preferred-theme', theme);
+    },
+
+    renderVersionInfo() {
+        const container = DOM.get('appVersion');
+        if (!container) return;
+
+        const { hash, repoUrl } = AppState.version;
+
+        if (hash === 'dev') {
+            container.innerText = 'v.development';
+            return;
+        }
+
+        container.innerHTML = `
+            Version: <a href="${repoUrl}/commit/${hash}" 
+                        target="_blank" 
+                        title="View commit on GitHub"
+                        style="color: var(--text-muted); text-decoration: underline; font-family: monospace;">
+                        ${hash}
+                     </a>
+        `;
     }
+
+
 };
 
 export const InfoPage = {
