@@ -84,6 +84,9 @@
             <div class="toolbar">
                 <button class="btn" onclick="toggleSidebar()">☰</button>
                 <button class="btn" onclick="toggleFullScreen()">⛶</button>
+                <button class="btn" onclick="toggleInfo()" title="App Info">
+                    <i class="fas fa-info-circle fa-xl" style="color: var(--primary-red);"></i>
+                </button>
             </div>
 
             <div id="chartContainer">
@@ -184,16 +187,16 @@
                         <button id="closeInfoBtn" class="btn btn-primary">Got it!</button>
                     </div>
                 </div>
-
-                <div class="technical-meta">
-                    <div id="appVersion"><strong>Version:</strong> 2.5.0</div>
-                    <span><strong>Compatible Format:</strong> MyGiulia JSON</span>
-                </div>
             </div>
         </div>
     </div>
 
-    <button class="floating-info-btn" onclick="toggleInfo()" title="App Info">i</button>
+    <footer>
+        <div class="footer-content">
+            <small>© 2025 My Giulia Telemetry Analyzer</small>
+            <span id="appVersion" class="app-version-container"></span>
+        </div>
+    </footer>
 
     <script type="module" src="./src/config.js"></script>
     <script type="module" src="./src/auth.js"></script>
@@ -203,6 +206,6 @@
     <script type="module" src="./src/analysis.js"></script>
     <script type="module" src="./src/dataprocesssor.js"></script>
     <script type="module" src="./src/entry.js"></script>
-</body>
 
+</body>
 </html>

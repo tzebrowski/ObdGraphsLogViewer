@@ -44,11 +44,11 @@ export const Config = {
 
 export const AppState = {
     version: {
-        hash: import.meta.env.VITE_GIT_HASH || 'dev',
+        tag: import.meta.env.VITE_GIT_TAG || 'dev',
         repoUrl: 'https://github.com/tzebrowski/ObdGraphsLogViewer'
     },
-    files: [], // Array of objects: { name, rawData, signals, duration, startTime }
-    chartInstances: [], // Array of Chart.js instances
+    files: [],
+    chartInstances: [],
     rawData: [],
     signals: {},
     availableSignals: [],
