@@ -85,8 +85,17 @@
                 <button class="btn" onclick="toggleSidebar()">☰</button>
                 <button class="btn" onclick="toggleFullScreen()">⛶</button>
             </div>
+
             <div id="chartContainer">
                 <canvas id="telemetryChart"></canvas>
+            </div>
+
+            <div id="dropZone" class="drop-zone">
+                <div class="drop-zone-content">
+                    <i class="fas fa-file-upload"></i>
+                    <p>Drag & Drop telemetry JSON here or <span>browse</span></p>
+                    <input type="file" id="fileInput" accept=".json" hidden>
+                </div>
             </div>
         </div>
     </div>
@@ -97,6 +106,7 @@
         <div id="loadingText">Loading...</div>
         <button id="cancelLoadBtn" class="btn">Cancel</button>
     </div>
+
 
     <div id="infoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">

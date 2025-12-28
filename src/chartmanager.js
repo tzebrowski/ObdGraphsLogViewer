@@ -110,12 +110,12 @@ export const ChartManager = {
                 label: key,
                 data: file.signals[key],
                 borderColor: color,
-                backgroundColor: ChartManager.getAlphaColor(color, 0.25), // Subtle glow fill
+                backgroundColor: ChartManager.getAlphaColor(color, 0.25), 
                 borderWidth: 2,
-                pointRadius: 0, // Keeps lines clean
+                pointRadius: 0,
                 pointHoverRadius: 4,
-                tension: 0.3,   // Smooths out jagged sensor noise
-                fill: true,      // Adds the neon "area" look
+                tension: 0.3,   
+                fill: true,    
                 hidden: !isImportant
             };
         });
@@ -126,11 +126,11 @@ export const ChartManager = {
             plugins: [ChartManager.highlighterPlugin],
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // Stretch to share height
+                maintainAspectRatio: false,
                 animation: false,
                 interaction: {
-                    mode: 'index',      // Shows all signal values in the "menu"
-                    intersect: false    // Triggers tooltip without needing to hover a specific dot
+                    mode: 'index',     
+                    intersect: false    
                 },
                 scales: {
                     x: {
@@ -144,7 +144,7 @@ export const ChartManager = {
                     legend: {
                         display: true,
                         position: 'top',
-                        align: 'end', // Keeps it tucked to the right
+                        align: 'end', 
                         labels: {
                             boxWidth: 12,
                             padding: 10,
@@ -152,7 +152,8 @@ export const ChartManager = {
                                 size: 11
                             },
                             filter: (item) => {
-                                const checkbox = document.querySelector(`#signalList input[data-key="${item.text}"]`);
+                                const text =  item.text.replace(/\n/g, " ");
+                                const checkbox = document.querySelector(`#signalList input[data-key="${text}"]`);
                                 return checkbox ? checkbox.checked : false;
                             }
                         }
@@ -167,7 +168,7 @@ export const ChartManager = {
                         borderColor: '#444',
                         borderWidth: 1,
                         padding: 10,
-                        bodyFont: { family: 'monospace' }, // Monospace looks "techy" for data
+                        bodyFont: { family: 'monospace' },
                         position: 'nearest',
                         callbacks: {
                             label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}`
@@ -176,20 +177,20 @@ export const ChartManager = {
                     zoom: {
                         pan: {
                             enabled: true,
-                            mode: 'x', // Only pan left/right
-                            threshold: 10, // Minimum drag distance
-                            onPan: ChartManager.syncAll // Keeps charts aligned
+                            mode: 'x', 
+                            threshold: 10, 
+                            onPan: ChartManager.syncAll
                         },
                         zoom: {
                             wheel: {
-                                enabled: true, // Mouse wheel to zoom
+                                enabled: true,
                                 speed: 0.1
                             },
                             pinch: {
-                                enabled: true // Touch support
+                                enabled: true 
                             },
-                            mode: 'x', // Only zoom time axis
-                            onZoom: ChartManager.syncAll // Keeps charts aligned
+                            mode: 'x', 
+                            onZoom: ChartManager.syncAll
                         }
                     },
                 }

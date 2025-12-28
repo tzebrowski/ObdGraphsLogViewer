@@ -1,5 +1,6 @@
 import { AppState, DOM, DEFAULT_SIGNALS, CHART_COLORS } from './config.js';
 import { DataProcessor } from './core.js';
+import { DragnDrop } from './dragndrop.js';
 
 export const UI = {
     get elements() {
@@ -17,6 +18,7 @@ export const UI = {
     },
 
     toggleConfig() {
+
         const p = DOM.get('configPanel');
         if (!p) return;
 
@@ -98,6 +100,7 @@ export const UI = {
             el.sidebar.classList.toggle('collapsed');
             setTimeout(() => AppState.chartInstance?.resize(), 350);
         }
+        DragnDrop.toggleDropZone()
     },
 
     toggleFullScreen() {
