@@ -432,6 +432,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .toolbar {
+    padding-top: 4px;
     position: absolute;
     top: 0;
     left: 15px;
