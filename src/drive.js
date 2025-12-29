@@ -2,9 +2,9 @@ import { DOM } from './config.js';
 import { UI } from './ui.js';
 import { DataProcessor } from './dataprocesssor.js';
 
-let activeLoadToken = 0;
-
 export const Drive = {
+
+    activeLoadToken: 0,
 
     PATH_CONFIG: {
         root: 'mygiulia',
@@ -14,8 +14,8 @@ export const Drive = {
     async findFolderId(name, parentId = 'root') {
         try {
             const query = `mimeType='application/vnd.google-apps.folder' and 
-                           (name = '${name}' or name = '${name.toLowerCase()}' or name = '${name.charAt(0).toUpperCase() + name.slice(1)}') 
-                           and '${parentId}' in parents and trashed=false`;
+                            (name = '${name}' or name = '${name.toLowerCase()}' or name = '${name.charAt(0).toUpperCase() + name.slice(1)}') 
+                            and '${parentId}' in parents and trashed=false`;
 
             const response = await gapi.client.drive.files.list({
                 q: query,
@@ -57,7 +57,7 @@ export const Drive = {
         }
     },
 
-     fetchJsonFiles: async (folderId, listEl) => {
+    fetchJsonFiles: async (folderId, listEl) => {
         try {
             const res = await gapi.client.drive.files.list({
                 pageSize: 25,
@@ -106,15 +106,15 @@ export const Drive = {
         const { date, length } = Drive.getFileMetadata(file.name);
 
         return `
-            <div class="drive-file-row" onclick="loadFile('${file.name}','${file.id}', this)">
-                <div class="file-name">${file.name}</div>
-                <div class="file-meta">
-                    <i class="fab fa-google-drive"></i>    
-                    <span class="file-meta-header">date: <strong>${date}</strong></span>
-                    <span class="file-meta-header">length: <strong>${length}s</strong></span>
-                    <span class="file-meta-header">size: <strong>${size}</strong></span>
-                </div>
-            </div>`;
+                <div class="drive-file-row" onclick="loadFile('${file.name}','${file.id}', this)">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-meta">
+                        <i class="fab fa-google-drive"></i>    
+                        <span class="file-meta-header">date: <strong>${date}</strong></span>
+                        <span class="file-meta-header">length: <strong>${length}s</strong></span>
+                        <span class="file-meta-header">size: <strong>${size}</strong></span>
+                    </div>
+                </div>`;
     },
 
     async loadFile(fileName, id, element) {
@@ -123,9 +123,9 @@ export const Drive = {
             element.classList.add('active');
         }
 
-        const currentToken = ++activeLoadToken;
+        const currentToken = ++this.activeLoadToken;
         const cancelTask = () => {
-            activeLoadToken++;
+            this.activeLoadToken++;
             UI.setLoading(false);
             const fileInfo = DOM.get('fileInfo');
             if (fileInfo) fileInfo.innerText = "Load cancelled.";
@@ -137,12 +137,12 @@ export const Drive = {
 
         try {
             const response = await gapi.client.drive.files.get({ fileId: id, alt: 'media' });
-            if (currentToken !== activeLoadToken) return;
+            if (currentToken !== this.activeLoadToken) return;
 
             UI.setLoading(true, "Processing Log...", null);
 
             setTimeout(() => {
-                if (currentToken !== activeLoadToken) return;
+                if (currentToken !== this.activeLoadToken) return;
                 try {
                     DataProcessor.process(response.result, fileName);
                     const fileInfoFinish = DOM.get('fileInfo');
@@ -156,7 +156,7 @@ export const Drive = {
             }, 50);
 
         } catch (error) {
-            if (currentToken !== activeLoadToken) return;
+            if (currentToken !== this.activeLoadToken) return;
             UI.setLoading(false);
             alert(`Drive Error: ${error.result?.error?.message || error.message}`);
         }

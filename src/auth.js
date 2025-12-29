@@ -21,7 +21,7 @@ export const Auth = {
             gapiScript.defer = true;
 
             gapiScript.onload = () => resolve();
-            gapiScript.onerror = (e) => reject(new Error("Failed to load GAPI"));
+            gapiScript.onerror = (e) => reject(new Error(`Failed to load GAPI ${e.message}`));
 
             document.head.appendChild(gsi);
             document.head.appendChild(gapiScript);
