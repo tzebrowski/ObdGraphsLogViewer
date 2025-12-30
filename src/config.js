@@ -34,6 +34,8 @@ export const DEFAULT_SIGNALS = [
   'Trim',
   'Spark',
   'Mass',
+  'Intake',
+  'Torque',
 ];
 
 export const SIGNAL_MAPPINGS = {
