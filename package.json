@@ -5,6 +5,8 @@
   "main": "main.js",
   "scripts": {
     "dev": "vite",
+    "format": "prettier --write .",
+    "check": "prettier --check .",
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
@@ -25,6 +27,7 @@
     "electron-builder": "^24.9.1",
     "eslint": "^9.39.2",
     "globals": "^16.5.0",
+    "prettier": "3.7.4",
     "stylelint": "^16.26.1",
     "stylelint-config-standard": "^39.0.1",
     "vite": "^7.3.0"

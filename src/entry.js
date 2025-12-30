@@ -8,32 +8,32 @@ import { DragnDrop } from './dragndrop.js';
 import { DataProcessor } from './dataprocesssor.js';
 
 window.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
-    UI.setTheme(savedTheme);
+  const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
+  UI.setTheme(savedTheme);
 });
 
 window.onload = async function () {
-    await DataProcessor.loadConfiguration();
-    Auth.init();
-    UI.init();
-    Analysis.init();
-    Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
-    ChartManager.init();
-    InfoPage.init();
-    DragnDrop.init();
+  await DataProcessor.loadConfiguration();
+  Auth.init();
+  UI.init();
+  Analysis.init();
+  Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
+  ChartManager.init();
+  InfoPage.init();
+  DragnDrop.init();
 
-    const fileInput = DOM.get('fileInput');
-    if (fileInput) {
-        fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
-        fileInput.addEventListener('change', DataProcessor.handleLocalFile);
-    }
+  const fileInput = DOM.get('fileInput');
+  if (fileInput) {
+    fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
+    fileInput.addEventListener('change', DataProcessor.handleLocalFile);
+  }
 };
 
 window.onclick = (event) => {
-    const modal = document.getElementById('infoModal');
-    if (event.target === modal) {
-        UI.toggleInfo();
-    }
+  const modal = document.getElementById('infoModal');
+  if (event.target === modal) {
+    UI.toggleInfo();
+  }
 };
 
 window.toggleConfig = () => UI.toggleConfig();
