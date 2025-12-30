@@ -8,8 +8,8 @@ export default defineConfig({
     assetsDir: 'assets',
   },
   define: {
-    'import.meta.env.VITE_GIT_TAG': JSON.stringify(execSync('git describe --tags --match "v*" --abbrev=0')
-      .toString()
-      .trim())
-  }
+    'import.meta.env.VITE_GIT_TAG': JSON.stringify(
+      execSync('git describe --tags --match "v*" --abbrev=0').toString().trim()
+    ),
+  },
 });
