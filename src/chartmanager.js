@@ -7,6 +7,7 @@ import {
   LineElement,
   PointElement,
   LinearScale,
+  LogarithmicScale,
   TimeScale,
   Title,
   Tooltip,
@@ -28,6 +29,7 @@ export const ChartManager = {
       LineElement,
       PointElement,
       LinearScale,
+      LogarithmicScale,
       TimeScale,
       Title,
       Tooltip,
@@ -111,16 +113,30 @@ export const ChartManager = {
       const isImportant = DEFAULT_SIGNALS.some((k) => key.includes(k));
       const chartColors = getChartColors();
       const color = chartColors[idx % chartColors.length];
+
+      const rawData = file.signals[key];
+      const yValues = rawData.map((d) => parseFloat(d.y) || 0);
+      const min = Math.min(...yValues);
+      const max = Math.max(...yValues);
+      const range = max - min;
+
+      const normalizedData = rawData.map((d) => ({
+        x: d.x,
+        y: range === 0 ? 0 : (parseFloat(d.y) - min) / range,
+      }));
+
       return {
         label: key,
-        data: file.signals[key],
+        originalMin: min,
+        originalMax: max,
+        data: normalizedData,
         borderColor: color,
-        backgroundColor: ChartManager.getAlphaColor(color, 0.25),
-        borderWidth: 2,
+        backgroundColor: 'transparent',
+        borderWidth: isImportant ? 3 : 1.5,
         pointRadius: 0,
-        pointHoverRadius: 4,
-        tension: 0.3,
-        fill: true,
+        pointHoverRadius: 6,
+        tension: 0.1,
+        fill: false,
         hidden: !isImportant,
       };
     });
@@ -138,6 +154,14 @@ export const ChartManager = {
           intersect: false,
         },
         scales: {
+          y: {
+            // type: 'logarithmic',
+            beginAtZero: true,
+            max: 1.05,
+            ticks: {
+              display: false,
+            },
+          },
           x: {
             type: 'time',
             time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
@@ -178,8 +202,14 @@ export const ChartManager = {
             bodyFont: { family: 'monospace' },
             position: 'nearest',
             callbacks: {
-              label: (c) =>
-                ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}`,
+              label: (context) => {
+                const ds = context.dataset;
+                const normalizedY = context.parsed.y;
+                const realY =
+                  normalizedY * (ds.originalMax - ds.originalMin) +
+                  ds.originalMin;
+                return ` ${ds.label}: ${realY.toFixed(2)}`;
+              },
             },
           },
           zoom: {
