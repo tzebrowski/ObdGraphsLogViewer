@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         docs: resolve(__dirname, 'docs.html'),
+        policy: resolve(__dirname, 'policy.html'),
       },
     },
   },
