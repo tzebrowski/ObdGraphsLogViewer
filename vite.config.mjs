@@ -11,12 +11,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-  },
-
-  rollupOptions: {
-    input: {
-      main: resolve(__dirname, 'index.html'),
-      docs: resolve(__dirname, 'docs.html'),
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        docs: resolve(__dirname, 'docs.html'),
+      },
     },
   },
   define: {
