@@ -12,7 +12,7 @@
   --text-muted: #666;
   --transition-speed: 0.3s;
   --active-bg: #fdf2f2;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 2px 4px rgb(0 0 0 / 10%);
   --bg-color: #f4f7f6;
   --card-bg: #fff;
   --chart-canvas-bg: #fff;
@@ -89,7 +89,7 @@ html {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 2px 0 5px rgb(0 0 0 / 5%);
   transition: margin-left 0.3s ease;
   z-index: 10;
   height: 100vh;
@@ -1042,6 +1042,7 @@ footer {
 .fa-info-circle {
   color: var(--brand-red);
 }
+
 .fa-file-upload {
   color: var(--brand-blue);
 }
