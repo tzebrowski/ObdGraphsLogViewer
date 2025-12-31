@@ -1,26 +1,28 @@
 :root {
-  /* Color Palette */
-  --primary-red: #9a0000;
+  /* Brand Color Palette */
+  --brand-green: #01804f;
+  --brand-red: #c22636;
+  --brand-blue: #1c3d72;
+
+  /* Functional Variable Mappings */
+  --primary-red: var(--brand-red);
   --sidebar-bg: #f8f9fa;
   --border-color: #ddd;
-  /* Combined duplicates */
   --text-main: #333;
-  /* Combined duplicates */
   --text-muted: #666;
   --transition-speed: 0.3s;
-  --active-bg: #ffebeb;
-  --shadow-sm: 0 2px 4px rgb(248 7 7 / 5%);
+  --active-bg: #fdf2f2;
+  --shadow-sm: 0 2px 4px rgb(0 0 0 / 10%);
   --bg-color: #f4f7f6;
   --card-bg: #fff;
   --chart-canvas-bg: #fff;
   --text-color: #333;
-  /* Added for the dark-theme variable reference */
 }
 
 body.dark-theme {
-  --border-color: #333;
-  --bg-color: #121212;
   --chart-canvas-bg: #1a1a1a;
+  --text-main: #e0e0e0;
+  --text-muted: #aaa;
 }
 
 /* Combined the duplicate sidebar selectors into one block */
@@ -63,9 +65,12 @@ html {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
   font-size: 15px;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  transition: background 0.3s ease;
 }
 
 .app-container {
@@ -79,8 +84,8 @@ html {
   min-width: 380px;
   max-width: 600px;
   width: 380px;
-  background: #f8f9fa;
-  border-right: 1px solid #ddd;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   padding: 20px;
@@ -97,9 +102,9 @@ html {
 
 .sidebar h2 {
   margin-top: 0;
-  color: #9a0000;
+  color: var(--brand-red);
   font-size: 1.4em;
-  border-bottom: 2px solid #e9ecef;
+  border-bottom: 2px solid var(--brand-blue);
   padding-bottom: 10px;
   flex-shrink: 0;
 }
@@ -112,13 +117,13 @@ html {
 .control-group {
   margin-bottom: 15px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .control-group.anomaly-box {
-  background: #fffdfd;
-  border: 1px solid #ffeeba;
+  background: var(--card-bg);
+  border: 1px solid var(--brand-red);
   padding: 10px;
   border-radius: 4px;
 }
@@ -156,11 +161,8 @@ h3 {
 }
 
 .config-link {
-  cursor: pointer;
-  color: #9a0000;
-  font-size: 0.8em;
-  text-transform: none;
-  font-weight: normal;
+  color: var(--brand-green);
+  font-weight: bold;
 }
 
 input[type='text'],
@@ -180,10 +182,10 @@ input[type='number'] {
   padding: 6px 12px;
   cursor: pointer;
   border-radius: 4px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
   font-weight: 600;
   color: #333;
   width: 100%;
+  transition: all 0.2s;
 }
 
 .btn:hover {
@@ -191,13 +193,13 @@ input[type='number'] {
 }
 
 .btn-primary {
-  background: #9a0000;
+  background: var(--brand-green);
   color: white;
   border: none;
 }
 
 .btn-primary:hover {
-  background: #c00;
+  background: #01633d;
 }
 
 .btn-sm {
@@ -207,11 +209,25 @@ input[type='number'] {
 }
 
 .btn-add {
-  background: #e2e6ea;
-  border: 1px dashed #aaa;
-  color: #555;
+  background: var(--brand-blue);
+  color: white;
+  border: none;
   font-size: 0.8em;
   margin-top: 5px;
+}
+
+.btn-add:hover {
+  background: #152e56;
+}
+
+.btn-docs {
+  background-color: var(--brand-blue) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-docs:hover {
+  background-color: #152e56 !important;
 }
 
 .button-row {
@@ -327,13 +343,13 @@ input[type='number'] {
 }
 
 .result-item:hover {
-  background: #ffebeb;
-  color: #9a0000;
+  background: var(--active-bg);
+  color: var(--brand-red);
 }
 
 .result-item.selected {
-  background: #ffebeb;
-  border-left: 3px solid #9a0000;
+  background: var(--active-bg);
+  border-left: 3px solid var(--brand-red);
 }
 
 .result-count {
@@ -1009,21 +1025,26 @@ footer {
   position: fixed;
   bottom: 0;
   right: 0;
-  z-index: 1000;
-  /* Ensure it stays above the charts */
   padding: 5px 15px;
   background: var(--card-bg);
-  /* Adapts to light/dark mode */
   border-top-left-radius: 8px;
   border-left: 1px solid var(--border-color);
   border-top: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  font-size: 0.8rem;
 }
 
 .footer-content {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.fa-info-circle {
+  color: var(--brand-red);
+}
+
+.fa-file-upload {
+  color: var(--brand-blue);
 }
 
 /* Mobile Responsiveness (Tablets and Phones) */
