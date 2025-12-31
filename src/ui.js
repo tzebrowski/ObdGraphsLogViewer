@@ -39,7 +39,7 @@ export const UI = {
 
     if (!resizer || !sidebar) return;
 
-    resizer.addEventListener('mousedown', (e) => {
+    resizer.addEventListener('mousedown', () => {
       isResizing = true;
       document.body.style.cursor = 'col-resize';
       // Add a temporary overlay to prevent iframe/chart interference while dragging

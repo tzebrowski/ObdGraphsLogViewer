@@ -8,7 +8,7 @@ A lightweight, browser-based telemetry log viewer designed for automotive diagno
 
 ## ☁️ Hosting
 
-The application is automatically built and deployed via GitHub Actions to GitHub Pages: [MyGiuliaLogViewer](https://tzebrowski.github.io/ObdGraphsLogViewer 'MyGiuliaLogViewer')
+The application is automatically built and deployed via GitHub Actions to GitHub Pages: [MyGiuliaLogViewer](https://my-giulia.com/ 'MyGiuliaLogViewer')
 
 ---
 
