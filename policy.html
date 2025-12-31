@@ -5,16 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Legal Information - MyGiulia & Telemetry Analyzer</title>
     <style>
+      :root {
+        --primary-red: #9a0000;
+        --text-main: #333;
+        --bg-color: #fcfcfc;
+      }
       body {
         font-family:
-          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
-          Arial, sans-serif;
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         line-height: 1.6;
-        color: #333;
+        color: var(--text-main);
         max-width: 850px;
         margin: 40px auto;
         padding: 0 20px;
-        background-color: #fcfcfc;
+        background-color: var(--bg-color);
       }
       .container {
         background-color: #fff;
@@ -24,15 +28,14 @@
         border: 1px solid #eee;
       }
       h1 {
-        border-bottom: 2px solid #2c3e50;
+        border-bottom: 2px solid var(--primary-red);
         padding-bottom: 10px;
         color: #2c3e50;
-        font-size: 1.8em;
       }
       h2 {
         margin-top: 35px;
         color: #2c3e50;
-        border-left: 5px solid #3498db;
+        border-left: 5px solid var(--primary-red);
         padding-left: 15px;
         text-transform: uppercase;
         font-size: 1.1em;
@@ -59,18 +62,10 @@
         display: inline-block;
         margin-bottom: 10px;
       }
-      ul {
-        padding-left: 20px;
-      }
-      li {
-        margin-bottom: 8px;
-      }
       a {
-        color: #3498db;
+        color: var(--primary-red);
         text-decoration: none;
-      }
-      a:hover {
-        text-decoration: underline;
+        font-weight: bold;
       }
       .footer {
         margin-top: 50px;
@@ -84,7 +79,7 @@
   </head>
   <body>
     <div class="container">
-      <h1>Legal Information</h1>
+      <h1>Legal Information & Privacy Policy</h1>
       <p>
         <strong>Service:</strong> MyGiulia Mobile App & My Giulia Telemetry
         Analyzer
@@ -93,7 +88,7 @@
         Official Website:
         <a href="https://my-giulia.com/">https://my-giulia.com/</a>
       </div>
-      <p><em>Last Updated: December 2025</em></p>
+      <p><em>Last Updated: December 31, 2025</em></p>
 
       <hr />
 
@@ -101,17 +96,13 @@
         <h2>1. Terms of Service</h2>
         <p>
           By downloading the <strong>MyGiulia</strong> app or using the
-          <strong>My Giulia Telemetry Analyzer</strong> at my-giulia.com, you
-          agree to these terms. These services are provided by Tomasz Żebrowski
-          as Open Source tools "as is."
+          <strong>My Giulia Telemetry Analyzer</strong>, you agree to these
+          terms provided by Tomasz Żebrowski as Open Source tools "as is."
         </p>
-
         <p>
           <strong>Safe Use:</strong> The user is solely responsible for the safe
-          operation of their vehicle. You agree not to interact with the mobile
-          application while driving. The Telemetry Analyzer is intended for
-          post-drive data review and should only be used when the vehicle is
-          stationary.
+          operation of their vehicle. You agree not to interact with the
+          application while driving.
         </p>
       </section>
 
@@ -119,109 +110,84 @@
         <h2>2. Disclaimer of Liability</h2>
         <p>
           <strong
-            >Tomasz Żebrowski takes no responsibility for any damages or issues
-            arising from the use of the app or the website.</strong
+            >Tomasz Żebrowski takes no responsibility for any damages arising
+            from the use of the app or website.</strong
           >
-        </p>
-        <p>
-          By using these services, you acknowledge that the developer is not
-          liable for:
         </p>
         <ul>
           <li>
-            <strong>Vehicle Damage:</strong> Any damage to your vehicle's
-            electronic control units (ECU), wiring, or internal hardware.
+            <strong>Vehicle/Hardware Damage:</strong> No liability for ECU,
+            wiring, mobile devices, or OBD-II adapters.
           </li>
           <li>
-            <strong>Hardware Damage:</strong> Any damage to mobile devices or
-            OBD-II adapters.
-          </li>
-          <li>
-            <strong>Data Integrity:</strong> Any errors in data interpretation
-            or loss of telemetry files.
-          </li>
-          <li>
-            <strong>Safety & Legal:</strong> Any traffic accidents, physical
-            injuries, or legal fines incurred during the use of these tools.
+            <strong>Safety & Legal:</strong> No liability for accidents,
+            injuries, or legal fines.
           </li>
         </ul>
       </section>
 
       <section class="highlight-section">
-        <h2>3. Vehicle Data Privacy & Telemetry</h2>
+        <h2>3. Vehicle Data Privacy & Sovereignty</h2>
+        <p><strong>Your car's data remains yours.</strong></p>
+        <ul>
+          <li>
+            <strong>Local Browser Processing:</strong> All telemetry files are
+            analyzed <strong>locally within your web browser</strong>. Data is
+            never uploaded to our servers.
+          </li>
+          <li>
+            <strong>No Data Sharing:</strong> We do not share, sell, or transmit
+            telemetry or GPS data to any third parties.
+          </li>
+        </ul>
+      </section>
+
+      <section id="google-api-disclosure">
+        <h2>4. Google API Disclosure (Google Drive Access)</h2>
         <p>
-          <strong
-            >We prioritize your data sovereignty. MyGiulia and the Telemetry
-            Analyzer are built to ensure your car's data remains yours.</strong
-          >
+          The App uses Google APIs to allow users to retrieve their own
+          telemetry logs stored in Google Drive.
         </p>
         <ul>
           <li>
-            <strong>Local Browser Processing:</strong> When using the
-            <a href="https://my-giulia.com/">My Giulia Telemetry Analyzer</a>,
-            all data files (log files, CSVs, or telemetry) are analyzed
-            <strong>locally within your web browser</strong>. Your vehicle data
-            is never uploaded to our servers.
+            <strong>Access Scope:</strong> The App requests the
+            <code>https://www.googleapis.com/auth/drive.readonly</code> scope.
           </li>
           <li>
-            <strong>No Data Sharing:</strong> We <u>do not share</u>, sell, or
-            transmit your vehicle's telemetry, diagnostic data, or GPS
-            coordinates to the developer, third parties, or any external cloud
-            services.
+            <strong>Usage:</strong> This is used strictly to read JSON telemetry
+            files selected by the user.
           </li>
           <li>
-            <strong>Offline Capability:</strong> The core analysis logic is
-            designed to function without the need to send your sensitive vehicle
-            information over the internet.
+            <strong>Data Handling:</strong> Files retrieved from Google Drive
+            are processed in the browser's volatile memory and are not stored,
+            cached, or transmitted to any external server.
           </li>
         </ul>
       </section>
 
       <section>
-        <h2>4. Privacy Policy (General)</h2>
-        <p>
-          We use standard third-party services to ensure app stability and
-          website performance. We do not use these to track your personal
-          identity.
-        </p>
-
-        <h3>Third-Party Services</h3>
-        <p>
-          The app and website may use services that collect standard metadata
-          (e.g., for crash reporting or hosting):
-        </p>
+        <h2>5. Third-Party Services</h2>
+        <p>We use standard services for stability and performance.</p>
         <ul>
           <li>
+            <strong>Google Play Services:</strong> Subject to
             <a href="https://www.google.com/policies/privacy/" target="_blank"
-              >Google Play Services</a
-            >
+              >Google's Privacy Policy</a
+            >.
           </li>
           <li>
-            Website Hosting/CDN Providers (for delivering the analyzer code).
+            <strong>Cookies/Local Storage:</strong> Used only to save UI
+            preferences (e.g., chart settings) locally on your device.
           </li>
         </ul>
-
-        <h3>Cookies & Local Storage</h3>
-        <p>
-          The website may use browser "local storage" to save your analyzer
-          preferences (like chart settings) for your next visit. This data stays
-          on your computer and is not accessible by the developer.
-        </p>
-
-        <h3>Log Data</h3>
-        <p>
-          In case of a software error, "Log Data" may be collected (Device IP,
-          OS version, app configuration) strictly for debugging and fixing bugs.
-        </p>
       </section>
 
       <section>
-        <h2>5. Contact Us</h2>
+        <h2>6. Contact Us</h2>
         <p>
-          If you have questions regarding the handling of telemetry data or the
-          open-source nature of these tools, please contact me at: <br />
+          Questions? Contact me at:
           <a href="mailto:zebrowski.tomek@gmail.com"
-            ><strong>zebrowski.tomek@gmail.com</strong></a
+            >zebrowski.tomek@gmail.com</a
           >
         </p>
       </section>
@@ -230,10 +196,11 @@
         <p>
           &copy; 2025 Tomasz Żebrowski. All rights reserved.<br />
           <em
-            >MyGiulia is an independent project and is not affiliated with,
-            endorsed by, or connected to any vehicle manufacturer.</em
+            >MyGiulia is an independent project and is not affiliated with any
+            vehicle manufacturer.</em
           >
         </p>
+        <a href="index.html" style="font-size: 1.1em">← Back to Analyzer</a>
       </div>
     </div>
   </body>
