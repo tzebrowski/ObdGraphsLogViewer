@@ -23,11 +23,6 @@ export const Preferences = {
       input.addEventListener('change', Preferences.savePreferences);
     });
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
-      UI.setTheme(savedTheme);
-    });
-
     const themeToggle = document.getElementById('pref-theme-dark');
     if (themeToggle.checked) {
       UI.setTheme('dark');
