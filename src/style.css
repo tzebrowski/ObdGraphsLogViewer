@@ -143,12 +143,54 @@ html {
 }
 
 .control-group h3 {
-  font-size: 0.95em;
-  margin-bottom: 10px;
-  color: #444;
-  text-transform: uppercase;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+/* Add a chevron icon using CSS */
+.control-group h3::after {
+  content: '\f107';
+  /* FontAwesome Chevron Down */
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  font-size: 0.8em;
+}
+
+/* Rotate chevron when collapsed */
+.control-group.collapsed h3::after {
+  content: ' \f105';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  float: right;
+}
+
+/* Hide everything except the h3 when collapsed */
+.control-group.collapsed > *:not(h3, .group-header, .group-header-row) {
+  display: none !important;
+}
+
+/* Special case for headers with nested h3 */
+.control-group.collapsed .group-header ~ *,
+.control-group.collapsed .group-header-row ~ * {
+  display: none !important;
+}
+
+.control-group h3,
+.group-header,
+.group-header-row {
+  cursor: pointer;
+  user-select: none;
+}
+
+.control-group.flex-grow.collapsed {
+  flex: 0 0 auto !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding-bottom: 10px !important;
 }
 
 .group-header {

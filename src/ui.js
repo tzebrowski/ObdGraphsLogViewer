@@ -30,6 +30,31 @@ export const UI = {
   init() {
     UI.initResizer();
     UI.initVersionInfo();
+    UI.initSidebarSectionsCollapse();
+  },
+
+  initSidebarSectionsCollapse() {
+    document.addEventListener('click', (e) => {
+      const header =
+        e.target.closest('h3') ||
+        e.target.closest('.group-header') ||
+        e.target.closest('.group-header-row');
+
+      if (header) {
+        const group = header.closest('.control-group');
+
+        if (group) {
+          if (
+            e.target.tagName === 'BUTTON' ||
+            e.target.classList.contains('config-link')
+          ) {
+            return;
+          }
+
+          group.classList.toggle('collapsed');
+        }
+      }
+    });
   },
 
   initResizer() {
