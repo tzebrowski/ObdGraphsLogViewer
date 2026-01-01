@@ -153,12 +153,12 @@ html {
 /* Add a chevron icon using CSS */
 .control-group h3::after {
   content: '\f107';
-  /* FontAwesome Chevron Down */
   font-family: 'Font Awesome 6 Free';
   font-weight: 900;
-  margin-left: auto;
-  transition: transform 0.3s ease;
   font-size: 0.8em;
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+  margin-left: 10px;
 }
 
 /* Rotate chevron when collapsed */
