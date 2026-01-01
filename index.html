@@ -17,6 +17,35 @@
         <h2>My Giulia Telemetry Analyzer</h2>
 
         <div class="control-group gray-box">
+          <h3>Preferences</h3>
+          <div class="preferences-list">
+            <div class="pref-item">
+              <div class="pref-info">
+                <span class="pref-title">Remember Layout</span>
+                <span class="pref-desc"
+                  >Save collapsed states between sessions</span
+                >
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="pref-persistence" checked />
+                <span class="slider-round"></span>
+              </label>
+            </div>
+
+            <div class="pref-item">
+              <div class="pref-info">
+                <span class="pref-title">High Performance</span>
+                <span class="pref-desc">Reduce chart animations for speed</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="pref-performance" />
+                <span class="slider-round"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group gray-box">
           <h3 class="group-header">
             Log Source
             <span class="config-link" onclick="toggleConfig()"
