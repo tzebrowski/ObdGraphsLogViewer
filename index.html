@@ -17,14 +17,60 @@
         <h2>My Giulia Telemetry Analyzer</h2>
 
         <div class="control-group gray-box">
-          <h3>Preferences</h3>
+          <h3>Settings & Preferences</h3>
+
           <div class="preferences-list">
+            <div class="pref-subgroup">
+              <div class="pref-item">
+                <div class="pref-info">
+                  <span class="pref-title">Google Drive Integration</span>
+                  <span class="pref-desc"
+                    >Configure your Client ID for cloud access</span
+                  >
+                </div>
+                <button
+                  class="btn btn-sm btn-add"
+                  id="toggle-drive-config"
+                  onclick="toggleConfig()"
+                >
+                  <i class="fas fa-cog"></i> Config
+                </button>
+              </div>
+
+              <div
+                id="configPanel"
+                style="
+                  display: none;
+                  margin-top: 10px;
+                  padding: 10px;
+                  background: #f0f0f0;
+                  border-radius: 4px;
+                "
+              >
+                <input
+                  type="text"
+                  id="gClientId"
+                  placeholder="Enter Google Client ID"
+                  style="margin-bottom: 8px"
+                />
+                <button class="btn btn-primary btn-sm" onclick="saveConfig()">
+                  Save ID
+                </button>
+              </div>
+            </div>
+
+            <hr
+              style="
+                border: 0;
+                border-top: 1px solid var(--border-color);
+                margin: 8px 0;
+              "
+            />
+
             <div class="pref-item">
               <div class="pref-info">
                 <span class="pref-title">Remember Layout</span>
-                <span class="pref-desc"
-                  >Save collapsed states between sessions</span
-                >
+                <span class="pref-desc">Persist collapsed sections</span>
               </div>
               <label class="switch">
                 <input type="checkbox" id="pref-persistence" checked />
@@ -35,7 +81,7 @@
             <div class="pref-item">
               <div class="pref-info">
                 <span class="pref-title">High Performance</span>
-                <span class="pref-desc">Reduce chart animations for speed</span>
+                <span class="pref-desc">Reduce chart rendering overhead</span>
               </div>
               <label class="switch">
                 <input type="checkbox" id="pref-performance" />
@@ -46,23 +92,7 @@
         </div>
 
         <div class="control-group gray-box">
-          <h3 class="group-header">
-            Log Source
-            <span class="config-link" onclick="toggleConfig()"
-              >(Drive Config)</span
-            >
-          </h3>
-          <div id="configPanel">
-            <p style="font-size: 0.8em; color: #666; margin-bottom: 5px">
-              Enter your Google Cloud <b>Client ID</b> only.
-            </p>
-            <input
-              type="text"
-              id="gClientId"
-              placeholder="Your Client ID (apps.googleusercontent.com)"
-            />
-            <button class="btn" onclick="saveConfig()">Save Config</button>
-          </div>
+          <h3 class="group-header">Log Source</h3>
           <div class="button-row">
             <button id="authBtn" class="btn btn-primary" onclick="handleAuth()">
               Drive Scan

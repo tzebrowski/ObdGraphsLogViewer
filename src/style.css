@@ -1305,7 +1305,7 @@ a {
 }
 
 .pref-title {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-main);
 }
@@ -1319,8 +1319,8 @@ a {
 .switch {
   position: relative;
   display: inline-block;
-  width: 34px;
-  height: 20px;
+  width: 32px;
+  height: 18px;
 }
 
 .switch input {
@@ -1332,16 +1332,13 @@ a {
 .slider-round {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: #ccc;
-  transition: 0.4s;
+  transition: 0.3s;
   border-radius: 34px;
 }
 
-.slider-round:before {
+.slider-round::before {
   position: absolute;
   content: '';
   height: 14px;
@@ -1357,6 +1354,6 @@ input:checked + .slider-round {
   background-color: var(--brand-green);
 }
 
-input:checked + .slider-round:before {
+input:checked + .slider-round::before {
   transform: translateX(14px);
 }

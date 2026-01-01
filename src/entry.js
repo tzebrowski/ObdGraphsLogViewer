@@ -22,7 +22,7 @@ window.onload = async function () {
   ChartManager.init();
   InfoPage.init();
   DragnDrop.init();
-  // Preferences.init();
+  Preferences.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {

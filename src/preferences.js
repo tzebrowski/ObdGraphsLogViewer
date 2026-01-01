@@ -6,36 +6,25 @@ export const Preferences = {
     performance: false,
   },
 
+  get prefs() {
+    return (
+      JSON.parse(localStorage.getItem(Preferences.PREFS_KEY)) ||
+      Preferences.defaultPrefs
+    );
+  },
+
   init: () => {
-    const currentPrefs = Preferences.loadPreferences();
+    Preferences.loadPreferences();
 
     document.querySelectorAll('.preferences-list input').forEach((input) => {
       input.addEventListener('change', Preferences.savePreferences);
     });
-
-    document.getElementById('sidebar').addEventListener('click', (e) => {
-      const header = e.target.closest('h3');
-      if (header && !e.target.classList.contains('config-link')) {
-        const group = header.closest('.control-group');
-        group.classList.toggle('collapsed');
-
-        const prefs =
-          JSON.parse(localStorage.getItem(Preferences.PREFS_KEY)) ||
-          Preferences.defaultPrefs;
-        if (prefs.persistence) {
-          console.error(`!!!!!!!!!!!!!!!!!!!! ${prefs}`);
-          //saveSidebarState(); // Your existing function
-        }
-      }
-    });
   },
 
-  // Load and Apply Preferences
   loadPreferences: () => {
     const saved = localStorage.getItem(Preferences.PREFS_KEY);
     const prefs = saved ? JSON.parse(saved) : Preferences.defaultPrefs;
 
-    // Update UI Toggles
     document.getElementById('pref-persistence').checked = prefs.persistence;
     document.getElementById('pref-performance').checked = prefs.performance;
 

@@ -1,6 +1,7 @@
 import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { DragnDrop } from './dragndrop.js';
+import { Preferences } from './preferences.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -62,8 +63,7 @@ export const UI = {
 
   initSidebarSectionsCollapse() {
     UI.restoreSidebarState();
-
-    document.addEventListener('click', (e) => {
+    UI.elements.sidebar.addEventListener('click', (e) => {
       const header =
         e.target.closest('h3') ||
         e.target.closest('.group-header') ||
@@ -81,7 +81,10 @@ export const UI = {
           }
 
           group.classList.toggle('collapsed');
-          UI.saveSidebarState();
+          const prefs = Preferences.prefs;
+          if (prefs?.persistence) {
+            UI.saveSidebarState();
+          }
         }
       }
     });
