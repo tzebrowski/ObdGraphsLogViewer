@@ -26,8 +26,8 @@
 
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
-  --text-main: #e0e0e0;
-  --text-muted: #aaa;
+  --text-main: #333;
+  --text-muted: #666;
 }
 
 /* Combined the duplicate sidebar selectors into one block */
