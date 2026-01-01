@@ -8,177 +8,10 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
-    <style>
-      :root {
-        /* Your New Color Palette */
-        --brand-green: #01804f;
-        --brand-red: #c22636;
-        --brand-blue: #1c3d72;
-
-        --dark-bg: #0a0a0a;
-        --card-bg: #161616;
-        --light-text: #f4f4f4;
-        --gray-text: #a0a0a0;
-      }
-
-      .tag {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 10px 20px;
-        border-radius: 30px;
-        border: 1px solid var(--brand-green);
-        font-size: 0.9rem;
-      }
-
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-
-      /* Android Auto & Technical Section */
-      .tech-specs {
-        background-color: var(--brand-blue);
-        padding: 60px 20px;
-      }
-
-      body {
-        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: var(--dark-bg);
-        color: var(--light-text);
-        line-height: 1.6;
-      }
-
-      .hero {
-        padding: 100px 20px;
-        text-align: center;
-        background:
-          linear-gradient(rgba(28, 61, 114, 0.85), rgba(10, 10, 10, 0.9)),
-          url('https://play-lh.googleusercontent.com/kc8fKxu1KO6Rgz7D9ghwiWyMSgKAglzJTwf5E6xmER3rzwCBHj8OsJs95FKOZudJVw=w2560-h1440-rw');
-        background-size: cover;
-        background-position: center;
-        border-bottom: 4px solid var(--brand-red);
-      }
-
-      .hero h1 {
-        font-size: 3.5rem;
-        margin-bottom: 10px;
-        color: white;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-      }
-
-      .hero p {
-        font-size: 1.2rem;
-        max-width: 700px;
-        margin: 0 auto 30px;
-      }
-
-      /* Call to Action - Green */
-      .btn {
-        display: inline-block;
-        background-color: var(--brand-green);
-        color: white;
-        padding: 15px 35px;
-        border-radius: 50px;
-        text-decoration: none;
-        font-weight: bold;
-        font-size: 1.1rem;
-        transition:
-          transform 0.2s,
-          background 0.2s,
-          box-shadow 0.2s;
-        box-shadow: 0 4px 15px rgba(1, 128, 79, 0.3);
-      }
-
-      .btn:hover {
-        background-color: #01a163;
-        transform: scale(1.05);
-        box-shadow: 0 6px 20px rgba(1, 128, 79, 0.4);
-      }
-
-      /* Features Section */
-      .features {
-        padding: 80px 20px;
-        max-width: 1200px;
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 40px;
-      }
-
-      .feature-card {
-        background: var(--card-bg);
-        padding: 30px;
-        border-radius: 15px;
-        text-align: center;
-        border-top: 3px solid var(--brand-blue);
-        transition: 0.3s;
-      }
-
-      .feature-card:hover {
-        border-top-color: var(--brand-red);
-        transform: translateY(-5px);
-      }
-
-      .feature-card i {
-        font-size: 3rem;
-        color: var(--brand-red);
-        margin-bottom: 20px;
-      }
-
-      /* Compatibility Section - Blue Background */
-      .compatibility {
-        background-color: var(--brand-blue);
-        padding: 60px 20px;
-        text-align: center;
-      }
-
-      .compatibility h2 {
-        color: white;
-        text-transform: uppercase;
-      }
-
-      .engine-list {
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: 15px;
-        margin-top: 20px;
-      }
-
-      /* Engine Tags - Green */
-      .engine-tag {
-        background: var(--brand-green);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: bold;
-      }
-
-      footer {
-        padding: 40px 20px;
-        text-align: center;
-        color: var(--gray-text);
-        font-size: 0.9rem;
-        border-top: 1px solid #222;
-      }
-
-      footer a {
-        color: var(--brand-red);
-        text-decoration: none;
-      }
-
-      @media (max-width: 768px) {
-        .hero h1 {
-          font-size: 2.5rem;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
 
-  <body>
+  <body class="docs-body">
     <section class="hero">
       <h1>My Giulia</h1>
       <p>
@@ -187,7 +20,8 @@
       </p>
       <a
         href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia"
-        class="btn"
+        class="btn-green btn-primary"
+        style="width: auto; border-radius: 50px"
       >
         <i class="fab fa-google-play"></i> Download on Google Play
       </a>
@@ -198,8 +32,8 @@
         <i class="fas fa-car-side"></i>
         <h3>Native Vehicle Support</h3>
         <p>
-          Compatibility with 1.75 TBI and 2.0 GME engines, found in the 4C,
-          Giulietta, Giulia, and Stelvio.
+          Advanced telemetry and diagnostics for the Alfa Romeo enthusiast.
+          Native support for 2.0 GME, 2.2 Multijet, and 2.9 QV engines.
         </p>
       </div>
       <div class="feature-card">
@@ -261,11 +95,16 @@
       </div>
     </section>
 
-    <footer>
+    <div class="footer">
       <p>
-        © 2025 My Giulia App. Developed by
-        <a href="https://github.com/tzebrowski/ObdGraphs">Tomasz Żebrowski</a>.
+        &copy; 2025 Tomasz Żebrowski. All rights reserved.<br />
+        <em
+          >MyGiulia is an independent project and is not affiliated with any
+          vehicle manufacturer.</em
+        >
+        <a href="https://github.com/tzebrowski/ObdGraphs">Github</a>.
       </p>
-    </footer>
+      <a href="../index.html" style="font-size: 1.1em">← Back to Analyzer</a>
+    </div>
   </body>
 </html>

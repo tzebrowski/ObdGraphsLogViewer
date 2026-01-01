@@ -4,19 +4,24 @@
   --brand-red: #c22636;
   --brand-blue: #1c3d72;
 
-  /* Functional Variable Mappings */
-  --primary-red: var(--brand-red);
+  /* Global Colors */
+  --dark-bg: #0a0a0a;
+  --light-text: #f4f4f4;
+  --gray-text: #a0a0a0;
+  --bg-color: #fcfcfc;
   --sidebar-bg: #f8f9fa;
   --border-color: #ddd;
+
+  /* Functional Variable Mappings */
+  --primary-red: var(--brand-red);
   --text-main: #333;
   --text-muted: #666;
+  --text-color: #333;
   --transition-speed: 0.3s;
   --active-bg: #fdf2f2;
   --shadow-sm: 0 2px 4px rgb(0 0 0 / 10%);
-  --bg-color: #f4f7f6;
   --card-bg: #fff;
   --chart-canvas-bg: #fff;
-  --text-color: #333;
 }
 
 body.dark-theme {
@@ -64,13 +69,11 @@ body,
 html {
   margin: 0;
   padding: 0;
-  height: 100%;
   font-family: 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden;
   font-size: 15px;
   background-color: var(--bg-color);
   color: var(--text-main);
-  transition: background 0.3s ease;
+  transition: background var(--transition-speed) ease;
 }
 
 .app-container {
@@ -94,6 +97,7 @@ html {
   z-index: 10;
   height: 100vh;
   box-sizing: border-box;
+  overflow: auto;
 }
 
 .sidebar.collapsed {
@@ -138,7 +142,7 @@ html {
   border-bottom: none;
 }
 
-h3 {
+.control-group h3 {
   font-size: 0.95em;
   margin-bottom: 10px;
   color: #444;
@@ -174,6 +178,28 @@ input[type='number'] {
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
+}
+
+.btn-green {
+  display: inline-block;
+  background-color: var(--brand-green);
+  color: white;
+  padding: 15px 35px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition:
+    transform 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgb(1 128 79 / 30%);
+}
+
+.btn-green:hover {
+  background-color: #01a163;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgb(1 128 79 / 40%);
 }
 
 .btn {
@@ -1033,6 +1059,15 @@ footer {
   font-size: 0.8rem;
 }
 
+.footer {
+  margin-top: 50px;
+  font-size: 0.85em;
+  color: #7f8c8d;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+  text-align: center;
+}
+
 .footer-content {
   display: flex;
   align-items: center;
@@ -1047,70 +1082,163 @@ footer {
   color: var(--brand-blue);
 }
 
-/* Mobile Responsiveness (Tablets and Phones) */
-@media (width <= 768px) {
+/* Mobile Responsiveness */
+@media (width <=768px) {
   .app-container {
     flex-direction: column;
-    /* Stack sidebar on top of charts */
     overflow-y: auto;
-    /* Allow the whole app to scroll */
   }
 
   .sidebar {
     width: 100%;
-    /* Sidebar takes full width */
     min-width: 100%;
     height: auto;
-    /* Let height grow with content */
     max-height: 400px;
-    /* Prevent it from taking the whole screen */
-    overflow-y: auto;
-    /* Internal scroll if content is long */
     border-right: none;
     border-bottom: 1px solid var(--border-color);
     margin-left: 0 !important;
-    /* Ignore manual collapses for mobile */
-  }
-
-  .sidebar.collapsed {
-    display: none;
-    /* Hide sidebar entirely if collapsed on mobile */
   }
 
   .resizer {
     display: none;
-    /* Hide the manual resizer on mobile */
   }
+}
 
-  .main-content {
-    height: auto;
-    min-height: 100vh;
-  }
+/* --- Policy Page Specific Styles --- */
+.policy-body {
+  line-height: 1.6;
+  max-width: 850px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
 
-  #chartContainer {
-    padding: 60px 10px 20px;
-    /* More padding for toolbar clearance */
-  }
+.policy-container {
+  background-color: #fff;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
+  border: 1px solid #eee;
+  color: var(--text-main);
+}
 
-  .chart-wrapper {
-    flex: 0 0 auto;
-    /* Allow charts to take natural height */
-    height: 300px;
-    /* Set a fixed height for charts on mobile */
-    margin-bottom: 15px;
-  }
+.policy-container h1 {
+  border-bottom: 2px solid var(--primary-red);
+  padding-bottom: 10px;
+  color: #2c3e50;
+}
 
-  .info-grid {
-    grid-template-columns: 1fr;
-    /* Stack info cards in 1 column */
-  }
+.policy-container h2 {
+  margin-top: 35px;
+  color: #2c3e50;
+  border-left: 5px solid var(--primary-red);
+  padding-left: 15px;
+  text-transform: uppercase;
+  font-size: 1.1em;
+}
 
-  .toolbar {
-    position: fixed;
-    /* Keep buttons accessible */
-    background: var(--card-bg);
-    width: 100%;
-    padding: 10px;
-    box-shadow: var(--shadow-sm);
-  }
+.danger-section {
+  background-color: #fff5f5;
+  border: 1px solid #feb2b2;
+  padding: 20px;
+  border-radius: 5px;
+  margin: 20px 0;
+}
+
+.url-box {
+  background-color: #f1f3f5;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+a {
+  color: var(--primary-red);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+/* --- Docs/Landing Page Specific Styles --- */
+.docs-body {
+  background-color: var(--dark-bg);
+  color: var(--light-text);
+}
+
+.hero {
+  padding: 100px 20px;
+  text-align: center;
+  background:
+    linear-gradient(rgb(28 61 114 / 85%), rgb(10 10 10 / 90%)),
+    url('../resources/background.png');
+  background-size: cover;
+  background-position: center;
+  border-bottom: 4px solid var(--brand-red);
+}
+
+.hero h1 {
+  font-size: 3.5rem;
+  margin-bottom: 10px;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  max-width: 700px;
+  margin: 0 auto 30px;
+}
+
+.features {
+  padding: 80px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 40px;
+}
+
+.feature-card {
+  background: #161616;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  border-top: 3px solid var(--brand-blue);
+  transition: 0.3s;
+}
+
+.feature-card:hover {
+  border-top-color: var(--brand-red);
+  transform: translateY(-5px);
+}
+
+.feature-card i {
+  font-size: 3rem;
+  color: var(--brand-red);
+  margin-bottom: 20px;
+}
+
+.tech-specs {
+  background-color: var(--brand-blue);
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.tag {
+  background: rgb(255 255 255 / 10%);
+  padding: 10px 20px;
+  border-radius: 30px;
+  border: 1px solid var(--brand-green);
+  font-size: 0.9rem;
+  margin: 5px;
+  display: inline-block;
+}
+
+.highlight-section {
+  background-color: #e8f4fd;
+  border: 1px solid #b8daff;
+  padding: 20px;
+  border-radius: 5px;
+  margin: 20px 0;
 }
