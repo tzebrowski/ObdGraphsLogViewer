@@ -26,8 +26,8 @@
 
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
-  --text-main: #e0e0e0;
-  --text-muted: #aaa;
+  --text-main: #333;
+  --text-muted: #666;
 }
 
 /* Combined the duplicate sidebar selectors into one block */
@@ -1282,4 +1282,82 @@ a {
   padding: 20px;
   border-radius: 5px;
   margin: 20px 0;
+}
+
+.preferences-list hr {
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  margin: 8px 0;
+}
+
+.preferences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.pref-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pref-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.pref-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.pref-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Modern Switch Toggle */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-round {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 34px;
+}
+
+.slider-round::before {
+  position: absolute;
+  content: '';
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider-round {
+  background-color: var(--brand-green);
+}
+
+input:checked + .slider-round::before {
+  transform: translateX(14px);
 }
