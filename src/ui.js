@@ -45,8 +45,8 @@ export const UI = {
     };
   },
 
-  toggleConfig() {
-    const p = DOM.get('configPanel');
+  toggleItem(i) {
+    const p = DOM.get(i);
     if (!p) return;
 
     const isHidden = p.style.display === 'none' || p.style.display === '';

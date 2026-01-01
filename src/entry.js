@@ -38,11 +38,11 @@ window.onclick = (event) => {
   }
 };
 
-window.toggleConfig = () => UI.toggleConfig();
+window.saveDriveConfig = () => Auth.saveConfig();
+window.toggleDriveConfig = () => UI.toggleItem('configPanel');
 window.toggleSidebar = () => UI.toggleSidebar();
 window.toggleFullScreen = () => UI.toggleFullScreen();
 window.toggleAllSignals = (check) => UI.toggleAllSignals(check);
-window.saveConfig = () => Auth.saveConfig();
 window.handleAuth = () => Auth.handleAuth();
 window.applyTemplate = () => Analysis.applyTemplate();
 window.scanAnomalies = () => Analysis.runScan();

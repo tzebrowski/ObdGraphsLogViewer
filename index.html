@@ -24,14 +24,12 @@
               <div class="pref-item">
                 <div class="pref-info">
                   <span class="pref-title">Google Drive Integration</span>
-                  <span class="pref-desc"
-                    >Configure your Client ID for cloud access</span
-                  >
+                  <span class="pref-desc">Cloud access configuration</span>
                 </div>
                 <button
                   class="btn btn-sm btn-add"
                   id="toggle-drive-config"
-                  onclick="toggleConfig()"
+                  onclick="toggleDriveConfig()"
                 >
                   <i class="fas fa-cog"></i> Config
                 </button>
@@ -53,7 +51,10 @@
                   placeholder="Enter Google Client ID"
                   style="margin-bottom: 8px"
                 />
-                <button class="btn btn-primary btn-sm" onclick="saveConfig()">
+                <button
+                  class="btn btn-primary btn-sm"
+                  onclick="saveDriveConfig()"
+                >
                   Save ID
                 </button>
               </div>
