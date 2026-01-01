@@ -2,6 +2,12 @@
 export default {
   extends: ['stylelint-config-standard'],
   rules: {
+    'font-family-no-missing-generic-family-keyword': [
+      true,
+      {
+        ignoreFontFamilies: ['/Font Awesome/'],
+      },
+    ],
     // Allows camelCase for IDs and Classes (e.g., chartContainer)
     'selector-id-pattern': null,
     'selector-class-pattern': null,

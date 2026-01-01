@@ -3,6 +3,33 @@ import { DataProcessor } from './dataprocesssor.js';
 import { DragnDrop } from './dragndrop.js';
 
 export const UI = {
+  STORAGE_KEY: 'sidebar_collapsed_states',
+
+  saveSidebarState: () => {
+    const groups = document.querySelectorAll('.sidebar .control-group');
+    const states = Array.from(groups).map((group) =>
+      group.classList.contains('collapsed')
+    );
+    localStorage.setItem(UI.STORAGE_KEY, JSON.stringify(states));
+  },
+
+  restoreSidebarState: () => {
+    const savedData = localStorage.getItem(UI.STORAGE_KEY);
+    if (!savedData) return;
+
+    try {
+      const states = JSON.parse(savedData);
+      const groups = document.querySelectorAll('.sidebar .control-group');
+      groups.forEach((group, index) => {
+        if (states[index] === true) {
+          group.classList.add('collapsed');
+        }
+      });
+    } catch (e) {
+      console.error('Could not restore sidebar state', e);
+    }
+  },
+
   get elements() {
     return {
       resizer: document.getElementById('resizer'),
@@ -30,6 +57,34 @@ export const UI = {
   init() {
     UI.initResizer();
     UI.initVersionInfo();
+    UI.initSidebarSectionsCollapse();
+  },
+
+  initSidebarSectionsCollapse() {
+    UI.restoreSidebarState();
+
+    document.addEventListener('click', (e) => {
+      const header =
+        e.target.closest('h3') ||
+        e.target.closest('.group-header') ||
+        e.target.closest('.group-header-row');
+
+      if (header) {
+        const group = header.closest('.control-group');
+
+        if (group) {
+          if (
+            e.target.tagName === 'BUTTON' ||
+            e.target.classList.contains('config-link')
+          ) {
+            return;
+          }
+
+          group.classList.toggle('collapsed');
+          UI.saveSidebarState();
+        }
+      }
+    });
   },
 
   initResizer() {
