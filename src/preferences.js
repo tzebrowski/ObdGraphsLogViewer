@@ -1,9 +1,12 @@
+import { UI } from './ui.js';
+
 export const Preferences = {
   PREFS_KEY: 'giulia_user_prefs',
 
   defaultPrefs: {
     persistence: true,
     performance: false,
+    darkTheme: false,
   },
 
   get prefs() {
@@ -19,6 +22,27 @@ export const Preferences = {
     document.querySelectorAll('.preferences-list input').forEach((input) => {
       input.addEventListener('change', Preferences.savePreferences);
     });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
+      UI.setTheme(savedTheme);
+    });
+
+    const themeToggle = document.getElementById('pref-theme-dark');
+    if (themeToggle.checked) {
+      UI.setTheme('dark');
+    } else {
+      UI.setTheme('light');
+    }
+
+    themeToggle?.addEventListener('change', () => {
+      if (themeToggle.checked) {
+        UI.setTheme('dark');
+      } else {
+        UI.setTheme('light');
+      }
+      Preferences.savePreferences();
+    });
   },
 
   loadPreferences: () => {
@@ -27,7 +51,7 @@ export const Preferences = {
 
     document.getElementById('pref-persistence').checked = prefs.persistence;
     document.getElementById('pref-performance').checked = prefs.performance;
-
+    document.getElementById('pref-theme-dark').checked = prefs.darkTheme;
     return prefs;
   },
 
@@ -35,6 +59,7 @@ export const Preferences = {
     const prefs = {
       persistence: document.getElementById('pref-persistence').checked,
       performance: document.getElementById('pref-performance').checked,
+      darkTheme: document.getElementById('pref-theme-dark').checked,
     };
     localStorage.setItem(Preferences.PREFS_KEY, JSON.stringify(prefs));
 

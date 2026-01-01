@@ -8,11 +8,6 @@ import { DragnDrop } from './dragndrop.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
 
-window.addEventListener('DOMContentLoaded', () => {
-  const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
-  UI.setTheme(savedTheme);
-});
-
 window.onload = async function () {
   await DataProcessor.loadConfiguration();
   Auth.init();
@@ -50,6 +45,5 @@ window.addFilterRow = () => Analysis.addFilterRow();
 window.resetZoom = () => Sliders.reset();
 window.toggleInfo = () => InfoPage.toggleInfo();
 window.loadSampleData = () => UI.loadSampleData();
-window.setTheme = (theme) => UI.setTheme(theme);
 window.removeFile = (f) => ChartManager.removeFile(f);
 window.loadFile = (a, b, c) => Drive.loadFile(a, b, c);

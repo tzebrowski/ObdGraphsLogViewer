@@ -15,11 +15,22 @@
     <div class="app-container">
       <div class="sidebar" id="sidebar">
         <h2>My Giulia Telemetry Analyzer</h2>
-
         <div class="control-group gray-box">
           <h3>Settings & Preferences</h3>
-
           <div class="preferences-list">
+            <div class="pref-item">
+              <div class="pref-info">
+                <span class="pref-title">Dark Mode</span>
+                <span class="pref-desc">Switch to a dark visual theme</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="pref-theme-dark" />
+                <span class="slider-round"></span>
+              </label>
+            </div>
+
+            <hr />
+
             <div class="pref-subgroup">
               <div class="pref-item">
                 <div class="pref-info">
@@ -60,13 +71,7 @@
               </div>
             </div>
 
-            <hr
-              style="
-                border: 0;
-                border-top: 1px solid var(--border-color);
-                margin: 8px 0;
-              "
-            />
+            <hr />
 
             <div class="pref-item">
               <div class="pref-info">
@@ -289,17 +294,6 @@
               <p>
                 Pan or zoom on any chart to automatically align all loaded logs.
               </p>
-            </div>
-          </div>
-          <div class="info-card settings-card">
-            <h4>🎨 Visual Theme</h4>
-            <div class="theme-switch-container">
-              <button class="btn-theme" onclick="setTheme('light')">
-                ☀️ Light Mode
-              </button>
-              <button class="btn-theme" onclick="setTheme('dark')">
-                🌙 Dark Mode
-              </button>
             </div>
           </div>
           <div class="modal-footer">
