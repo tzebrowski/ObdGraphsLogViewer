@@ -76,6 +76,17 @@ html {
   transition: background var(--transition-speed) ease;
 }
 
+/* Apply Dark Theme to Docs Page as well */
+body.docs-body.dark-theme {
+  background-color: var(--dark-bg);
+  color: var(--light-text);
+}
+
+body.docs-body.dark-theme .feature-card {
+  background: #1a1a1a;
+  border-color: var(--brand-blue);
+}
+
 .app-container {
   overflow: hidden;
   display: flex;
