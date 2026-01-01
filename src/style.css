@@ -1261,7 +1261,7 @@ a {
 }
 
 .feature-card:hover {
-  border-top-color: var(--brand-red);
+  border-top-color: var(--brand-green);
   transform: translateY(-5px);
 }
 
