@@ -125,9 +125,8 @@ html {
   flex-shrink: 0;
 }
 
-.control-group.anomaly-box {
+.control-group.gray-box {
   background: var(--card-bg);
-  border: 1px solid var(--brand-red);
   padding: 10px;
   border-radius: 4px;
 }
