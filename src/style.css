@@ -76,6 +76,17 @@ html {
   transition: background var(--transition-speed) ease;
 }
 
+/* Apply Dark Theme to Docs Page as well */
+body.docs-body.dark-theme {
+  background-color: var(--dark-bg);
+  color: var(--light-text);
+}
+
+body.docs-body.dark-theme .feature-card {
+  background: #1a1a1a;
+  border-color: var(--brand-blue);
+}
+
 .app-container {
   overflow: hidden;
   display: flex;
@@ -1250,7 +1261,7 @@ a {
 }
 
 .feature-card:hover {
-  border-top-color: var(--brand-red);
+  border-top-color: var(--brand-green);
   transform: translateY(-5px);
 }
 
@@ -1360,4 +1371,101 @@ input:checked + .slider-round {
 
 input:checked + .slider-round::before {
   transform: translateX(14px);
+}
+
+/* --- Modern Top Navigation (Vite-inspired) --- */
+.top-nav {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 64px;
+  background-color: transparent; /* Full transparency */
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+}
+
+.nav-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.nav-logo {
+  height: 32px;
+  width: 32px;
+}
+
+.nav-title {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav-link {
+  color: rgb(255 255 255 / 70%);
+  font-size: 1.2rem;
+  transition: color 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--brand-red);
+}
+
+.nav-icon-btn {
+  background: none;
+  border: none;
+  color: var(--primary-red);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.nav-divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgb(255 255 255 / 10%);
+}
+
+.nav-btn-primary {
+  background-color: var(--brand-red);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: transform 0.2s;
+}
+
+.nav-btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+/* Ensure the Hero section doesn't hide under the sticky nav */
+.docs-body .hero {
+  padding-top: 60px; /* Offset for the navbar */
 }
