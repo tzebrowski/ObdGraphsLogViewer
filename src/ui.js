@@ -184,12 +184,15 @@ export const UI = {
   },
 
   toggleSidebar() {
-    const el = UI.elements;
-    if (el.sidebar) {
-      el.sidebar.classList.toggle('collapsed');
-      setTimeout(() => AppState.chartInstance?.resize(), 350);
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.querySelector('.sidebar-backdrop');
+
+    if (window.innerWidth <= 768) {
+      sidebar.classList.toggle('active');
+      backdrop.classList.toggle('active');
+    } else {
+      sidebar.classList.toggle('collapsed');
     }
-    DragnDrop.toggleDropZone();
   },
 
   toggleFullScreen() {
