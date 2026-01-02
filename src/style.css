@@ -1138,14 +1138,11 @@ footer {
 }
 
 .sidebar-backdrop {
-  display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
   background: rgb(0 0 0 / 50%);
   z-index: 1500;
+  display: none;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -1155,7 +1152,36 @@ footer {
   opacity: 1;
 }
 
+.mobile-close-btn {
+  display: none; /* Hidden by default for Desktop */
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 2001;
+  padding: 5px;
+}
+
 @media (width <= 768px) {
+  .mobile-close-btn {
+    display: block; /* Show only on mobile devices */
+  }
+
+  /* Adjust the sidebar header to not collide with the X button */
+  .sidebar h2 {
+    padding-right: 35px;
+    font-size: 1.2rem;
+  }
+
+  .back-link {
+    margin-top: 10px;
+    display: block;
+  }
+
   .tech-specs {
     padding: 20px 15px !important;
   }
@@ -1191,20 +1217,21 @@ footer {
   }
 
   .sidebar {
-    position: fixed;
+    position: fixed !important;
     top: 0;
     left: 0;
     width: 85vw !important;
     max-width: 320px;
     height: 100vh;
-    margin-left: -100vw;
-    z-index: 2000;
-    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: -100vw !important; /* Fully hidden when off */
+    z-index: 2000 !important;
+    transition: margin-left 0.3s ease-out !important;
+    background: var(--sidebar-bg) !important;
     box-shadow: 5px 0 15px rgb(0 0 0 / 30%);
   }
 
   .sidebar.active {
-    margin-left: 0;
+    margin-left: 0 !important;
   }
 
   .resizer {
