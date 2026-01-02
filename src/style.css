@@ -1166,12 +1166,21 @@ footer {
   padding: 5px;
 }
 
+.mobile-only-btn {
+  display: none !important;
+}
+
 @media (width <= 768px) {
-  .mobile-close-btn {
-    display: block; /* Show only on mobile devices */
+  .mobile-only-btn {
+    display: inline-block !important;
+    margin-top: 15px;
+    width: 100%;
   }
 
-  /* Adjust the sidebar header to not collide with the X button */
+  .mobile-close-btn {
+    display: block;
+  }
+
   .sidebar h2 {
     padding-right: 35px;
     font-size: 1.2rem;

@@ -106,16 +106,6 @@ export const UI = {
     backdrop.className = 'sidebar-backdrop';
     document.body.appendChild(backdrop);
 
-    window.toggleSidebar = () => {
-      const isMobile = window.innerWidth <= 768;
-      if (isMobile) {
-        sidebar.classList.toggle('active');
-        backdrop.classList.toggle('active');
-      } else {
-        sidebar.classList.toggle('collapsed');
-      }
-    };
-
     backdrop.addEventListener('click', () => {
       sidebar.classList.remove('active');
       backdrop.classList.remove('active');
