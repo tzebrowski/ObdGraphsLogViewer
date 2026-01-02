@@ -43,40 +43,46 @@ export const DataProcessor = {
   },
 
   process: (data, fileName) => {
-    const sorted = data.sort((a, b) => a.t - b.t);
-    const signals = {};
-    let minT = Infinity,
-      maxT = -Infinity;
+    try {
+      const sorted = data.sort((a, b) => a.t - b.t);
+      const signals = {};
+      let minT = Infinity,
+        maxT = -Infinity;
 
-    sorted.forEach((p) => {
-      if (!signals[p.s]) signals[p.s] = [];
-      signals[p.s].push({ x: p.t, y: p.v });
-      if (p.t < minT) minT = p.t;
-      if (p.t > maxT) maxT = p.t;
-    });
+      sorted.forEach((p) => {
+        if (!signals[p.s]) signals[p.s] = [];
+        signals[p.s].push({ x: p.t, y: p.v });
+        if (p.t < minT) minT = p.t;
+        if (p.t > maxT) maxT = p.t;
+      });
 
-    const fileEntry = {
-      name: fileName,
-      rawData: sorted,
-      signals: signals,
-      startTime: minT,
-      duration: (maxT - minT) / 1000,
-      availableSignals: Object.keys(signals).sort(),
-    };
+      const fileEntry = {
+        name: fileName,
+        rawData: sorted,
+        signals: signals,
+        startTime: minT,
+        duration: (maxT - minT) / 1000,
+        availableSignals: Object.keys(signals).sort(),
+      };
 
-    AppState.files.push(fileEntry);
+      AppState.files.push(fileEntry);
 
-    if (AppState.files.length === 1) {
-      AppState.globalStartTime = minT;
-      AppState.logDuration = fileEntry.duration;
-      AppState.availableSignals = fileEntry.availableSignals;
+      if (AppState.files.length === 1) {
+        AppState.globalStartTime = minT;
+        AppState.logDuration = fileEntry.duration;
+        AppState.availableSignals = fileEntry.availableSignals;
+        UI.renderSignalList();
+        Analysis.init();
+        if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
+      }
+
+      DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
       UI.renderSignalList();
-      Analysis.init();
-      if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
+      ChartManager.render();
+      UI.updateDataLoadedState(true);
+    } catch (error) {
+      console.error('Error occured during file processing', error);
+      UI.updateDataLoadedState(false);
     }
-
-    DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
-    UI.renderSignalList();
-    ChartManager.render();
   },
 };

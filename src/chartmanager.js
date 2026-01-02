@@ -43,15 +43,23 @@ export const ChartManager = {
     const container = DOM.get('chartContainer');
     if (!container) return;
 
-    AppState.chartInstances.forEach((c) => c.destroy());
+    AppState.chartInstances.forEach((c) => {
+      if (c) c.destroy();
+    });
     AppState.chartInstances = [];
-    container.innerHTML = '';
+
+    container
+      .querySelectorAll('.chart-card-compact')
+      .forEach((card) => card.remove());
 
     if (AppState.files.length === 0) {
+      UI.updateDataLoadedState(false);
       AppState.globalStartTime = 0;
       AppState.logDuration = 0;
       return;
     }
+
+    UI.updateDataLoadedState(true);
 
     const primary = AppState.files[0];
     AppState.globalStartTime = primary.startTime;
@@ -252,6 +260,10 @@ export const ChartManager = {
 
     ChartManager.render();
     UI.renderSignalList();
+
+    if (AppState.files.length == 0) {
+      UI.updateDataLoadedState(false);
+    }
   },
 
   syncAll: ({ chart }) => {

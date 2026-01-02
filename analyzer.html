@@ -194,9 +194,28 @@
             ></i>
           </button>
         </div>
-
         <div id="chartContainer">
-          <canvas id="telemetryChart"></canvas>
+          <div id="empty-state" class="empty-state-container">
+            <div class="empty-state-content">
+              <i class="fas fa-chart-area empty-icon"></i>
+              <h3>No Telemetry Loaded</h3>
+              <p>
+                Start by scanning your Google Drive or uploading a local JSON
+                trip log.
+              </p>
+              <div class="empty-state-actions">
+                <button
+                  class="btn btn-primary mobile-only-btn"
+                  onclick="toggleSidebar()"
+                >
+                  <i class="fas fa-folder-open"></i> Open Log Source
+                </button>
+                <button class="btn" onclick="loadSampleData(false)">
+                  <i class="fas fa-vial"></i> Load Sample Trip
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="dropZone" class="drop-zone">
@@ -277,7 +296,7 @@
 
               <div class="sample-data-box">
                 <p>No log files handy? Try this real-world trip profile:</p>
-                <button class="btn btn-sample" onclick="loadSampleData()">
+                <button class="btn btn-sample" onclick="loadSampleData(true)">
                   📂 Load Sample Trip (JSON)
                 </button>
               </div>

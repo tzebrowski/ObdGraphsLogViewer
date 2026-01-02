@@ -44,6 +44,6 @@ window.scanAnomalies = () => Analysis.runScan();
 window.addFilterRow = () => Analysis.addFilterRow();
 window.resetZoom = () => Sliders.reset();
 window.toggleInfo = () => InfoPage.toggleInfo();
-window.loadSampleData = () => UI.loadSampleData();
+window.loadSampleData = (i) => UI.loadSampleData(i);
 window.removeFile = (f) => ChartManager.removeFile(f);
 window.loadFile = (a, b, c) => Drive.loadFile(a, b, c);
