@@ -1155,7 +1155,7 @@ footer {
   opacity: 1;
 }
 
-@media (width <=768px) {
+@media (width <= 768px) {
   .app-container {
     flex-direction: column;
     height: 100vh;
@@ -1235,29 +1235,39 @@ footer {
     line-height: 1.4;
   }
 
+  /* Reduce excessive padding in the Hero section */
   .hero {
-    padding: 60px 15px 40px;
-    /* Top, Sides, Bottom */
-    min-height: auto;
+    padding: 60px 15px 40px !important;
+    border-bottom-width: 3px;
   }
 
   .hero h1 {
-    font-size: 2.2rem;
-    /* Was 3.5rem - way too big for mobile */
-    margin-top: 10px;
+    font-size: 2.2rem !important;
+    /* Scale down the giant title */
+    letter-spacing: 1px;
+    margin-bottom: 8px;
   }
 
   .hero p {
-    font-size: 1rem;
-    margin-bottom: 20px;
-    padding: 0 10px;
+    font-size: 1rem !important;
+    line-height: 1.4;
+    margin-bottom: 25px;
+    color: rgb(255 255 255 / 90%);
   }
 
-  /* Make buttons slightly smaller to fit side-by-side or stack better */
   .hero-buttons {
     flex-direction: column;
-    /* Stack buttons vertically on very small screens */
-    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+    /* Keep them from getting too wide on tablets */
+    margin: 0 auto;
+  }
+
+  .btn-green {
+    width: 100%;
+    padding: 12px 20px !important;
+    font-size: 1rem !important;
+    box-sizing: border-box;
   }
 }
 
