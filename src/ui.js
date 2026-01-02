@@ -1,6 +1,5 @@
 import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
-import { DragnDrop } from './dragndrop.js';
 import { Preferences } from './preferences.js';
 
 export const UI = {
@@ -43,6 +42,15 @@ export const UI = {
       scanResults: document.getElementById('scanResults'),
       scanCount: document.getElementById('scanCount'),
     };
+  },
+
+  updateDataLoadedState: (hasData) => {
+    const container = document.getElementById('chartContainer');
+    if (hasData) {
+      container.classList.add('has-data');
+    } else {
+      container.classList.remove('has-data');
+    }
   },
 
   toggleItem(i) {
@@ -276,7 +284,7 @@ export const UI = {
     });
   },
 
-  loadSampleData: async () => {
+  loadSampleData: async (showInfo) => {
     const sampleUrl =
       'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
 
@@ -292,7 +300,9 @@ export const UI = {
 
       DataProcessor.process(data, 'sample-trip-giulia.json');
 
-      InfoPage.toggleInfo();
+      if (showInfo) {
+        InfoPage.toggleInfo();
+      }
 
       btn.innerText = originalText;
       btn.disabled = false;
