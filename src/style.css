@@ -1189,11 +1189,12 @@ footer {
 
   .nav-title {
     display: none;
-    /* Hide the text "My Giulia" next to the logo on small phones to save space */
   }
 
+  /* Align social icons to the right */
   .nav-links {
-    gap: 12px;
+    gap: 15px;
+    margin-left: auto;
   }
 
   .nav-btn-primary {
@@ -1211,28 +1212,26 @@ footer {
   }
 
   .features {
-    padding: 30px 15px;
-    gap: 15px;
+    padding: 25px 15px !important;
+    gap: 12px !important;
   }
 
   .feature-card {
-    padding: 20px;
+    padding: 15px 20px !important;
   }
 
   .feature-card i {
-    font-size: 2.2rem;
-    /* Slightly smaller icon */
-    margin-bottom: 10px;
+    font-size: 2rem !important;
+    margin-bottom: 10px !important;
   }
 
   .feature-card h3 {
-    font-size: 1.1rem;
-    margin-bottom: 8px;
+    font-size: 1.05rem !important;
+    margin-bottom: 5px !important;
   }
 
   .feature-card p {
-    font-size: 0.9rem;
-    line-height: 1.4;
+    font-size: 0.85rem !important;
   }
 
   /* Reduce excessive padding in the Hero section */
