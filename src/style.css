@@ -1232,15 +1232,18 @@ footer {
     width: 85vw !important;
     max-width: 320px;
     height: 100vh;
-    margin-left: -100vw !important; /* Fully hidden when off */
+    margin-left: -110vw !important;
+    visibility: hidden;
     z-index: 2000 !important;
-    transition: margin-left 0.3s ease-out !important;
-    background: var(--sidebar-bg) !important;
+    transition:
+      margin-left 0.3s ease-out,
+      visibility 0.3s !important;
     box-shadow: 5px 0 15px rgb(0 0 0 / 30%);
   }
 
   .sidebar.active {
     margin-left: 0 !important;
+    visibility: visible;
   }
 
   .resizer {
