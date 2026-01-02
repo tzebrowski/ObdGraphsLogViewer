@@ -59,6 +59,7 @@ export const UI = {
     UI.initResizer();
     UI.initVersionInfo();
     UI.initSidebarSectionsCollapse();
+    UI.initMobileUI();
   },
 
   initSidebarSectionsCollapse() {
@@ -86,6 +87,36 @@ export const UI = {
             UI.saveSidebarState();
           }
         }
+      }
+    });
+  },
+
+  initMobileUI: () => {
+    const sidebar = UI.elements.sidebar;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'sidebar-backdrop';
+    document.body.appendChild(backdrop);
+
+    window.toggleSidebar = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        sidebar.classList.toggle('active');
+        backdrop.classList.toggle('active');
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
+    };
+
+    backdrop.addEventListener('click', () => {
+      sidebar.classList.remove('active');
+      backdrop.classList.remove('active');
+    });
+
+    document.getElementById('signalList')?.addEventListener('change', () => {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove('active');
+        backdrop.classList.remove('active');
       }
     });
   },
@@ -299,8 +330,6 @@ export const UI = {
     document.querySelectorAll('#signalList label').forEach((el) => {
       el.style.color = textColor;
     });
-
-    localStorage.setItem('preferred-theme', theme);
   },
 
   initVersionInfo() {

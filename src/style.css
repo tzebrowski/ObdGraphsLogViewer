@@ -774,7 +774,7 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 .modal-header {
-  padding: 15px 20px;
+  padding: 2px 20px;
   border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
@@ -782,7 +782,9 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: calc(85vh - 120px);
 }
 
 .app-description {
@@ -901,9 +903,10 @@ input[type='range']::-webkit-slider-thumb {
 
 .info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 20px;
+  grid-template-columns: 1fr;
+  /* Stacked by default for mobile */
+  gap: 12px;
+  margin-bottom: 15px;
 }
 
 .info-card[style*='grid-column: span 2'] {
@@ -1134,29 +1137,167 @@ footer {
   color: var(--brand-blue);
 }
 
-/* Mobile Responsiveness */
-@media (width <=768px) {
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgb(0 0 0 / 50%);
+  z-index: 1500;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.active {
+  display: block;
+  opacity: 1;
+}
+
+@media (width <= 768px) {
+  .tech-specs {
+    padding: 20px 15px !important;
+  }
+
+  .tech-specs h2 {
+    font-size: 1.4rem !important;
+    margin-bottom: 8px;
+  }
+
+  .tech-specs p {
+    font-size: 0.9rem !important;
+    margin-bottom: 20px;
+    line-height: 1.4;
+  }
+
+  .spec-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .tag {
+    margin: 0; /* Let flex gap handle it */
+    font-size: 0.8rem;
+    padding: 8px 15px;
+  }
+
   .app-container {
     flex-direction: column;
-    overflow-y: auto;
+    height: 100vh;
+    overflow: hidden;
   }
 
   .sidebar {
-    width: 100%;
-    min-width: 100%;
-    height: auto;
-    max-height: 400px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
-    margin-left: 0 !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 85vw !important;
+    max-width: 320px;
+    height: 100vh;
+    margin-left: -100vw;
+    z-index: 2000;
+    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 5px 0 15px rgb(0 0 0 / 30%);
+  }
+
+  .sidebar.active {
+    margin-left: 0;
   }
 
   .resizer {
     display: none;
   }
+
+  .nav-container {
+    padding: 0 10px;
+  }
+
+  .nav-title {
+    display: none;
+  }
+
+  /* Align social icons to the right */
+  .nav-links {
+    gap: 15px;
+    margin-left: auto;
+  }
+
+  .nav-btn-primary {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  #chartContainer {
+    padding-top: 60px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+    /* Two columns on larger screens */
+  }
+
+  .features {
+    padding: 25px 15px !important;
+    gap: 12px !important;
+  }
+
+  .feature-card {
+    padding: 15px 20px !important;
+  }
+
+  .feature-card i {
+    font-size: 2rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  .feature-card h3 {
+    font-size: 1.05rem !important;
+    margin-bottom: 5px !important;
+  }
+
+  .feature-card p {
+    font-size: 0.85rem !important;
+  }
+
+  /* Reduce excessive padding in the Hero section */
+  .hero {
+    padding: 60px 15px 40px !important;
+    border-bottom-width: 3px;
+  }
+
+  .hero h1 {
+    font-size: 2.2rem !important;
+    /* Scale down the giant title */
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .hero p {
+    font-size: 1rem !important;
+    line-height: 1.4;
+    margin-bottom: 25px;
+    color: rgb(255 255 255 / 90%);
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+    /* Keep them from getting too wide on tablets */
+    margin: 0 auto;
+  }
+
+  .btn-green {
+    width: 100%;
+    padding: 12px 20px !important;
+    font-size: 1rem !important;
+    box-sizing: border-box;
+  }
 }
 
-/* --- Policy Page Specific Styles --- */
 .policy-body {
   line-height: 1.6;
   max-width: 850px;
@@ -1379,7 +1520,8 @@ input:checked + .slider-round::before {
   top: 0;
   width: 100%;
   height: 64px;
-  background-color: transparent; /* Full transparency */
+  background-color: transparent;
+  /* Full transparency */
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgb(255 255 255 / 10%);
   z-index: 1000;
@@ -1467,5 +1609,6 @@ input:checked + .slider-round::before {
 
 /* Ensure the Hero section doesn't hide under the sticky nav */
 .docs-body .hero {
-  padding-top: 60px; /* Offset for the navbar */
+  padding-top: 60px;
+  /* Offset for the navbar */
 }
