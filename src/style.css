@@ -903,7 +903,8 @@ input[type='range']::-webkit-slider-thumb {
 
 .info-grid {
   display: grid;
-  grid-template-columns: 1fr; /* Stacked by default for mobile */
+  grid-template-columns: 1fr;
+  /* Stacked by default for mobile */
   gap: 12px;
   margin-bottom: 15px;
 }
@@ -1154,7 +1155,7 @@ footer {
   opacity: 1;
 }
 
-@media (width <= 768px) {
+@media (width <=768px) {
   .app-container {
     flex-direction: column;
     height: 100vh;
@@ -1187,16 +1188,17 @@ footer {
   }
 
   .nav-title {
-    font-size: 1rem;
+    display: none;
+    /* Hide the text "My Giulia" next to the logo on small phones to save space */
   }
 
   .nav-links {
-    gap: 10px;
+    gap: 12px;
   }
 
   .nav-btn-primary {
-    padding: 6px 12px;
-    font-size: 0.8rem;
+    padding: 6px 10px;
+    font-size: 0.75rem;
   }
 
   #chartContainer {
@@ -1204,7 +1206,58 @@ footer {
   }
 
   .info-grid {
-    grid-template-columns: 1fr 1fr; /* Two columns on larger screens */
+    grid-template-columns: 1fr 1fr;
+    /* Two columns on larger screens */
+  }
+
+  .features {
+    padding: 30px 15px;
+    gap: 15px;
+  }
+
+  .feature-card {
+    padding: 20px;
+  }
+
+  .feature-card i {
+    font-size: 2.2rem;
+    /* Slightly smaller icon */
+    margin-bottom: 10px;
+  }
+
+  .feature-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+
+  .feature-card p {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .hero {
+    padding: 60px 15px 40px;
+    /* Top, Sides, Bottom */
+    min-height: auto;
+  }
+
+  .hero h1 {
+    font-size: 2.2rem;
+    /* Was 3.5rem - way too big for mobile */
+    margin-top: 10px;
+  }
+
+  .hero p {
+    font-size: 1rem;
+    margin-bottom: 20px;
+    padding: 0 10px;
+  }
+
+  /* Make buttons slightly smaller to fit side-by-side or stack better */
+  .hero-buttons {
+    flex-direction: column;
+    /* Stack buttons vertically on very small screens */
+    gap: 10px;
   }
 }
 
