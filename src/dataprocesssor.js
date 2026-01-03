@@ -70,8 +70,6 @@ export const DataProcessor = {
       if (AppState.files.length === 1) {
         AppState.globalStartTime = minT;
         AppState.logDuration = fileEntry.duration;
-        AppState.availableSignals = fileEntry.availableSignals;
-        UI.renderSignalList();
         Analysis.init();
         if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
       }

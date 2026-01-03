@@ -262,7 +262,6 @@ export const ChartManager = {
 
     if (AppState.files.length == 0) {
       UI.updateDataLoadedState(false);
-      AppState.availableSignals = [];
     }
 
     UI.renderSignalList();

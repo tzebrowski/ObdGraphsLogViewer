@@ -129,21 +129,17 @@ export const UI = {
     resizer.addEventListener('mousedown', () => {
       isResizing = true;
       document.body.style.cursor = 'col-resize';
-      // Add a temporary overlay to prevent iframe/chart interference while dragging
       document.body.style.userSelect = 'none';
     });
 
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
 
-      // Calculate new width based on mouse position
       let newWidth = e.clientX;
 
-      // Constraints (matches CSS min/max)
       if (newWidth >= 250 && newWidth <= 600) {
         sidebar.style.width = `${newWidth}px`;
 
-        // Trigger chart resize in real-time or debounced
         if (AppState.chartInstance) {
           AppState.chartInstance.resize();
         }
@@ -207,56 +203,91 @@ export const UI = {
       document.exitFullscreen();
     }
   },
+  toggleFileSignals(fileIdx, shouldCheck) {
+    const inputs = UI.elements.signalList.querySelectorAll(
+      `input[data-file-idx="${fileIdx}"]`
+    );
+    inputs.forEach((i) => (i.checked = shouldCheck));
 
+    const chart = AppState.chartInstances[fileIdx];
+    if (chart) {
+      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+      chart.update('none');
+    }
+  },
   renderSignalList() {
     const container = UI.elements.signalList;
     if (!container) return;
     container.innerHTML = '';
 
-    const signals = AppState.availableSignals || [];
     const fragment = document.createDocumentFragment();
 
-    signals.forEach((signal, idx) => {
-      const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
-      const chartColors = getChartColors();
-      const color = chartColors[idx % chartColors.length];
+    AppState.files.forEach((file, fileIdx) => {
+      const fileHeader = document.createElement('div');
+      fileHeader.className = 'file-meta-header';
+      fileHeader.style.cssText = `
+      padding: 10px 5px 5px; 
+      font-weight: bold; 
+      border-bottom: 1px solid var(--border-color); 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+    `;
 
-      const label = document.createElement('label');
-      label.className = 'signal-item';
+      fileHeader.innerHTML = `
+      <span style="display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-trash-alt" 
+           style="color: var(--brand-red); cursor: pointer;" 
+           title="Remove this log"
+           onclick="removeFile(${fileIdx})"></i>
+        <i class="fas fa-file-alt"></i> ${file.name}
+      </span>
+      <div class="button-row-sm">
+        <button class="btn btn-sm" onclick="toggleFileSignals(${fileIdx}, true)">All</button>
+        <button class="btn btn-sm" onclick="toggleFileSignals(${fileIdx}, false)">None</button>
+      </div>
+    `;
+      fragment.appendChild(fileHeader);
 
-      label.innerHTML = `
-                <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
-                <input type="checkbox" id="chk-${idx}" data-key="${signal}" ${isImportant ? 'checked' : ''}>
-                <label for="chk-${idx}">${signal}</label>
-            `;
+      file.availableSignals.forEach((signal, sigIdx) => {
+        const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
+        const chartColors = getChartColors();
+        const colorIdx = fileIdx * 10 + sigIdx;
+        const color = chartColors[colorIdx % chartColors.length];
 
-      fragment.appendChild(label);
+        const label = document.createElement('label');
+        label.className = 'signal-item';
+        const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
+
+        label.innerHTML = `
+          <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
+          <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isImportant ? 'checked' : ''}>
+          <label for="${uniqueId}" style="font-size: 0.85em; cursor: pointer;">${signal}</label>
+      `;
+        fragment.appendChild(label);
+      });
     });
 
     container.appendChild(fragment);
 
-    // Event Delegation for checkboxes
     container.onchange = (e) => {
       if (e.target.tagName === 'INPUT') {
-        this.syncSignalVisibility(
-          e.target.getAttribute('data-key'),
-          e.target.checked
-        );
+        const key = e.target.getAttribute('data-key');
+        const fileIdx = parseInt(e.target.getAttribute('data-file-idx'));
+        this.syncSignalVisibility(key, e.target.checked, fileIdx);
       }
     };
   },
 
-  syncSignalVisibility(key, isVisible) {
-    // Loop through ALL active chart instances to update visibility
-    AppState.chartInstances.forEach((chart) => {
+  syncSignalVisibility(key, isVisible, fileIdx) {
+    const chart = AppState.chartInstances[fileIdx];
+    if (chart) {
       const dataset = chart.data.datasets.find((d) => d.label === key);
       if (dataset) {
         dataset.hidden = !isVisible;
+        chart.update('none'); // Update only the affected chart
       }
-    });
-
-    // Trigger a batch update for all charts without re-animating
-    AppState.chartInstances.forEach((chart) => chart.update('none'));
+    }
   },
 
   toggleAllSignals(shouldCheck) {
