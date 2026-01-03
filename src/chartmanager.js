@@ -259,11 +259,13 @@ export const ChartManager = {
     AppState.files.splice(index, 1);
 
     ChartManager.render();
-    UI.renderSignalList();
-
+    
     if (AppState.files.length == 0) {
       UI.updateDataLoadedState(false);
+      AppState.availableSignals = [];
     }
+
+    UI.renderSignalList();
   },
 
   syncAll: ({ chart }) => {
