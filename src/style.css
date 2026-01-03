@@ -96,7 +96,7 @@ body.docs-body.dark-theme .feature-card {
   overflow: hidden;
   display: flex;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
 }
 
 .sidebar {
