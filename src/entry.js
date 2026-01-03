@@ -7,9 +7,11 @@ import { Drive } from './drive.js';
 import { DragnDrop } from './dragndrop.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
+import { Navigation } from './navigation.js';
 
 window.onload = async function () {
   await DataProcessor.loadConfiguration();
+
   Auth.init();
   UI.init();
   Analysis.init();
@@ -18,6 +20,7 @@ window.onload = async function () {
   InfoPage.init();
   DragnDrop.init();
   Preferences.init();
+  Navigation.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {

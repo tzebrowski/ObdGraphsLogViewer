@@ -11,16 +11,19 @@
     <link rel="stylesheet" href="./src/style.css" />
   </head>
 
-  <body class="docs-body">
+  <body class="spa-mode landing-active docs-body">
     <nav class="top-nav">
       <div class="nav-container">
-        <div class="nav-brand" onclick="window.location.href = 'index.html'">
-          <img
-            src="https://img.icons8.com/color/48/google-play.png"
-            alt="Logo"
-            class="nav-logo"
-          />
-          <span class="nav-title">My Giulia</span>
+        <div class="integrated-toolbar">
+          <button class="nav-icon-btn" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+          </button>
+          <button class="nav-icon-btn" onclick="toggleFullScreen()">
+            <i class="fas fa-expand"></i>
+          </button>
+          <button class="nav-icon-btn info-btn" onclick="toggleInfo()">
+            <i class="fas fa-info-circle"></i>
+          </button>
         </div>
 
         <div class="nav-links">
@@ -42,112 +45,446 @@
             <i class="fab fa-google-play"></i>
           </a>
 
-          <a href="analyzer.html" class="nav-btn-primary"> Launch Analyzer </a>
+          <a
+            href="#analyzer"
+            class="nav-btn-primary"
+            style="background-color: var(--brand-red)"
+          >
+            <i class="fas fa-chart-line"></i> Open Analyzer
+          </a>
         </div>
       </div>
     </nav>
 
-    <section class="hero">
-      <h1>My Giulia</h1>
-      <p>
-        Advanced telemetry and diagnostics for the Alfa Romeo enthusiast. Native
-        support for 2.0 GME, 2.2 Multijet, and 2.9 QV engines.
-      </p>
-      <div
-        class="hero-buttons"
-        style="display: flex; gap: 15px; justify-content: center"
-      >
-        <a
-          href="analyzer.html"
-          class="btn-green"
-          style="background-color: var(--brand-red)"
-        >
-          <i class="fas fa-chart-line"></i> Launch Analyzer
-        </a>
-        <a
-          href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia"
-          class="btn-green"
-        >
-          <i class="fab fa-google-play"></i> Download App
-        </a>
-      </div>
-    </section>
-
-    <section class="features">
-      <div class="feature-card">
-        <i class="fas fa-car-side"></i>
-        <h3>Native Vehicle Support</h3>
+    <main id="landing-page">
+      <section class="hero">
+        <h1>My Giulia</h1>
         <p>
           Advanced telemetry and diagnostics for the Alfa Romeo enthusiast.
           Native support for 2.0 GME, 2.2 Multijet, and 2.9 QV engines.
         </p>
-      </div>
-      <div class="feature-card">
-        <i class="fab fa-google-drive"></i>
-        <h3>Cloud Synchronization</h3>
-        <p>
-          Seamlessly upload your recorded trip logs to Google Drive from the
-          mobile app and access them instantly here for advanced analysis.
-        </p>
-      </div>
-      <div class="feature-card">
-        <i class="fas fa-mobile-alt"></i>
-        <h3>Android Auto Integration</h3>
-        <p>
-          Dedicated dashboards for performance metrics and trip information
-          directly on your car's screen.
-        </p>
-      </div>
-      <div class="feature-card">
-        <i class="fas fa-bell"></i>
-        <h3>Advanced Alerting</h3>
-        <p>
-          Set custom upper and lower thresholds for individual metrics to
-          monitor engine health in real-time.
-        </p>
-      </div>
-      <div class="feature-card">
-        <i class="fas fa-database"></i>
-        <h3>Data Logging</h3>
-        <p>
-          Automatically record trip data and review historical telemetry
-          sessions at any time.
-        </p>
-      </div>
-      <div class="feature-card">
-        <i class="fas fa-cogs"></i>
-        <h3>Configurable Views</h3>
-        <p>
-          Visualize data through multiple gauge types, including Boost, MAF, and
-          Oil Temperature.
-        </p>
-      </div>
-      <div class="feature-card">
-        <i class="fas fa-user-circle"></i>
-        <h3>Vehicle Profiles</h3>
-        <p>
-          Create customizable profiles with vehicle-specific settings and
-          external PID configurations via JSON.
-        </p>
-      </div>
-    </section>
+        <div
+          class="hero-buttons"
+          style="display: flex; gap: 15px; justify-content: center"
+        >
+          <a
+            href="#analyzer"
+            class="btn-green"
+            style="background-color: var(--brand-red)"
+          >
+            <i class="fas fa-chart-line"></i> Launch Analyzer
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia"
+            class="btn-green"
+          >
+            <i class="fab fa-google-play"></i> Download App
+          </a>
+        </div>
+      </section>
 
-    <section class="tech-specs">
-      <div class="container" style="text-align: center">
-        <h2>Hardware & Connectivity</h2>
-        <p>
-          Compatible with high-performance adapters including ELM327 and
-          STN1170/STN2120.
-        </p>
-        <div class="spec-tags">
-          <span class="tag">STNxxx Support</span>
-          <span class="tag">ObdMetrics Framework</span>
-          <span class="tag">Bluetooth</span>
-          <span class="tag">Wi-Fi</span>
-          <span class="tag">USB</span>
+      <section class="features">
+        <div class="feature-card">
+          <i class="fas fa-car-side"></i>
+          <h3>Native Vehicle Support</h3>
+          <p>
+            Advanced telemetry and diagnostics for the Alfa Romeo enthusiast.
+            Native support for 2.0 GME, 2.2 Multijet, and 2.9 QV engines.
+          </p>
+        </div>
+        <div class="feature-card">
+          <i class="fab fa-google-drive"></i>
+          <h3>Cloud Synchronization</h3>
+          <p>
+            Seamlessly upload your recorded trip logs to Google Drive from the
+            mobile app and access them instantly here for advanced analysis.
+          </p>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-mobile-alt"></i>
+          <h3>Android Auto Integration</h3>
+          <p>
+            Dedicated dashboards for performance metrics and trip information
+            directly on your car's screen.
+          </p>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-bell"></i>
+          <h3>Advanced Alerting</h3>
+          <p>
+            Set custom upper and lower thresholds for individual metrics to
+            monitor engine health in real-time.
+          </p>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-database"></i>
+          <h3>Data Logging</h3>
+          <p>
+            Automatically record trip data and review historical telemetry
+            sessions at any time.
+          </p>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-cogs"></i>
+          <h3>Configurable Views</h3>
+          <p>
+            Visualize data through multiple gauge types, including Boost, MAF,
+            and Oil Temperature.
+          </p>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-user-circle"></i>
+          <h3>Vehicle Profiles</h3>
+          <p>
+            Create customizable profiles with vehicle-specific settings and
+            external PID configurations via JSON.
+          </p>
+        </div>
+      </section>
+
+      <section class="tech-specs">
+        <div class="container" style="text-align: center">
+          <h2>Hardware & Connectivity</h2>
+          <p>
+            Compatible with high-performance adapters including ELM327 and
+            STN1170/STN2120.
+          </p>
+          <div class="spec-tags">
+            <span class="tag">STNxxx Support</span>
+            <span class="tag">ObdMetrics Framework</span>
+            <span class="tag">Bluetooth</span>
+            <span class="tag">Wi-Fi</span>
+            <span class="tag">USB</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <main id="analyzer-page" style="display: none">
+      <div class="app-container">
+        <div class="sidebar" id="sidebar">
+          <button
+            class="mobile-close-btn"
+            onclick="toggleSidebar()"
+            aria-label="Close sidebar"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+
+          <a
+            href="#home"
+            style="
+              text-decoration: none;
+              color: var(--text-muted);
+              font-size: 0.8rem;
+              margin-bottom: 10px;
+              display: block;
+            "
+          >
+            <i class="fas fa-arrow-left"></i> Back to Documentation
+          </a>
+          <h2>My Giulia Telemetry Analyzer</h2>
+          <div class="control-group gray-box">
+            <h3>Settings & Preferences</h3>
+            <div class="preferences-list">
+              <div class="pref-item">
+                <div class="pref-info">
+                  <span class="pref-title">Dark Mode</span>
+                  <span class="pref-desc">Switch to a dark visual theme</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pref-theme-dark" />
+                  <span class="slider-round"></span>
+                </label>
+              </div>
+
+              <hr />
+
+              <div class="pref-subgroup">
+                <div class="pref-item">
+                  <div class="pref-info">
+                    <span class="pref-title">Google Drive Integration</span>
+                    <span class="pref-desc">Cloud access configuration</span>
+                  </div>
+                  <button
+                    class="btn btn-sm btn-add"
+                    id="toggle-drive-config"
+                    onclick="toggleDriveConfig()"
+                  >
+                    <i class="fas fa-cog"></i> Config
+                  </button>
+                </div>
+
+                <div
+                  id="configPanel"
+                  style="
+                    display: none;
+                    margin-top: 10px;
+                    padding: 10px;
+                    background: #f0f0f0;
+                    border-radius: 4px;
+                  "
+                >
+                  <input
+                    type="text"
+                    id="gClientId"
+                    placeholder="Enter Google Client ID"
+                    style="margin-bottom: 8px"
+                  />
+                  <button
+                    class="btn btn-primary btn-sm"
+                    onclick="saveDriveConfig()"
+                  >
+                    Save ID
+                  </button>
+                </div>
+              </div>
+
+              <hr />
+
+              <div class="pref-item">
+                <div class="pref-info">
+                  <span class="pref-title">Remember Layout</span>
+                  <span class="pref-desc">Persist collapsed sections</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pref-persistence" checked />
+                  <span class="slider-round"></span>
+                </label>
+              </div>
+
+              <div class="pref-item">
+                <div class="pref-info">
+                  <span class="pref-title">High Performance</span>
+                  <span class="pref-desc">Reduce chart rendering overhead</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pref-performance" />
+                  <span class="slider-round"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-group gray-box">
+            <h3 class="group-header">Log Source</h3>
+            <div class="button-row">
+              <button
+                id="authBtn"
+                class="btn btn-primary"
+                onclick="handleAuth()"
+              >
+                Drive Scan
+              </button>
+              <button
+                class="btn"
+                onclick="document.getElementById('fileInput').click()"
+              >
+                Local File
+              </button>
+              <button class="btn" onclick="resetZoom()">Reset View</button>
+            </div>
+            <input
+              type="file"
+              id="fileInput"
+              accept=".json"
+              style="display: none"
+            />
+            <div id="driveList" class="drive-list"></div>
+            <div id="fileInfo" class="status-text"></div>
+          </div>
+
+          <div class="control-group gray-box">
+            <h3>Anomaly Scanner</h3>
+
+            <div style="margin-bottom: 10px">
+              <select
+                id="anomalyTemplate"
+                onchange="applyTemplate()"
+                class="template-select"
+              >
+                <option value="">-- Load a Template --</option>
+              </select>
+            </div>
+
+            <div id="filtersContainer"></div>
+            <button class="btn btn-add" onclick="addFilterRow()">
+              + Add Condition
+            </button>
+            <button class="btn btn-primary mt-10" onclick="scanAnomalies()">
+              Scan Log
+            </button>
+            <div id="scanCount" class="result-count"></div>
+            <div id="scanResults" class="results-list"></div>
+          </div>
+
+          <div class="control-group flex-grow gray-box">
+            <div class="group-header-row">
+              <h3>Signals</h3>
+              <div class="button-row-sm">
+                <button class="btn btn-sm" onclick="toggleAllSignals(true)">
+                  All
+                </button>
+                <button class="btn btn-sm" onclick="toggleAllSignals(false)">
+                  None
+                </button>
+              </div>
+            </div>
+            <div id="signalList" class="signal-list"></div>
+          </div>
+        </div>
+
+        <div id="resizer" class="resizer"></div>
+
+        <div class="main-content" id="mainContent">
+          <div id="chartContainer">
+            <div id="empty-state" class="empty-state-container">
+              <div class="empty-state-content">
+                <i class="fas fa-chart-area empty-icon"></i>
+                <h3>No Telemetry Loaded</h3>
+                <p>
+                  Start by scanning your Google Drive or uploading a local JSON
+                  trip log.
+                </p>
+                <div class="empty-state-actions">
+                  <button
+                    class="btn btn-primary mobile-only-btn"
+                    onclick="toggleSidebar()"
+                  >
+                    <i class="fas fa-folder-open"></i> Open Log Source
+                  </button>
+                  <button class="btn" onclick="loadSampleData(false)">
+                    <i class="fas fa-vial"></i> Load Sample Trip
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-content">
+              <i class="fas fa-file-upload"></i>
+              <p>Drag & Drop telemetry JSON here or <span>browse</span></p>
+              <input type="file" id="fileInputDropZone" accept=".json" hidden />
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+
+      <div id="loadingOverlay" class="loading-overlay" style="display: none">
+        <div class="spinner"></div>
+        <div id="loadingText">Loading...</div>
+        <button id="cancelLoadBtn" class="btn">Cancel</button>
+      </div>
+
+      <div id="infoModal" class="modal-overlay" style="display: none">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Application Overview</h2>
+            <button class="btn-close" onclick="toggleInfo()">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="app-description">
+              <strong>My Giulia Telemetry Analyzer:</strong> A professional tool
+              for visualizing and scanning vehicle OBD data. Compare multiple
+              logs, sync timelines, and detect mechanical anomalies
+              automatically.
+            </p>
+
+            <div class="info-grid">
+              <div
+                class="info-card data-source-card"
+                style="grid-column: span 2"
+              >
+                <h4>📱 Data Source</h4>
+                <div class="data-source-flex">
+                  <img
+                    src="https://lh3.googleusercontent.com/d_S-jY_V_7z9_x_W5y_6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6=s128"
+                    alt="MyGiulia Logo"
+                    class="app-icon"
+                    onerror="
+                      this.src =
+                        'https://img.icons8.com/color/96/google-play.png'
+                    "
+                  />
+                  <div class="data-source-text">
+                    <p>
+                      Telemetry data is collected by the
+                      <strong>MyGiulia</strong> Android application.
+                    </p>
+                    <a
+                      href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia"
+                      target="_blank"
+                      class="play-store-btn"
+                    >
+                      <img
+                        src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                        alt="Get it on Google Play"
+                        height="30"
+                      />
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="info-card" style="grid-column: span 2">
+                <h4>📥 How to Import Logs</h4>
+                <ol class="import-steps">
+                  <li>
+                    Open <strong>MyGiulia</strong> on your Android device.
+                  </li>
+                  <li>
+                    Navigate to the <strong>Graph</strong> view and select
+                    <strong>Manage recorded trips</strong>.
+                  </li>
+                  <li>
+                    Select your log and tap <strong>Send to Cloud</strong>.
+                  </li>
+                  <li>
+                    Upload the file here using the
+                    <strong>"Upload Log"</strong> button.
+                  </li>
+                </ol>
+
+                <div class="sample-data-box">
+                  <p>No log files handy? Try this real-world trip profile:</p>
+                  <button class="btn btn-sample" onclick="loadSampleData(true)">
+                    📂 Load Sample Trip (JSON)
+                  </button>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <h4>🔍 Anomaly Scanning</h4>
+                <p>
+                  Uses logic templates to pinpoint events like boost leaks with
+                  contextual zoom.
+                </p>
+              </div>
+              <div class="info-card">
+                <h4>🔄 Multi-Sync</h4>
+                <p>
+                  Pan or zoom on any chart to automatically align all loaded
+                  logs.
+                </p>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <div class="modal-preferences">
+                <label class="custom-checkbox-container">
+                  <input type="checkbox" id="hideInfoCheckbox" />
+                  <span class="checkmark"></span>
+                  <span class="label-text">Don't show this again</span>
+                </label>
+                <button id="closeInfoBtn" class="btn btn-primary">
+                  Got it!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
 
     <div class="footer">
       <p>
@@ -169,7 +506,18 @@
         <a href="policy.html" style="font-size: 1.1em"
           ><i class="fas fa-shield-alt"></i> Privacy Policy</a
         >
+        <span id="appVersion" class="app-version-container"></span>
       </div>
     </div>
+
+    <script type="module" src="./src/config.js"></script>
+    <script type="module" src="./src/auth.js"></script>
+    <script type="module" src="./src/drive.js"></script>
+    <script type="module" src="./src/chartmanager.js"></script>
+    <script type="module" src="./src/ui.js"></script>
+    <script type="module" src="./src/analysis.js"></script>
+    <script type="module" src="./src/dataprocesssor.js"></script>
+    <script type="module" src="./src/entry.js"></script>
+    <script type="module" src="./src/navigation.js"></script>
   </body>
 </html>
