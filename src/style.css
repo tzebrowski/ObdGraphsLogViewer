@@ -1706,3 +1706,23 @@ input:checked + .slider-round::before {
   width: 100%;
   max-width: 280px;
 }
+
+/* SPA Navigation Logic */
+.analyzer-active .top-nav {
+  position: static; /* Analyzer usually handles its own scrolling */
+  background-color: var(--sidebar-bg);
+}
+
+.analyzer-active body {
+  overflow: hidden; /* Prevent double scrollbars in analyzer mode */
+}
+
+#analyzer-page {
+  height: calc(100vh - 64px); /* Subtract top-nav height */
+  width: 100vw;
+}
+
+/* Ensure the hero section doesn't jump when top-nav is sticky */
+.landing-active .hero {
+  padding-top: 100px;
+}
