@@ -34,12 +34,11 @@ export const Analysis = {
     const div = document.createElement('div');
     div.className = 'filter-row';
 
-    // Aggregate unique signals from all loaded files
-    const allAvailableSignals = [
+    const allSignals = [
       ...new Set(AppState.files.flatMap((f) => f.availableSignals)),
     ].sort();
 
-    const options = allAvailableSignals
+    const options = allSignals
       .map(
         (k) =>
           `<option value="${k}" ${k === sigName ? 'selected' : ''}>${k}</option>`
@@ -47,16 +46,18 @@ export const Analysis = {
       .join('');
 
     div.innerHTML = `
-          <select class="sig-select"><option value="">Signal...</option>${options}</select>
-          <select class="op">
-              <option value=">" ${operator === '>' ? 'selected' : ''}>&gt;</option>
-              <option value="<" ${operator === '<' ? 'selected' : ''}>&lt;</option>
-          </select>
-          <input type="number" placeholder="Val" value="${value}">
-          <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
-      `;
+            <select class="sig-select"><option value="">Signal...</option>${options}</select>
+            <select class="op">
+                <option value=">" ${operator === '>' ? 'selected' : ''}>&gt;</option>
+                <option value="<" ${operator === '<' ? 'selected' : ''}>&lt;</option>
+            </select>
+            <input type="number" placeholder="Val" value="${value}">
+            <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
+        `;
 
-    div.querySelector('.remove-row').onclick = () => div.remove();
+    div.querySelector('.remove-row').onclick = () => {
+      div.remove();
+    };
     container.appendChild(div);
   },
 

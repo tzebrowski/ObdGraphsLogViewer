@@ -203,18 +203,7 @@ export const UI = {
       document.exitFullscreen();
     }
   },
-  toggleFileSignals(fileIdx, shouldCheck) {
-    const inputs = UI.elements.signalList.querySelectorAll(
-      `input[data-file-idx="${fileIdx}"]`
-    );
-    inputs.forEach((i) => (i.checked = shouldCheck));
 
-    const chart = AppState.chartInstances[fileIdx];
-    if (chart) {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
-    }
-  },
   renderSignalList() {
     const container = UI.elements.signalList;
     if (!container) return;
@@ -223,15 +212,21 @@ export const UI = {
     const fragment = document.createDocumentFragment();
 
     AppState.files.forEach((file, fileIdx) => {
+      const fileGroup = document.createElement('div');
+      fileGroup.className = 'file-group-container';
+      fileGroup.style.marginBottom = '10px';
+
       const fileHeader = document.createElement('div');
       fileHeader.className = 'file-meta-header';
       fileHeader.style.cssText = `
-      padding: 10px 5px 5px; 
+      padding: 10px 5px; 
       font-weight: bold; 
       border-bottom: 1px solid var(--border-color); 
       display: flex; 
       justify-content: space-between; 
       align-items: center;
+      cursor: pointer;
+      background: var(--sidebar-bg);
     `;
 
       fileHeader.innerHTML = `
@@ -239,15 +234,28 @@ export const UI = {
         <i class="fas fa-trash-alt" 
            style="color: var(--brand-red); cursor: pointer;" 
            title="Remove this log"
-           onclick="removeFile(${fileIdx})"></i>
+           onclick="event.stopPropagation(); removeFile(${fileIdx})"></i>
+        <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
         <i class="fas fa-file-alt"></i> ${file.name}
       </span>
       <div class="button-row-sm">
-        <button class="btn btn-sm" onclick="toggleFileSignals(${fileIdx}, true)">All</button>
-        <button class="btn btn-sm" onclick="toggleFileSignals(${fileIdx}, false)">None</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
       </div>
     `;
-      fragment.appendChild(fileHeader);
+
+      const signalListContainer = document.createElement('div');
+      signalListContainer.id = `sig-list-f${fileIdx}`;
+      signalListContainer.style.paddingLeft = '15px';
+
+      fileHeader.onclick = () => {
+        const isHidden = signalListContainer.style.display === 'none';
+        signalListContainer.style.display = isHidden ? 'block' : 'none';
+        const icon = document.getElementById(`icon-f${fileIdx}`);
+        icon.className = isHidden
+          ? 'fas fa-chevron-down'
+          : 'fas fa-chevron-right';
+      };
 
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
@@ -264,8 +272,12 @@ export const UI = {
           <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isImportant ? 'checked' : ''}>
           <label for="${uniqueId}" style="font-size: 0.85em; cursor: pointer;">${signal}</label>
       `;
-        fragment.appendChild(label);
+        signalListContainer.appendChild(label);
       });
+
+      fileGroup.appendChild(fileHeader);
+      fileGroup.appendChild(signalListContainer);
+      fragment.appendChild(fileGroup);
     });
 
     container.appendChild(fragment);
@@ -279,29 +291,28 @@ export const UI = {
     };
   },
 
+  toggleFileSignals(fileIdx, shouldCheck) {
+    const inputs = UI.elements.signalList.querySelectorAll(
+      `input[data-file-idx="${fileIdx}"]`
+    );
+    inputs.forEach((i) => (i.checked = shouldCheck));
+
+    const chart = AppState.chartInstances[fileIdx];
+    if (chart) {
+      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+      chart.update('none');
+    }
+  },
+
   syncSignalVisibility(key, isVisible, fileIdx) {
     const chart = AppState.chartInstances[fileIdx];
     if (chart) {
       const dataset = chart.data.datasets.find((d) => d.label === key);
       if (dataset) {
         dataset.hidden = !isVisible;
-        chart.update('none'); // Update only the affected chart
+        chart.update('none');
       }
     }
-  },
-
-  toggleAllSignals(shouldCheck) {
-    const container = UI.elements.signalList;
-    if (!container) return;
-
-    container
-      .querySelectorAll('input')
-      .forEach((i) => (i.checked = shouldCheck));
-
-    AppState.chartInstances.forEach((chart) => {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
-    });
   },
 
   loadSampleData: async (showInfo) => {
