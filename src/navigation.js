@@ -35,5 +35,6 @@ export const Navigation = {
 
   init() {
     window.addEventListener('hashchange', Navigation.handleRoute);
+    Navigation.handleRoute();
   },
 };
