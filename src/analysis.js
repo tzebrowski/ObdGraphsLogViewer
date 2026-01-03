@@ -34,7 +34,12 @@ export const Analysis = {
     const div = document.createElement('div');
     div.className = 'filter-row';
 
-    const options = AppState.availableSignals
+    // Aggregate unique signals from all loaded files
+    const allAvailableSignals = [
+      ...new Set(AppState.files.flatMap((f) => f.availableSignals)),
+    ].sort();
+
+    const options = allAvailableSignals
       .map(
         (k) =>
           `<option value="${k}" ${k === sigName ? 'selected' : ''}>${k}</option>`
@@ -42,14 +47,14 @@ export const Analysis = {
       .join('');
 
     div.innerHTML = `
-            <select class="sig-select"><option value="">Signal...</option>${options}</select>
-            <select class="op">
-                <option value=">" ${operator === '>' ? 'selected' : ''}>&gt;</option>
-                <option value="<" ${operator === '<' ? 'selected' : ''}>&lt;</option>
-            </select>
-            <input type="number" placeholder="Val" value="${value}">
-            <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
-        `;
+          <select class="sig-select"><option value="">Signal...</option>${options}</select>
+          <select class="op">
+              <option value=">" ${operator === '>' ? 'selected' : ''}>&gt;</option>
+              <option value="<" ${operator === '<' ? 'selected' : ''}>&lt;</option>
+          </select>
+          <input type="number" placeholder="Val" value="${value}">
+          <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
+      `;
 
     div.querySelector('.remove-row').onclick = () => div.remove();
     container.appendChild(div);
@@ -66,23 +71,32 @@ export const Analysis = {
     const container = DOM.get('filtersContainer');
     if (container) container.innerHTML = '';
 
-    template.rules.forEach((rule) => {
-      let bestSig = AppState.availableSignals.includes(rule.sig)
-        ? rule.sig
-        : '';
+    // Consolidate all unique signals from all loaded files
+    const allUniqueSignals = [
+      ...new Set(AppState.files.flatMap((f) => f.availableSignals)),
+    ];
 
-      if (!bestSig) {
+    template.rules.forEach((rule) => {
+      let bestSig = '';
+
+      // 1. Direct match check
+      if (allUniqueSignals.includes(rule.sig)) {
+        bestSig = rule.sig;
+      } else {
+        // 2. Alias match check using SIGNAL_MAPPINGS
         const aliases = (SIGNAL_MAPPINGS[rule.sig] || []).map((a) =>
           a.toLowerCase()
         );
         bestSig =
-          AppState.availableSignals.find((s) =>
+          allUniqueSignals.find((s) =>
             aliases.some((alias) => s.toLowerCase().includes(alias))
           ) || '';
       }
+
       this.addFilterRow(bestSig, rule.op, rule.val);
     });
 
+    // Short delay ensures DOM updates before triggering scan
     setTimeout(() => this.runScan(), 100);
   },
 

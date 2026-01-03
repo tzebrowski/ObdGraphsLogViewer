@@ -64,7 +64,6 @@ export const AppState = {
   chartInstances: [],
   rawData: [],
   signals: {},
-  availableSignals: [],
   globalStartTime: 0,
   logDuration: 0,
   chartInstance: null,

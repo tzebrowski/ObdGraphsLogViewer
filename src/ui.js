@@ -213,50 +213,72 @@ export const UI = {
     if (!container) return;
     container.innerHTML = '';
 
-    const signals = AppState.availableSignals || [];
     const fragment = document.createDocumentFragment();
 
-    signals.forEach((signal, idx) => {
-      const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
-      const chartColors = getChartColors();
-      const color = chartColors[idx % chartColors.length];
+    // Iterate through each loaded file to group signals
+    AppState.files.forEach((file, fileIdx) => {
+      // 1. Create a header for the file
+      const fileHeader = document.createElement('div');
+      fileHeader.className = 'file-meta-header'; // Uses existing class from your CSS
+      fileHeader.style.padding = '10px 5px 5px 5px';
+      fileHeader.style.fontWeight = 'bold';
+      fileHeader.style.borderBottom = '1px solid var(--border-color)';
+      fileHeader.innerHTML = `<i class="fas fa-file-alt"></i> ${file.name}`;
+      fragment.appendChild(fileHeader);
 
-      const label = document.createElement('label');
-      label.className = 'signal-item';
+      // 2. Iterate through signals available in this specific file
+      file.availableSignals.forEach((signal, sigIdx) => {
+        const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
+        const chartColors = getChartColors();
 
-      label.innerHTML = `
-                <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
-                <input type="checkbox" id="chk-${idx}" data-key="${signal}" ${isImportant ? 'checked' : ''}>
-                <label for="chk-${idx}">${signal}</label>
-            `;
+        // Use a unique index based on both file and signal for color consistency
+        const colorIdx = fileIdx * 10 + sigIdx;
+        const color = chartColors[colorIdx % chartColors.length];
 
-      fragment.appendChild(label);
+        const label = document.createElement('label');
+        label.className = 'signal-item';
+
+        // Create a unique ID to prevent conflicts between different files having same signal name
+        const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
+
+        label.innerHTML = `
+          <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
+          <input type="checkbox" 
+                 id="${uniqueId}" 
+                 data-key="${signal}" 
+                 data-file-idx="${fileIdx}" 
+                 ${isImportant ? 'checked' : ''}>
+          <label for="${uniqueId}" style="font-size: 0.85em;">${signal}</label>
+      `;
+
+        fragment.appendChild(label);
+      });
     });
 
     container.appendChild(fragment);
 
-    // Event Delegation for checkboxes
+    // Updated Event Delegation to handle file-specific visibility
     container.onchange = (e) => {
       if (e.target.tagName === 'INPUT') {
-        this.syncSignalVisibility(
-          e.target.getAttribute('data-key'),
-          e.target.checked
-        );
+        const key = e.target.getAttribute('data-key');
+        const fileIdx = parseInt(e.target.getAttribute('data-file-idx'));
+        const isVisible = e.target.checked;
+
+        this.syncSignalVisibility(key, isVisible, fileIdx);
       }
     };
   },
 
-  syncSignalVisibility(key, isVisible) {
-    // Loop through ALL active chart instances to update visibility
-    AppState.chartInstances.forEach((chart) => {
+  syncSignalVisibility(key, isVisible, fileIdx) {
+    // Find the specific chart instance associated with this file
+    const chart = AppState.chartInstances[fileIdx];
+    if (chart) {
       const dataset = chart.data.datasets.find((d) => d.label === key);
       if (dataset) {
         dataset.hidden = !isVisible;
+        chart.update('none'); // Update only the affected chart
       }
-    });
-
-    // Trigger a batch update for all charts without re-animating
-    AppState.chartInstances.forEach((chart) => chart.update('none'));
+    }
   },
 
   toggleAllSignals(shouldCheck) {

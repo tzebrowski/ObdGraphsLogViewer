@@ -74,8 +74,6 @@ export const DataProcessor = {
         if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
       }
 
-      AppState.availableSignals.push(...fileEntry.availableSignals);
-
       DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
       UI.renderSignalList();
       ChartManager.render();
