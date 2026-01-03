@@ -1607,7 +1607,6 @@ input:checked + .slider-round::before {
   transition: all 0.4s ease;
   background-color: var(--nav-glass-bg);
   backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--nav-border);
   box-shadow: var(--nav-shadow);
 }
