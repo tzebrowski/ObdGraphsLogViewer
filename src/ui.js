@@ -209,11 +209,10 @@ export const UI = {
   },
 
   renderSignalList() {
-    const container = document.getElementById('signalList');
+    const container = UI.elements.signalList;
     if (!container) return;
     container.innerHTML = '';
 
-    // Use available signals from the primary file or the global state
     const signals = AppState.availableSignals || [];
     const fragment = document.createDocumentFragment();
 
@@ -261,7 +260,7 @@ export const UI = {
   },
 
   toggleAllSignals(shouldCheck) {
-    const container = document.getElementById('signalList');
+    const container = UI.elements.signalList;
     if (!container) return;
 
     container
