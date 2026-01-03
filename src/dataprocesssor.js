@@ -70,11 +70,11 @@ export const DataProcessor = {
       if (AppState.files.length === 1) {
         AppState.globalStartTime = minT;
         AppState.logDuration = fileEntry.duration;
-        AppState.availableSignals = fileEntry.availableSignals;
-        UI.renderSignalList();
         Analysis.init();
         if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
       }
+
+      AppState.availableSignals.push(...fileEntry.availableSignals);
 
       DOM.get('fileInfo').innerText = `${AppState.files.length} logs loaded`;
       UI.renderSignalList();
