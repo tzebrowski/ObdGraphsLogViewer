@@ -14,13 +14,16 @@
   <body class="spa-mode landing-active docs-body">
     <nav class="top-nav">
       <div class="nav-container">
-        <div class="nav-brand" onclick="window.location.href = 'index.html'">
-          <img
-            src="https://img.icons8.com/color/48/google-play.png"
-            alt="Logo"
-            class="nav-logo"
-          />
-          <span class="nav-title">My Giulia</span>
+        <div class="integrated-toolbar">
+          <button class="nav-icon-btn" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+          </button>
+          <button class="nav-icon-btn" onclick="toggleFullScreen()">
+            <i class="fas fa-expand"></i>
+          </button>
+          <button class="nav-icon-btn info-btn" onclick="toggleInfo()">
+            <i class="fas fa-info-circle"></i>
+          </button>
         </div>
 
         <div class="nav-links">
@@ -334,16 +337,6 @@
         <div id="resizer" class="resizer"></div>
 
         <div class="main-content" id="mainContent">
-          <div class="toolbar">
-            <button class="btn" onclick="toggleSidebar()">☰</button>
-            <button class="btn" onclick="toggleFullScreen()">⛶</button>
-            <button class="btn" onclick="toggleInfo()" title="App Info">
-              <i
-                class="fas fa-info-circle fa-xl"
-                style="color: var(--primary-red)"
-              ></i>
-            </button>
-          </div>
           <div id="chartContainer">
             <div id="empty-state" class="empty-state-container">
               <div class="empty-state-content">
