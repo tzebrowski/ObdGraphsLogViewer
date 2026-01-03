@@ -1,21 +1,33 @@
 import { ChartManager } from './chartmanager.js';
 
-window.navigateTo = (page) => {
-  const landing = document.getElementById('landing-page');
-  const analyzer = document.getElementById('analyzer-page');
-  const body = document.body;
+export const Navigation = {
+  routes: {
+    '#home': () => {
+      document.getElementById('landing-page').style.display = 'block';
+      document.getElementById('analyzer-page').style.display = 'none';
+      document.body.classList.add('docs-body');
+    },
+    '#analyzer': () => {
+      document.getElementById('landing-page').style.display = 'none';
+      document.getElementById('analyzer-page').style.display = 'block';
+      document.body.classList.remove('docs-body');
+      ChartManager.render();
+    },
+  },
 
-  if (page === 'analyzer') {
-    landing.style.display = 'none';
-    analyzer.style.display = 'flex';
-    body.classList.remove('docs-body');
-    body.classList.add('analyzer-active');
-    ChartManager.render();
-  } else {
-    landing.style.display = 'block';
-    analyzer.style.display = 'none';
-    body.classList.add('docs-body');
-    body.classList.remove('analyzer-active');
-  }
-  window.scrollTo(0, 0);
+  handleRoute: () => {
+    console.log('Current Hash:', window.location.hash); // Debug line
+    const hash = window.location.hash || '#home';
+    const routeAction = Navigation.routes[hash];
+
+    if (routeAction) {
+      routeAction();
+    } else {
+      Navigation.routes['#home']();
+    }
+  },
+
+  init() {
+    window.addEventListener('hashchange', Navigation.handleRoute);
+  },
 };
