@@ -1773,9 +1773,5 @@ body.analyzer-active {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgb(255 255 255 / 5%),
-    transparent
-  );
+  background: linear-gradient(to bottom, rgb(255 255 255 / 5%), transparent);
 }
