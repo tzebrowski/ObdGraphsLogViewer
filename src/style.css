@@ -22,6 +22,10 @@
   --shadow-sm: 0 2px 4px rgb(0 0 0 / 10%);
   --card-bg: #fff;
   --chart-canvas-bg: #fff;
+
+  --nav-glass-bg: rgba(18, 18, 18, 0.7);
+  --nav-border: rgba(255, 255, 255, 0.1);
+  --nav-text: #ffffff;
 }
 
 body.dark-theme {
@@ -1153,7 +1157,8 @@ footer {
 }
 
 .mobile-close-btn {
-  display: none; /* Hidden by default for Desktop */
+  display: none;
+  /* Hidden by default for Desktop */
   position: absolute;
   top: 15px;
   right: 15px;
@@ -1170,7 +1175,15 @@ footer {
   display: none !important;
 }
 
-@media (width <= 768px) {
+@media (width <=768px) {
+  .top-nav {
+    display: none !important;
+  }
+
+  .main-content {
+    padding-top: 10px !important;
+  }
+
   .mobile-only-btn {
     display: inline-block !important;
     margin-top: 15px;
@@ -1214,7 +1227,8 @@ footer {
   }
 
   .tag {
-    margin: 0; /* Let flex gap handle it */
+    margin: 0;
+    /* Let flex gap handle it */
     font-size: 0.8rem;
     padding: 8px 15px;
   }
@@ -1248,10 +1262,6 @@ footer {
 
   .resizer {
     display: none;
-  }
-
-  .nav-container {
-    padding: 0 10px;
   }
 
   .nav-title {
@@ -1356,7 +1366,8 @@ footer {
 #chartContainer.has-data .chart-card-compact {
   display: flex;
   flex-direction: column;
-  flex: 1; /* Allow them to grow */
+  flex: 1;
+  /* Allow them to grow */
   min-height: 300px;
 }
 
@@ -1587,12 +1598,19 @@ input:checked + .slider-round::before {
   top: 0;
   width: 100%;
   height: 64px;
-  background-color: transparent;
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
-  z-index: 1000;
+  z-index: 3000;
+  /* Stays above sidebar and modals */
   display: flex;
   align-items: center;
+
+  /* Glassmorphism Core Properties */
+  background-color: var(--nav-glass-bg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  /* Support for Safari */
+  border-bottom: 1px solid var(--nav-border);
+
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-container {
@@ -1707,20 +1725,48 @@ input:checked + .slider-round::before {
 
 /* SPA Navigation Logic */
 .analyzer-active .top-nav {
-  position: static; /* Analyzer usually handles its own scrolling */
+  position: static;
+  /* Analyzer usually handles its own scrolling */
   background-color: var(--sidebar-bg);
 }
 
 .analyzer-active body {
-  overflow: hidden; /* Prevent double scrollbars in analyzer mode */
+  overflow: hidden;
+  /* Prevent double scrollbars in analyzer mode */
 }
 
 #analyzer-page {
-  height: calc(100vh - 64px); /* Subtract top-nav height */
-  width: 100vw;
+  margin-top: 0;
+  height: calc(100vh - 64px);
+  background-color: #f8f9fa; /* Subtle light gray background for analyzer */
 }
 
-/* Ensure the hero section doesn't jump when top-nav is sticky */
 .landing-active .hero {
   padding-top: 100px;
+}
+
+body.analyzer-active {
+  /* Light Glass for Analyzer */
+  --nav-glass-bg: rgba(255, 255, 255, 0.8);
+  --nav-border: rgba(0, 0, 0, 0.05);
+  --nav-text: #1a1a1a;
+}
+
+.nav-title,
+.nav-link {
+  color: var(--nav-text) !important;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.top-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
 }
