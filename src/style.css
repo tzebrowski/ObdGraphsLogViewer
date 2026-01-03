@@ -22,11 +22,10 @@
   --shadow-sm: 0 2px 4px rgb(0 0 0 / 10%);
   --card-bg: #fff;
   --chart-canvas-bg: #fff;
-
-  --nav-glass-bg: rgba(18, 18, 18, 0.75);
-  --nav-border: rgba(255, 255, 255, 0.1);
-  --nav-text: #ffffff;
-  --nav-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  --nav-glass-bg: rgb(18 18 18 / 75%);
+  --nav-border: rgb(255 255 255 / 10%);
+  --nav-text: #fff;
+  --nav-shadow: 0 4px 30px rgb(0 0 0 / 10%);
 }
 
 body.dark-theme {
@@ -1608,7 +1607,7 @@ input:checked + .slider-round::before {
   transition: all 0.4s ease;
   background-color: var(--nav-glass-bg);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--nav-border);
   box-shadow: var(--nav-shadow);
 }
@@ -1757,10 +1756,10 @@ body.analyzer-active .nav-title {
 }
 
 body.analyzer-active {
-  --nav-glass-bg: rgba(255, 255, 255, 0.85);
-  --nav-border: rgba(183, 28, 28, 0.2); /* Subtle Giulia Red border */
-  --nav-text: #333333;
-  --nav-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  --nav-glass-bg: rgb(255 255 255 / 85%);
+  --nav-border: rgb(183 28 28 / 20%); /* Subtle Giulia Red border */
+  --nav-text: #333;
+  --nav-shadow: 0 4px 15px rgb(0 0 0 / 5%);
 }
 
 .nav-title,
@@ -1777,7 +1776,7 @@ body.analyzer-active {
   pointer-events: none;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.05),
+    rgb(255 255 255 / 5%),
     transparent
   );
 }
