@@ -204,12 +204,14 @@ export const UI = {
     }
   },
   toggleFileSignals(fileIdx, shouldCheck) {
-    const inputs = UI.elements.signalList.querySelectorAll(`input[data-file-idx="${fileIdx}"]`);
-    inputs.forEach(i => i.checked = shouldCheck);
+    const inputs = UI.elements.signalList.querySelectorAll(
+      `input[data-file-idx="${fileIdx}"]`
+    );
+    inputs.forEach((i) => (i.checked = shouldCheck));
 
     const chart = AppState.chartInstances[fileIdx];
     if (chart) {
-      chart.data.datasets.forEach(ds => ds.hidden = !shouldCheck);
+      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
       chart.update('none');
     }
   },
@@ -250,7 +252,7 @@ export const UI = {
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
         const chartColors = getChartColors();
-        const colorIdx = (fileIdx * 10) + sigIdx;
+        const colorIdx = fileIdx * 10 + sigIdx;
         const color = chartColors[colorIdx % chartColors.length];
 
         const label = document.createElement('label');
