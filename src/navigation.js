@@ -16,7 +16,7 @@ export const Navigation = {
   },
 
   handleRoute: () => {
-    console.log('Current Hash:', window.location.hash); // Debug line
+    console.log('Current Hash:', window.location.hash);
     const hash = window.location.hash || '#home';
     const routeAction = Navigation.routes[hash];
 
