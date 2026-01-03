@@ -129,21 +129,17 @@ export const UI = {
     resizer.addEventListener('mousedown', () => {
       isResizing = true;
       document.body.style.cursor = 'col-resize';
-      // Add a temporary overlay to prevent iframe/chart interference while dragging
       document.body.style.userSelect = 'none';
     });
 
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
 
-      // Calculate new width based on mouse position
       let newWidth = e.clientX;
 
-      // Constraints (matches CSS min/max)
       if (newWidth >= 250 && newWidth <= 600) {
         sidebar.style.width = `${newWidth}px`;
 
-        // Trigger chart resize in real-time or debounced
         if (AppState.chartInstance) {
           AppState.chartInstance.resize();
         }
@@ -207,7 +203,16 @@ export const UI = {
       document.exitFullscreen();
     }
   },
+  toggleFileSignals(fileIdx, shouldCheck) {
+    const inputs = UI.elements.signalList.querySelectorAll(`input[data-file-idx="${fileIdx}"]`);
+    inputs.forEach(i => i.checked = shouldCheck);
 
+    const chart = AppState.chartInstances[fileIdx];
+    if (chart) {
+      chart.data.datasets.forEach(ds => ds.hidden = !shouldCheck);
+      chart.update('none');
+    }
+  },
   renderSignalList() {
     const container = UI.elements.signalList;
     if (!container) return;
@@ -215,62 +220,64 @@ export const UI = {
 
     const fragment = document.createDocumentFragment();
 
-    // Iterate through each loaded file to group signals
     AppState.files.forEach((file, fileIdx) => {
-      // 1. Create a header for the file
       const fileHeader = document.createElement('div');
-      fileHeader.className = 'file-meta-header'; // Uses existing class from your CSS
-      fileHeader.style.padding = '10px 5px 5px 5px';
-      fileHeader.style.fontWeight = 'bold';
-      fileHeader.style.borderBottom = '1px solid var(--border-color)';
-      fileHeader.innerHTML = `<i class="fas fa-file-alt"></i> ${file.name}`;
+      fileHeader.className = 'file-meta-header';
+      fileHeader.style.cssText = `
+      padding: 10px 5px 5px; 
+      font-weight: bold; 
+      border-bottom: 1px solid var(--border-color); 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+    `;
+
+      fileHeader.innerHTML = `
+      <span style="display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-trash-alt" 
+           style="color: var(--brand-red); cursor: pointer;" 
+           title="Remove this log"
+           onclick="removeFile(${fileIdx})"></i>
+        <i class="fas fa-file-alt"></i> ${file.name}
+      </span>
+      <div class="button-row-sm">
+        <button class="btn btn-sm" onclick="toggleFileSignals(${fileIdx}, true)">All</button>
+        <button class="btn btn-sm" onclick="toggleFileSignals(${fileIdx}, false)">None</button>
+      </div>
+    `;
       fragment.appendChild(fileHeader);
 
-      // 2. Iterate through signals available in this specific file
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
         const chartColors = getChartColors();
-
-        // Use a unique index based on both file and signal for color consistency
-        const colorIdx = fileIdx * 10 + sigIdx;
+        const colorIdx = (fileIdx * 10) + sigIdx;
         const color = chartColors[colorIdx % chartColors.length];
 
         const label = document.createElement('label');
         label.className = 'signal-item';
-
-        // Create a unique ID to prevent conflicts between different files having same signal name
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
 
         label.innerHTML = `
           <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
-          <input type="checkbox" 
-                 id="${uniqueId}" 
-                 data-key="${signal}" 
-                 data-file-idx="${fileIdx}" 
-                 ${isImportant ? 'checked' : ''}>
-          <label for="${uniqueId}" style="font-size: 0.85em;">${signal}</label>
+          <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isImportant ? 'checked' : ''}>
+          <label for="${uniqueId}" style="font-size: 0.85em; cursor: pointer;">${signal}</label>
       `;
-
         fragment.appendChild(label);
       });
     });
 
     container.appendChild(fragment);
 
-    // Updated Event Delegation to handle file-specific visibility
     container.onchange = (e) => {
       if (e.target.tagName === 'INPUT') {
         const key = e.target.getAttribute('data-key');
         const fileIdx = parseInt(e.target.getAttribute('data-file-idx'));
-        const isVisible = e.target.checked;
-
-        this.syncSignalVisibility(key, isVisible, fileIdx);
+        this.syncSignalVisibility(key, e.target.checked, fileIdx);
       }
     };
   },
 
   syncSignalVisibility(key, isVisible, fileIdx) {
-    // Find the specific chart instance associated with this file
     const chart = AppState.chartInstances[fileIdx];
     if (chart) {
       const dataset = chart.data.datasets.find((d) => d.label === key);
