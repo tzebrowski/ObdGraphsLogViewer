@@ -14,12 +14,18 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
 
 export const ChartManager = {
   hoverValue: null,
   activeChartIndex: null,
+
+  datalabelsSettings: {
+    timeRange: 5000,
+    visibleDatasets: 5,
+  },
 
   init: () => {
     window.Hammer = Hammer;
@@ -35,6 +41,7 @@ export const ChartManager = {
       Tooltip,
       Legend,
       Filler,
+      ChartDataLabels,
       zoomPlugin
     );
   },
@@ -165,7 +172,7 @@ export const ChartManager = {
           y: {
             // type: 'logarithmic',
             beginAtZero: true,
-            max: 1.05,
+            max: 1.01,
             ticks: {
               display: false,
             },
@@ -178,9 +185,55 @@ export const ChartManager = {
           },
         },
         plugins: {
+          datalabels: {
+            display: (context) => {
+              const chart = context.chart;
+
+              const xRange = chart.scales.x.max - chart.scales.x.min;
+              const isZoomedIn =
+                xRange < ChartManager.datalabelsSettings.timeRange;
+
+              const visibleDatasets = chart.data.datasets.filter(
+                (ds) => !ds.hidden
+              ).length;
+              const isNotCrowded =
+                visibleDatasets <=
+                ChartManager.datalabelsSettings.visibleDatasets;
+
+              return isZoomedIn && isNotCrowded;
+            },
+            anchor: 'end',
+            align: 'top',
+            offset: 5,
+            borderRadius: 4,
+            padding: 4,
+            backgroundColor: (context) => context.dataset.borderColor,
+            color: 'white',
+            font: {
+              weight: 'bold',
+              size: 10,
+            },
+            formatter: (value, context) => {
+              const ds = context.dataset;
+              const realY =
+                value.y * (ds.originalMax - ds.originalMin) + ds.originalMin;
+              return realY.toFixed(1);
+            },
+            listeners: {
+              enter: (context) => {
+                context.hovered = true;
+                return true;
+              },
+              leave: (context) => {
+                context.hovered = false;
+                return true;
+              },
+            },
+          },
+
           legend: {
             display: true,
-            position: 'top',
+            position: 'bottom',
             align: 'end',
             labels: {
               boxWidth: 12,
@@ -236,13 +289,43 @@ export const ChartManager = {
                 enabled: true,
               },
               mode: 'x',
-              onZoom: ChartManager.syncAll,
+              onZoom: ({ chart }) => {
+                ChartManager.updateLabelVisibility(chart);
+                ChartManager.syncAll({ chart });
+              },
+
+              onPan: ({ chart }) => {
+                ChartManager.updateLabelVisibility(chart);
+                ChartManager.syncAll({ chart });
+              },
             },
           },
         },
       },
     });
     AppState.chartInstances[index] = chart;
+  },
+
+  updateLabelVisibility(chart) {
+    if (window.innerWidth <= 768) {
+      if (chart.options.plugins.datalabels.display !== false) {
+        chart.options.plugins.datalabels.display = false;
+        chart.update('none');
+      }
+      return;
+    }
+
+    const xRange = chart.scales.x.max - chart.scales.x.min;
+    const visibleDatasets = chart.data.datasets.filter(
+      (ds) => !ds.hidden
+    ).length;
+    const shouldShow =
+      xRange < ChartManager.datalabelsSettings.timeRange &&
+      visibleDatasets < ChartManager.datalabelsSettings.visibleDatasets;
+    if (chart.options.plugins.datalabels.display !== shouldShow) {
+      chart.options.plugins.datalabels.display = shouldShow;
+      chart.update('none');
+    }
   },
 
   getAlphaColor: (hex, alpha = 0.1) => {
