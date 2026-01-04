@@ -1168,11 +1168,11 @@ footer {
 }
 
 body.analyzer-active .integrated-toolbar {
-  display: flex; /* Only show when in Analyzer mode */
+  display: flex;
 }
 
 .nav-btn-primary.desktop-only {
-  display: none; /* Hide large button to save space */
+  display: none;
 }
 
 .nav-icon-btn {
@@ -1185,19 +1185,19 @@ body.analyzer-active .integrated-toolbar {
   align-items: center;
 }
 
-/* Keep the Info icon branded Red */
 .info-btn i {
   color: var(--primary-red) !important;
 }
 
-/* Tighten nav container for mobile screens */
 .nav-container {
   padding: 0 10px;
 }
 
 @media (width <=768px) {
   .main-content {
-    padding-top: 10px !important;
+    height: calc(100vh - 64px);
+    display: flex;
+    flex-direction: column;
   }
 
   .mobile-only-btn {
@@ -1244,7 +1244,6 @@ body.analyzer-active .integrated-toolbar {
 
   .tag {
     margin: 0;
-    /* Let flex gap handle it */
     font-size: 0.8rem;
     padding: 8px 15px;
   }
@@ -1259,16 +1258,55 @@ body.analyzer-active .integrated-toolbar {
     position: fixed !important;
     top: 0;
     left: 0;
-    width: 85vw !important;
-    max-width: 320px;
+    width: 75vw !important;
+    max-width: 300px;
     height: 100vh;
     margin-left: -110vw !important;
     visibility: hidden;
     z-index: 2000 !important;
-    transition:
-      margin-left 0.3s ease-out,
-      visibility 0.3s !important;
-    box-shadow: 5px 0 15px rgb(0 0 0 / 30%);
+    padding: 15px 6px !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .control-group h3 {
+    font-size: 1rem !important;
+    margin: 0 !important;
+  }
+
+  .btn {
+    padding: 6px 8px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .button-row {
+    gap: 6px !important;
+    flex-wrap: wrap;
+  }
+
+  .signal-item {
+    padding: 4px 0 !important;
+  }
+
+  .signal-item label {
+    font-size: 0.8rem !important;
+  }
+
+  .signal-search-wrapper input {
+    font-size: 0.8rem !important;
+    padding: 6px 6px 6px 28px !important;
+  }
+
+  .control-group.gray-box {
+    padding: 10px !important;
+    margin: 0 5px 2px !important;
+    width: auto;
+    border-radius: 8px;
+  }
+
+  .sidebar h2 {
+    font-size: 1.1rem !important;
+    margin-bottom: 10px !important;
   }
 
   .sidebar.active {
@@ -1290,7 +1328,7 @@ body.analyzer-active .integrated-toolbar {
   }
 
   #chartContainer {
-    padding-top: 60px;
+    padding-top: 20px;
   }
 
   .info-grid {
@@ -1320,7 +1358,6 @@ body.analyzer-active .integrated-toolbar {
     font-size: 0.85rem !important;
   }
 
-  /* Reduce excessive padding in the Hero section */
   .hero {
     padding: 60px 15px 40px !important;
     border-bottom-width: 3px;
@@ -1344,7 +1381,6 @@ body.analyzer-active .integrated-toolbar {
     flex-direction: column;
     width: 100%;
     max-width: 300px;
-    /* Keep them from getting too wide on tablets */
     margin: 0 auto;
   }
 
@@ -1353,11 +1389,6 @@ body.analyzer-active .integrated-toolbar {
     padding: 12px 20px !important;
     font-size: 1rem !important;
     box-sizing: border-box;
-  }
-
-  /* Increase spacing in the sidebar for better touch accuracy */
-  .control-group {
-    padding: 15px !important;
   }
 }
 
@@ -1747,7 +1778,8 @@ body.analyzer-active .nav-title {
 #analyzer-page {
   margin-top: 0;
   height: calc(100vh - 64px);
-  background-color: #f8f9fa; /* Subtle light gray background for analyzer */
+  background-color: #f8f9fa;
+  /* Subtle light gray background for analyzer */
 }
 
 .landing-active .hero {
@@ -1756,7 +1788,8 @@ body.analyzer-active .nav-title {
 
 body.analyzer-active {
   --nav-glass-bg: rgb(255 255 255 / 85%);
-  --nav-border: rgb(183 28 28 / 20%); /* Subtle Giulia Red border */
+  --nav-border: rgb(183 28 28 / 20%);
+  /* Subtle Giulia Red border */
   --nav-text: #333;
   --nav-shadow: 0 4px 15px rgb(0 0 0 / 5%);
 }
