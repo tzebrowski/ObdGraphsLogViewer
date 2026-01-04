@@ -203,38 +203,46 @@ export const UI = {
       document.exitFullscreen();
     }
   },
+  toggleFileSignals(fileIdx, shouldCheck) {
+    const inputs = UI.elements.signalList.querySelectorAll(
+      `input[data-file-idx="${fileIdx}"]`
+    );
+    inputs.forEach((i) => (i.checked = shouldCheck));
 
+    const chart = AppState.chartInstances[fileIdx];
+    if (chart) {
+      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+      chart.update('none');
+    }
+  },
   renderSignalList() {
     const container = UI.elements.signalList;
     if (!container) return;
-    container.innerHTML = '';
 
+    // 1. Create the search header if it doesn't exist
+    container.innerHTML = `
+    <div class="signal-search-container" style="position: sticky; top: 0; background: white; z-index: 5; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
+      <input type="text" id="signalSearchInput" placeholder="Filter signals (e.g. 'Boost')..." 
+             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+    </div>
+    <div id="signalListContent"></div>
+  `;
+
+    const contentContainer = document.getElementById('signalListContent');
     const fragment = document.createDocumentFragment();
 
     AppState.files.forEach((file, fileIdx) => {
       const fileGroup = document.createElement('div');
       fileGroup.className = 'file-group-container';
-      fileGroup.style.marginBottom = '10px';
+      fileGroup.setAttribute('data-file-idx', fileIdx);
 
       const fileHeader = document.createElement('div');
       fileHeader.className = 'file-meta-header';
-      fileHeader.style.cssText = `
-      padding: 10px 5px; 
-      font-weight: bold; 
-      border-bottom: 1px solid var(--border-color); 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center;
-      cursor: pointer;
-      background: var(--sidebar-bg);
-    `;
+      fileHeader.style.cssText = `padding: 10px 5px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--sidebar-bg);`;
 
       fileHeader.innerHTML = `
       <span style="display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-trash-alt" 
-           style="color: var(--brand-red); cursor: pointer;" 
-           title="Remove this log"
-           onclick="event.stopPropagation(); removeFile(${fileIdx})"></i>
+        <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove this log" onclick="event.stopPropagation(); removeFile(${fileIdx})"></i>
         <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
         <i class="fas fa-file-alt"></i> ${file.name}
       </span>
@@ -251,8 +259,7 @@ export const UI = {
       fileHeader.onclick = () => {
         const isHidden = signalListContainer.style.display === 'none';
         signalListContainer.style.display = isHidden ? 'block' : 'none';
-        const icon = document.getElementById(`icon-f${fileIdx}`);
-        icon.className = isHidden
+        document.getElementById(`icon-f${fileIdx}`).className = isHidden
           ? 'fas fa-chevron-down'
           : 'fas fa-chevron-right';
       };
@@ -260,11 +267,11 @@ export const UI = {
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
         const chartColors = getChartColors();
-        const colorIdx = fileIdx * 10 + sigIdx;
-        const color = chartColors[colorIdx % chartColors.length];
+        const color = chartColors[(fileIdx * 10 + sigIdx) % chartColors.length];
 
         const label = document.createElement('label');
         label.className = 'signal-item';
+        label.setAttribute('data-signal-name', signal.toLowerCase());
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
 
         label.innerHTML = `
@@ -280,28 +287,37 @@ export const UI = {
       fragment.appendChild(fileGroup);
     });
 
-    container.appendChild(fragment);
+    contentContainer.appendChild(fragment);
 
+    // 2. Add search logic
+    const searchInput = document.getElementById('signalSearchInput');
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const groups = contentContainer.querySelectorAll('.file-group-container');
+
+      groups.forEach((group) => {
+        let hasVisibleSignals = false;
+        const items = group.querySelectorAll('.signal-item');
+
+        items.forEach((item) => {
+          const isMatch = item.getAttribute('data-signal-name').includes(term);
+          item.style.display = isMatch ? 'flex' : 'none';
+          if (isMatch) hasVisibleSignals = true;
+        });
+
+        // Hide the entire file group if no signals match the search term
+        group.style.display = hasVisibleSignals ? 'block' : 'none';
+      });
+    });
+
+    // Re-attach change listener for checkboxes
     container.onchange = (e) => {
-      if (e.target.tagName === 'INPUT') {
+      if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
         const key = e.target.getAttribute('data-key');
         const fileIdx = parseInt(e.target.getAttribute('data-file-idx'));
         this.syncSignalVisibility(key, e.target.checked, fileIdx);
       }
     };
-  },
-
-  toggleFileSignals(fileIdx, shouldCheck) {
-    const inputs = UI.elements.signalList.querySelectorAll(
-      `input[data-file-idx="${fileIdx}"]`
-    );
-    inputs.forEach((i) => (i.checked = shouldCheck));
-
-    const chart = AppState.chartInstances[fileIdx];
-    if (chart) {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
-    }
   },
 
   syncSignalVisibility(key, isVisible, fileIdx) {
@@ -310,9 +326,23 @@ export const UI = {
       const dataset = chart.data.datasets.find((d) => d.label === key);
       if (dataset) {
         dataset.hidden = !isVisible;
-        chart.update('none');
+        chart.update('none'); // Update only the affected chart
       }
     }
+  },
+
+  toggleAllSignals(shouldCheck) {
+    const container = UI.elements.signalList;
+    if (!container) return;
+
+    container
+      .querySelectorAll('input')
+      .forEach((i) => (i.checked = shouldCheck));
+
+    AppState.chartInstances.forEach((chart) => {
+      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+      chart.update('none');
+    });
   },
 
   loadSampleData: async (showInfo) => {
