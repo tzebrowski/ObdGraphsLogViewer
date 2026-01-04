@@ -99,20 +99,19 @@ body.docs-body.dark-theme .feature-card {
 }
 
 .sidebar {
+  overflow: hidden auto !important;
+  display: block !important;
   min-width: 380px;
   max-width: 600px;
   width: 380px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
   padding: 20px;
   box-shadow: 2px 0 5px rgb(0 0 0 / 5%);
   transition: margin-left 0.3s ease;
   z-index: 10;
   height: 100vh;
   box-sizing: border-box;
-  overflow: auto;
 }
 
 .sidebar.collapsed {
@@ -134,7 +133,7 @@ body.docs-body.dark-theme .feature-card {
 }
 
 .control-group {
-  margin-bottom: 15px;
+  margin-bottom: 5px;
   padding-bottom: 15px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
@@ -1255,21 +1254,36 @@ body.analyzer-active .integrated-toolbar {
     position: fixed !important;
     top: 0;
     left: 0;
-    width: 50vw !important;
-    max-width: 200px !important;
-    height: 100vh;
-    margin-left: -110vw !important;
-    visibility: hidden;
+    width: 200px !important;
+    height: 100vh !important;
+    margin-left: -300px !important;
+    padding: 15px 10px !important;
+    background: var(--sidebar-bg) !important;
+    overflow: hidden auto !important;
+    display: block !important;
+    box-sizing: border-box !important;
     z-index: 2000 !important;
-    padding: 15px 6px !important;
-    box-sizing: border-box;
-    overflow-x: hidden;
+    visibility: hidden;
+    transition: margin-left 0.3s ease;
   }
 
   .control-group h3 {
-    font-size: 0.9rem !important;
-    margin: 0 0 15px !important; /* Changed from 0 to 15px */
-    display: block;
+    font-size: 0.95rem !important;
+    margin: 0 0 12px !important;
+    padding-bottom: 8px !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .control-group.collapsed .button-row-sm {
+    display: none !important;
+  }
+
+  .control-group {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 15px !important;
   }
 
   .btn {
@@ -1363,7 +1377,6 @@ body.analyzer-active .integrated-toolbar {
 
   .hero h1 {
     font-size: 2.2rem !important;
-    /* Scale down the giant title */
     letter-spacing: 1px;
     margin-bottom: 8px;
   }

@@ -173,6 +173,72 @@
 
           <h2>My Giulia Telemetry Analyzer</h2>
           <div class="control-group gray-box">
+            <h3 class="group-header">Log Source</h3>
+            <div class="button-row">
+              <button
+                id="authBtn"
+                class="btn btn-primary"
+                onclick="handleAuth()"
+              >
+                Drive Scan
+              </button>
+              <button
+                class="btn"
+                onclick="document.getElementById('fileInput').click()"
+              >
+                Local File
+              </button>
+              <button class="btn" onclick="resetZoom()">Reset View</button>
+            </div>
+            <input
+              type="file"
+              id="fileInput"
+              style="display: none"
+              accept=".json,application/json,text/plain"
+            />
+            <div id="driveList" class="drive-list"></div>
+            <div id="fileInfo" class="status-text"></div>
+          </div>
+
+          <div class="control-group gray-box">
+            <h3>Anomaly Scanner</h3>
+
+            <div style="margin-bottom: 10px">
+              <select
+                id="anomalyTemplate"
+                onchange="applyTemplate()"
+                class="template-select"
+              >
+                <option value="">-- Load a Template --</option>
+              </select>
+            </div>
+
+            <div id="filtersContainer"></div>
+            <button class="btn btn-add" onclick="addFilterRow()">
+              + Add Condition
+            </button>
+            <button class="btn btn-primary mt-10" onclick="scanAnomalies()">
+              Scan Log
+            </button>
+            <div id="scanCount" class="result-count"></div>
+            <div id="scanResults" class="results-list"></div>
+          </div>
+
+          <div class="control-group flex-grow gray-box">
+            <div class="group-header-row">
+              <h3>Signals</h3>
+              <div class="button-row-sm">
+                <button class="btn btn-sm" onclick="toggleAllSignals(true)">
+                  All
+                </button>
+                <button class="btn btn-sm" onclick="toggleAllSignals(false)">
+                  None
+                </button>
+              </div>
+            </div>
+            <div id="signalList" class="signal-list"></div>
+          </div>
+          <div class="control-group gray-box">
             <h3>Settings & Preferences</h3>
             <div class="preferences-list">
               <div class="pref-item">
@@ -252,73 +318,6 @@
                 </label>
               </div>
             </div>
-          </div>
-
-          <div class="control-group gray-box">
-            <h3 class="group-header">Log Source</h3>
-            <div class="button-row">
-              <button
-                id="authBtn"
-                class="btn btn-primary"
-                onclick="handleAuth()"
-              >
-                Drive Scan
-              </button>
-              <button
-                class="btn"
-                onclick="document.getElementById('fileInput').click()"
-              >
-                Local File
-              </button>
-              <button class="btn" onclick="resetZoom()">Reset View</button>
-            </div>
-            <input
-              type="file"
-              id="fileInput"
-              style="display: none"
-              accept=".json,application/json,text/plain"
-            />
-            <div id="driveList" class="drive-list"></div>
-            <div id="fileInfo" class="status-text"></div>
-          </div>
-
-          <div class="control-group gray-box">
-            <h3>Anomaly Scanner</h3>
-
-            <div style="margin-bottom: 10px">
-              <select
-                id="anomalyTemplate"
-                onchange="applyTemplate()"
-                class="template-select"
-              >
-                <option value="">-- Load a Template --</option>
-              </select>
-            </div>
-
-            <div id="filtersContainer"></div>
-            <button class="btn btn-add" onclick="addFilterRow()">
-              + Add Condition
-            </button>
-            <button class="btn btn-primary mt-10" onclick="scanAnomalies()">
-              Scan Log
-            </button>
-            <div id="scanCount" class="result-count"></div>
-            <div id="scanResults" class="results-list"></div>
-          </div>
-
-          <div class="control-group flex-grow gray-box">
-            <div class="group-header-row">
-              <h3>Signals</h3>
-              <div class="button-row-sm">
-                <button class="btn btn-sm" onclick="toggleAllSignals(true)">
-                  All
-                </button>
-                <button class="btn btn-sm" onclick="toggleAllSignals(false)">
-                  None
-                </button>
-              </div>
-            </div>
-            <div id="signalList" class="signal-list"></div>
           </div>
         </div>
 
