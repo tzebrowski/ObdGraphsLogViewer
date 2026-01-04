@@ -1185,19 +1185,19 @@ body.analyzer-active .integrated-toolbar {
   align-items: center;
 }
 
-/* Keep the Info icon branded Red */
 .info-btn i {
   color: var(--primary-red) !important;
 }
 
-/* Tighten nav container for mobile screens */
 .nav-container {
   padding: 0 10px;
 }
 
 @media (width <=768px) {
   .main-content {
-    padding-top: 10px !important;
+    height: calc(100vh - 64px);
+    display: flex;
+    flex-direction: column;
   }
 
   .mobile-only-btn {
