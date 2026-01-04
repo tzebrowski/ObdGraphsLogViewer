@@ -80,7 +80,6 @@ html {
   transition: background var(--transition-speed) ease;
 }
 
-/* Apply Dark Theme to Docs Page as well */
 body.docs-body.dark-theme {
   background-color: var(--dark-bg);
   color: var(--light-text);
@@ -1254,7 +1253,8 @@ body.analyzer-active .integrated-toolbar {
     position: fixed !important;
     top: 0;
     left: 0;
-    width: 200px !important;
+    min-width: 220px;
+    width: 290px !important;
     height: 100vh !important;
     margin-left: -300px !important;
     padding: 15px 10px !important;
