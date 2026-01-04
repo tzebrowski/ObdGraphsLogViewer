@@ -8,6 +8,7 @@ import { DragnDrop } from './dragndrop.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
 import { Navigation } from './navigation.js';
+import { Alert } from './alert.js';
 
 window.onload = async function () {
   await DataProcessor.loadConfiguration();
@@ -52,3 +53,5 @@ window.removeFile = (f) => ChartManager.removeFile(f);
 window.loadFile = (a, b, c) => Drive.loadFile(a, b, c);
 window.toggleFileSignals = (a, b) => UI.toggleFileSignals(a, b);
 window.clearSignalFilter = () => UI.clearSignalFilter();
+window.showAlert = (a, b, c) => Alert.showAlert(a, b, c);
+window.hideAlert = () => Alert.hideAlert();

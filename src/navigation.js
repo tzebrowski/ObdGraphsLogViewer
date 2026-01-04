@@ -1,5 +1,3 @@
-import { ChartManager } from './chartmanager.js';
-
 export const Navigation = {
   routes: {
     '#home': () => {
@@ -10,7 +8,7 @@ export const Navigation = {
       document.getElementById('analyzer-page').style.display = 'none';
       document.body.classList.add('docs-body');
 
-      const navBtn = document.querySelector('.nav-btn-primary');
+      const navBtn = Navigation.navButton();
       if (navBtn) {
         navBtn.href = '#analyzer';
         navBtn.innerHTML = '<i class="fas fa-chart-line"></i> Open Analyzer';
@@ -25,14 +23,16 @@ export const Navigation = {
       document.getElementById('analyzer-page').style.display = 'block';
       document.body.classList.remove('docs-body');
 
-      const navBtn = document.querySelector('.nav-btn-primary');
+      const navBtn = Navigation.navButton();
       if (navBtn) {
         navBtn.href = '#home';
         navBtn.innerHTML = '<i class="fas fa-home"></i> Back to Home';
       }
-
-      ChartManager.render();
     },
+  },
+
+  navButton: () => {
+    return document.querySelector('.nav-btn-primary');
   },
 
   handleRoute: () => {

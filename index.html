@@ -272,12 +272,7 @@
               </button>
               <button class="btn" onclick="resetZoom()">Reset View</button>
             </div>
-            <input
-              type="file"
-              id="fileInput"
-              accept=".json"
-              style="display: none"
-            />
+            <input type="file" id="fileInput" style="display: none" />
             <div id="driveList" class="drive-list"></div>
             <div id="fileInfo" class="status-text"></div>
           </div>
@@ -472,6 +467,21 @@
           </div>
         </div>
       </div>
+
+      <div id="customAlert" class="modal-overlay" style="display: none">
+        <div class="modal-content alert-modal">
+          <div class="modal-header alert-header">
+            <h2 id="alertTitle">Notification</h2>
+            <button class="btn-close" onclick="hideAlert()">×</button>
+          </div>
+          <div class="modal-body">
+            <p id="alertMessage"></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" onclick="hideAlert()">OK</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <div class="footer">
@@ -499,6 +509,7 @@
     </div>
 
     <script type="module" src="./src/config.js"></script>
+    <script type="module" src="./src/alert.js"></script>
     <script type="module" src="./src/auth.js"></script>
     <script type="module" src="./src/drive.js"></script>
     <script type="module" src="./src/chartmanager.js"></script>

@@ -3,6 +3,7 @@ import { Config, AppState, DOM } from './config.js';
 import { Analysis } from './analysis.js';
 import { ChartManager, Sliders } from './chartmanager.js';
 import { UI } from './ui.js';
+import { Alert } from './alert.js';
 
 export const DataProcessor = {
   loadConfiguration: async () => {
@@ -30,7 +31,9 @@ export const DataProcessor = {
         try {
           DataProcessor.process(JSON.parse(e.target.result), file.name);
         } catch (err) {
-          console.error(`Invalid JSON: ${file.name} Error: ${err.message}`);
+          const msg = `Invalid JSON: ${file.name} Error: ${err.message}`;
+          console.error(msg);
+          Alert.showAlert(msg);
         }
         loaded++;
         if (loaded === files.length) {

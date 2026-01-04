@@ -1775,3 +1775,26 @@ body.analyzer-active {
   pointer-events: none;
   background: linear-gradient(to bottom, rgb(255 255 255 / 5%), transparent);
 }
+
+.alert-modal {
+  max-width: 450px;
+  border-top: 5px solid var(--brand-red);
+}
+
+.alert-modal.error .alert-header h2 {
+  color: var(--brand-red);
+}
+
+.alert-modal.success {
+  border-top-color: var(--brand-green);
+}
+
+.alert-modal.success .alert-header h2 {
+  color: var(--brand-green);
+}
+
+#alertMessage {
+  white-space: pre-line;
+  color: var(--text-main);
+  line-height: 1.5;
+}
