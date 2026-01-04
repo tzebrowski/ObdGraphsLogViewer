@@ -1255,8 +1255,8 @@ body.analyzer-active .integrated-toolbar {
     position: fixed !important;
     top: 0;
     left: 0;
-    width: 75vw !important;
-    max-width: 300px;
+    width: 50vw !important;
+    max-width: 200px !important;
     height: 100vh;
     margin-left: -110vw !important;
     visibility: hidden;
@@ -1267,7 +1267,7 @@ body.analyzer-active .integrated-toolbar {
   }
 
   .control-group h3 {
-   font-size: 0.9rem !important;
+    font-size: 0.9rem !important;
     margin: 0 0 15px !important; /* Changed from 0 to 15px */
     display: block;
   }
