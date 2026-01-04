@@ -172,7 +172,7 @@ export const ChartManager = {
           y: {
             // type: 'logarithmic',
             beginAtZero: true,
-            max: 1.01,
+            max: 1.2,
             ticks: {
               display: false,
             },
@@ -254,10 +254,10 @@ export const ChartManager = {
             enabled: true,
             mode: 'index',
             intersect: false,
-            backgroundColor: '#222',
+            backgroundColor: 'rgba(34, 34, 34, 0.7)',
             titleColor: '#fff',
             bodyColor: '#eee',
-            borderColor: '#444',
+            borderColor: 'rgba(68, 68, 68, 0.5)',
             borderWidth: 1,
             padding: 10,
             bodyFont: { family: 'monospace' },
