@@ -134,7 +134,7 @@ body.docs-body.dark-theme .feature-card {
 }
 
 .control-group {
-  margin-bottom: 15px;
+  margin-bottom: 5px;
   padding-bottom: 15px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
