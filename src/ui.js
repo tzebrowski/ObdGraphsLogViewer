@@ -86,13 +86,6 @@ export const UI = {
       sidebar.classList.remove('active');
       backdrop.classList.remove('active');
     });
-
-    document.getElementById('signalList')?.addEventListener('change', () => {
-      if (window.innerWidth <= 768) {
-        sidebar.classList.remove('active');
-        backdrop.classList.remove('active');
-      }
-    });
   },
 
   initResizer() {
