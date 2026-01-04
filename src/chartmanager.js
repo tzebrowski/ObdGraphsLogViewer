@@ -76,9 +76,17 @@ export const ChartManager = {
       const wrapper = document.createElement('div');
       wrapper.className = 'chart-card-compact';
       wrapper.innerHTML = `
-                <div class="chart-header-sm">
+                <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center;">
                     <span class="chart-name">${file.name}</span>
-                    <button class="btn-remove" onclick="removeFile(${idx})">×</button>
+                    <div class="chart-actions" style="display: flex; gap: 8px; align-items: center;">
+                        <button class="btn-icon" onclick="manualZoom(${idx}, 1.2)" title="Zoom In">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="btn-icon" onclick="manualZoom(${idx}, 0.8)" title="Zoom Out">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="btn-remove" onclick="removeFile(${idx})">×</button>
+                    </div>
                 </div>
                 <div class="canvas-wrapper">
                     <canvas id="chart-${idx}" tabindex="0"></canvas>
@@ -92,6 +100,18 @@ export const ChartManager = {
     });
 
     if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
+  },
+
+  manualZoom: (index, zoomLevel) => {
+    const chart = AppState.chartInstances[index];
+    if (chart) {
+      chart.zoom(zoomLevel);
+
+      if (ChartManager.updateLabelVisibility) {
+        ChartManager.updateLabelVisibility(chart);
+      }
+      ChartManager.syncAll({ chart });
+    }
   },
 
   createInstance: (canvas, file, index) => {

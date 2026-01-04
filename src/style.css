@@ -1188,7 +1188,32 @@ body.analyzer-active .integrated-toolbar {
   padding: 0 10px;
 }
 
+.chart-actions .btn-icon {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-actions .btn-icon:hover {
+  background: var(--hover-bg);
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
+
 @media (width <=768px) {
+  .chart-actions .btn-icon {
+    padding: 8px 12px;
+    font-size: 1.1rem;
+  }
+
   .main-content {
     height: calc(100vh - 64px);
     display: flex;
