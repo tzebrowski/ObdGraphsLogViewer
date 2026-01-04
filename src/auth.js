@@ -1,4 +1,5 @@
 import { AppState, DOM } from './config.js';
+import { Alert } from './alert.js';
 
 export const Auth = {
   SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
@@ -51,12 +52,12 @@ export const Auth = {
   saveConfig: () => {
     const cId = DOM.get('gClientId').value;
     if (!cId) {
-      alert('Please enter a Client ID.');
+      Alert.showAlert('Please enter a Client ID.');
       return;
     }
     localStorage.setItem('alfa_clientId', cId);
     Auth.initTokenClient();
-    alert('Configuration Saved!');
+    Alert.showAlert('Configuration Saved!', 'Notification', 'success');
   },
 
   initGapiClient: async () => {
@@ -83,7 +84,9 @@ export const Auth = {
     if (!AppState.google.gapiInited || !AppState.google.gisInited) {
       Auth.initTokenClient();
       if (!DOM.get('gClientId').value) {
-        alert("Please click 'Drive Config' and enter your Client ID first.");
+        Alert.showAlert(
+          "Please click 'Drive Config' and enter your Client ID first."
+        );
         return;
       }
     }

@@ -1,6 +1,7 @@
 import { DOM } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { UI } from './ui.js';
+import { Alert } from './alert.js';
 
 export const DragnDrop = {
   init: () => {
@@ -55,7 +56,7 @@ export const DragnDrop = {
       try {
         const file = files[0];
         if (!file || file.type !== 'application/json') {
-          alert('Please drop a valid JSON telemetry file.');
+          Alert.showAlert('Please drop a valid JSON telemetry file.');
           return;
         }
 
@@ -68,7 +69,7 @@ export const DragnDrop = {
         reader.readAsText(file);
       } catch (err) {
         console.error('Failed to parse JSON:', err);
-        alert('Invalid JSON format.');
+        Alert.showAlert('Invalid JSON format.');
       } finally {
         UI.setLoading(false);
       }

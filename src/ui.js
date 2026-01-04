@@ -1,6 +1,7 @@
 import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
+import { Alert } from './alert.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -385,7 +386,7 @@ export const UI = {
       btn.disabled = false;
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to load sample data.');
+      Alert.showAlert('Failed to load sample data.');
       const btn = document.querySelector('.btn-sample');
       btn.innerText = '📂 Load Sample Trip (JSON)';
       btn.disabled = false;

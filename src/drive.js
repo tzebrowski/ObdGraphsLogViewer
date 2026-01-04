@@ -1,6 +1,7 @@
 import { DOM } from './config.js';
 import { UI } from './ui.js';
 import { DataProcessor } from './dataprocesssor.js';
+import { Alert } from './alert.js';
 
 export const Drive = {
   activeLoadToken: 0,
@@ -158,7 +159,7 @@ export const Drive = {
           console.error(
             `The file content is not a valid log format. Error ${err.message}`
           );
-          alert('The file content is not a valid log format.');
+          Alert.showAlert('The file content is not a valid log format.');
         } finally {
           UI.setLoading(false);
         }
@@ -166,7 +167,9 @@ export const Drive = {
     } catch (error) {
       if (currentToken !== this.activeLoadToken) return;
       UI.setLoading(false);
-      alert(`Drive Error: ${error.result?.error?.message || error.message}`);
+      Alert.showAlert(
+        `Drive Error: ${error.result?.error?.message || error.message}`
+      );
     }
   },
 
