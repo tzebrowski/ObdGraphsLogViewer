@@ -1209,6 +1209,10 @@ body.analyzer-active .integrated-toolbar {
 }
 
 @media (width <=768px) {
+  #dropZone {
+    display: none !important;
+  }
+
   .chart-actions .btn-icon {
     padding: 8px 12px;
     font-size: 1.1rem;
