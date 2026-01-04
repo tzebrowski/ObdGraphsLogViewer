@@ -175,7 +175,6 @@ body.docs-body.dark-theme .feature-card {
   margin-left: 10px;
 }
 
-/* Rotate chevron when collapsed */
 .control-group.collapsed h3::after {
   content: ' \f105';
   font-family: 'Font Awesome 6 Free';
@@ -183,14 +182,12 @@ body.docs-body.dark-theme .feature-card {
   float: right;
 }
 
-/* Hide everything except the h3 when collapsed */
 .control-group.collapsed > *:not(h3, .group-header, .group-header-row) {
   display: none !important;
 }
 
-/* Special case for headers with nested h3 */
-.control-group.collapsed .group-header ~ *,
-.control-group.collapsed .group-header-row ~ * {
+.control-group.collapsed .group-header-row .button-row-sm,
+.control-group.collapsed .group-header-row .btn-sm {
   display: none !important;
 }
 
@@ -1258,8 +1255,8 @@ body.analyzer-active .integrated-toolbar {
     position: fixed !important;
     top: 0;
     left: 0;
-    width: 75vw !important;
-    max-width: 300px;
+    width: 50vw !important;
+    max-width: 200px !important;
     height: 100vh;
     margin-left: -110vw !important;
     visibility: hidden;
@@ -1270,8 +1267,9 @@ body.analyzer-active .integrated-toolbar {
   }
 
   .control-group h3 {
-    font-size: 1rem !important;
-    margin: 0 !important;
+    font-size: 0.9rem !important;
+    margin: 0 0 15px !important; /* Changed from 0 to 15px */
+    display: block;
   }
 
   .btn {
