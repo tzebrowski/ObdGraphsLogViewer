@@ -5,29 +5,11 @@ import { Preferences } from './preferences.js';
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
 
-  saveSidebarState: () => {
-    const groups = document.querySelectorAll('.sidebar .control-group');
-    const states = Array.from(groups).map((group) =>
-      group.classList.contains('collapsed')
-    );
-    localStorage.setItem(UI.STORAGE_KEY, JSON.stringify(states));
-  },
-
-  restoreSidebarState: () => {
-    const savedData = localStorage.getItem(UI.STORAGE_KEY);
-    if (!savedData) return;
-
-    try {
-      const states = JSON.parse(savedData);
-      const groups = document.querySelectorAll('.sidebar .control-group');
-      groups.forEach((group, index) => {
-        if (states[index] === true) {
-          group.classList.add('collapsed');
-        }
-      });
-    } catch (e) {
-      console.error('Could not restore sidebar state', e);
-    }
+  init() {
+    UI.initResizer();
+    UI.initVersionInfo();
+    UI.initSidebarSectionsCollapse();
+    UI.initMobileUI();
   },
 
   get elements() {
@@ -61,13 +43,6 @@ export const UI = {
     p.style.display = isHidden ? 'block' : 'none';
 
     if (AppState.chartInstance) AppState.chartInstance.resize();
-  },
-
-  init() {
-    UI.initResizer();
-    UI.initVersionInfo();
-    UI.initSidebarSectionsCollapse();
-    UI.initMobileUI();
   },
 
   initSidebarSectionsCollapse() {
@@ -155,6 +130,31 @@ export const UI = {
     });
   },
 
+  saveSidebarState: () => {
+    const groups = document.querySelectorAll('.sidebar .control-group');
+    const states = Array.from(groups).map((group) =>
+      group.classList.contains('collapsed')
+    );
+    localStorage.setItem(UI.STORAGE_KEY, JSON.stringify(states));
+  },
+
+  restoreSidebarState: () => {
+    const savedData = localStorage.getItem(UI.STORAGE_KEY);
+    if (!savedData) return;
+
+    try {
+      const states = JSON.parse(savedData);
+      const groups = document.querySelectorAll('.sidebar .control-group');
+      groups.forEach((group, index) => {
+        if (states[index] === true) {
+          group.classList.add('collapsed');
+        }
+      });
+    } catch (e) {
+      console.error('Could not restore sidebar state', e);
+    }
+  },
+
   setLoading(isLoading, text = 'Loading...', onCancel = null) {
     const { loadingOverlay, loadingText, cancelBtn } = this.elements;
     if (!loadingOverlay || !loadingText) return;
@@ -215,15 +215,21 @@ export const UI = {
       chart.update('none');
     }
   },
+
   renderSignalList() {
     const container = UI.elements.signalList;
     if (!container) return;
 
-    // 1. Create the search header if it doesn't exist
     container.innerHTML = `
-    <div class="signal-search-container" style="position: sticky; top: 0; background: white; z-index: 5; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
-      <input type="text" id="signalSearchInput" placeholder="Filter signals (e.g. 'Boost')..." 
-             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+    <div class="signal-search-wrapper" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
+      <div style="position: relative; display: flex; align-items: center;">
+        <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
+        <input type="text" id="signalSearchInput" placeholder="Search signals..." 
+               style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+        <i class="fas fa-times-circle" id="clearSignalSearch" 
+           style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" 
+           title="Clear filter" onclick="clearSignalFilter()"></i>
+      </div>
     </div>
     <div id="signalListContent"></div>
   `;
@@ -234,19 +240,19 @@ export const UI = {
     AppState.files.forEach((file, fileIdx) => {
       const fileGroup = document.createElement('div');
       fileGroup.className = 'file-group-container';
-      fileGroup.setAttribute('data-file-idx', fileIdx);
+      fileGroup.style.marginBottom = '5px';
 
       const fileHeader = document.createElement('div');
       fileHeader.className = 'file-meta-header';
-      fileHeader.style.cssText = `padding: 10px 5px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--sidebar-bg);`;
+      fileHeader.style.cssText = `padding: 8px 5px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--sidebar-bg);`;
 
       fileHeader.innerHTML = `
       <span style="display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove this log" onclick="event.stopPropagation(); removeFile(${fileIdx})"></i>
+        <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove log" onclick="event.stopPropagation(); removeFile(${fileIdx})"></i>
         <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
         <i class="fas fa-file-alt"></i> ${file.name}
       </span>
-      <div class="button-row-sm">
+      <div class="button-row-sm" style="display: flex; gap: 4px;">
         <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
         <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
       </div>
@@ -254,7 +260,7 @@ export const UI = {
 
       const signalListContainer = document.createElement('div');
       signalListContainer.id = `sig-list-f${fileIdx}`;
-      signalListContainer.style.paddingLeft = '15px';
+      signalListContainer.style.paddingLeft = '10px';
 
       fileHeader.onclick = () => {
         const isHidden = signalListContainer.style.display === 'none';
@@ -277,7 +283,7 @@ export const UI = {
         label.innerHTML = `
           <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
           <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isImportant ? 'checked' : ''}>
-          <label for="${uniqueId}" style="font-size: 0.85em; cursor: pointer;">${signal}</label>
+          <label for="${uniqueId}" style="font-size: 0.85em; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${signal}</label>
       `;
         signalListContainer.appendChild(label);
       });
@@ -289,28 +295,30 @@ export const UI = {
 
     contentContainer.appendChild(fragment);
 
-    // 2. Add search logic
     const searchInput = document.getElementById('signalSearchInput');
-    searchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase();
-      const groups = contentContainer.querySelectorAll('.file-group-container');
+    const clearBtn = document.getElementById('clearSignalSearch');
 
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      clearBtn.style.display = term.length > 0 ? 'block' : 'none';
+
+      const groups = contentContainer.querySelectorAll('.file-group-container');
       groups.forEach((group) => {
-        let hasVisibleSignals = false;
+        let matchCount = 0;
         const items = group.querySelectorAll('.signal-item');
 
         items.forEach((item) => {
           const isMatch = item.getAttribute('data-signal-name').includes(term);
           item.style.display = isMatch ? 'flex' : 'none';
-          if (isMatch) hasVisibleSignals = true;
+          if (isMatch) matchCount++;
         });
 
-        // Hide the entire file group if no signals match the search term
-        group.style.display = hasVisibleSignals ? 'block' : 'none';
+        group.style.display = matchCount > 0 ? 'block' : 'none';
+        const sigList = group.querySelector('[id^="sig-list-f"]');
+        if (term.length > 0 && matchCount > 0) sigList.style.display = 'block';
       });
     });
 
-    // Re-attach change listener for checkboxes
     container.onchange = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
         const key = e.target.getAttribute('data-key');
@@ -320,13 +328,21 @@ export const UI = {
     };
   },
 
+  clearSignalFilter() {
+    const searchInput = document.getElementById('signalSearchInput');
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+    }
+  },
+
   syncSignalVisibility(key, isVisible, fileIdx) {
     const chart = AppState.chartInstances[fileIdx];
     if (chart) {
       const dataset = chart.data.datasets.find((d) => d.label === key);
       if (dataset) {
         dataset.hidden = !isVisible;
-        chart.update('none'); // Update only the affected chart
+        chart.update('none');
       }
     }
   },

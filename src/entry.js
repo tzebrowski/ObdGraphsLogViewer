@@ -51,3 +51,4 @@ window.loadSampleData = (i) => UI.loadSampleData(i);
 window.removeFile = (f) => ChartManager.removeFile(f);
 window.loadFile = (a, b, c) => Drive.loadFile(a, b, c);
 window.toggleFileSignals = (a, b) => UI.toggleFileSignals(a, b);
+window.clearSignalFilter = () => UI.clearSignalFilter();
