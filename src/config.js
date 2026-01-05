@@ -1,4 +1,3 @@
-
 export const DEFAULT_SIGNALS = [
   'Boost',
   'Rpm',
