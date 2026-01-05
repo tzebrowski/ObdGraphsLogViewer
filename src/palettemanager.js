@@ -32,6 +32,26 @@ export const PaletteManager = {
     '#AFB42B',
   ],
 
+  init() {
+    this.render();
+
+    const customToggle = document.getElementById('pref-custom-palette');
+    const settingsRow = document.getElementById('palette-settings-row');
+
+    if (customToggle && settingsRow) {
+      settingsRow.style.display = customToggle.checked ? 'block' : 'none';
+
+      customToggle?.addEventListener('change', () => {
+        Preferences.savePreferences();
+        const row = document.getElementById('palette-settings-row');
+        if (row) row.style.display = customToggle.checked ? 'block' : 'none';
+
+        this.render();
+        if (typeof ChartManager !== 'undefined') ChartManager.render();
+      });
+    }
+  },
+
   getChartColors() {
     const prefs = Preferences.prefs;
 
@@ -42,20 +62,6 @@ export const PaletteManager = {
 
     const isDarkMode = document.body.classList.contains('pref-theme-dark');
     return isDarkMode ? this.CHART_COLORS : this.CHART_COLORS_LIGHT;
-  },
-
-  init() {
-    this.render();
-
-    const customToggle = document.getElementById('pref-custom-palette');
-    customToggle?.addEventListener('change', () => {
-      Preferences.savePreferences();
-      const row = document.getElementById('palette-settings-row');
-      if (row) row.style.display = customToggle.checked ? 'block' : 'none';
-
-      this.render();
-      if (typeof ChartManager !== 'undefined') ChartManager.render();
-    });
   },
 
   render() {
