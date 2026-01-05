@@ -1910,3 +1910,21 @@ body.analyzer-active {
   color: var(--text-main);
   line-height: 1.5;
 }
+
+#palette-container {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.palette-picker {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}

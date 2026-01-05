@@ -7,6 +7,7 @@ export const Preferences = {
     persistence: true,
     performance: false,
     darkTheme: false,
+    useCustomPalette: false,
   },
 
   get prefs() {
@@ -47,6 +48,9 @@ export const Preferences = {
     document.getElementById('pref-persistence').checked = prefs.persistence;
     document.getElementById('pref-performance').checked = prefs.performance;
     document.getElementById('pref-theme-dark').checked = prefs.darkTheme;
+    document.getElementById('pref-custom-palette').checked =
+      prefs.useCustomPalette;
+
     return prefs;
   },
 
@@ -55,6 +59,7 @@ export const Preferences = {
       persistence: document.getElementById('pref-persistence').checked,
       performance: document.getElementById('pref-performance').checked,
       darkTheme: document.getElementById('pref-theme-dark').checked,
+      useCustomPalette: document.getElementById('pref-custom-palette').checked,
     };
     localStorage.setItem(Preferences.PREFS_KEY, JSON.stringify(prefs));
 

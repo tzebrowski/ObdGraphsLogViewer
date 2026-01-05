@@ -1,7 +1,8 @@
-import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
+import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
 import { Alert } from './alert.js';
+import { PaletteManager } from './palettemanager.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -266,7 +267,7 @@ export const UI = {
 
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
-        const chartColors = getChartColors();
+        const chartColors = PaletteManager.getChartColors();
         const color = chartColors[(fileIdx * 10 + sigIdx) % chartColors.length];
 
         const label = document.createElement('label');
