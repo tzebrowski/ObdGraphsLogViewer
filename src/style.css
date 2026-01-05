@@ -367,37 +367,49 @@ input[type='number'] {
 
 .filter-row {
   display: flex;
-  gap: 5px;
-  margin-bottom: 5px;
+  gap: 8px;
   align-items: center;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgb(255 255 255 / 5%);
+  border-radius: 4px;
 }
 
 .filter-row select {
-  flex: 2;
-  padding: 4px;
+  flex: 1;
+  padding: 6px;
+  border-radius: 4px;
   border: 1px solid #ccc;
-  border-radius: 3px;
-  max-width: 150px;
+  font-size: 0.9em;
+  min-width: 0;
+}
+
+.filter-row .file-select {
+  flex: 1.2;
+  border-left: 3px solid var(--brand-red);
 }
 
 .filter-row select.op {
   flex: 0 0 45px;
 }
 
-.filter-row input {
-  flex: 1;
-  padding: 4px;
+.filter-row input[type='number'] {
+  width: 65px;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 }
 
 .remove-row {
-  color: #999;
-  cursor: pointer;
+  color: #f44;
   font-weight: bold;
-  padding: 0 5px;
+  font-size: 1.2em;
+  transition: transform 0.2s;
 }
 
 .remove-row:hover {
-  color: red;
+  transform: scale(1.2);
+  color: #c00;
 }
 
 .results-list {
