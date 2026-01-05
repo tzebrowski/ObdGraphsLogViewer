@@ -2,6 +2,7 @@ import { UI } from './ui.js';
 
 export const Preferences = {
   PREFS_KEY: 'giulia_user_prefs',
+  PALETTE_KEY: 'giulia_chart_palette',
 
   defaultPrefs: {
     persistence: true,
@@ -17,6 +18,19 @@ export const Preferences = {
     );
   },
 
+  get customPalette() {
+    const saved = localStorage.getItem(Preferences.PALETTE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  },
+
+  set customPalette(colors) {
+    if (colors) {
+      localStorage.setItem(Preferences.PALETTE_KEY, JSON.stringify(colors));
+    } else {
+      localStorage.removeItem(Preferences.PALETTE_KEY);
+    }
+  },
+
   init: () => {
     Preferences.loadPreferences();
 
@@ -25,18 +39,14 @@ export const Preferences = {
     });
 
     const themeToggle = document.getElementById('pref-theme-dark');
-    if (themeToggle.checked) {
+    if (themeToggle?.checked) {
       UI.setTheme('dark');
     } else {
       UI.setTheme('light');
     }
 
     themeToggle?.addEventListener('change', () => {
-      if (themeToggle.checked) {
-        UI.setTheme('dark');
-      } else {
-        UI.setTheme('light');
-      }
+      UI.setTheme(themeToggle.checked ? 'dark' : 'light');
       Preferences.savePreferences();
     });
   },
@@ -45,11 +55,17 @@ export const Preferences = {
     const saved = localStorage.getItem(Preferences.PREFS_KEY);
     const prefs = saved ? JSON.parse(saved) : Preferences.defaultPrefs;
 
-    document.getElementById('pref-persistence').checked = prefs.persistence;
-    document.getElementById('pref-performance').checked = prefs.performance;
-    document.getElementById('pref-theme-dark').checked = prefs.darkTheme;
-    document.getElementById('pref-custom-palette').checked =
-      prefs.useCustomPalette;
+    const ids = {
+      'pref-persistence': 'persistence',
+      'pref-performance': 'performance',
+      'pref-theme-dark': 'darkTheme',
+      'pref-custom-palette': 'useCustomPalette',
+    };
+
+    Object.entries(ids).forEach(([id, key]) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = prefs[key];
+    });
 
     return prefs;
   },

@@ -3,41 +3,41 @@ import { Preferences } from './preferences.js';
 
 export const PaletteManager = {
   CHART_COLORS: [
-    '#e31837', // Alfa Red
-    '#0051ba', // Performance Blue
-    '#2dcc70', // Cloverleaf Green
-    '#f1c40f', // Giallo Yellow
-    '#8e44ad', // Plum
-    '#e67e22', // Orange
-    '#00F2FF', // Electric Cyan (Boost/Turbo)
-    '#39FF14', // Neon Green (RPM)
-    '#FF007F', // Hot Pink (AFR/Lambda)
-    '#FFFF00', // Bright Yellow (Throttle)
-    '#BC13FE', // Neon Purple (Timing)
-    '#FF4D00', // Safety Orange (Temperatures)
-    '#00FF9F', // Spring Green
-    '#FFD700', // Gold
-    '#FF0000', // Pure Red (Critical Errors)
+    '#e31837',
+    '#0051ba',
+    '#2dcc70',
+    '#f1c40f',
+    '#8e44ad',
+    '#e67e22',
+    '#00F2FF',
+    '#39FF14',
+    '#FF007F',
+    '#FFFF00',
+    '#BC13FE',
+    '#FF4D00',
+    '#00FF9F',
+    '#FFD700',
+    '#FF0000',
   ],
 
   CHART_COLORS_LIGHT: [
-    '#1A73E8', // Cobalt Blue (Boost/Turbo/Intake)
-    '#2E7D32', // Hunter Green (Engine RPM)
-    '#C2185B', // Raspberry (AFR / Lambda)
-    '#F57C00', // Deep Orange (Throttle / Load)
-    '#7B1FA2', // Deep Purple (Ignition Timing)
-    '#D32F2F', // Signal Red (Coolant / Oil Temp)
-    '#0097A7', // Teal (Airflow / MAF)
-    '#607D8B', // Blue Grey (Battery / Voltage)
-    '#AFB42B', // Avocado (Fuel Trims / Efficiency)
+    '#1A73E8',
+    '#2E7D32',
+    '#C2185B',
+    '#F57C00',
+    '#7B1FA2',
+    '#D32F2F',
+    '#0097A7',
+    '#607D8B',
+    '#AFB42B',
   ],
 
   getChartColors() {
-    const prefs = Preferences.prefs || {};
+    const prefs = Preferences.prefs;
 
     if (prefs.useCustomPalette) {
-      const savedPalette = localStorage.getItem('giulia_chart_palette');
-      if (savedPalette) return JSON.parse(savedPalette);
+      const savedPalette = Preferences.customPalette;
+      if (savedPalette) return savedPalette;
     }
 
     const isDarkMode = document.body.classList.contains('pref-theme-dark');
@@ -50,10 +50,10 @@ export const PaletteManager = {
     const customToggle = document.getElementById('pref-custom-palette');
     customToggle?.addEventListener('change', () => {
       Preferences.savePreferences();
-      document.getElementById('palette-settings-row').style.display =
-        customToggle.checked ? 'block' : 'none';
+      const row = document.getElementById('palette-settings-row');
+      if (row) row.style.display = customToggle.checked ? 'block' : 'none';
 
-      if (typeof PaletteManager !== 'undefined') PaletteManager.render();
+      this.render();
       if (typeof ChartManager !== 'undefined') ChartManager.render();
     });
   },
@@ -74,11 +74,7 @@ export const PaletteManager = {
       picker.onchange = (e) => {
         const newPalette = [...currentColors];
         newPalette[idx] = e.target.value;
-        localStorage.setItem(
-          'giulia_chart_palette',
-          JSON.stringify(newPalette)
-        );
-
+        Preferences.customPalette = newPalette; // Use Preference setter
         ChartManager.render();
       };
 
@@ -90,7 +86,7 @@ export const PaletteManager = {
     resetBtn.innerHTML = '<i class="fas fa-undo"></i>';
     resetBtn.title = 'Reset to Theme Defaults';
     resetBtn.onclick = () => {
-      localStorage.removeItem('giulia_chart_palette');
+      Preferences.customPalette = null; // Use Preference setter to remove
       this.render();
       ChartManager.render();
     };
