@@ -27,38 +27,95 @@ export const Analysis = {
     if (scanBtn) scanBtn.onclick = () => Analysis.runScan();
   },
 
-  addFilterRow(sigName = '', operator = '>', value = '') {
+  addFilterRow(sigName = '', operator = '>', value = '', fileIdx = -1) {
     const container = DOM.get('filtersContainer');
     if (!container) return;
 
     const div = document.createElement('div');
     div.className = 'filter-row';
 
-    const allSignals = [
-      ...new Set(AppState.files.flatMap((f) => f.availableSignals)),
-    ].sort();
+    const getSignalOptions = (idx) => {
+      let signals = [];
+      const targetIdx = parseInt(idx);
 
-    const options = allSignals
+      if (targetIdx === -1) {
+        signals = [
+          ...new Set(AppState.files.flatMap((f) => f.availableSignals)),
+        ];
+      } else if (AppState.files[targetIdx]) {
+        signals = AppState.files[targetIdx].availableSignals;
+      }
+
+      return signals
+        .sort()
+        .map(
+          (k) =>
+            `<option value="${k}" ${k === sigName ? 'selected' : ''}>${k}</option>`
+        )
+        .join('');
+    };
+
+    const fileOptions = AppState.files
       .map(
-        (k) =>
-          `<option value="${k}" ${k === sigName ? 'selected' : ''}>${k}</option>`
+        (file, idx) =>
+          `<option value="${idx}" ${idx === fileIdx ? 'selected' : ''}>${file.name}</option>`
       )
       .join('');
 
     div.innerHTML = `
-            <select class="sig-select"><option value="">Signal...</option>${options}</select>
-            <select class="op">
-                <option value=">" ${operator === '>' ? 'selected' : ''}>&gt;</option>
-                <option value="<" ${operator === '<' ? 'selected' : ''}>&lt;</option>
-            </select>
-            <input type="number" placeholder="Val" value="${value}">
-            <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
-        `;
+        <select class="file-select">
+            <option value="-1">All Files</option>
+            ${fileOptions}
+        </select>
+        <select class="sig-select">
+            <option value="">Signal...</option>
+            ${getSignalOptions(fileIdx)}
+        </select>
+        <select class="op">
+            <option value=">" ${operator === '>' ? 'selected' : ''}>&gt;</option>
+            <option value="<" ${operator === '<' ? 'selected' : ''}>&lt;</option>
+        </select>
+        <input type="number" placeholder="Val" style="width: 60px" value="${value}">
+        <span class="remove-row" style="cursor:pointer; margin-left:5px;">×</span>
+    `;
 
-    div.querySelector('.remove-row').onclick = () => {
-      div.remove();
+    const fileSelect = div.querySelector('.file-select');
+    const sigSelect = div.querySelector('.sig-select');
+
+    fileSelect.onchange = () => {
+      const selectedFileIdx = fileSelect.value;
+      sigSelect.innerHTML =
+        '<option value="">Signal...</option>' +
+        getSignalOptions(selectedFileIdx);
     };
+
+    div.querySelector('.remove-row').onclick = () => div.remove();
     container.appendChild(div);
+  },
+
+  refreshFilterOptions() {
+    const rows = document.querySelectorAll('.filter-row');
+    const fileOptionsHTML =
+      `<option value="-1">All Files</option>` +
+      AppState.files
+        .map((file, idx) => `<option value="${idx}">${file.name}</option>`)
+        .join('');
+
+    rows.forEach((row) => {
+      const fileSelect = row.querySelector('.file-select');
+      const sigSelect = row.querySelector('.sig-select');
+
+      const currentFile = fileSelect.value;
+      const currentSig = sigSelect.value;
+
+      // Update file list
+      fileSelect.innerHTML = fileOptionsHTML;
+      fileSelect.value = currentFile;
+
+      // Trigger the signal refresh logic based on the now-updated file list
+      fileSelect.dispatchEvent(new Event('change'));
+      sigSelect.value = currentSig;
+    });
   },
 
   applyTemplate() {
@@ -72,7 +129,6 @@ export const Analysis = {
     const container = DOM.get('filtersContainer');
     if (container) container.innerHTML = '';
 
-    // Consolidate all unique signals from all loaded files
     const allUniqueSignals = [
       ...new Set(AppState.files.flatMap((f) => f.availableSignals)),
     ];
@@ -80,11 +136,9 @@ export const Analysis = {
     template.rules.forEach((rule) => {
       let bestSig = '';
 
-      // 1. Direct match check
       if (allUniqueSignals.includes(rule.sig)) {
         bestSig = rule.sig;
       } else {
-        // 2. Alias match check using SIGNAL_MAPPINGS
         const aliases = (SIGNAL_MAPPINGS[rule.sig] || []).map((a) =>
           a.toLowerCase()
         );
@@ -97,14 +151,15 @@ export const Analysis = {
       this.addFilterRow(bestSig, rule.op, rule.val);
     });
 
-    // Short delay ensures DOM updates before triggering scan
     setTimeout(() => this.runScan(), 100);
   },
 
   runScan() {
     UI.resetScannerUI();
+
     const criteria = Array.from(document.querySelectorAll('.filter-row'))
       .map((row) => ({
+        fileIdx: parseInt(row.querySelector('.file-select').value),
         sig: row.querySelector('.sig-select').value,
         op: row.querySelector('.op').value,
         val: parseFloat(row.querySelector('input').value),
@@ -116,17 +171,24 @@ export const Analysis = {
       if (countDiv) countDiv.innerText = 'No criteria defined';
       return;
     }
+
     const aggregatedResults = [];
 
     AppState.files.forEach((file, fileIdx) => {
+      const relevantCriteria = criteria.filter(
+        (c) => c.fileIdx === -1 || c.fileIdx === fileIdx
+      );
+
+      if (relevantCriteria.length === 0) return;
+
       let state = {},
         inEvent = false,
         startT = 0;
       const ranges = [];
-
       file.rawData.forEach((p) => {
         state[p.s] = p.v;
-        const match = criteria.every(
+
+        const match = relevantCriteria.every(
           (c) =>
             state[c.sig] !== undefined &&
             (c.op === '>' ? state[c.sig] > c.val : state[c.sig] < c.val)

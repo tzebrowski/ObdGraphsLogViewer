@@ -81,6 +81,7 @@ export const DataProcessor = {
       UI.renderSignalList();
       ChartManager.render();
       UI.updateDataLoadedState(true);
+      Analysis.refreshFilterOptions();
     } catch (error) {
       console.error('Error occured during file processing', error);
       UI.updateDataLoadedState(false);
