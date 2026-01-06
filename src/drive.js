@@ -36,7 +36,7 @@ export const Drive = {
     if (!listEl) return;
 
     listEl.style.display = 'block';
-    // Enhanced Search UI with Date Pickers
+
     listEl.innerHTML = `
     <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
       <div style="position: relative; display: flex; align-items: center;">
@@ -55,14 +55,14 @@ export const Drive = {
   `;
 
     try {
-      const rootId = await Drive.findFolderId(Drive.PATH_CONFIG.root);
+      const rootId = await this.findFolderId(Drive.PATH_CONFIG.root);
       if (!rootId) {
         document.getElementById('driveFileContainer').innerHTML =
           `<div class="error-msg">Folder "${Drive.PATH_CONFIG.root}" not found.</div>`;
         return;
       }
 
-      const subFolderId = await Drive.findFolderId(
+      const subFolderId = await this.findFolderId(
         Drive.PATH_CONFIG.sub,
         rootId
       );
@@ -72,16 +72,13 @@ export const Drive = {
         return;
       }
 
-      await Drive.fetchJsonFiles(
+      await this.fetchJsonFiles(
         subFolderId,
         document.getElementById('driveFileContainer')
       );
       this.initSearch();
     } catch (error) {
-      Drive.handleApiError(
-        error,
-        document.getElementById('driveFileContainer')
-      );
+      this.handleApiError(error, document.getElementById('driveFileContainer'));
     }
   },
 
@@ -132,7 +129,7 @@ export const Drive = {
     });
   },
 
-  fetchJsonFiles: async (folderId, listEl) => {
+  async fetchJsonFiles(folderId, listEl) {
     try {
       const res = await gapi.client.drive.files.list({
         pageSize: 25,
@@ -146,9 +143,9 @@ export const Drive = {
         listEl.innerHTML = '<div class="status-msg">No log files found.</div>';
         return;
       }
-      listEl.innerHTML = files.map((f) => Drive.renderFileRow(f)).join('');
+      listEl.innerHTML = files.map((f) => this.renderFileRow(f)).join('');
     } catch (error) {
-      Drive.handleApiError(error, listEl);
+      this.handleApiError(error, listEl);
     }
   },
 
@@ -177,12 +174,12 @@ export const Drive = {
 
   renderFileRow(file) {
     const size = file.size ? (file.size / 1024).toFixed(0) + ' KB' : 'Unknown';
-    const metadata = Drive.getFileMetadata(file.name);
+    const metadata = this.getFileMetadata(file.name);
     const date = metadata ? metadata.date : 'N/A';
     const length = metadata ? metadata.length : 'N/A';
 
     return `
-    <div class="drive-file-card" onclick="Drive.loadFile('${file.name}','${file.id}', this)">
+    <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
       <div class="file-card-icon">
         <i class="fab fa-google-drive"></i>
       </div>
