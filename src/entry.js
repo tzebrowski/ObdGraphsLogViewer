@@ -9,6 +9,7 @@ import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
 import { Navigation } from './navigation.js';
 import { Alert } from './alert.js';
+import { PaletteManager } from './palettemanager.js';
 
 window.onload = async function () {
   await DataProcessor.loadConfiguration();
@@ -22,6 +23,7 @@ window.onload = async function () {
   DragnDrop.init();
   Preferences.init();
   Navigation.init();
+  PaletteManager.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {

@@ -1,7 +1,9 @@
-import { AppState, DOM, DEFAULT_SIGNALS, getChartColors } from './config.js';
+import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Preferences } from './preferences.js';
 import { Alert } from './alert.js';
+import { PaletteManager } from './palettemanager.js';
+import { ChartManager } from './chartmanager.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -214,6 +216,8 @@ export const UI = {
     const container = UI.elements.signalList;
     if (!container) return;
 
+    const isCustomEnabled = Preferences.prefs.useCustomPalette;
+
     container.innerHTML = `
     <div class="signal-search-wrapper" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
       <div style="position: relative; display: flex; align-items: center;">
@@ -234,7 +238,6 @@ export const UI = {
     AppState.files.forEach((file, fileIdx) => {
       const fileGroup = document.createElement('div');
       fileGroup.className = 'file-group-container';
-      fileGroup.style.marginBottom = '5px';
 
       const fileHeader = document.createElement('div');
       fileHeader.className = 'file-meta-header';
@@ -247,8 +250,8 @@ export const UI = {
         <i class="fas fa-file-alt"></i> ${file.name}
       </span>
       <div class="button-row-sm" style="display: flex; gap: 4px;">
-        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
-        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); UI.toggleFileSignals(${fileIdx}, true)">All</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); UI.toggleFileSignals(${fileIdx}, false)">None</button>
       </div>
     `;
 
@@ -266,20 +269,37 @@ export const UI = {
 
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
-        const chartColors = getChartColors();
-        const color = chartColors[(fileIdx * 10 + sigIdx) % chartColors.length];
+        const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
+        const signalKey = PaletteManager.getSignalKey(file.name, signal);
 
-        const label = document.createElement('label');
-        label.className = 'signal-item';
-        label.setAttribute('data-signal-name', signal.toLowerCase());
+        const signalItem = document.createElement('div');
+        signalItem.className = 'signal-item';
+        signalItem.setAttribute('data-signal-name', signal.toLowerCase());
+        signalItem.style.cssText =
+          'display: flex; align-items: center; gap: 8px; padding: 2px 5px;';
+
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
 
-        label.innerHTML = `
-          <span class="color-dot" style="color: ${color}; background-color: ${color}"></span>
+        // Color picker styling
+        const pickerStyle = `width: 18px; height: 18px; border: none; padding: 0; background: none; cursor: ${isCustomEnabled ? 'pointer' : 'default'}; opacity: ${isCustomEnabled ? '1' : '0.4'};`;
+
+        signalItem.innerHTML = `
+          <input type="color" value="${color}" class="signal-color-picker" 
+                 style="${pickerStyle}" ${isCustomEnabled ? '' : 'disabled'}
+                 data-signal-key="${signalKey}">
           <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isImportant ? 'checked' : ''}>
-          <label for="${uniqueId}" style="font-size: 0.85em; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${signal}</label>
+          <label for="${uniqueId}" style="font-size: 0.85em; flex-grow: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${signal}</label>
       `;
-        signalListContainer.appendChild(label);
+
+        const picker = signalItem.querySelector('.signal-color-picker');
+        picker.onchange = (e) => {
+          const customMap = Preferences.customPalette;
+          customMap[signalKey] = e.target.value;
+          Preferences.customPalette = customMap;
+          if (typeof ChartManager !== 'undefined') ChartManager.render();
+        };
+
+        signalListContainer.appendChild(signalItem);
       });
 
       fileGroup.appendChild(fileHeader);
@@ -302,14 +322,17 @@ export const UI = {
         const items = group.querySelectorAll('.signal-item');
 
         items.forEach((item) => {
-          const isMatch = item.getAttribute('data-signal-name').includes(term);
+          const attr = item.getAttribute('data-signal-name');
+          // FIX: Added safety check for null attribute
+          const isMatch = attr && attr.includes(term);
           item.style.display = isMatch ? 'flex' : 'none';
           if (isMatch) matchCount++;
         });
 
         group.style.display = matchCount > 0 ? 'block' : 'none';
         const sigList = group.querySelector('[id^="sig-list-f"]');
-        if (term.length > 0 && matchCount > 0) sigList.style.display = 'block';
+        if (term.length > 0 && matchCount > 0 && sigList)
+          sigList.style.display = 'block';
       });
     });
 
