@@ -1932,8 +1932,8 @@ body.analyzer-active {
 .drive-file-card {
   display: flex;
   align-items: flex-start;
-  background: var(--card-bg, #ffffff);
-  border: 1px solid var(--border-color, #dddddd);
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #ddd);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 12px;
@@ -1944,12 +1944,12 @@ body.analyzer-active {
 .drive-file-card:hover {
   border-color: #e31837;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
 }
 
 .drive-file-card.active {
   border: 2px solid #e31837;
-  background: rgba(227, 24, 55, 0.05);
+  background: rgb(227 24 55 / 5%);
 }
 
 .file-card-icon {
