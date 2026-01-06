@@ -1151,7 +1151,6 @@ footer {
 
 .mobile-close-btn {
   display: none;
-  /* Hidden by default for Desktop */
   position: absolute;
   top: 15px;
   right: 15px;
@@ -1170,8 +1169,8 @@ footer {
 
 .integrated-toolbar {
   display: none;
-  gap: 12px;
-  margin-right: 10px;
+  gap: 15px;
+  align-items: center;
 }
 
 body.analyzer-active .integrated-toolbar {
@@ -1732,12 +1731,12 @@ body.analyzer-active .nav-title {
 }
 
 .nav-container {
-  max-width: 100%; /* Changed from 1200px to allow full width alignment */
+  max-width: 100% !important;
   width: 100%;
   margin: 0;
   padding: 0 20px;
   display: flex;
-  justify-content: space-between; /* This pushes groups to opposite sides */
+  justify-content: space-between;
   align-items: center;
   box-sizing: border-box;
 }
