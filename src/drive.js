@@ -333,6 +333,17 @@ export const Drive = {
       listEl.innerHTML = `<div class="error-msg">Drive error: ${error.status === 401 ? 'Session expired' : error.message || 'Unknown error'}</div>`;
   },
 
+  clearRecentHistory() {
+    if (confirm('Clear recently viewed history?')) {
+      localStorage.removeItem('recent_logs');
+
+      const searchInput = document.getElementById('driveSearchInput');
+      if (searchInput) {
+        searchInput.dispatchEvent(new Event('input'));
+      }
+    }
+  },
+
   renderRecentSection(container) {
     const recentIds = JSON.parse(localStorage.getItem('recent_logs') || '[]');
     if (recentIds.length === 0) return;
@@ -340,8 +351,11 @@ export const Drive = {
     const section = document.createElement('div');
     section.className = 'recent-section';
     section.innerHTML = `
-    <div class="month-header" style="color: #4285F4; border-left-color: #4285F4; background: rgba(66, 133, 244, 0.05); margin-bottom: 8px;">
-      <i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed
+    <div class="month-header" style="color: #4285F4; border-left-color: #4285F4; background: rgba(66, 133, 244, 0.05); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+      <span><i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed</span>
+      <span id="clearRecentHistory" style="font-size: 0.8em; cursor: pointer; opacity: 0.8;" title="Clear History">
+        <i class="fas fa-trash-alt"></i> Clear
+      </span>
     </div>
   `;
 
@@ -360,5 +374,12 @@ export const Drive = {
 
     section.appendChild(list);
     container.appendChild(section);
+
+    document
+      .getElementById('clearRecentHistory')
+      ?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.clearRecentHistory();
+      });
   },
 };
