@@ -250,8 +250,8 @@ export const UI = {
         <i class="fas fa-file-alt"></i> ${file.name}
       </span>
       <div class="button-row-sm" style="display: flex; gap: 4px;">
-        <button class="btn btn-sm" onclick="event.stopPropagation(); UI.toggleFileSignals(${fileIdx}, true)">All</button>
-        <button class="btn btn-sm" onclick="event.stopPropagation(); UI.toggleFileSignals(${fileIdx}, false)">None</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
       </div>
     `;
 
