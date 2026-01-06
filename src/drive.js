@@ -276,16 +276,25 @@ export const Drive = {
 
     const date = new Date(parseInt(match[1]));
     return {
-      date: `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
+      date: date.toISOString(),
       length: match[2],
     };
   },
 
   parseDateFromCard(card) {
-    const dateStr = card.querySelector('.meta-item span')?.innerText;
-    if (!dateStr || dateStr === 'N/A') return 0;
-    const [d, m, y, hh, mm] = dateStr.match(/\d+/g);
-    return new Date(y, m - 1, d, hh, mm).getTime();
+    if (!card) return 0;
+
+    const dateEl =
+      card.querySelector('.meta-item span') || card.querySelector('.meta-item');
+    if (!dateEl) return 0;
+
+    const dateStr = dateEl.textContent.trim();
+    const ts = Date.parse(dateStr);
+
+    if (isNaN(ts)) {
+      return 0;
+    }
+    return ts;
   },
 
   async loadFile(fileName, id, element) {
