@@ -36,13 +36,12 @@ export const Drive = {
     if (!listEl) return;
 
     listEl.style.display = 'block';
-
     listEl.innerHTML = `
     <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
       <div style="position: relative; display: flex; align-items: center;">
         <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
         <input type="text" id="driveSearchInput" placeholder="Filter by name..." 
-               style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+              style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
       </div>
       <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
         <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
@@ -50,9 +49,15 @@ export const Drive = {
         <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
         <button id="clearDriveFilters" class="btn-icon" title="Clear Filters"><i class="fas fa-times"></i></button>
       </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div id="driveResultCount" style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;"></div>
+        <button id="driveSortToggle" class="btn btn-sm" style="font-size: 0.75em; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
+          <i class="fas fa-sort-amount-down"></i> Newest
+        </button>
+      </div>
     </div>
     <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
-  `;
+    `;
 
     try {
       const rootId = await this.findFolderId(Drive.PATH_CONFIG.root);
@@ -87,8 +92,11 @@ export const Drive = {
     const startInput = document.getElementById('driveDateStart');
     const endInput = document.getElementById('driveDateEnd');
     const clearBtn = document.getElementById('clearDriveFilters');
+    const sortBtn = document.getElementById('driveSortToggle');
 
-    const filterFiles = () => {
+    let currentSortOrder = 'desc';
+
+    const filterAndSortFiles = () => {
       const term = textInput.value.toLowerCase().trim();
       const startDate = startInput.value
         ? new Date(startInput.value).setHours(0, 0, 0, 0)
@@ -97,14 +105,15 @@ export const Drive = {
         ? new Date(endInput.value).setHours(23, 59, 59, 999)
         : null;
 
-      const cards = document.querySelectorAll('.drive-file-card');
+      const container = document.getElementById('driveFileContainer');
+      const cards = Array.from(container.querySelectorAll('.drive-file-card'));
+      let matchCount = 0;
 
       cards.forEach((card) => {
         const fileName =
           card.querySelector('.file-name-title')?.innerText.toLowerCase() || '';
-        const dateStr = card.querySelector('.meta-item span')?.innerText || ''; // Format: DD-MM-YYYY HH:mm
+        const dateStr = card.querySelector('.meta-item span')?.innerText || '';
 
-        // Convert DD-MM-YYYY to a Date object for comparison
         const [d, m, y] = dateStr.split(' ')[0].split('-');
         const fileDate = new Date(y, m - 1, d).getTime();
 
@@ -113,20 +122,55 @@ export const Drive = {
           (!startDate || fileDate >= startDate) &&
           (!endDate || fileDate <= endDate);
 
-        card.style.display = matchesText && matchesDate ? 'flex' : 'none';
+        const isVisible = matchesText && matchesDate;
+        card.style.display = isVisible ? 'flex' : 'none';
+        if (isVisible) matchCount++;
       });
+
+      cards.sort((a, b) => {
+        const dateA = Drive.parseDateFromCard(a);
+        const dateB = Drive.parseDateFromCard(b);
+        return currentSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      });
+
+      cards.forEach((card) => container.appendChild(card));
+
+      const countEl = document.getElementById('driveResultCount');
+      if (countEl) {
+        countEl.innerText = `Showing ${matchCount} of ${cards.length} logs`;
+      }
+    };
+
+    Drive.parseDateFromCard = (card) => {
+      const dateStr = card.querySelector('.meta-item span')?.innerText || '';
+      if (!dateStr || dateStr === 'N/A') return 0;
+      const [datePart, timePart] = dateStr.split(' ');
+      const [d, m, y] = datePart.split('-');
+      const [hh, mm] = timePart.split(':');
+      return new Date(y, m - 1, d, hh, mm).getTime();
     };
 
     [textInput, startInput, endInput].forEach((el) =>
-      el.addEventListener('input', filterFiles)
+      el.addEventListener('input', filterAndSortFiles)
     );
+
+    sortBtn?.addEventListener('click', () => {
+      currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+      sortBtn.innerHTML =
+        currentSortOrder === 'desc'
+          ? '<i class="fas fa-sort-amount-down"></i> Newest'
+          : '<i class="fas fa-sort-amount-up"></i> Oldest';
+      filterAndSortFiles();
+    });
 
     clearBtn?.addEventListener('click', () => {
       textInput.value = '';
       startInput.value = '';
       endInput.value = '';
-      filterFiles();
+      filterAndSortFiles();
     });
+
+    filterAndSortFiles();
   },
 
   async fetchJsonFiles(folderId, listEl) {
