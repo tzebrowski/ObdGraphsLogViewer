@@ -131,7 +131,9 @@ export const ChartManager = {
   },
 
   createInstance: (canvas, file, index) => {
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     canvas.addEventListener('mousemove', (e) => {
       const chart = AppState.chartInstances[index];
