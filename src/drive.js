@@ -103,12 +103,20 @@ export const Drive = {
         if (isVisible) matchCount++;
       });
 
+      container.innerHTML = '';
+
+      const isFiltering =
+        inputs.text.value || inputs.start.value || inputs.end.value;
+      if (!isFiltering) {
+        this.renderRecentSection(container);
+      }
+
       this.masterCards.sort((a, b) => {
         const diff = this.parseDateFromCard(a) - this.parseDateFromCard(b);
         return state.sortOrder === 'desc' ? -diff : diff;
       });
 
-      this.renderGroupedCards(container, this.masterCards);
+      this.renderGroupedCards(container, this.masterCards, true);
 
       const countEl = document.getElementById('driveResultCount');
       if (countEl)
@@ -142,8 +150,10 @@ export const Drive = {
     updateUI();
   },
 
-  renderGroupedCards(container, cards) {
-    container.innerHTML = '';
+  renderGroupedCards(container, cards, append = false) {
+    if (!append) {
+      container.innerHTML = '';
+    }
 
     let lastMonth = '';
     let currentGroup = null;
@@ -247,17 +257,17 @@ export const Drive = {
   renderFileRow(file) {
     const meta = this.getFileMetadata(file.name);
     return `
-    <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
-      <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
-      <div class="file-card-body">
-        <div class="file-name-title">${file.name}</div>
-        <div class="file-card-meta-grid">
-          <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
-          <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
-          <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
-        </div>
+  <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
+    <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
+    <div class="file-card-body">
+      <div class="file-name-title">${file.name}</div>
+      <div class="file-card-meta-grid">
+        <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
+        <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
+        <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
       </div>
-    </div>`;
+    </div>
+  </div>`;
   },
 
   getFileMetadata(fileName) {
@@ -284,6 +294,15 @@ export const Drive = {
       .forEach((r) => r.classList.remove('active'));
     element?.classList.add('active');
 
+    let recent = JSON.parse(localStorage.getItem('recent_logs') || '[]');
+    recent = [id, ...recent.filter((i) => i !== id)].slice(0, 3);
+    localStorage.setItem('recent_logs', JSON.stringify(recent));
+
+    const searchInput = document.getElementById('driveSearchInput');
+    if (searchInput) {
+      searchInput.dispatchEvent(new Event('input'));
+    }
+
     const currentToken = ++this.activeLoadToken;
     UI.setLoading(true, 'Fetching from Drive...', () => {
       this.activeLoadToken++;
@@ -296,7 +315,6 @@ export const Drive = {
         alt: 'media',
       });
       if (currentToken !== this.activeLoadToken) return;
-
       DataProcessor.process(response.result, fileName);
     } catch (error) {
       if (currentToken === this.activeLoadToken)
@@ -313,5 +331,34 @@ export const Drive = {
       gapi.client.setToken(null);
     if (listEl)
       listEl.innerHTML = `<div class="error-msg">Drive error: ${error.status === 401 ? 'Session expired' : error.message || 'Unknown error'}</div>`;
+  },
+
+  renderRecentSection(container) {
+    const recentIds = JSON.parse(localStorage.getItem('recent_logs') || '[]');
+    if (recentIds.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'recent-section';
+    section.innerHTML = `
+    <div class="month-header" style="color: #4285F4; border-left-color: #4285F4; background: rgba(66, 133, 244, 0.05); margin-bottom: 8px;">
+      <i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed
+    </div>
+  `;
+
+    const list = document.createElement('div');
+    recentIds.forEach((id) => {
+      const original = this.masterCards.find((c) =>
+        c.getAttribute('onclick')?.includes(id)
+      );
+      if (original) {
+        const clone = original.cloneNode(true);
+        clone.style.borderLeft = '3px solid #4285F4';
+        clone.style.marginBottom = '8px';
+        list.appendChild(clone);
+      }
+    });
+
+    section.appendChild(list);
+    container.appendChild(section);
   },
 };
