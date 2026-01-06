@@ -105,18 +105,30 @@ export const Drive = {
 
   renderFileRow(file) {
     const size = file.size ? (file.size / 1024).toFixed(0) + ' KB' : 'Unknown';
-    const { date, length } = Drive.getFileMetadata(file.name);
+    const metadata = Drive.getFileMetadata(file.name);
+    const date = metadata ? metadata.date : 'N/A';
+    const length = metadata ? metadata.length : 'N/A';
 
     return `
-                <div class="drive-file-row" onclick="loadFile('${file.name}','${file.id}', this)">
-                    <div class="file-name">${file.name}</div>
-                    <div class="file-meta">
-                        <i class="fab fa-google-drive"></i>    
-                        <span class="file-meta-header">date: <strong>${date}</strong></span>
-                        <span class="file-meta-header">length: <strong>${length}s</strong></span>
-                        <span class="file-meta-header">size: <strong>${size}</strong></span>
-                    </div>
-                </div>`;
+      <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
+        <div class="file-card-icon">
+          <i class="fab fa-google-drive"></i>
+        </div>
+        <div class="file-card-body">
+          <div class="file-name-title">${file.name}</div>
+          <div class="file-card-meta-grid">
+            <div class="meta-item">
+              <i class="far fa-calendar-alt"></i> <span>${date}</span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-history"></i> <span>${length}s</span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-hdd"></i> <span>${size}</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
   },
 
   async loadFile(fileName, id, element) {

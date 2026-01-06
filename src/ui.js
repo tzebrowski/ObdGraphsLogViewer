@@ -219,18 +219,18 @@ export const UI = {
     const isCustomEnabled = Preferences.prefs.useCustomPalette;
 
     container.innerHTML = `
-    <div class="signal-search-wrapper" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
-      <div style="position: relative; display: flex; align-items: center;">
-        <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
-        <input type="text" id="signalSearchInput" placeholder="Search signals..." 
-               style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
-        <i class="fas fa-times-circle" id="clearSignalSearch" 
-           style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" 
-           title="Clear filter" onclick="clearSignalFilter()"></i>
+      <div class="signal-search-wrapper" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
+        <div style="position: relative; display: flex; align-items: center;">
+          <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
+          <input type="text" id="signalSearchInput" placeholder="Search signals..." 
+                style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+          <i class="fas fa-times-circle" id="clearSignalSearch" 
+            style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" 
+            title="Clear filter" onclick="clearSignalFilter()"></i>
+        </div>
       </div>
-    </div>
-    <div id="signalListContent"></div>
-  `;
+      <div id="signalListContent"></div>
+    `;
 
     const contentContainer = document.getElementById('signalListContent');
     const fragment = document.createDocumentFragment();
