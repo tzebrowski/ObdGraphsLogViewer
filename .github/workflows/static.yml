@@ -51,7 +51,7 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
         env:
-          NODE_OPTIONS: "--experimental-vm-modules"
+          NODE_OPTIONS: '--experimental-vm-modules'
 
       - name: Coverage report
         uses: romeovs/lcov-reporter-action@v0.3.1
