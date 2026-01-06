@@ -94,7 +94,7 @@ export const Drive = {
     const clearBtn = document.getElementById('clearDriveFilters');
     const sortBtn = document.getElementById('driveSortToggle');
 
-    let currentSortOrder = 'desc'; 
+    let currentSortOrder = 'desc';
 
     const filterAndSortFiles = () => {
       const term = textInput.value.toLowerCase().trim();
