@@ -36,13 +36,19 @@ export const Drive = {
     if (!listEl) return;
 
     listEl.style.display = 'block';
-    // Add Search UI at the top
+    // Enhanced Search UI with Date Pickers
     listEl.innerHTML = `
-    <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color);">
+    <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
       <div style="position: relative; display: flex; align-items: center;">
         <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
-        <input type="text" id="driveSearchInput" placeholder="Filter logs by name or date..." 
+        <input type="text" id="driveSearchInput" placeholder="Filter by name..." 
                style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
+        <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+        <span>to</span>
+        <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+        <button id="clearDriveFilters" class="btn-icon" title="Clear Filters"><i class="fas fa-times"></i></button>
       </div>
     </div>
     <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
@@ -70,7 +76,6 @@ export const Drive = {
         subFolderId,
         document.getElementById('driveFileContainer')
       );
-
       this.initSearch();
     } catch (error) {
       Drive.handleApiError(
@@ -81,21 +86,49 @@ export const Drive = {
   },
 
   initSearch() {
-    const searchInput = document.getElementById('driveSearchInput');
-    if (!searchInput) return;
+    const textInput = document.getElementById('driveSearchInput');
+    const startInput = document.getElementById('driveDateStart');
+    const endInput = document.getElementById('driveDateEnd');
+    const clearBtn = document.getElementById('clearDriveFilters');
 
-    searchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase().trim();
+    const filterFiles = () => {
+      const term = textInput.value.toLowerCase().trim();
+      const startDate = startInput.value
+        ? new Date(startInput.value).setHours(0, 0, 0, 0)
+        : null;
+      const endDate = endInput.value
+        ? new Date(endInput.value).setHours(23, 59, 59, 999)
+        : null;
+
       const cards = document.querySelectorAll('.drive-file-card');
 
       cards.forEach((card) => {
         const fileName =
           card.querySelector('.file-name-title')?.innerText.toLowerCase() || '';
-        const dateText =
-          card.querySelector('.meta-item')?.innerText.toLowerCase() || '';
-        const isMatch = fileName.includes(term) || dateText.includes(term);
-        card.style.display = isMatch ? 'flex' : 'none';
+        const dateStr = card.querySelector('.meta-item span')?.innerText || ''; // Format: DD-MM-YYYY HH:mm
+
+        // Convert DD-MM-YYYY to a Date object for comparison
+        const [d, m, y] = dateStr.split(' ')[0].split('-');
+        const fileDate = new Date(y, m - 1, d).getTime();
+
+        const matchesText = fileName.includes(term);
+        const matchesDate =
+          (!startDate || fileDate >= startDate) &&
+          (!endDate || fileDate <= endDate);
+
+        card.style.display = matchesText && matchesDate ? 'flex' : 'none';
       });
+    };
+
+    [textInput, startInput, endInput].forEach((el) =>
+      el.addEventListener('input', filterFiles)
+    );
+
+    clearBtn?.addEventListener('click', () => {
+      textInput.value = '';
+      startInput.value = '';
+      endInput.value = '';
+      filterFiles();
     });
   },
 

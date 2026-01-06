@@ -1992,3 +1992,22 @@ body.analyzer-active {
   width: 14px;
   text-align: center;
 }
+
+.drive-search-container input[type='date'] {
+  background: var(--card-bg);
+  color: var(--text-color);
+  font-family: inherit;
+}
+
+#clearDriveFilters {
+  background: none;
+  border: none;
+  color: var(--brand-red);
+  cursor: pointer;
+  padding: 5px;
+  font-size: 1.1em;
+}
+
+#clearDriveFilters:hover {
+  opacity: 0.7;
+}
