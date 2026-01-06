@@ -3,6 +3,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
+ 
   {
     ignores: [
       'dist/**',
@@ -19,7 +20,6 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
-        // GOOGLE SDK GLOBALS
         gapi: 'readonly',
         google: 'readonly',
       },
@@ -34,6 +34,16 @@ export default [
     languageOptions: {
       globals: {
         ...globals.node, // This defines require, __dirname, and process
+      },
+    },
+  },
+
+  {
+    files: ['**/*.test.js', '**/__tests__/**'],
+    languageOptions: {
+      globals: {
+        ...globals.node, 
+        ...globals.jest, 
       },
     },
   },

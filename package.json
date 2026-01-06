@@ -1,9 +1,11 @@
 {
   "name": "mygiulia-logs-viewer",
   "version": "1.0.0",
+  "type": "module",
   "description": "Desktop Viewer for Alfa Romeo Telemetry",
   "main": "main.js",
   "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "dev": "vite",
     "format": "prettier --write .",
     "check": "prettier --check .",
@@ -23,11 +25,19 @@
     "hammerjs": "^2.0.8"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
     "@eslint/js": "^9.39.2",
+    "babel-jest": "^30.2.0",
+    "babel-plugin-transform-import-meta": "^2.3.3",
+    "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "eslint": "^9.39.2",
     "globals": "^16.5.0",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "jsdom": "^27.4.0",
     "prettier": "3.7.4",
     "stylelint": "^16.26.1",
     "stylelint-config-standard": "^39.0.1",
