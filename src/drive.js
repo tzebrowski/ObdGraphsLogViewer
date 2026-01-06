@@ -36,12 +36,23 @@ export const Drive = {
     if (!listEl) return;
 
     listEl.style.display = 'block';
-    listEl.innerHTML = '<div class="status-msg">Searching for logs...</div>';
+    // Add Search UI at the top
+    listEl.innerHTML = `
+    <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color);">
+      <div style="position: relative; display: flex; align-items: center;">
+        <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
+        <input type="text" id="driveSearchInput" placeholder="Filter logs by name or date..." 
+               style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+      </div>
+    </div>
+    <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
+  `;
 
     try {
       const rootId = await Drive.findFolderId(Drive.PATH_CONFIG.root);
       if (!rootId) {
-        listEl.innerHTML = `<div class="error-msg">Folder "${Drive.PATH_CONFIG.root}" not found.</div>`;
+        document.getElementById('driveFileContainer').innerHTML =
+          `<div class="error-msg">Folder "${Drive.PATH_CONFIG.root}" not found.</div>`;
         return;
       }
 
@@ -50,14 +61,42 @@ export const Drive = {
         rootId
       );
       if (!subFolderId) {
-        listEl.innerHTML = `<div class="error-msg">Subfolder "${Drive.PATH_CONFIG.sub}" not found.</div>`;
+        document.getElementById('driveFileContainer').innerHTML =
+          `<div class="error-msg">Subfolder "${Drive.PATH_CONFIG.sub}" not found.</div>`;
         return;
       }
 
-      await Drive.fetchJsonFiles(subFolderId, listEl);
+      await Drive.fetchJsonFiles(
+        subFolderId,
+        document.getElementById('driveFileContainer')
+      );
+
+      this.initSearch();
     } catch (error) {
-      Drive.handleApiError(error, listEl);
+      Drive.handleApiError(
+        error,
+        document.getElementById('driveFileContainer')
+      );
     }
+  },
+
+  initSearch() {
+    const searchInput = document.getElementById('driveSearchInput');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.drive-file-card');
+
+      cards.forEach((card) => {
+        const fileName =
+          card.querySelector('.file-name-title')?.innerText.toLowerCase() || '';
+        const dateText =
+          card.querySelector('.meta-item')?.innerText.toLowerCase() || '';
+        const isMatch = fileName.includes(term) || dateText.includes(term);
+        card.style.display = isMatch ? 'flex' : 'none';
+      });
+    });
   },
 
   fetchJsonFiles: async (folderId, listEl) => {
@@ -110,25 +149,25 @@ export const Drive = {
     const length = metadata ? metadata.length : 'N/A';
 
     return `
-      <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
-        <div class="file-card-icon">
-          <i class="fab fa-google-drive"></i>
-        </div>
-        <div class="file-card-body">
-          <div class="file-name-title">${file.name}</div>
-          <div class="file-card-meta-grid">
-            <div class="meta-item">
-              <i class="far fa-calendar-alt"></i> <span>${date}</span>
-            </div>
-            <div class="meta-item">
-              <i class="fas fa-history"></i> <span>${length}s</span>
-            </div>
-            <div class="meta-item">
-              <i class="fas fa-hdd"></i> <span>${size}</span>
-            </div>
+    <div class="drive-file-card" onclick="Drive.loadFile('${file.name}','${file.id}', this)">
+      <div class="file-card-icon">
+        <i class="fab fa-google-drive"></i>
+      </div>
+      <div class="file-card-body">
+        <div class="file-name-title">${file.name}</div>
+        <div class="file-card-meta-grid">
+          <div class="meta-item">
+            <i class="far fa-calendar-alt"></i> <span>${date}</span>
+          </div>
+          <div class="meta-item">
+            <i class="fas fa-history"></i> <span>${length}s</span>
+          </div>
+          <div class="meta-item">
+            <i class="fas fa-hdd"></i> <span>${size}</span>
           </div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
   },
 
   async loadFile(fileName, id, element) {
