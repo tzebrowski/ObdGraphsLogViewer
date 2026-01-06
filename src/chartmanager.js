@@ -51,6 +51,21 @@ export const ChartManager = {
     const container = DOM.get('chartContainer');
     if (!container) return;
 
+    if (
+      AppState.chartInstances.length > 0 &&
+      AppState.chartInstances.length === AppState.files.length
+    ) {
+      AppState.chartInstances.forEach((chart, fileIdx) => {
+        chart.data.datasets.forEach((dataset, sigIdx) => {
+          const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
+          dataset.borderColor = color;
+          dataset.backgroundColor = 'transparent';
+        });
+        chart.update('none');
+      });
+      return;
+    }
+
     AppState.chartInstances.forEach((c) => {
       if (c) c.destroy();
     });
@@ -147,8 +162,7 @@ export const ChartManager = {
 
     const datasets = file.availableSignals.map((key, idx) => {
       const isImportant = DEFAULT_SIGNALS.some((k) => key.includes(k));
-      const chartColors = PaletteManager.getChartColors();
-      const color = chartColors[idx % chartColors.length];
+      const color = PaletteManager.getColorForSignal(index, idx);
 
       const rawData = file.signals[key];
       const yValues = rawData.map((d) => parseFloat(d.y) || 0);

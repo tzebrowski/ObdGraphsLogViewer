@@ -20,7 +20,11 @@ export const Preferences = {
 
   get customPalette() {
     const saved = localStorage.getItem(Preferences.PALETTE_KEY);
-    return saved ? JSON.parse(saved) : null;
+    try {
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
   },
 
   set customPalette(colors) {

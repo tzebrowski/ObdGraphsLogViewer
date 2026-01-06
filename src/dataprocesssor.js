@@ -4,6 +4,7 @@ import { Analysis } from './analysis.js';
 import { ChartManager, Sliders } from './chartmanager.js';
 import { UI } from './ui.js';
 import { Alert } from './alert.js';
+import { PaletteManager } from './palettemanager.js';
 
 export const DataProcessor = {
   loadConfiguration: async () => {
@@ -82,6 +83,7 @@ export const DataProcessor = {
       ChartManager.render();
       UI.updateDataLoadedState(true);
       Analysis.refreshFilterOptions();
+      PaletteManager.refresh();
     } catch (error) {
       console.error('Error occured during file processing', error);
       UI.updateDataLoadedState(false);
