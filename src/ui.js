@@ -267,8 +267,7 @@ export const UI = {
 
       file.availableSignals.forEach((signal, sigIdx) => {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
-        const chartColors = PaletteManager.getChartColors();
-        const color = chartColors[(fileIdx * 10 + sigIdx) % chartColors.length];
+        const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
 
         const label = document.createElement('label');
         label.className = 'signal-item';

@@ -1,5 +1,7 @@
 import { ChartManager } from './chartmanager.js';
 import { Preferences } from './preferences.js';
+import { UI } from './ui.js';
+import { AppState } from './config.js';
 
 export const PaletteManager = {
   CHART_COLORS: [
@@ -48,8 +50,15 @@ export const PaletteManager = {
 
         this.render();
         if (typeof ChartManager !== 'undefined') ChartManager.render();
+
+        UI.renderSignalList();
       });
     }
+  },
+
+  getColorForSignal(fileIdx, sigIdx) {
+    const colors = this.getChartColors();
+    return colors[(fileIdx * 10 + sigIdx) % colors.length];
   },
 
   getChartColors() {
@@ -71,30 +80,41 @@ export const PaletteManager = {
     const currentColors = this.getChartColors();
     container.innerHTML = '';
 
-    currentColors.forEach((color, idx) => {
-      const picker = document.createElement('input');
-      picker.type = 'color';
-      picker.value = color;
-      picker.className = 'palette-picker';
+    // Create pickers based on the actual number of signals available in AppState
+    let globalSigIdx = 0;
+    AppState.files.forEach((file, fileIdx) => {
+      file.availableSignals.forEach((signal, sigIdx) => {
+        const color = this.getColorForSignal(fileIdx, sigIdx);
 
-      picker.onchange = (e) => {
-        const newPalette = [...currentColors];
-        newPalette[idx] = e.target.value;
-        Preferences.customPalette = newPalette; // Use Preference setter
-        ChartManager.render();
-      };
+        const picker = document.createElement('input');
+        picker.type = 'color';
+        picker.value = color;
+        picker.className = 'palette-picker';
+        picker.title = `${file.name}: ${signal}`;
 
-      container.appendChild(picker);
+        picker.onchange = (e) => {
+          const newPalette = [...currentColors];
+          const paletteIdx = (fileIdx * 10 + sigIdx) % currentColors.length;
+          newPalette[paletteIdx] = e.target.value;
+
+          Preferences.customPalette = newPalette;
+          ChartManager.render();
+          UI.renderSignalList();
+        };
+
+        container.appendChild(picker);
+        globalSigIdx++;
+      });
     });
 
     const resetBtn = document.createElement('button');
     resetBtn.className = 'btn-icon';
     resetBtn.innerHTML = '<i class="fas fa-undo"></i>';
-    resetBtn.title = 'Reset to Theme Defaults';
     resetBtn.onclick = () => {
-      Preferences.customPalette = null; // Use Preference setter to remove
+      Preferences.customPalette = null;
       this.render();
       ChartManager.render();
+      UI.renderSignalList();
     };
     container.appendChild(resetBtn);
   },
