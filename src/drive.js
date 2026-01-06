@@ -5,17 +5,14 @@ import { Alert } from './alert.js';
 
 export const Drive = {
   activeLoadToken: 0,
-
-  PATH_CONFIG: {
-    root: 'mygiulia',
-    sub: 'trips',
-  },
+  PATH_CONFIG: { root: 'mygiulia', sub: 'trips' },
+  masterCards: [],
 
   async findFolderId(name, parentId = 'root') {
     try {
       const query = `mimeType='application/vnd.google-apps.folder' and 
-                            (name = '${name}' or name = '${name.toLowerCase()}' or name = '${name.charAt(0).toUpperCase() + name.slice(1)}') 
-                            and '${parentId}' in parents and trashed=false`;
+                     (name = '${name}' or name = '${name.toLowerCase()}' or name = '${name.charAt(0).toUpperCase() + name.slice(1)}') 
+                     and '${parentId}' in parents and trashed=false`;
 
       const response = await gapi.client.drive.files.list({
         q: query,
@@ -36,44 +33,17 @@ export const Drive = {
     if (!listEl) return;
 
     listEl.style.display = 'block';
-    listEl.innerHTML = `
-    <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-      <div style="position: relative; display: flex; align-items: center;">
-        <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
-        <input type="text" id="driveSearchInput" placeholder="Filter by name..." 
-              style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
-      </div>
-      <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
-        <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
-        <span>to</span>
-        <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
-        <button id="clearDriveFilters" class="btn-icon" title="Clear Filters"><i class="fas fa-times"></i></button>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div id="driveResultCount" style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;"></div>
-        <button id="driveSortToggle" class="btn btn-sm" style="font-size: 0.75em; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
-          <i class="fas fa-sort-amount-down"></i> Newest
-        </button>
-      </div>
-    </div>
-    <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
-    `;
+    listEl.innerHTML = this.getSearchInterfaceTemplate();
 
     try {
-      const rootId = await this.findFolderId(Drive.PATH_CONFIG.root);
-      if (!rootId) {
-        document.getElementById('driveFileContainer').innerHTML =
-          `<div class="error-msg">Folder "${Drive.PATH_CONFIG.root}" not found.</div>`;
-        return;
-      }
+      const rootId = await this.findFolderId(this.PATH_CONFIG.root);
+      const subFolderId = rootId
+        ? await this.findFolderId(this.PATH_CONFIG.sub, rootId)
+        : null;
 
-      const subFolderId = await this.findFolderId(
-        Drive.PATH_CONFIG.sub,
-        rootId
-      );
       if (!subFolderId) {
         document.getElementById('driveFileContainer').innerHTML =
-          `<div class="error-msg">Subfolder "${Drive.PATH_CONFIG.sub}" not found.</div>`;
+          `<div class="error-msg">Required folders (${this.PATH_CONFIG.root}/${this.PATH_CONFIG.sub}) not found.</div>`;
         return;
       }
 
@@ -87,140 +57,170 @@ export const Drive = {
     }
   },
 
-  parseDateFromCard: (card) => {
-    const dateStr = card.querySelector('.meta-item span')?.innerText || '';
-    if (!dateStr || dateStr === 'N/A') return 0;
-    const [datePart, timePart] = dateStr.split(' ');
-    const [d, m, y] = datePart.split('-');
-    const [hh, mm] = timePart.split(':');
-    return new Date(y, m - 1, d, hh, mm).getTime();
-  },
-
   initSearch() {
-    const textInput = document.getElementById('driveSearchInput');
-    const startInput = document.getElementById('driveDateStart');
-    const endInput = document.getElementById('driveDateEnd');
-    const clearBtn = document.getElementById('clearDriveFilters');
-    const sortBtn = document.getElementById('driveSortToggle');
+    const container = document.getElementById('driveFileContainer');
+    const inputs = {
+      text: document.getElementById('driveSearchInput'),
+      clearText: document.getElementById('clearDriveSearchText'),
+      start: document.getElementById('driveDateStart'),
+      end: document.getElementById('driveDateEnd'),
+      sortBtn: document.getElementById('driveSortToggle'),
+    };
 
-    let currentSortOrder = 'desc';
+    let state = { sortOrder: 'desc' };
 
-    const filterAndSortFiles = () => {
-      const term = textInput.value.toLowerCase().trim();
-      const startDate = startInput.value
-        ? new Date(startInput.value).setHours(0, 0, 0, 0)
-        : null;
-      const endDate = endInput.value
-        ? new Date(endInput.value).setHours(23, 59, 59, 999)
-        : null;
+    const updateUI = () => {
+      const term = inputs.text.value.toLowerCase().trim();
 
-      const container = document.getElementById('driveFileContainer');
-      const cards = Array.from(container.querySelectorAll('.drive-file-card'));
+      if (inputs.clearText) {
+        inputs.clearText.style.display = term.length > 0 ? 'block' : 'none';
+      }
+
+      const filters = {
+        term: term,
+        start: inputs.start.value
+          ? new Date(inputs.start.value).setHours(0, 0, 0, 0)
+          : null,
+        end: inputs.end.value
+          ? new Date(inputs.end.value).setHours(23, 59, 59, 999)
+          : null,
+      };
+
       let matchCount = 0;
 
-      cards.forEach((card) => {
-        const fileName =
+      this.masterCards.forEach((card) => {
+        const fileDate = this.parseDateFromCard(card);
+        const name =
           card.querySelector('.file-name-title')?.innerText.toLowerCase() || '';
-        const dateStr = card.querySelector('.meta-item span')?.innerText || '';
-        const [d, m, y] = dateStr.split(' ')[0].split('-');
-        const fileDate = new Date(y, m - 1, d).getTime();
 
-        const matchesText = fileName.includes(term);
+        const matchesText = name.includes(filters.term);
         const matchesDate =
-          (!startDate || fileDate >= startDate) &&
-          (!endDate || fileDate <= endDate);
+          (!filters.start || fileDate >= filters.start) &&
+          (!filters.end || fileDate <= filters.end);
 
         const isVisible = matchesText && matchesDate;
         card.style.display = isVisible ? 'flex' : 'none';
         if (isVisible) matchCount++;
       });
 
-      cards.sort((a, b) => {
-        const dateA = Drive.parseDateFromCard(a);
-        const dateB = Drive.parseDateFromCard(b);
-        return currentSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      this.masterCards.sort((a, b) => {
+        const diff = this.parseDateFromCard(a) - this.parseDateFromCard(b);
+        return state.sortOrder === 'desc' ? -diff : diff;
       });
 
-      container.querySelectorAll('.month-group').forEach((g) => g.remove());
-      let currentGroup = null;
-      let lastMonth = '';
-
-      cards.forEach((card) => {
-        if (card.style.display !== 'none') {
-          const dateStr =
-            card.querySelector('.meta-item span')?.innerText || '';
-          const [d, m, y] = dateStr.split(' ')[0].split('-');
-          const monthYear = new Date(y, m - 1, d).toLocaleString('default', {
-            month: 'long',
-            year: 'numeric',
-          });
-
-          if (monthYear !== lastMonth) {
-            currentGroup = document.createElement('div');
-            currentGroup.className = 'month-group';
-
-            const header = document.createElement('div');
-            header.className = 'month-header';
-            header.style.cssText = `
-            padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; 
-            background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837;
-            margin: 10px 0 5px 0; text-transform: uppercase; cursor: pointer;
-            display: flex; justify-content: space-between; align-items: center;
-          `;
-            header.innerHTML = `<span>${monthYear}</span> <i class="fas fa-chevron-down toggle-icon"></i>`;
-
-            const list = document.createElement('div');
-            list.className = 'month-list';
-
-            header.onclick = () => {
-              const isCollapsed = list.style.display === 'none';
-              list.style.display = isCollapsed ? 'block' : 'none';
-              header.querySelector('.toggle-icon').className = isCollapsed
-                ? 'fas fa-chevron-down toggle-icon'
-                : 'fas fa-chevron-right toggle-icon';
-            };
-
-            currentGroup.appendChild(header);
-            currentGroup.appendChild(list);
-            container.appendChild(currentGroup);
-            lastMonth = monthYear;
-          }
-          currentGroup.querySelector('.month-list').appendChild(card);
-        }
-      });
+      this.renderGroupedCards(container, this.masterCards);
 
       const countEl = document.getElementById('driveResultCount');
-      if (countEl) {
-        countEl.innerText = `Showing ${matchCount} of ${cards.length} logs`;
-      }
+      if (countEl)
+        countEl.innerText = `Showing ${matchCount} of ${this.masterCards.length} logs`;
     };
 
-    [textInput, startInput, endInput].forEach((el) =>
-      el.addEventListener('input', filterAndSortFiles)
+    inputs.clearText?.addEventListener('click', () => {
+      inputs.text.value = '';
+      updateUI();
+    });
+
+    document
+      .getElementById('clearDriveFilters')
+      ?.addEventListener('click', () => {
+        inputs.start.value = '';
+        inputs.end.value = '';
+        updateUI();
+      });
+
+    [inputs.text, inputs.start, inputs.end].forEach((el) =>
+      el.addEventListener('input', updateUI)
     );
-    sortBtn?.addEventListener('click', () => {
-      currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
-      sortBtn.innerHTML =
-        currentSortOrder === 'desc'
-          ? '<i class="fas fa-sort-amount-down"></i> Newest'
-          : '<i class="fas fa-sort-amount-up"></i> Oldest';
-      filterAndSortFiles();
+
+    inputs.sortBtn?.addEventListener('click', () => {
+      state.sortOrder = state.sortOrder === 'desc' ? 'asc' : 'desc';
+      inputs.sortBtn.innerHTML = `<i class="fas fa-sort-amount-${state.sortOrder === 'desc' ? 'down' : 'up'}"></i> 
+                                  ${state.sortOrder === 'desc' ? 'Newest' : 'Oldest'}`;
+      updateUI();
     });
 
-    clearBtn?.addEventListener('click', () => {
-      textInput.value = '';
-      startInput.value = '';
-      endInput.value = '';
-      filterAndSortFiles();
-    });
+    updateUI();
+  },
 
-    filterAndSortFiles();
+  renderGroupedCards(container, cards) {
+    container.innerHTML = '';
+
+    let lastMonth = '';
+    let currentGroup = null;
+
+    cards
+      .filter((c) => c.style.display !== 'none')
+      .forEach((card) => {
+        const monthYear = new Date(this.parseDateFromCard(card)).toLocaleString(
+          'default',
+          { month: 'long', year: 'numeric' }
+        );
+
+        if (monthYear !== lastMonth) {
+          currentGroup = this.createMonthGroup(monthYear);
+          container.appendChild(currentGroup);
+          lastMonth = monthYear;
+        }
+        currentGroup.querySelector('.month-list').appendChild(card);
+      });
+  },
+
+  createMonthGroup(monthYear) {
+    const group = document.createElement('div');
+    group.className = 'month-group';
+    group.innerHTML = `
+      <div class="month-header" style="padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; 
+           background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837; margin: 10px 0 5px 0; 
+           text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+        <span>${monthYear}</span> <i class="fas fa-chevron-down toggle-icon"></i>
+      </div>
+      <div class="month-list"></div>
+    `;
+
+    const header = group.querySelector('.month-header');
+    const list = group.querySelector('.month-list');
+    header.onclick = () => {
+      const isCollapsed = list.style.display === 'none';
+      list.style.display = isCollapsed ? 'block' : 'none';
+      header.querySelector('.toggle-icon').className = isCollapsed
+        ? 'fas fa-chevron-down toggle-icon'
+        : 'fas fa-chevron-right toggle-icon';
+    };
+    return group;
+  },
+
+  getSearchInterfaceTemplate() {
+    return `
+    <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+      <div style="position: relative; display: flex; align-items: center;">
+        <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
+        <input type="text" id="driveSearchInput" placeholder="Filter by name..." 
+               style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+        <i class="fas fa-times-circle" id="clearDriveSearchText" 
+           style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" 
+           title="Clear search"></i>
+      </div>
+      <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
+        <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+        <span>to</span>
+        <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+        <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div id="driveResultCount" style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;"></div>
+        <button id="driveSortToggle" class="btn btn-sm" style="font-size: 0.75em; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
+          <i class="fas fa-sort-amount-down"></i> Newest
+        </button>
+      </div>
+    </div>
+    <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
+  `;
   },
 
   async fetchJsonFiles(folderId, listEl) {
     try {
       const res = await gapi.client.drive.files.list({
-        pageSize: 25,
+        pageSize: 50,
         fields: 'files(id, name, size, modifiedTime)',
         q: `'${folderId}' in parents and name contains '.json' and trashed=false`,
         orderBy: 'modifiedTime desc',
@@ -231,82 +231,64 @@ export const Drive = {
         listEl.innerHTML = '<div class="status-msg">No log files found.</div>';
         return;
       }
+
       listEl.innerHTML = files.map((f) => this.renderFileRow(f)).join('');
+
+      this.masterCards = Array.from(
+        listEl.querySelectorAll('.drive-file-card')
+      );
+
+      this.initSearch();
     } catch (error) {
       this.handleApiError(error, listEl);
     }
   },
 
-  getFileMetadata(fileName) {
-    const regex = /-(\d+)-(\d+)\.json$/;
-    const match = fileName.match(regex);
-
-    if (!match) return null;
-
-    const date = new Date(parseInt(match[1]));
-    const pad = (num) => num.toString().padStart(2, '0');
-
-    const day = pad(date.getDate());
-    const month = pad(date.getMonth() + 1);
-    const year = date.getFullYear();
-    const hours = pad(date.getHours());
-    const minutes = pad(date.getMinutes());
-
-    const formattedDate = `${day}-${month}-${year} ${hours}:${minutes}`;
-
-    return {
-      date: formattedDate,
-      length: match[2],
-    };
-  },
-
   renderFileRow(file) {
-    const size = file.size ? (file.size / 1024).toFixed(0) + ' KB' : 'Unknown';
-    const metadata = this.getFileMetadata(file.name);
-    const date = metadata ? metadata.date : 'N/A';
-    const length = metadata ? metadata.length : 'N/A';
-
+    const meta = this.getFileMetadata(file.name);
     return `
     <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
-      <div class="file-card-icon">
-        <i class="fab fa-google-drive"></i>
-      </div>
+      <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
       <div class="file-card-body">
         <div class="file-name-title">${file.name}</div>
         <div class="file-card-meta-grid">
-          <div class="meta-item">
-            <i class="far fa-calendar-alt"></i> <span>${date}</span>
-          </div>
-          <div class="meta-item">
-            <i class="fas fa-history"></i> <span>${length}s</span>
-          </div>
-          <div class="meta-item">
-            <i class="fas fa-hdd"></i> <span>${size}</span>
-          </div>
+          <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
+          <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
+          <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
         </div>
       </div>
     </div>`;
   },
 
+  getFileMetadata(fileName) {
+    const match = fileName.match(/-(\d+)-(\d+)\.json$/);
+    if (!match) return null;
+
+    const date = new Date(parseInt(match[1]));
+    return {
+      date: `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
+      length: match[2],
+    };
+  },
+
+  parseDateFromCard(card) {
+    const dateStr = card.querySelector('.meta-item span')?.innerText;
+    if (!dateStr || dateStr === 'N/A') return 0;
+    const [d, m, y, hh, mm] = dateStr.match(/\d+/g);
+    return new Date(y, m - 1, d, hh, mm).getTime();
+  },
+
   async loadFile(fileName, id, element) {
-    if (element) {
-      document
-        .querySelectorAll('.drive-file-row')
-        .forEach((r) => r.classList.remove('active'));
-      element.classList.add('active');
-    }
+    document
+      .querySelectorAll('.drive-file-card')
+      .forEach((r) => r.classList.remove('active'));
+    element?.classList.add('active');
 
     const currentToken = ++this.activeLoadToken;
-    const cancelTask = () => {
+    UI.setLoading(true, 'Fetching from Drive...', () => {
       this.activeLoadToken++;
       UI.setLoading(false);
-      const fileInfo = DOM.get('fileInfo');
-      if (fileInfo) fileInfo.innerText = 'Load cancelled.';
-    };
-
-    UI.setLoading(true, 'Fetching from Drive...', cancelTask);
-    const fileInfo = DOM.get('fileInfo');
-    if (fileInfo) fileInfo.innerText = 'Downloading...';
+    });
 
     try {
       const response = await gapi.client.drive.files.get({
@@ -315,43 +297,21 @@ export const Drive = {
       });
       if (currentToken !== this.activeLoadToken) return;
 
-      UI.setLoading(true, 'Processing Log...', null);
-
-      setTimeout(() => {
-        if (currentToken !== this.activeLoadToken) return;
-        try {
-          DataProcessor.process(response.result, fileName);
-          const fileInfoFinish = DOM.get('fileInfo');
-          if (fileInfoFinish)
-            fileInfoFinish.innerText = 'Drive log loaded successfully.';
-        } catch (err) {
-          console.error(
-            `The file content is not a valid log format. Error ${err.message}`
-          );
-          Alert.showAlert('The file content is not a valid log format.');
-        } finally {
-          UI.setLoading(false);
-        }
-      }, 50);
+      DataProcessor.process(response.result, fileName);
     } catch (error) {
-      if (currentToken !== this.activeLoadToken) return;
-      UI.setLoading(false);
-      Alert.showAlert(
-        `Drive Error: ${error.result?.error?.message || error.message}`
-      );
+      if (currentToken === this.activeLoadToken)
+        Alert.showAlert(
+          `Drive Error: ${error.result?.error?.message || error.message}`
+        );
+    } finally {
+      if (currentToken === this.activeLoadToken) UI.setLoading(false);
     }
   },
 
   handleApiError(error, listEl) {
-    console.error('Drive API Error:', error);
-    if (error.status === 401 || error.status === 403) {
+    if (error.status === 401 || error.status === 403)
       gapi.client.setToken(null);
-      if (listEl)
-        listEl.innerHTML =
-          '<div class="error-msg">Session expired. Please click "Drive Scan" again.</div>';
-    } else {
-      if (listEl)
-        listEl.innerHTML = `<div class="error-msg">Search failed: ${error.message || 'Unknown error'}</div>`;
-    }
+    if (listEl)
+      listEl.innerHTML = `<div class="error-msg">Drive error: ${error.status === 401 ? 'Session expired' : error.message || 'Unknown error'}</div>`;
   },
 };
