@@ -31,6 +31,12 @@ export const UI = {
 
   updateDataLoadedState: (hasData) => {
     const container = document.getElementById('chartContainer');
+
+    if (!container) {
+      console.warn('UI: chartContainer not found. Skipping state update.');
+      return;
+    }
+
     if (hasData) {
       container.classList.add('has-data');
     } else {
