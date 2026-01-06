@@ -87,6 +87,15 @@ export const Drive = {
     }
   },
 
+  parseDateFromCard: (card) => {
+    const dateStr = card.querySelector('.meta-item span')?.innerText || '';
+    if (!dateStr || dateStr === 'N/A') return 0;
+    const [datePart, timePart] = dateStr.split(' ');
+    const [d, m, y] = datePart.split('-');
+    const [hh, mm] = timePart.split(':');
+    return new Date(y, m - 1, d, hh, mm).getTime();
+  },
+
   initSearch() {
     const textInput = document.getElementById('driveSearchInput');
     const startInput = document.getElementById('driveDateStart');
@@ -113,7 +122,6 @@ export const Drive = {
         const fileName =
           card.querySelector('.file-name-title')?.innerText.toLowerCase() || '';
         const dateStr = card.querySelector('.meta-item span')?.innerText || '';
-
         const [d, m, y] = dateStr.split(' ')[0].split('-');
         const fileDate = new Date(y, m - 1, d).getTime();
 
@@ -133,7 +141,53 @@ export const Drive = {
         return currentSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
       });
 
-      cards.forEach((card) => container.appendChild(card));
+      container.querySelectorAll('.month-group').forEach((g) => g.remove());
+      let currentGroup = null;
+      let lastMonth = '';
+
+      cards.forEach((card) => {
+        if (card.style.display !== 'none') {
+          const dateStr =
+            card.querySelector('.meta-item span')?.innerText || '';
+          const [d, m, y] = dateStr.split(' ')[0].split('-');
+          const monthYear = new Date(y, m - 1, d).toLocaleString('default', {
+            month: 'long',
+            year: 'numeric',
+          });
+
+          if (monthYear !== lastMonth) {
+            currentGroup = document.createElement('div');
+            currentGroup.className = 'month-group';
+
+            const header = document.createElement('div');
+            header.className = 'month-header';
+            header.style.cssText = `
+            padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; 
+            background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837;
+            margin: 10px 0 5px 0; text-transform: uppercase; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+          `;
+            header.innerHTML = `<span>${monthYear}</span> <i class="fas fa-chevron-down toggle-icon"></i>`;
+
+            const list = document.createElement('div');
+            list.className = 'month-list';
+
+            header.onclick = () => {
+              const isCollapsed = list.style.display === 'none';
+              list.style.display = isCollapsed ? 'block' : 'none';
+              header.querySelector('.toggle-icon').className = isCollapsed
+                ? 'fas fa-chevron-down toggle-icon'
+                : 'fas fa-chevron-right toggle-icon';
+            };
+
+            currentGroup.appendChild(header);
+            currentGroup.appendChild(list);
+            container.appendChild(currentGroup);
+            lastMonth = monthYear;
+          }
+          currentGroup.querySelector('.month-list').appendChild(card);
+        }
+      });
 
       const countEl = document.getElementById('driveResultCount');
       if (countEl) {
@@ -141,19 +195,9 @@ export const Drive = {
       }
     };
 
-    Drive.parseDateFromCard = (card) => {
-      const dateStr = card.querySelector('.meta-item span')?.innerText || '';
-      if (!dateStr || dateStr === 'N/A') return 0;
-      const [datePart, timePart] = dateStr.split(' ');
-      const [d, m, y] = datePart.split('-');
-      const [hh, mm] = timePart.split(':');
-      return new Date(y, m - 1, d, hh, mm).getTime();
-    };
-
     [textInput, startInput, endInput].forEach((el) =>
       el.addEventListener('input', filterAndSortFiles)
     );
-
     sortBtn?.addEventListener('click', () => {
       currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
       sortBtn.innerHTML =
