@@ -95,3 +95,71 @@ describe('DataProcessor Module Tests', () => {
     expect(UI.setLoading).not.toHaveBeenCalled(); // This method doesn't trigger loading screen
   });
 });
+
+describe('DataProcessor - handleLocalFile', () => {
+  let mockFileReader;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    AppState.files = [];
+
+    // Mock the global FileReader
+    mockFileReader = {
+      readAsText: jest.fn(function () {
+        // Simulate the async file reading process
+        setTimeout(() => {
+          this.onload({
+            target: { result: JSON.stringify([{ s: 'RPM', t: 100, v: 500 }]) },
+          });
+        }, 10);
+      }),
+      onload: null,
+    };
+    global.FileReader = jest.fn(() => mockFileReader);
+
+    // Mock DOM input for clearing the value
+    document.body.innerHTML = `
+      <input type="file" id="fileInput" />
+      <div id="fileInfo"></div>
+      <div id="chartContainer"></div>
+    `;
+    DOM.get = jest.fn((id) => document.getElementById(id));
+  });
+
+  test('handleLocalFile parses multiple files and updates UI', (done) => {
+    // 1. Create a mock event with a file list
+    const mockFile = new File(['{"data": "dummy"}'], 'test_log.json', {
+      type: 'application/json',
+    });
+    const mockEvent = {
+      target: {
+        files: [mockFile],
+      },
+    };
+
+    // 2. Spy on the process method to see if it gets called after reading
+    const processSpy = jest.spyOn(DataProcessor, 'process');
+
+    // 3. Execute
+    DataProcessor.handleLocalFile(mockEvent);
+
+    // 4. Verification using a timeout to wait for the FileReader callback
+    setTimeout(() => {
+      try {
+        expect(UI.setLoading).toHaveBeenCalledWith(
+          true,
+          expect.stringContaining('Parsing 1 Files')
+        );
+        expect(processSpy).toHaveBeenCalled();
+        expect(AppState.files.length).toBe(1);
+
+        // Ensure the loading screen is turned off
+        expect(UI.setLoading).toHaveBeenLastCalledWith(false);
+
+        done(); // Tell Jest the async test is finished
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+});
