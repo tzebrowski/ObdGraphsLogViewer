@@ -3,7 +3,6 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
- 
   {
     ignores: [
       'dist/**',
@@ -42,8 +41,8 @@ export default [
     files: ['**/*.test.js', '**/__tests__/**'],
     languageOptions: {
       globals: {
-        ...globals.node, 
-        ...globals.jest, 
+        ...globals.node,
+        ...globals.jest,
       },
     },
   },

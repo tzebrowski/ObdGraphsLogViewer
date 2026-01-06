@@ -289,14 +289,11 @@ export const Drive = {
     if (!dateEl) return 0;
 
     const dateStr = dateEl.textContent.trim();
-    console.error(`in !!!!!!!!!!!!!!!!!!! ${dateStr}`);
     const ts = Date.parse(dateStr);
-    console.error(`out !!!!!!!!!!!!!!!!!!! ${ts}`);
 
     if (isNaN(ts)) {
       return 0;
     }
-
     return ts;
   },
 
