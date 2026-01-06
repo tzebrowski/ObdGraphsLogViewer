@@ -45,12 +45,9 @@
             <i class="fab fa-google-play"></i>
           </a>
 
-          <a
-            href="#analyzer"
-            class="nav-btn-primary"
-            style="background-color: var(--brand-red)"
-          >
-            <i class="fas fa-chart-line"></i> Open Analyzer
+          <a href="index.html" class="nav-btn-primary">
+            <i class="fas fa-home" style="margin-right: 8px"></i>
+            <span>Back to Home</span>
           </a>
         </div>
       </div>
@@ -205,32 +202,48 @@
           </button>
 
           <h2>My Giulia Telemetry Analyzer</h2>
-          <div class="control-group gray-box">
+          <div class="control-group gray-box source-container">
             <h3 class="group-header">Log Source</h3>
-            <div class="button-row">
+
+            <div class="source-button-grid">
               <button
                 id="authBtn"
-                class="btn btn-primary"
+                class="source-btn primary"
                 onclick="handleAuth()"
               >
-                Drive Scan
+                <div class="btn-content">
+                  <i class="fab fa-google-drive"></i>
+                  <span>Drive Scan</span>
+                </div>
               </button>
+
               <button
-                class="btn"
+                class="source-btn secondary"
                 onclick="document.getElementById('fileInput').click()"
               >
-                Local File
+                <div class="btn-content">
+                  <i class="fas fa-file-upload"></i>
+                  <span>Local File</span>
+                </div>
               </button>
-              <button class="btn" onclick="resetZoom()">Reset View</button>
+
+              <button class="source-btn outline" onclick="resetZoom()">
+                <div class="btn-content">
+                  <i class="fas fa-sync-alt"></i>
+                  <span>Reset</span>
+                </div>
+              </button>
             </div>
+
             <input
               type="file"
               id="fileInput"
               style="display: none"
               accept=".json,application/json,text/plain"
             />
-            <div id="driveList" class="drive-list"></div>
-            <div id="fileInfo" class="status-text"></div>
+
+            <div id="driveList" class="drive-list-modern"></div>
+            <div id="fileInfo" class="status-text-subtle"></div>
           </div>
 
           <div class="control-group gray-box">

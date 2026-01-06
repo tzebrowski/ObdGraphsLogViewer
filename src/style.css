@@ -1151,7 +1151,6 @@ footer {
 
 .mobile-close-btn {
   display: none;
-  /* Hidden by default for Desktop */
   position: absolute;
   top: 15px;
   right: 15px;
@@ -1170,8 +1169,8 @@ footer {
 
 .integrated-toolbar {
   display: none;
-  gap: 12px;
-  margin-right: 10px;
+  gap: 15px;
+  align-items: center;
 }
 
 body.analyzer-active .integrated-toolbar {
@@ -1732,13 +1731,14 @@ body.analyzer-active .nav-title {
 }
 
 .nav-container {
-  max-width: 1200px;
+  max-width: 100% !important;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-sizing: border-box;
 }
 
 .nav-brand {
@@ -1810,10 +1810,8 @@ body.analyzer-active .nav-title {
   filter: brightness(1.1);
 }
 
-/* Ensure the Hero section doesn't hide under the sticky nav */
 .docs-body .hero {
   padding-top: 60px;
-  /* Offset for the navbar */
 }
 
 .empty-state-container {
@@ -2010,4 +2008,92 @@ body.analyzer-active {
 
 #clearDriveFilters:hover {
   opacity: 0.7;
+}
+
+/* Sidebar Source Container Polish */
+.source-container {
+  padding: 15px !important;
+  background: #fff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 5%) !important;
+}
+
+/* Modern Button Grid */
+.source-button-grid {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.source-btn {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 5px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-content i {
+  font-size: 1.3em;
+}
+
+/* Primary Style (Red) */
+.source-btn.primary {
+  background: #e31837;
+  color: white;
+  box-shadow: 0 4px 12px rgb(227 24 55 / 25%);
+}
+
+.source-btn.primary:hover {
+  background: #c6122e;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgb(227 24 55 / 35%);
+}
+
+/* Secondary Style (Dark) */
+.source-btn.secondary {
+  background: #2c3e50;
+  color: white;
+}
+
+.source-btn.secondary:hover {
+  background: #34495e;
+  transform: translateY(-2px);
+}
+
+/* Outline Style (Light) */
+.source-btn.outline {
+  background: #f8f9fa;
+  color: #7f8c8d;
+  border: 1px solid #eef0f2;
+}
+
+.source-btn.outline:hover {
+  background: #fff;
+  border-color: #bdc3c7;
+  color: #2c3e50;
+  transform: translateY(-2px);
+}
+
+/* Subtle Status Text */
+.status-text-subtle {
+  font-size: 0.75em;
+  color: #95a5a6;
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
 }
