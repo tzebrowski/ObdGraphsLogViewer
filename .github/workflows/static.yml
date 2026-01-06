@@ -48,6 +48,17 @@ jobs:
         env:
           NODE_OPTIONS: '--experimental-vm-modules'
 
+      - name: Run tests with coverage
+        run: npm run test:coverage
+        env:
+          NODE_OPTIONS: "--experimental-vm-modules"
+
+      - name: Coverage report
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          lcov-file: ./coverage/lcov.info
+
       - name: Build Application
         run: |
           npx vite build --base ./
