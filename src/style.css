@@ -1920,3 +1920,94 @@ body.analyzer-active {
   cursor: pointer;
   padding: 0;
 }
+
+/* Expand the scan results visibility */
+#driveList {
+  max-height: 450px !important;
+  overflow-y: auto;
+  padding: 10px 5px;
+  background: var(--sidebar-bg);
+}
+
+.drive-file-card {
+  display: flex;
+  align-items: flex-start;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drive-file-card:hover {
+  border-color: #e31837;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
+}
+
+.drive-file-card.active {
+  border: 2px solid #e31837;
+  background: rgb(227 24 55 / 5%);
+}
+
+.file-card-icon {
+  font-size: 1.4em;
+  color: #4285f4;
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.file-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name-title {
+  font-weight: 700;
+  font-size: 0.95em;
+  color: var(--text-color);
+  margin-bottom: 6px;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.file-card-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75em;
+  color: var(--text-muted, #666);
+}
+
+.meta-item i {
+  color: #e31837;
+  width: 14px;
+  text-align: center;
+}
+
+.drive-search-container input[type='date'] {
+  background: var(--card-bg);
+  color: var(--text-color);
+  font-family: inherit;
+}
+
+#clearDriveFilters {
+  background: none;
+  border: none;
+  color: var(--brand-red);
+  cursor: pointer;
+  padding: 5px;
+  font-size: 1.1em;
+}
+
+#clearDriveFilters:hover {
+  opacity: 0.7;
+}
