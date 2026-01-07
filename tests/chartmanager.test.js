@@ -159,3 +159,22 @@ test('afterDraw() renders red highlight for active anomaly', () => {
   expect(mockCtx.fillRect).toHaveBeenCalled();
   expect(mockCtx.restore).toHaveBeenCalled();
 });
+
+test('initKeyboardControls handles ArrowRight to pan the chart', () => {
+  const mockChart = {
+    width: 1000,
+    pan: jest.fn(),
+    draw: jest.fn(),
+    scales: { x: { min: 100, max: 200 } },
+  };
+
+  const canvas = document.createElement('canvas');
+  AppState.chartInstances = [mockChart];
+
+  ChartManager.initKeyboardControls(canvas, 0);
+
+  const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
+  canvas.dispatchEvent(event);
+
+  expect(mockChart.pan).toHaveBeenCalledWith({ x: -10 }, undefined, 'none');
+});

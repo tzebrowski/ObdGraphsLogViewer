@@ -439,8 +439,6 @@ export const ChartManager = {
 
       if (chartIdx === -1) return;
 
-      ctx.save();
-
       if (
         AppState.activeHighlight &&
         AppState.activeHighlight.targetIndex === chartIdx
@@ -454,11 +452,15 @@ export const ChartManager = {
           file.startTime + AppState.activeHighlight.end * 1000
         );
 
+        if (isNaN(pxStart) || isNaN(pxEnd)) return;
+
         const visibleXStart = Math.max(pxStart, left);
         const visibleXEnd = Math.min(pxEnd, right);
         const drawWidth = visibleXEnd - visibleXStart;
 
         if (drawWidth > 0) {
+          ctx.save();
+
           ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
           ctx.fillRect(visibleXStart, top, drawWidth, bottom - top);
 
@@ -478,6 +480,8 @@ export const ChartManager = {
             ctx.lineTo(pxEnd, bottom);
             ctx.stroke();
           }
+
+          ctx.restore();
         }
       }
 
