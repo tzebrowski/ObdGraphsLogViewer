@@ -1,7 +1,10 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { Analysis } from '../src/analysis.js';
-import { AppState, DOM, Config } from '../src/config.js';
+import { AppState, DOM, Config, SIGNAL_MAPPINGS } from '../src/config.js';
 import { UI } from '../src/ui.js';
+import { Sliders } from '../src/chartmanager.js';
+
+Sliders.zoomTo = jest.fn();
 
 describe('Analysis Module - Coverage Boost', () => {
   beforeEach(() => {
@@ -70,4 +73,136 @@ describe('Analysis Module - Coverage Boost', () => {
     expect(sigSelect.innerHTML).toContain('RPM');
     expect(sigSelect.innerHTML).toContain('Temp');
   });
+});
+
+describe('Analysis Module - Deep Coverage', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <select id="anomalyTemplate"></select>
+      <div id="filtersContainer"></div>
+      <button id="btnRunScan"></button>
+      <div id="scanResults"></div>
+      <div id="scanCount"></div>
+    `;
+
+    AppState.files = [
+      {
+        name: 'log1.json',
+        startTime: 1000,
+        availableSignals: ['RPM', 'TPS'],
+        rawData: [
+          { s: 'RPM', t: 1000, v: 800 },
+          { s: 'RPM', t: 2000, v: 5000 },
+          { s: 'RPM', t: 3000, v: 800 },
+        ],
+      },
+    ];
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+    UI.resetScannerUI = jest.fn();
+    jest.clearAllMocks();
+  });
+
+  /** 1. Test applyTemplate() and Alias Mapping (Lines 114-149) **/
+  test('applyTemplate() maps signals using aliases if exact match fails', () => {
+    // Setup a template that looks for "EngineSpeed" (not in our file)
+    Config.ANOMALY_TEMPLATES = {
+      test: {
+        name: 'Test',
+        rules: [{ sig: 'EngineSpeed', op: '>', val: '4000' }],
+      },
+    };
+    // Map "EngineSpeed" to "RPM" via aliases
+    SIGNAL_MAPPINGS['EngineSpeed'] = ['rpm'];
+
+    const sel = document.getElementById('anomalyTemplate');
+    sel.innerHTML = '<option value="test" selected>Test</option>';
+    sel.value = 'test';
+
+    Analysis.applyTemplate();
+
+    const sigSelect = document.querySelector('.sig-select');
+    // It should have found "RPM" because it contains the alias "rpm"
+    expect(sigSelect.value).toBe('RPM');
+  });
+
+  /** 2. Test refreshFilterOptions() (Lines 94-112) **/
+  test('refreshFilterOptions() updates dropdowns when files change', () => {
+    Analysis.addFilterRow();
+
+    // Add a second file to AppState
+    AppState.files.push({ name: 'log2.json', availableSignals: ['Temp'] });
+
+    Analysis.refreshFilterOptions();
+
+    const fileSelect = document.querySelector('.file-select');
+    expect(fileSelect.options).toHaveLength(3); // All, log1, log2
+    expect(fileSelect.innerHTML).toContain('log2.json');
+  });
+
+  /** 3. Test Filter Row Interactions (Lines 75-92) **/
+  test('filter row UI interactions: change file and remove row', () => {
+    Analysis.addFilterRow();
+    const row = document.querySelector('.filter-row');
+    const fileSelect = row.querySelector('.file-select');
+    const sigSelect = row.querySelector('.sig-select');
+    const removeBtn = row.querySelector('.remove-row');
+
+    // Simulate file change triggers signal refresh
+    fileSelect.value = '0';
+    fileSelect.dispatchEvent(new Event('change'));
+    expect(sigSelect.innerHTML).toContain('TPS');
+
+    // Simulate row removal
+    removeBtn.click();
+    expect(document.querySelector('.filter-row')).toBeNull();
+  });
+
+  /** 4. Test runScan() Edge Cases (Lines 154-167) **/
+  test('runScan() handles empty criteria', () => {
+    Analysis.runScan(); // No rows added yet
+    expect(document.getElementById('scanCount').innerText).toBe(
+      'No criteria defined'
+    );
+  });
+
+  /** 5. Test renderResults() and Click Interaction (Lines 213-242) **/
+  test('clicking result item triggers zoom and highlight', () => {
+    const ranges = [
+      { start: 2000, end: 3000, fileName: 'log1.json', fileIdx: 0 },
+    ];
+    Analysis.renderResults(ranges);
+
+    const resultItem = document.querySelector('.result-item');
+    resultItem.click();
+
+    expect(resultItem.classList.contains('selected')).toBe(true);
+    // Calculation: (2000 - 1000) / 1000 = 1s
+    expect(Sliders.zoomTo).toHaveBeenCalledWith(1, 2, 0);
+  });
+});
+
+test('Analysis guard clauses and alias fallbacks', () => {
+  // Test Line 11 & 25-27: Guard clauses when elements are missing
+  document.body.innerHTML = ''; // Clear DOM
+  Analysis.initTemplates();
+  Analysis.init();
+  expect(DOM.get).toHaveBeenCalled();
+
+  // Test Line 140: Alias search failure branch
+  // Create a template rule with a signal that has no match and no alias
+  Config.ANOMALY_TEMPLATES = {
+    empty: {
+      name: 'Empty',
+      rules: [{ sig: 'NonExistent', op: '>', val: '0' }],
+    },
+  };
+  SIGNAL_MAPPINGS['NonExistent'] = []; // No aliases
+
+  document.body.innerHTML =
+    '<select id="anomalyTemplate"><option value="empty"></option></select><div id="filtersContainer"></div>';
+  Analysis.applyTemplate();
+
+  const sigSelect = document.querySelector('.sig-select');
+  expect(sigSelect.value).toBe(''); // Should fallback to empty string
 });
