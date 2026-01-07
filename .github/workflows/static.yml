@@ -55,6 +55,7 @@ jobs:
           NODE_OPTIONS: '--experimental-vm-modules'
 
       - name: Coverage report
+        if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: romeovs/lcov-reporter-action@v0.3.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
