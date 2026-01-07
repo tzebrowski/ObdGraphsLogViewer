@@ -364,7 +364,7 @@ export const Drive = {
     const section = document.createElement('div');
     section.className = 'recent-section';
     section.innerHTML = `
-    <div class="month-header" style="color: #4285F4; border-left-color: #4285F4; background: rgba(66, 133, 244, 0.05); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+    <div class="month-header">
       <span><i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed</span>
       <span id="clearRecentHistory" style="font-size: 0.8em; cursor: pointer; opacity: 0.8;" title="Clear History">
         <i class="fas fa-trash-alt"></i> Clear
