@@ -117,3 +117,45 @@ describe('Sliders Module Tests', () => {
     expect(document.getElementById('sliderHighlight').style.width).toBe('30%');
   });
 });
+
+test('afterDraw() renders red highlight for active anomaly', () => {
+  const mockCtx = {
+    save: jest.fn(),
+    restore: jest.fn(),
+    fillRect: jest.fn(),
+    beginPath: jest.fn(),
+    moveTo: jest.fn(),
+    lineTo: jest.fn(),
+    stroke: jest.fn(),
+    setLineDash: jest.fn(),
+  };
+
+  const mockChart = {
+    ctx: mockCtx,
+    chartArea: { top: 10, bottom: 90, left: 10, right: 190 },
+    scales: {
+      x: {
+        // Mock getPixelForValue to return a coordinate within the chartArea
+        getPixelForValue: jest.fn((v) => v),
+      },
+    },
+  };
+
+  AppState.chartInstances = [mockChart];
+  AppState.files = [{ startTime: 0 }];
+
+  // file.startTime (0) + start (10) * 1000 = 10000.
+  // Your current scale mock (v => v) will return 10000, which is OUTSIDE chartArea.right (190).
+  // Let's adjust the highlight to fit the scale 1:1 for the test:
+  AppState.activeHighlight = {
+    start: 0.02, // (0 + 0.02 * 1000) = 20px
+    end: 0.05, // (0 + 0.05 * 1000) = 50px
+    targetIndex: 0,
+  };
+
+  ChartManager.highlighterPlugin.afterDraw(mockChart);
+
+  expect(mockCtx.save).toHaveBeenCalled();
+  expect(mockCtx.fillRect).toHaveBeenCalled();
+  expect(mockCtx.restore).toHaveBeenCalled();
+});
