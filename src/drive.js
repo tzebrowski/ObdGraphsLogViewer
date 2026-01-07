@@ -90,10 +90,14 @@ export const Drive = {
 
       this.masterCards.forEach((card) => {
         const fileDate = this.parseDateFromCard(card);
-        const name =
-          card.querySelector('.file-name-title')?.innerText.toLowerCase() || '';
-
+        const titleEl = card.querySelector('.file-name-title');
+        const name = (
+          titleEl?.innerText ||
+          titleEl?.textContent ||
+          ''
+        ).toLowerCase();
         const matchesText = name.includes(filters.term);
+
         const matchesDate =
           (!filters.start || fileDate >= filters.start) &&
           (!filters.end || fileDate <= filters.end);
@@ -162,7 +166,7 @@ export const Drive = {
       .filter((c) => c.style.display !== 'none')
       .forEach((card) => {
         const monthYear = new Date(this.parseDateFromCard(card)).toLocaleString(
-          'default',
+          'en-US',
           { month: 'long', year: 'numeric' }
         );
 

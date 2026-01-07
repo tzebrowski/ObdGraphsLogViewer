@@ -1,5 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals'; // Add this line
 import { Drive } from '../src/drive.js';
+import { DOM } from '../src/config.js';
 
 // Mocking global dependencies
 global.gapi = {
