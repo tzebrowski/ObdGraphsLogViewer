@@ -5,6 +5,7 @@ import { AppState, DOM } from '../src/config.js';
 import { UI } from '../src/ui.js';
 import { Analysis } from '../src/analysis.js';
 import { ChartManager } from '../src/chartmanager.js';
+import { Config } from '../src/config.js';
 
 UI.setLoading = jest.fn();
 UI.renderSignalList = jest.fn();
@@ -162,4 +163,30 @@ describe('DataProcessor - handleLocalFile', () => {
       }
     }, 50);
   });
+});
+
+test('loadConfiguration handles missing templates gracefully', async () => {
+  const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+  // We need to bypass the 'import templates' and force the failure
+  // Since we cannot easily un-import a file in ESM, we test the catch block
+
+  // Method A: Mocking the internal Config to throw during assignment
+  const originalTemplates = Config.ANOMALY_TEMPLATES;
+  Object.defineProperty(Config, 'ANOMALY_TEMPLATES', {
+    set: () => {
+      throw new Error('Simulated Failure');
+    },
+  });
+
+  await DataProcessor.loadConfiguration();
+
+  expect(consoleSpy).toHaveBeenCalledWith('Config Loader:', expect.any(Error));
+
+  // Cleanup
+  Object.defineProperty(Config, 'ANOMALY_TEMPLATES', {
+    value: originalTemplates,
+    writable: true,
+  });
+  consoleSpy.mockRestore();
 });

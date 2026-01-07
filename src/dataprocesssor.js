@@ -6,16 +6,20 @@ import { UI } from './ui.js';
 import { Alert } from './alert.js';
 
 export const DataProcessor = {
-  loadConfiguration: async () => {
+  loadConfiguration: async (providedTemplates = templates) => {
     try {
-      if (!templates) {
+      if (!providedTemplates) {
         console.error('Config Loader: Error: Missing templates');
         return;
       }
-      Config.ANOMALY_TEMPLATES = templates;
+      Config.ANOMALY_TEMPLATES = providedTemplates;
     } catch (error) {
       console.error('Config Loader:', error);
-      Config.ANOMALY_TEMPLATES = {};
+      try {
+        Config.ANOMALY_TEMPLATES = {};
+      } catch (e) {
+        /* ignore error */
+      }
     }
   },
 
