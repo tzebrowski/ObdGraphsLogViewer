@@ -1,8 +1,81 @@
-import { PaletteManager } from '../src/palettemanager.js';
+import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-test('PaletteManager returns consistent colors for the same index', () => {
-  const color1 = PaletteManager.getColorForSignal(0, 1);
-  const color2 = PaletteManager.getColorForSignal(0, 1);
-  expect(color1).toBe(color2);
-  expect(color1).toMatch(/^#/); // Should be a hex code
+import { PaletteManager } from '../src/palettemanager.js';
+import { Preferences } from '../src/preferences.js';
+import { UI } from '../src/ui.js';
+import { ChartManager } from '../src/chartmanager.js';
+import { AppState } from '../src/config.js';
+
+UI.setLoading = jest.fn();
+UI.renderSignalList = jest.fn();
+UI.updateDataLoadedState = jest.fn();
+ChartManager.render = jest.fn();
+
+describe('PaletteManager', () => {
+  beforeEach(() => {
+    document.body.innerHTML =
+      '<input type="checkbox" id="pref-custom-palette" />';
+    document.body.classList.remove('pref-theme-dark');
+    jest.clearAllMocks();
+  });
+
+  test('getColorForSignal returns default gray if file does not exist', () => {
+    AppState.files = []; // Ensure empty
+    const color = PaletteManager.getColorForSignal(0, 0);
+    expect(color).toBe('#888888');
+  });
+
+  test('getColorForSignal returns custom color when enabled and exists', () => {
+    // Setup AppState
+    AppState.files = [
+      {
+        name: 'log.csv',
+        availableSignals: ['RPM'],
+      },
+    ];
+
+    // Mock Preferences to return "useCustomPalette: true"
+    const key = PaletteManager.getSignalKey('log.csv', 'RPM');
+
+    Object.defineProperty(Preferences, 'prefs', {
+      get: jest.fn(() => ({ useCustomPalette: true })),
+      configurable: true, // allows us to change it again in other tests
+    });
+
+    Preferences.customPalette = { [key]: '#FF00FF' };
+
+    const color = PaletteManager.getColorForSignal(0, 0);
+    expect(color).toBe('#FF00FF');
+  });
+
+  test('getDefaultChartColors switches based on body class', () => {
+    // Test Light Mode (Default)
+    expect(PaletteManager.getDefaultChartColors()).toEqual(
+      PaletteManager.CHART_COLORS_LIGHT
+    );
+
+    // Test Dark Mode
+    document.body.classList.add('pref-theme-dark');
+    expect(PaletteManager.getDefaultChartColors()).toEqual(
+      PaletteManager.CHART_COLORS
+    );
+  });
+
+  test('getColorForSignal uses theme palette when custom is disabled', () => {
+    AppState.files = [
+      {
+        name: 'log.csv',
+        availableSignals: ['RPM'],
+      },
+    ];
+
+    // Use defineProperty to mock the return value of the getter
+    Object.defineProperty(Preferences, 'prefs', {
+      get: jest.fn(() => ({ useCustomPalette: false })),
+      configurable: true, // allows us to change it again in other tests
+    });
+
+    const color = PaletteManager.getColorForSignal(0, 0);
+    expect(color).toBe(PaletteManager.CHART_COLORS_LIGHT[0]);
+  });
 });
