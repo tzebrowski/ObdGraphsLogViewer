@@ -2098,15 +2098,16 @@ body.analyzer-active {
 }
 
 .recent-section {
-   padding: 1px !important;
+  padding: 1px !important;
 }
 
 .month-header {
-  color: #4285F4; 
-  border-left-color: #4285F4; 
-  background: rgb(66 133 244 / 5%); 
-  margin-bottom: 8px; display: flex; 
-  justify-content: space-between; 
+  color: #4285f4;
+  border-left-color: #4285f4;
+  background: rgb(66 133 244 / 5%);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   padding: 10px !important;
 }

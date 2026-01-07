@@ -439,7 +439,6 @@ export const ChartManager = {
 
       if (chartIdx === -1) return;
 
-      
       if (
         AppState.activeHighlight &&
         AppState.activeHighlight.targetIndex === chartIdx
