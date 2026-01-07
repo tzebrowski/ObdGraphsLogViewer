@@ -136,20 +136,25 @@ export const ChartManager = {
     if (!ctx) return;
 
     canvas.addEventListener('mousemove', (e) => {
-      const chart = AppState.chartInstances[index];
-      if (!chart) return;
+      try {
+        const chart = AppState.chartInstances[index];
 
-      const prevIndex = ChartManager.activeChartIndex;
-      ChartManager.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
-      ChartManager.activeChartIndex = index;
+        if (!chart) return;
 
-      chart.draw();
-      if (
-        prevIndex !== null &&
-        prevIndex !== index &&
-        AppState.chartInstances[prevIndex]
-      ) {
-        AppState.chartInstances[prevIndex].draw();
+        const prevIndex = ChartManager.activeChartIndex;
+        ChartManager.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
+        ChartManager.activeChartIndex = index;
+
+        chart.draw();
+        if (
+          prevIndex !== null &&
+          prevIndex !== index &&
+          AppState.chartInstances[prevIndex]
+        ) {
+          AppState.chartInstances[prevIndex].draw();
+        }
+      } catch (e) {
+        console.error(`Error on mousemove`, e.message);
       }
     });
 
@@ -569,7 +574,7 @@ export const Sliders = {
     if (end) end.value = e;
     Sliders.updateVis(s, e);
   },
-  updateFromInput: () => Sliders.updateUI(true),
+
   updateUI: (shouldUpdateChart) => {
     const { start, end } = Sliders.els;
     if (!start || !end) return;
