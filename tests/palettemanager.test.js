@@ -9,7 +9,10 @@ import { AppState } from '../src/config.js';
 UI.setLoading = jest.fn();
 UI.renderSignalList = jest.fn();
 UI.updateDataLoadedState = jest.fn();
+UI.setTheme = jest.fn();
 ChartManager.render = jest.fn();
+AppState.files = jest.fn();
+Preferences.savePreferences = jest.fn();
 
 describe('PaletteManager', () => {
   beforeEach(() => {
@@ -77,5 +80,32 @@ describe('PaletteManager', () => {
 
     const color = PaletteManager.getColorForSignal(0, 0);
     expect(color).toBe(PaletteManager.CHART_COLORS_LIGHT[0]);
+  });
+
+  test('init attaches change listener to custom palette toggle', () => {
+    PaletteManager.init();
+    const toggle = document.getElementById('pref-custom-palette');
+
+    // Simulate changing the toggle
+    toggle.dispatchEvent(new Event('change'));
+
+    // These will now work because they are explicitly defined as jest.fn()
+    expect(Preferences.savePreferences).toHaveBeenCalled();
+    expect(UI.renderSignalList).toHaveBeenCalled();
+    expect(ChartManager.render).toHaveBeenCalled();
+  });
+
+  test('init does not crash if ChartManager is undefined', () => {
+    const originalChartManager = global.ChartManager;
+    delete global.ChartManager; // Simulate it being missing
+
+    PaletteManager.init();
+    const toggle = document.getElementById('pref-custom-palette');
+
+    expect(() => {
+      toggle.dispatchEvent(new Event('change'));
+    }).not.toThrow();
+
+    global.ChartManager = originalChartManager; // Restore it
   });
 });
