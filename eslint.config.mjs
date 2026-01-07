@@ -7,6 +7,7 @@ export default [
     ignores: [
       'dist/**',
       'node_modules/**',
+      'coverage/',
       'bin/**',
       'build/**',
       '**/*.min.js',
@@ -24,8 +25,10 @@ export default [
       },
     },
     rules: {
-      'no-unused-vars': 'warn',
-      'no-undef': 'error',
+      // You can adjust these based on your preference
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }], // Allows variables starting with _
+      'no-empty': ['error', { allowEmptyCatch: true }], // Allows empty catch blocks
+      'no-console': 'off', // Useful for node scripts
     },
   },
   {
@@ -41,6 +44,7 @@ export default [
     files: ['**/*.test.js', '**/__tests__/**'],
     languageOptions: {
       globals: {
+        ...globals.browser,
         ...globals.node,
         ...globals.jest,
       },

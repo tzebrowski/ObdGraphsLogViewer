@@ -17,7 +17,9 @@ export const DataProcessor = {
       console.error('Config Loader:', error);
       try {
         Config.ANOMALY_TEMPLATES = {};
-      } catch (e) {}
+      } catch (e) {
+        /* ignore error */
+      }
     }
   },
 

@@ -2,13 +2,6 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals'; // Add
 import { Drive } from '../src/drive.js';
 import { DOM } from '../src/config.js';
 
-// Mocking global dependencies
-global.gapi = {
-  client: {
-    drive: { files: { list: jest.fn(), get: jest.fn() } },
-  },
-};
-
 describe('Drive Module - UI Filtering Logic', () => {
   beforeEach(() => {
     jest.clearAllMocks();
