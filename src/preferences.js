@@ -1,8 +1,20 @@
 import { UI } from './ui.js';
 
+/**
+ * Preferences Module
+ * Manages user settings, persistence logic, and theme synchronization.
+ */
 export const Preferences = {
   PREFS_KEY: 'giulia_user_prefs',
   PALETTE_KEY: 'giulia_chart_palette',
+  SIDEBAR_STATE_KEY: 'sidebar_collapsed_states',
+
+  PREF_MAP: {
+    'pref-persistence': 'persistence',
+    'pref-performance': 'performance',
+    'pref-theme-dark': 'darkTheme',
+    'pref-custom-palette': 'useCustomPalette',
+  },
 
   defaultPrefs: {
     persistence: true,
@@ -12,79 +24,82 @@ export const Preferences = {
   },
 
   get prefs() {
-    return (
-      JSON.parse(localStorage.getItem(Preferences.PREFS_KEY)) ||
-      Preferences.defaultPrefs
-    );
+    const saved = localStorage.getItem(this.PREFS_KEY);
+    return this._safeJsonParse(saved, this.defaultPrefs);
+  },
+
+  set prefs(newPrefs) {
+    localStorage.setItem(this.PREFS_KEY, JSON.stringify(newPrefs));
+    if (!newPrefs.persistence) {
+      localStorage.removeItem(this.SIDEBAR_STATE_KEY);
+    }
   },
 
   get customPalette() {
-    const saved = localStorage.getItem(Preferences.PALETTE_KEY);
-    try {
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
+    const saved = localStorage.getItem(this.PALETTE_KEY);
+    return this._safeJsonParse(saved, {});
   },
 
   set customPalette(colors) {
-    if (colors) {
-      localStorage.setItem(Preferences.PALETTE_KEY, JSON.stringify(colors));
+    if (colors && Object.keys(colors).length > 0) {
+      localStorage.setItem(this.PALETTE_KEY, JSON.stringify(colors));
     } else {
-      localStorage.removeItem(Preferences.PALETTE_KEY);
+      localStorage.removeItem(this.PALETTE_KEY);
     }
   },
 
-  init: () => {
-    Preferences.loadPreferences();
-
-    document.querySelectorAll('.preferences-list input').forEach((input) => {
-      input.addEventListener('change', Preferences.savePreferences);
-    });
-
-    const themeToggle = document.getElementById('pref-theme-dark');
-    if (themeToggle?.checked) {
-      UI.setTheme('dark');
-    } else {
-      UI.setTheme('light');
-    }
-
-    themeToggle?.addEventListener('change', () => {
-      UI.setTheme(themeToggle.checked ? 'dark' : 'light');
-      Preferences.savePreferences();
-    });
+  init() {
+    const currentPrefs = this.loadPreferences();
+    this._setupEventListeners();
+    this._syncTheme(currentPrefs.darkTheme);
   },
 
-  loadPreferences: () => {
-    const saved = localStorage.getItem(Preferences.PREFS_KEY);
-    const prefs = saved ? JSON.parse(saved) : Preferences.defaultPrefs;
-
-    const ids = {
-      'pref-persistence': 'persistence',
-      'pref-performance': 'performance',
-      'pref-theme-dark': 'darkTheme',
-      'pref-custom-palette': 'useCustomPalette',
-    };
-
-    Object.entries(ids).forEach(([id, key]) => {
+  /**
+   * Reads from storage and updates the DOM elements.
+   */
+  loadPreferences() {
+    const prefs = this.prefs;
+    Object.entries(this.PREF_MAP).forEach(([id, key]) => {
       const el = document.getElementById(id);
       if (el) el.checked = prefs[key];
     });
-
     return prefs;
   },
 
-  savePreferences: () => {
-    const prefs = {
-      persistence: document.getElementById('pref-persistence').checked,
-      performance: document.getElementById('pref-performance').checked,
-      darkTheme: document.getElementById('pref-theme-dark').checked,
-      useCustomPalette: document.getElementById('pref-custom-palette').checked,
-    };
-    localStorage.setItem(Preferences.PREFS_KEY, JSON.stringify(prefs));
+  /**
+   * Scans DOM elements and updates storage.
+   */
+  savePreferences() {
+    const newPrefs = {};
+    Object.entries(this.PREF_MAP).forEach(([id, key]) => {
+      const el = document.getElementById(id);
+      newPrefs[key] = el ? el.checked : this.defaultPrefs[key];
+    });
 
-    if (!prefs.persistence) {
-      localStorage.removeItem('sidebar_collapsed_states');
+    this.prefs = newPrefs; // Triggers the setter and persistence logic
+    this._syncTheme(newPrefs.darkTheme);
+  },
+
+  // --- Internal Helpers ---
+
+  _setupEventListeners() {
+    // Listen for changes on all registered preference inputs
+    Object.keys(this.PREF_MAP).forEach((id) => {
+      const el = document.getElementById(id);
+      el?.addEventListener('change', () => this.savePreferences());
+    });
+  },
+
+  _syncTheme(isDark) {
+    UI.setTheme(isDark ? 'dark' : 'light');
+  },
+
+  _safeJsonParse(str, fallback) {
+    try {
+      return str ? JSON.parse(str) : fallback;
+    } catch (e) {
+      console.error('Preferences: Failed to parse storage data', e);
+      return fallback;
     }
   },
 };

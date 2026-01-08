@@ -317,6 +317,7 @@ export const UI = {
       fragment.appendChild(fileGroup);
     });
 
+    contentContainer.innerHTML = '';
     contentContainer.appendChild(fragment);
 
     const searchInput = document.getElementById('signalSearchInput');
