@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { ChartManager, Sliders } from '../src/chartmanager.js';
-import { AppState } from '../src/config.js';
+import { AppState, DOM } from '../src/config.js';
 import { Chart } from 'chart.js';
 
 describe('ChartManager Deep Coverage', () => {
@@ -220,7 +220,6 @@ describe('ChartManager Deep Coverage', () => {
     expect(result).toContain('300.0');
   });
 
-  /** 6. Slider ZoomTo logic (Lines 346-372) **/
   test('Sliders.zoomTo updates chart scales and slider positions', () => {
     const mockChart = {
       options: { scales: { x: { min: 0, max: 0 } } },
@@ -235,5 +234,94 @@ describe('ChartManager Deep Coverage', () => {
     // Note: zoomTo adds padding, so we check if it changed from 0
     expect(mockChart.options.scales.x.min).not.toBe(0);
     expect(mockChart.update).toHaveBeenCalled();
+  });
+});
+
+// Mock Chart.js constructor
+const mockChartInstance = {
+  zoom: jest.fn(),
+  pan: jest.fn(),
+  draw: jest.fn(),
+  update: jest.fn(),
+  destroy: jest.fn(),
+  resize: jest.fn(),
+  scales: { x: { min: 100, max: 200 } },
+  data: { datasets: [] },
+  options: {
+    plugins: { datalabels: { display: true } },
+    scales: { x: { min: 0, max: 0 } },
+  },
+};
+global.Chart = jest.fn(() => mockChartInstance);
+
+describe('ChartManager Extended Coverage', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <canvas id="chart-0"></canvas>
+      <div id="chartContainer"></div>
+      <input type="range" id="zoomSlider" />
+      <span id="zoomValue"></span>
+    `;
+
+    AppState.files = [
+      {
+        name: 'test.json',
+        startTime: 1000,
+        duration: 100,
+        signals: {
+          RPM: [
+            { x: 1000, y: 10 },
+            { x: 2000, y: 20 },
+          ],
+        },
+        availableSignals: ['RPM'],
+      },
+    ];
+    AppState.chartInstances = [];
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+    jest.clearAllMocks();
+  });
+
+  test('Sliders.init and zoomTo synchronize state', () => {
+    AppState.chartInstances = [mockChartInstance];
+
+    Sliders.init(10);
+
+    Sliders.zoomTo(10, 20, 0);
+    expect(mockChartInstance.options.scales.x.min).toBe(1000);
+    expect(mockChartInstance.options.scales.x.max).toBe(61000);
+    expect(mockChartInstance.update).toHaveBeenCalledWith('none');
+  });
+
+  test('ChartManager handles chart destruction and cleanup', () => {
+    document.body.innerHTML = '<div id="chartContainer"></div>';
+
+    AppState.chartInstances = [mockChartInstance];
+
+    AppState.files = [
+      {
+        name: 'log1.json',
+        startTime: 0,
+        duration: 10,
+        availableSignals: ['RPM'],
+        signals: { RPM: [] },
+      },
+      {
+        name: 'log2.json',
+        startTime: 0,
+        duration: 10,
+        availableSignals: ['RPM'],
+        signals: { RPM: [] },
+      },
+    ];
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+
+    ChartManager.render();
+
+    expect(mockChartInstance.destroy).toHaveBeenCalled();
+
+    expect(AppState.chartInstances.length).toBe(0);
   });
 });
