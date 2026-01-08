@@ -60,7 +60,7 @@ export const DataProcessor = {
         } finally {
           loadedCount++;
           if (loadedCount === files.length) {
-            this._finalizeBatchLoad();
+            DataProcessor._finalizeBatchLoad();
           }
         }
       };
