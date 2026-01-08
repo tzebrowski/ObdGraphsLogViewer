@@ -54,13 +54,13 @@ describe('PaletteManager', () => {
   test('getDefaultChartColors switches based on body class', () => {
     // Test Light Mode (Default)
     expect(PaletteManager.getDefaultChartColors()).toEqual(
-      PaletteManager.CHART_COLORS_LIGHT
+      PaletteManager.LIGHT_PALETTE
     );
 
     // Test Dark Mode
     document.body.classList.add('pref-theme-dark');
     expect(PaletteManager.getDefaultChartColors()).toEqual(
-      PaletteManager.CHART_COLORS
+      PaletteManager.DARK_PALETTE
     );
   });
 
@@ -79,7 +79,7 @@ describe('PaletteManager', () => {
     });
 
     const color = PaletteManager.getColorForSignal(0, 0);
-    expect(color).toBe(PaletteManager.CHART_COLORS_LIGHT[0]);
+    expect(color).toBe(PaletteManager.LIGHT_PALETTE[0]);
   });
 
   test('init attaches change listener to custom palette toggle', () => {
