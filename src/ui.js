@@ -174,9 +174,13 @@ export const UI = {
 
   resetScannerUI() {
     AppState.activeHighlight = null;
-    this.elements.scanResults.innerHTML = '';
-    this.elements.scanResults.style.display = 'none';
-    this.elements.scanCount.innerText = '';
+    const { scanResults, scanCount } = this.elements;
+
+    if (!scanResults || !scanCount) return;
+
+    scanResults.innerHTML = '';
+    scanResults.style.display = 'none';
+    scanCount.innerText = '';
   },
 
   toggleSidebar() {
