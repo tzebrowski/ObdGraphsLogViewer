@@ -6,9 +6,8 @@ import { Sliders } from '../src/chartmanager.js';
 
 Sliders.zoomTo = jest.fn();
 
-describe('Analysis Module - Coverage Boost', () => {
+describe('Analysis Module - Public model API test', () => {
   beforeEach(() => {
-    // 1. Setup minimal DOM
     document.body.innerHTML = `
       <select id="anomalyTemplate"></select>
       <div id="filtersContainer"></div>
@@ -17,7 +16,6 @@ describe('Analysis Module - Coverage Boost', () => {
       <div id="scanCount"></div>
     `;
 
-    // 2. Mock AppState with "event-triggering" data
     AppState.files = [
       {
         name: 'engine_log.json',
@@ -32,15 +30,12 @@ describe('Analysis Module - Coverage Boost', () => {
       },
     ];
 
-    // 3. Mock DOM.get
     DOM.get = jest.fn((id) => document.getElementById(id));
 
-    // 4. Mock UI.resetScannerUI to avoid side effects
     UI.resetScannerUI = jest.fn();
   });
 
   test('initTemplates() populates dropdown and adds initial row', () => {
-    // Triggers lines 7-23
     Analysis.initTemplates();
 
     const sel = document.getElementById('anomalyTemplate');
@@ -51,22 +46,18 @@ describe('Analysis Module - Coverage Boost', () => {
   });
 
   test('runScan() identifies events based on criteria', () => {
-    // 1. Manually add a filter row for RPM > 4000
     Analysis.addFilterRow('RPM', '>', '4000', 0);
 
-    // 2. Execute the scan (triggers lines 152-211)
     Analysis.runScan();
 
     const countDiv = document.getElementById('scanCount');
     const resultsDiv = document.getElementById('scanResults');
 
-    // Should find 1 event (from t=2000 to t=4000)
     expect(countDiv.innerText).toContain('1 events found');
     expect(resultsDiv.querySelectorAll('.result-item')).toHaveLength(1);
   });
 
   test('addFilterRow() handles "All Files" option (-1)', () => {
-    // Triggers logic for flatMapping signals (lines 40-55)
     Analysis.addFilterRow('', '>', '', -1);
 
     const sigSelect = document.querySelector('.sig-select');
@@ -103,7 +94,6 @@ describe('Analysis Module - Deep Coverage', () => {
     jest.clearAllMocks();
   });
 
-  /** 1. Test applyTemplate() and Alias Mapping (Lines 114-149) **/
   test('applyTemplate() maps signals using aliases if exact match fails', () => {
     // Setup a template that looks for "EngineSpeed" (not in our file)
     Config.ANOMALY_TEMPLATES = {
@@ -126,7 +116,6 @@ describe('Analysis Module - Deep Coverage', () => {
     expect(sigSelect.value).toBe('RPM');
   });
 
-  /** 2. Test refreshFilterOptions() (Lines 94-112) **/
   test('refreshFilterOptions() updates dropdowns when files change', () => {
     Analysis.addFilterRow();
 
@@ -140,7 +129,6 @@ describe('Analysis Module - Deep Coverage', () => {
     expect(fileSelect.innerHTML).toContain('log2.json');
   });
 
-  /** 3. Test Filter Row Interactions (Lines 75-92) **/
   test('filter row UI interactions: change file and remove row', () => {
     Analysis.addFilterRow();
     const row = document.querySelector('.filter-row');
@@ -158,7 +146,6 @@ describe('Analysis Module - Deep Coverage', () => {
     expect(document.querySelector('.filter-row')).toBeNull();
   });
 
-  /** 4. Test runScan() Edge Cases (Lines 154-167) **/
   test('runScan() handles empty criteria', () => {
     Analysis.runScan(); // No rows added yet
     expect(document.getElementById('scanCount').innerText).toBe(
@@ -166,7 +153,6 @@ describe('Analysis Module - Deep Coverage', () => {
     );
   });
 
-  /** 5. Test renderResults() and Click Interaction (Lines 213-242) **/
   test('clicking result item triggers zoom and highlight', () => {
     const ranges = [
       { start: 2000, end: 3000, fileName: 'log1.json', fileIdx: 0 },
@@ -183,13 +169,11 @@ describe('Analysis Module - Deep Coverage', () => {
 });
 
 test('Analysis guard clauses and alias fallbacks', () => {
-  // Test Line 11 & 25-27: Guard clauses when elements are missing
   document.body.innerHTML = ''; // Clear DOM
   Analysis.initTemplates();
   Analysis.init();
   expect(DOM.get).toHaveBeenCalled();
 
-  // Test Line 140: Alias search failure branch
   // Create a template rule with a signal that has no match and no alias
   Config.ANOMALY_TEMPLATES = {
     empty: {
