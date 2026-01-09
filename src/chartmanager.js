@@ -326,13 +326,13 @@ export const ChartManager = {
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center;">
           <span class="chart-name">${file.name}</span>
           <div class="chart-actions" style="display: flex; gap: 8px; align-items: center;">
-              <button class="btn-icon" onclick="ChartManager.manualZoom(${idx}, 1.2)" title="Zoom In">
+              <button class="btn-icon" onclick="manualZoom(${idx}, 1.2)" title="Zoom In">
                   <i class="fas fa-search-plus"></i>
               </button>
-              <button class="btn-icon" onclick="ChartManager.manualZoom(${idx}, 0.8)" title="Zoom Out">
+              <button class="btn-icon" onclick="manualZoom(${idx}, 0.8)" title="Zoom Out">
                   <i class="fas fa-search-minus"></i>
               </button>
-              <button class="btn-remove" onclick="ChartManager.removeFile(${idx})">×</button>
+              <button class="btn-remove" onclick="removeFile(${idx})">×</button>
           </div>
       </div>
       <div class="canvas-wrapper">
