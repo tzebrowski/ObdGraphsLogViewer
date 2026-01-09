@@ -149,7 +149,6 @@ export const ChartManager = {
 
     chart.zoom(zoomLevel);
     this.updateLabelVisibility(chart);
-    this.syncAll({ chart });
   },
 
   updateLabelVisibility(chart) {
@@ -202,7 +201,6 @@ export const ChartManager = {
 
       this.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
       this.activeChartIndex = index;
-      this.syncAll({ chart });
       chart.draw();
     });
   },
@@ -327,14 +325,13 @@ export const ChartManager = {
         },
 
         zoom: {
-          pan: { enabled: true, mode: 'x', onPan: this.syncAll },
+          pan: { enabled: true, mode: 'x' },
           zoom: {
             wheel: { enabled: true },
             pinch: { enabled: true },
             mode: 'x',
             onZoom: ({ chart }) => {
               this.updateLabelVisibility(chart);
-              this.syncAll({ chart });
             },
           },
         },
@@ -458,10 +455,6 @@ export const ChartManager = {
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  },
-
-  syncAll: ({ chart }) => {
-    if (typeof Sliders !== 'undefined') Sliders.syncFromChart({ chart });
   },
 
   highlighterPlugin: {

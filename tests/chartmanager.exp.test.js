@@ -88,12 +88,10 @@ describe('ChartManager Deep Coverage', () => {
       options: { plugins: { datalabels: {} } },
     };
     AppState.chartInstances = [mockChart];
-    const syncSpy = jest.spyOn(ChartManager, 'syncAll');
 
     ChartManager.manualZoom(0, 1.2);
 
     expect(mockChart.zoom).toHaveBeenCalledWith(1.2);
-    expect(syncSpy).toHaveBeenCalled();
   });
 
   /** 3. Label Visibility Logic **/
