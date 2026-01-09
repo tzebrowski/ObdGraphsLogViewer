@@ -388,7 +388,7 @@ export const Drive = {
       <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
     `,
     fileCard: (file, meta) => `
-      <div class="drive-file-card" onclick="Drive.loadFile('${file.name}','${file.id}', this)">
+      <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
         <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
         <div class="file-card-body">
           <div class="file-name-title">${file.name}</div>
