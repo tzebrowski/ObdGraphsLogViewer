@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals'; // Add this line
-import { Drive } from '../src/drive.js';
-import { DOM } from '../src/config.js';
+import { Drive } from '../../src/drive.js';
+import { DOM } from '../../src/config.js';
 
 // Mocking global dependencies
 global.gapi = {
@@ -15,7 +15,7 @@ describe('Drive Module - Month Grouping & Interactions', () => {
     document.body.innerHTML = `
       <div id="driveList"></div>
       <div id="driveFileContainer"></div>
-      ${Drive.getSearchInterfaceTemplate()}
+      ${Drive.TEMPLATES.searchInterface()}
     `;
     DOM.get = jest.fn((id) => document.getElementById(id));
 
@@ -66,5 +66,25 @@ describe('Drive Module - Month Grouping & Interactions', () => {
     expect(header.querySelector('.toggle-icon').className).toContain(
       'fa-chevron-down'
     );
+  });
+
+  test('renderRecentSection handles missing card references gracefully', () => {
+    document.body.innerHTML = `
+      <div id="driveList"></div>
+      <div id="driveFileContainer"></div>
+    `;
+    let container = document.getElementById('driveFileContainer');
+
+    localStorage.setItem('recent_logs', JSON.stringify(['missing-id']));
+    Drive.masterCards = []; // No cards loaded to simulate a mismatch
+
+    Drive.renderRecentSection(container);
+
+    // Target the specific DIV created for the list, not the header
+    const recentList =
+      container.querySelector('.recent-section').lastElementChild;
+
+    // This will now correctly be 0 because no matching cards were found to append
+    expect(recentList.children.length).toBe(0);
   });
 });
