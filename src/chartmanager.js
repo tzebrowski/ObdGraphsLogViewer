@@ -61,6 +61,42 @@ export const ChartManager = {
     this._fullRebuild(container);
   },
 
+  zoomTo(startSec, endSec, targetIndex = null) {
+    AppState.activeHighlight = { start: startSec, end: endSec, targetIndex };
+
+    if (targetIndex !== null && AppState.chartInstances[targetIndex]) {
+      const chart = AppState.chartInstances[targetIndex];
+      const file = AppState.files[targetIndex];
+      const duration = endSec - startSec;
+      const padding = duration * 4.0;
+
+      chart.options.scales.x.min =
+        file.startTime + Math.max(0, startSec - padding) * 1000;
+      chart.options.scales.x.max =
+        file.startTime + Math.min(file.duration, endSec + padding) * 1000;
+      chart.update('none');
+    }
+  },
+
+  reset() {
+    AppState.activeHighlight = null;
+
+    document
+      .querySelectorAll('.result-item')
+      .forEach((el) => el.classList.remove('selected'));
+
+    AppState.chartInstances.forEach((chart, idx) => {
+      const file = AppState.files[idx];
+      if (file) {
+        chart.options.scales.x.min = file.startTime;
+        chart.options.scales.x.max = file.startTime + file.duration * 1000;
+        chart.update('none');
+
+        ChartManager.updateLabelVisibility(chart);
+      }
+    });
+  },
+
   /**
    * Performs a high-performance update of area fills across all charts.
    * This avoids destroying/recreating DOM elements.
@@ -158,7 +194,7 @@ export const ChartManager = {
           break;
         case 'r':
         case 'R':
-          Sliders.reset();
+          this.reset();
           return;
         default:
           return;
@@ -217,8 +253,6 @@ export const ChartManager = {
     AppState.files.forEach((file, idx) =>
       this._renderChartCard(container, file, idx)
     );
-
-    if (typeof Sliders !== 'undefined') Sliders.init(AppState.logDuration);
   },
 
   _getChartOptions(file) {
@@ -350,8 +384,6 @@ export const ChartManager = {
     UI.updateDataLoadedState(false);
     AppState.globalStartTime = 0;
     AppState.logDuration = 0;
-    // Notify sliders if they exist
-    if (typeof Sliders !== 'undefined') Sliders.init(0);
   },
 
   _syncGlobalMetadata() {
@@ -482,123 +514,5 @@ export const ChartManager = {
         }
       }
     },
-  },
-};
-
-/**
- * Sliders Module
- * Manages the range inputs for temporal filtering and chart synchronization.
- */
-export const Sliders = {
-  get els() {
-    return {
-      start: DOM.get('rangeStart'),
-      end: DOM.get('rangeEnd'),
-      txtStart: DOM.get('txtStart'),
-      txtEnd: DOM.get('txtEnd'),
-      bar: DOM.get('sliderHighlight'),
-    };
-  },
-
-  init(maxDuration) {
-    const { start, end } = this.els;
-    if (!start || !end) return;
-    start.max = maxDuration;
-    end.max = maxDuration;
-    start.value = 0;
-    end.value = maxDuration;
-    this.updateUI(false);
-  },
-
-  reset() {
-    AppState.activeHighlight = null;
-
-    document
-      .querySelectorAll('.result-item')
-      .forEach((el) => el.classList.remove('selected'));
-
-    AppState.chartInstances.forEach((chart, idx) => {
-      const file = AppState.files[idx];
-      if (file) {
-        chart.options.scales.x.min = file.startTime;
-        chart.options.scales.x.max = file.startTime + file.duration * 1000;
-        chart.update('none');
-
-        ChartManager.updateLabelVisibility(chart);
-      }
-    });
-
-    if (AppState.files.length > 0) {
-      this.init(AppState.files[0].duration);
-    }
-  },
-
-  syncFromChart({ chart }) {
-    const { start, end } = this.els;
-
-    // Convert chart pixel values back to seconds relative to start
-    const s = Math.max(
-      0,
-      (chart.scales.x.min - AppState.globalStartTime) / 1000
-    );
-    const e = Math.min(
-      AppState.logDuration,
-      (chart.scales.x.max - AppState.globalStartTime) / 1000
-    );
-
-    if (start) start.value = s;
-    if (end) end.value = e;
-
-    this.updateVis(s, e);
-  },
-
-  zoomTo(startSec, endSec, targetIndex = null) {
-    AppState.activeHighlight = { start: startSec, end: endSec, targetIndex };
-
-    if (targetIndex !== null && AppState.chartInstances[targetIndex]) {
-      const chart = AppState.chartInstances[targetIndex];
-      const file = AppState.files[targetIndex];
-      const duration = endSec - startSec;
-      const padding = duration * 4.0;
-
-      chart.options.scales.x.min =
-        file.startTime + Math.max(0, startSec - padding) * 1000;
-      chart.options.scales.x.max =
-        file.startTime + Math.min(file.duration, endSec + padding) * 1000;
-      chart.update('none');
-    }
-
-    this.updateVis(startSec, endSec);
-  },
-
-  updateVis(start, end) {
-    const { txtStart, txtEnd, bar, start: startEl } = this.els;
-    if (txtStart) txtStart.innerText = start.toFixed(1) + 's';
-    if (txtEnd) txtEnd.innerText = end.toFixed(1) + 's';
-    const total = parseFloat(startEl?.max) || 100;
-    if (bar) {
-      bar.style.left = (start / total) * 100 + '%';
-      bar.style.width = ((end - start) / total) * 100 + '%';
-    }
-  },
-  updateUI: (shouldUpdateChart) => {
-    const { start, end } = Sliders.els;
-    if (!start || !end) return;
-    let v1 = parseFloat(start.value);
-    let v2 = parseFloat(end.value);
-
-    // Ensures v1 is always the smaller value
-    if (v1 > v2) [v1, v2] = [v2, v1];
-
-    Sliders.updateVis(v1, v2);
-
-    // Optionally pushes these values to the Chart instances
-    if (shouldUpdateChart) {
-      AppState.chartInstances.forEach((chart) => {
-        chart.options.scales.x.min = AppState.globalStartTime + v1 * 1000;
-        chart.options.scales.x.max = AppState.globalStartTime + v2 * 1000;
-        chart.update('none'); // Update without animation for performance
-      });
-    }
   },
 };

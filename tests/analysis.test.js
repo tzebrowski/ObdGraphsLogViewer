@@ -2,9 +2,9 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { Analysis } from '../src/analysis.js';
 import { AppState, DOM, Config, SIGNAL_MAPPINGS } from '../src/config.js';
 import { UI } from '../src/ui.js';
-import { Sliders } from '../src/chartmanager.js';
+import { ChartManager } from '../src/chartmanager.js';
 
-Sliders.zoomTo = jest.fn();
+ChartManager.zoomTo = jest.fn();
 
 describe('Analysis Module - Public model API test', () => {
   beforeEach(() => {
@@ -164,7 +164,7 @@ describe('Analysis Module - Deep Coverage', () => {
 
     expect(resultItem.classList.contains('selected')).toBe(true);
     // Calculation: (2000 - 1000) / 1000 = 1s
-    expect(Sliders.zoomTo).toHaveBeenCalledWith(1, 2, 0);
+    expect(ChartManager.zoomTo).toHaveBeenCalledWith(1, 2, 0);
   });
 });
 

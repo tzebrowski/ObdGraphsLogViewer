@@ -1,5 +1,5 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { ChartManager, Sliders } from '../src/chartmanager.js';
+import { ChartManager } from '../src/chartmanager.js';
 import { AppState, DOM } from '../src/config.js';
 import { Chart } from 'chart.js';
 
@@ -220,7 +220,7 @@ describe('ChartManager Deep Coverage', () => {
     expect(result).toContain('300.0');
   });
 
-  test('Sliders.zoomTo updates chart scales and slider positions', () => {
+  test('ChartManager.zoomTo updates chart scales and slider positions', () => {
     const mockChart = {
       options: { scales: { x: { min: 0, max: 0 } } },
       update: jest.fn(),
@@ -228,7 +228,7 @@ describe('ChartManager Deep Coverage', () => {
     AppState.chartInstances = [mockChart];
     AppState.files = [{ startTime: 1000, duration: 100 }];
 
-    Sliders.zoomTo(10, 20, 0);
+    ChartManager.zoomTo(10, 20, 0);
 
     // Verify chart scale updated (start + seconds*1000)
     // Note: zoomTo adds padding, so we check if it changed from 0
@@ -281,17 +281,6 @@ describe('ChartManager Extended Coverage', () => {
 
     DOM.get = jest.fn((id) => document.getElementById(id));
     jest.clearAllMocks();
-  });
-
-  test('Sliders.init and zoomTo synchronize state', () => {
-    AppState.chartInstances = [mockChartInstance];
-
-    Sliders.init(10);
-
-    Sliders.zoomTo(10, 20, 0);
-    expect(mockChartInstance.options.scales.x.min).toBe(1000);
-    expect(mockChartInstance.options.scales.x.max).toBe(61000);
-    expect(mockChartInstance.update).toHaveBeenCalledWith('none');
   });
 
   test('ChartManager handles chart destruction and cleanup', () => {

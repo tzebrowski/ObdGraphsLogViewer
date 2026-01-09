@@ -1,7 +1,7 @@
 import templates from './templates.json';
 import { Config, AppState, DOM } from './config.js';
 import { Analysis } from './analysis.js';
-import { ChartManager, Sliders } from './chartmanager.js';
+import { ChartManager } from './chartmanager.js';
 import { UI } from './ui.js';
 import { Alert } from './alert.js';
 
@@ -130,9 +130,6 @@ export const DataProcessor = {
       AppState.globalStartTime = fileEntry.startTime;
       AppState.logDuration = fileEntry.duration;
       Analysis.init();
-      if (typeof Sliders !== 'undefined') {
-        Sliders.init(AppState.logDuration);
-      }
     }
   },
 

@@ -1,6 +1,6 @@
 import { Config, AppState, DOM, SIGNAL_MAPPINGS } from './config.js';
 import { UI } from './ui.js';
-import { Sliders } from './chartmanager.js';
+import { ChartManager } from './chartmanager.js';
 
 /**
  * Analysis Module
@@ -142,7 +142,7 @@ export const Analysis = {
           .querySelectorAll('.result-item')
           .forEach((el) => el.classList.remove('selected'));
         item.classList.add('selected');
-        Sliders.zoomTo(s, e, range.fileIdx);
+        ChartManager.zoomTo(s, e, range.fileIdx);
       };
       resDiv.appendChild(item);
     });

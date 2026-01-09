@@ -20,7 +20,6 @@ describe('DataProcessor Module Tests', () => {
 
     AppState.files = [];
     AppState.globalStartTime = 0;
-    AppState.logDuration = 0;
 
     // Setup the minimal DOM required for the processing pipeline
     document.body.innerHTML = `

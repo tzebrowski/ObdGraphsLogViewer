@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-import { ChartManager, Sliders } from '../src/chartmanager.js';
+import { ChartManager } from '../src/chartmanager.js';
 import { AppState, DOM } from '../src/config.js';
 import { UI } from '../src/ui.js';
 import { PaletteManager } from '../src/palettemanager.js';
@@ -102,19 +102,6 @@ describe('ChartManager Module Tests', () => {
 
     expect(AppState.files).toHaveLength(0);
     expect(UI.updateDataLoadedState).toHaveBeenCalledWith(false);
-  });
-});
-
-describe('Sliders Module Tests', () => {
-  test('updateVis() updates text and bar styles', () => {
-    const startEl = document.getElementById('rangeStart');
-    if (startEl) startEl.max = 100;
-
-    Sliders.updateVis(20, 50);
-
-    expect(document.getElementById('txtStart').innerText).toBe('20.0s');
-    expect(document.getElementById('sliderHighlight').style.left).toBe('20%');
-    expect(document.getElementById('sliderHighlight').style.width).toBe('30%');
   });
 });
 

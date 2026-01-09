@@ -1,7 +1,7 @@
 import { DOM } from './config.js';
 import { Auth } from './auth.js';
 import { Analysis } from './analysis.js';
-import { ChartManager, Sliders } from './chartmanager.js';
+import { ChartManager } from './chartmanager.js';
 import { UI, InfoPage } from './ui.js';
 import { Drive } from './drive.js';
 import { DragnDrop } from './dragndrop.js';
@@ -48,7 +48,7 @@ window.handleAuth = () => Auth.handleAuth();
 window.applyTemplate = () => Analysis.applyTemplate();
 window.scanAnomalies = () => Analysis.runScan();
 window.addFilterRow = () => Analysis.addFilterRow();
-window.resetZoom = () => Sliders.reset();
+window.resetZoom = () => ChartManager.reset();
 window.toggleInfo = () => InfoPage.toggleInfo();
 window.loadSampleData = (i) => UI.loadSampleData(i);
 window.removeFile = (f) => ChartManager.removeFile(f);
