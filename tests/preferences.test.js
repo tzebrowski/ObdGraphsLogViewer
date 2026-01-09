@@ -92,7 +92,6 @@ describe('Preferences Module', () => {
 
     const stored = JSON.parse(localStorage.getItem(Preferences.PREFS_KEY));
     expect(stored.performance).toBe(true);
-    // Line 85: Should remove sidebar states if persistence is false
     expect(localStorage.getItem('sidebar_collapsed_states')).toBeNull();
   });
 });
