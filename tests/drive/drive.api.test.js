@@ -25,7 +25,6 @@ describe('Drive Module - API & Folder Discovery', () => {
     };
   });
 
-
   test('findFolderId handles different name casing variants', async () => {
     gapi.client.drive.files.list.mockResolvedValue({
       result: { files: [{ id: '123', name: 'MyGiulia' }] },
@@ -42,7 +41,6 @@ describe('Drive Module - API & Folder Discovery', () => {
     );
     expect(id).toBe('123');
   });
-
 
   test('findFolderId returns ID on success', async () => {
     gapi.client.drive.files.list.mockResolvedValue({
@@ -100,8 +98,6 @@ describe('Drive Module - Various Tests', () => {
     };
   });
 
- 
-
   test('_applyFilters handles null/empty filter states', () => {
     const card = document.createElement('div');
     card.innerHTML =
@@ -146,19 +142,5 @@ describe('Drive Module - Various Tests', () => {
       expect.anything(),
       'file1'
     );
-  });
-
-  test('renderRecentSection handles missing card references gracefully', () => {
-    localStorage.setItem('recent_logs', JSON.stringify(['missing-id']));
-    Drive.masterCards = []; // No cards loaded to simulate a mismatch
-
-    Drive.renderRecentSection(container);
-
-    // Target the specific DIV created for the list, not the header
-    const recentList =
-      container.querySelector('.recent-section').lastElementChild;
-
-    // This will now correctly be 0 because no matching cards were found to append
-    expect(recentList.children.length).toBe(0);
   });
 });

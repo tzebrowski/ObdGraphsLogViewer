@@ -67,4 +67,24 @@ describe('Drive Module - Month Grouping & Interactions', () => {
       'fa-chevron-down'
     );
   });
+
+  test('renderRecentSection handles missing card references gracefully', () => {
+    document.body.innerHTML = `
+      <div id="driveList"></div>
+      <div id="driveFileContainer"></div>
+    `;
+    let container = document.getElementById('driveFileContainer');
+
+    localStorage.setItem('recent_logs', JSON.stringify(['missing-id']));
+    Drive.masterCards = []; // No cards loaded to simulate a mismatch
+
+    Drive.renderRecentSection(container);
+
+    // Target the specific DIV created for the list, not the header
+    const recentList =
+      container.querySelector('.recent-section').lastElementChild;
+
+    // This will now correctly be 0 because no matching cards were found to append
+    expect(recentList.children.length).toBe(0);
+  });
 });
