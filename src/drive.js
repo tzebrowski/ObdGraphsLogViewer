@@ -2,21 +2,7 @@ import { DOM } from './config.js';
 import { UI } from './ui.js';
 import { DataProcessor } from './dataprocesssor.js';
 import { Alert } from './alert.js';
-
-/**
- * Utility for debouncing function execution to improve performance during filtering.
- */
-const debounce = (func, wait) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
+import { debounce } from './debounce.js';
 
 /**
  * Drive Module - Handles Google Drive file interactions, filtering, and UI rendering.
