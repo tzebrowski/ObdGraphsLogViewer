@@ -160,21 +160,73 @@ test('afterDraw() renders red highlight for active anomaly', () => {
   expect(mockCtx.restore).toHaveBeenCalled();
 });
 
-test('initKeyboardControls handles ArrowRight to pan the chart', () => {
-  const mockChart = {
-    width: 1000,
-    pan: jest.fn(),
-    draw: jest.fn(),
-    scales: { x: { min: 100, max: 200 } },
-  };
+describe('ChartManager Keyboard  Tests', () => {
+  test('initKeyboardControls handles ArrowRight to pan the chart', () => {
+    const mockChart = {
+      width: 1000,
+      pan: jest.fn(),
+      draw: jest.fn(),
+      scales: { x: { min: 100, max: 200 } },
+    };
 
-  const canvas = document.createElement('canvas');
-  AppState.chartInstances = [mockChart];
+    const canvas = document.createElement('canvas');
+    AppState.chartInstances = [mockChart];
 
-  ChartManager.initKeyboardControls(canvas, 0);
+    ChartManager.initKeyboardControls(canvas, 0);
 
-  const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
-  canvas.dispatchEvent(event);
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
+    canvas.dispatchEvent(event);
 
-  expect(mockChart.pan).toHaveBeenCalledWith({ x: -10 }, undefined, 'none');
+    expect(mockChart.pan).toHaveBeenCalledWith({ x: -10 }, undefined, 'none');
+  });
+
+  test('initKeyboardControls handles ArrowLeft and zoom keys', () => {
+    const canvas = document.createElement('canvas');
+    ChartManager.initKeyboardControls(canvas, 0);
+    AppState.chartInstances[0] = mockChartInstance;
+
+    mockChartInstance.width = 1000;
+
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+    expect(mockChartInstance.pan).toHaveBeenCalled();
+
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }));
+    expect(mockChartInstance.zoom).toHaveBeenCalledWith(1.1, undefined, 'none');
+  });
+
+  test('initKeyboardControls handles - key', () => {
+    const canvas = document.createElement('canvas');
+    ChartManager.initKeyboardControls(canvas, 0);
+    AppState.chartInstances[0] = mockChartInstance;
+
+    mockChartInstance.width = 1000;
+
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: '-' }));
+    expect(mockChartInstance.pan).toHaveBeenCalled();
+  });
+
+  test('initKeyboardControls handles R key', () => {
+    const canvas = document.createElement('canvas');
+    ChartManager.initKeyboardControls(canvas, 0);
+    AppState.chartInstances[0] = mockChartInstance;
+
+    mockChartInstance.width = 1000;
+
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
+    expect(mockChartInstance.pan).toHaveBeenCalled();
+
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'R' }));
+    expect(mockChartInstance.pan).toHaveBeenCalled();
+  });
+
+  test('initKeyboardControls handles = key', () => {
+    const canvas = document.createElement('canvas');
+    ChartManager.initKeyboardControls(canvas, 0);
+    AppState.chartInstances[0] = mockChartInstance;
+
+    mockChartInstance.width = 1000;
+
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: '=' }));
+    expect(mockChartInstance.zoom).toHaveBeenCalled();
+  });
 });
