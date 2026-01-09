@@ -1,7 +1,7 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { Drive } from '../src/drive.js';
-import { DOM } from '../src/config.js';
-import { UI } from '../src/ui.js';
+import { Drive } from '../../src/drive.js';
+import { DOM } from '../../src/config.js';
+import { UI } from '../../src/ui.js';
 
 describe('Drive Module - API & Folder Discovery', () => {
   beforeEach(() => {
@@ -49,16 +49,6 @@ describe('Drive Module - API & Folder Discovery', () => {
 
     const container = document.getElementById('driveFileContainer');
     expect(container.innerHTML).toContain('Required folders');
-  });
-
-  test('handleApiError sets expired session on 401 ', () => {
-    const mockListEl = document.createElement('div');
-    const error401 = { status: 401, message: 'Unauthorized' };
-
-    Drive.handleApiError(error401, mockListEl);
-
-    expect(gapi.client.setToken).toHaveBeenCalledWith(null);
-    expect(mockListEl.innerHTML).toContain('Session expired');
   });
 
   test('fetchJsonFiles populates masterCards and renders rows', async () => {

@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals'; // Add this line
-import { Drive } from '../src/drive.js';
-import { DOM } from '../src/config.js';
+import { Drive } from '../../src/drive.js';
+import { DOM } from '../../src/config.js';
 
 describe('Drive Module - UI Filtering Logic', () => {
   beforeEach(() => {

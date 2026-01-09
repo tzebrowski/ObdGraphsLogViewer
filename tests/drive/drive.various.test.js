@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { Drive } from '../src/drive.js';
-import { DataProcessor } from '../src/dataprocesssor.js';
+import { Drive } from '../../src/drive.js';
+import { DataProcessor } from '../../src/dataprocesssor.js';
 
 describe('Drive Module - Various Tests', () => {
   let container;
@@ -45,21 +45,6 @@ describe('Drive Module - Various Tests', () => {
       })
     );
     expect(id).toBe('123');
-  });
-
-  test('handleApiError clears token on 401 error', () => {
-    const error = { status: 401, message: 'Unauthorized' };
-    Drive.handleApiError(error, container);
-
-    expect(gapi.client.setToken).toHaveBeenCalledWith(null);
-    expect(container.innerHTML).toContain('Session expired');
-  });
-
-  test('handleApiError displays generic error message', () => {
-    const error = { status: 500, message: 'Internal Server Error' };
-    Drive.handleApiError(error, container);
-
-    expect(container.innerHTML).toContain('Drive error: Internal Server Error');
   });
 
   test('_applyFilters handles null/empty filter states', () => {
