@@ -39,7 +39,7 @@ describe('Drive Module - API & Folder Discovery', () => {
     );
   });
 
-  test('listFiles handles missing subfolder error (Lines 50-53)', async () => {
+  test('listFiles handles missing subfolder error', async () => {
     // Mock root found, but subfolder not found
     gapi.client.drive.files.list
       .mockResolvedValueOnce({ result: { files: [{ id: 'root-id' }] } }) // find root
@@ -51,7 +51,7 @@ describe('Drive Module - API & Folder Discovery', () => {
     expect(container.innerHTML).toContain('Required folders');
   });
 
-  test('handleApiError sets expired session on 401 (Lines 343-346)', () => {
+  test('handleApiError sets expired session on 401 ', () => {
     const mockListEl = document.createElement('div');
     const error401 = { status: 401, message: 'Unauthorized' };
 

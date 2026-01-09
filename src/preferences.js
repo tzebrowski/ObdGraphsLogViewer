@@ -1,4 +1,5 @@
 import { UI } from './ui.js';
+import { ChartManager } from './chartmanager.js';
 
 /**
  * Preferences Module
@@ -14,6 +15,7 @@ export const Preferences = {
     'pref-performance': 'performance',
     'pref-theme-dark': 'darkTheme',
     'pref-custom-palette': 'useCustomPalette',
+    'pref-show-area-fills': 'showAreaFills',
   },
 
   defaultPrefs: {
@@ -21,6 +23,7 @@ export const Preferences = {
     performance: false,
     darkTheme: false,
     useCustomPalette: false,
+    showAreaFills: true,
   },
 
   get prefs() {
@@ -78,6 +81,7 @@ export const Preferences = {
 
     this.prefs = newPrefs; // Triggers the setter and persistence logic
     this._syncTheme(newPrefs.darkTheme);
+    this._syncChart();
   },
 
   // --- Internal Helpers ---
@@ -92,6 +96,10 @@ export const Preferences = {
 
   _syncTheme(isDark) {
     UI.setTheme(isDark ? 'dark' : 'light');
+  },
+
+  _syncChart() {
+    ChartManager.updateAreaFills();
   },
 
   _safeJsonParse(str, fallback) {

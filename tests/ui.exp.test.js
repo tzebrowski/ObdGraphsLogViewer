@@ -77,7 +77,7 @@ describe('UI Module Expanded Tests', () => {
     jest.clearAllMocks();
   });
 
-  /** 1. Test Sidebar Collapse & Persistence (Lines 48-74, 127-156) **/
+  /** 1. Test Sidebar Collapse & Persistence  **/
   test('initSidebarSectionsCollapse toggles class and saves state', () => {
     UI.initSidebarSectionsCollapse();
     const header = document.querySelector('.group-header');
@@ -103,7 +103,7 @@ describe('UI Module Expanded Tests', () => {
     expect(group.classList.contains('collapsed')).toBe(true);
   });
 
-  /** 2. Test Mobile UI & Backdrops (Lines 76-88) **/
+  /** 2. Test Mobile UI & Backdrops **/
   test('initMobileUI creates backdrop and handles clicks', () => {
     UI.initMobileUI();
     const backdrop = document.querySelector('.sidebar-backdrop');
@@ -118,7 +118,7 @@ describe('UI Module Expanded Tests', () => {
     expect(backdrop.classList.contains('active')).toBe(false);
   });
 
-  /** 3. Test Theme Switching (Lines 383-412) **/
+  /** 3. Test Theme Switching **/
   test('setTheme updates body class and chart instances', () => {
     const mockChart = {
       options: {
@@ -138,7 +138,7 @@ describe('UI Module Expanded Tests', () => {
     expect(mockChart.update).toHaveBeenCalled();
   });
 
-  /** 4. Test Version Info (Lines 414-430) **/
+  /** 4. Test Version Info **/
   test('initVersionInfo renders dev tag correctly', () => {
     AppState.version.tag = 'dev';
     UI.initVersionInfo();
@@ -158,7 +158,7 @@ describe('UI Module Expanded Tests', () => {
     expect(link.textContent.trim()).toBe('v2.1.0');
   });
 
-  /** 5. Test InfoPage Logic (Lines 480-524) **/
+  /** 5. Test InfoPage Logic **/
   test('InfoPage open/close/toggle visibility', () => {
     const modal = document.getElementById('infoModal');
 
@@ -194,7 +194,7 @@ describe('UI Module Expanded Tests', () => {
     expect(document.getElementById('infoModal').style.display).toBe('none');
   });
 
-  /** 6. Test FullScreen Toggle (Lines 188-200) **/
+  /** 6. Test FullScreen Toggle **/
   test('toggleFullScreen attempts to request fullscreen', () => {
     const content = document.getElementById('mainContent');
     content.requestFullscreen = jest.fn().mockResolvedValue();
