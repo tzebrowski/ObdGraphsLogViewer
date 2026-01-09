@@ -15,7 +15,7 @@ describe('Drive Module - Month Grouping & Interactions', () => {
     document.body.innerHTML = `
       <div id="driveList"></div>
       <div id="driveFileContainer"></div>
-      ${Drive.getSearchInterfaceTemplate()}
+      ${Drive.TEMPLATES.searchInterface()}
     `;
     DOM.get = jest.fn((id) => document.getElementById(id));
 

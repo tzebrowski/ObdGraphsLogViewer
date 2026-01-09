@@ -76,7 +76,7 @@ test('fetchJsonFiles populates masterCards and renders rows', async () => {
   // This provides the elements that initSearch() needs to add listeners to
   document.body.innerHTML = `
     <div id="driveList">
-      ${Drive.getSearchInterfaceTemplate()}
+      ${Drive.TEMPLATES.searchInterface()}
     </div>
   `;
 
