@@ -1,6 +1,7 @@
 import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
 import { PaletteManager } from './palettemanager.js';
 import { UI } from './ui.js';
+import { Preferences } from './preferences.js';
 import Hammer from 'hammerjs';
 import {
   Chart,
@@ -58,6 +59,29 @@ export const ChartManager = {
     }
 
     this._fullRebuild(container);
+  },
+
+  /**
+   * Performs a high-performance update of area fills across all charts.
+   * This avoids destroying/recreating DOM elements.
+   */
+  updateAreaFills() {
+    const { showAreaFills } = Preferences.prefs;
+
+    AppState.chartInstances.forEach((chart) => {
+      chart.data.datasets.forEach((dataset) => {
+        // Use existing border color to ensure consistency
+        const color = dataset.borderColor;
+
+        dataset.fill = showAreaFills ? 'origin' : false;
+        dataset.backgroundColor = showAreaFills
+          ? this.getAlphaColor(color, 0.1)
+          : 'transparent';
+      });
+
+      // Apply changes instantly
+      chart.update('none');
+    });
   },
 
   // --- Instance Management ---
@@ -302,13 +326,13 @@ export const ChartManager = {
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center;">
           <span class="chart-name">${file.name}</span>
           <div class="chart-actions" style="display: flex; gap: 8px; align-items: center;">
-              <button class="btn-icon" onclick="ChartManager.manualZoom(${idx}, 1.2)" title="Zoom In">
+              <button class="btn-icon" onclick="manualZoom(${idx}, 1.2)" title="Zoom In">
                   <i class="fas fa-search-plus"></i>
               </button>
-              <button class="btn-icon" onclick="ChartManager.manualZoom(${idx}, 0.8)" title="Zoom Out">
+              <button class="btn-icon" onclick="manualZoom(${idx}, 0.8)" title="Zoom Out">
                   <i class="fas fa-search-minus"></i>
               </button>
-              <button class="btn-remove" onclick="ChartManager.removeFile(${idx})">×</button>
+              <button class="btn-remove" onclick="removeFile(${idx})">×</button>
           </div>
       </div>
       <div class="canvas-wrapper">
@@ -347,22 +371,27 @@ export const ChartManager = {
     const max = Math.max(...yValues);
     const range = max - min;
 
-    // Normalized 0-1 range for multi-signal overlay
     const normalizedData = rawData.map((d) => ({
       x: d.x,
       y: range === 0 ? 0 : (parseFloat(d.y) - min) / range,
     }));
+
+    const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
+    const { showAreaFills } = Preferences.prefs;
 
     return {
       label: key,
       originalMin: min,
       originalMax: max,
       data: normalizedData,
-      borderColor: PaletteManager.getColorForSignal(fileIdx, sigIdx),
-      backgroundColor: 'transparent',
+      borderColor: color,
       borderWidth: isImportant ? 3 : 1.5,
       pointRadius: 0,
-      fill: false,
+
+      backgroundColor: showAreaFills
+        ? this.getAlphaColor(color, 0.1)
+        : 'transparent',
+      fill: showAreaFills ? 'origin' : false,
       hidden: !isImportant,
     };
   },

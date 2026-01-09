@@ -78,7 +78,7 @@ describe('ChartManager Deep Coverage', () => {
     expect(rpmDataset.originalMax).toBe(500);
   });
 
-  /** 2. Manual Zoom & Sync (Lines 102-113, 290-300) **/
+  /** 2. Manual Zoom & Sync  **/
   test('manualZoom triggers chart zoom and syncs with sliders', () => {
     const mockChart = {
       zoom: jest.fn(),
@@ -96,7 +96,7 @@ describe('ChartManager Deep Coverage', () => {
     expect(syncSpy).toHaveBeenCalled();
   });
 
-  /** 3. Label Visibility Logic (Lines 267-285) **/
+  /** 3. Label Visibility Logic **/
   test('updateLabelVisibility hides labels on small screens', () => {
     const mockChart = {
       options: { plugins: { datalabels: { display: true } } },
