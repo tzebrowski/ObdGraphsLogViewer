@@ -171,7 +171,6 @@ describe('ChartManager Module Comprehensive Tests', () => {
       // expect(mockChart.update).toHaveBeenCalled();
     });
 
-    
     test('highlighterPlugin draws hover line only within boundaries', () => {
       ChartManager.activeChartIndex = 0;
 
@@ -187,7 +186,6 @@ describe('ChartManager Module Comprehensive Tests', () => {
       expect(mockChart.ctx.stroke).not.toHaveBeenCalled();
     });
 
-    
     test('updateAreaFills respects preferences', () => {
       Preferences.prefs.showAreaFills = true;
       ChartManager.getAlphaColor = jest.fn(() => 'rgba_mock');
