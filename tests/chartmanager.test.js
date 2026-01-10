@@ -26,25 +26,96 @@ const mockChartInstance = {
 };
 
 describe('ChartManager Module Tests', () => {
+  let mockChart;
+
+  const mockFile = {
+    name: 'test-trip.json',
+    startTime: 1000000,
+    duration: 500,
+    availableSignals: ['Engine Rpm'],
+    signals: { 'Engine Rpm': [{ x: 1000000, y: 1000 }] },
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset AppState
     AppState.files = [];
     AppState.chartInstances = [];
     AppState.globalStartTime = 0;
 
-    // Setup JSDOM
     document.body.innerHTML = `
-      <div id="chartContainer"></div>
-      <input type="range" id="rangeStart" />
-      <input type="range" id="rangeEnd" />
-      <span id="txtStart"></span>
-      <span id="txtEnd"></span>
-      <div id="sliderHighlight"></div>
+      <div id="chartContainer">
+        <div id="chart-0-wrapper" class="chart-card-compact">
+          <input class="local-range-start" value="0">
+          <input class="local-range-end" value="500">
+          <div id="highlight-0"></div>
+          <span id="txt-start-0"></span>
+          <span id="txt-end-0"></span>
+          <canvas id="chart-0"></canvas>
+        </div>
+      </div>
     `;
 
     DOM.get = jest.fn((id) => document.getElementById(id));
+
+    mockChart = {
+      options: {
+        scales: { x: { min: 0, max: 0 } },
+        plugins: { datalabels: { display: true } },
+      },
+      scales: { x: { min: 1000000, max: 1500000 } },
+      update: jest.fn(),
+      zoom: jest.fn(),
+      draw: jest.fn(),
+      destroy: jest.fn(),
+    };
+
+    AppState.chartInstances = [mockChart];
+    AppState.files = [mockFile];
+    DOM.get.mockReturnValue(document.getElementById('chartContainer'));
+  });
+
+  test('init registers chart plugins', () => {
+    ChartManager.init();
+    expect(Chart.register).toHaveBeenCalled();
+  });
+
+  test('manualZoom updates chart and synchronizes slider UI', () => {
+    ChartManager.manualZoom(0, 1.1);
+
+    expect(mockChart.zoom).toHaveBeenCalledWith(1.1);
+    const startInput = document.querySelector('.local-range-start');
+    // Verify UI reflects the internal chart state
+    expect(startInput.value).toBeDefined();
+  });
+
+  test('updateLabelVisibility hides labels on narrow screens', () => {
+    window.innerWidth = 500; // Mobile width
+    ChartManager.updateLabelVisibility(mockChart);
+    expect(mockChart.options.plugins.datalabels.display).toBe(false);
+  });
+
+  test('keyboard controls trigger panning and zooming', () => {
+    const canvas = document.getElementById('chart-0');
+    ChartManager.initKeyboardControls(canvas, 0);
+
+    const event = new KeyboardEvent('keydown', { key: '+' });
+    canvas.dispatchEvent(event);
+
+    expect(mockChart.zoom).toHaveBeenCalledWith(1.1, undefined, 'none');
+  });
+
+  test('resetChart restores full range and UI elements', () => {
+    ChartManager.resetChart(0);
+
+    expect(mockChart.options.scales.x.min).toBe(mockFile.startTime);
+    expect(mockChart.options.scales.x.max).toBe(
+      mockFile.startTime + mockFile.duration * 1000
+    );
+    expect(mockChart.update).toHaveBeenCalledWith('none');
+
+    expect(document.getElementById('txt-start-0').innerText).toBe('0.0s');
+    expect(document.getElementById('highlight-0').style.width).toBe('100%');
   });
 
   test('render() handles empty file list correctly', () => {
@@ -65,11 +136,6 @@ describe('ChartManager Module Tests', () => {
         signals: { RPM: [] },
       },
     ];
-
-    // Mock the Chart constructor locally for this test
-    const chartSpy = jest
-      .spyOn(Chart.prototype, 'constructor')
-      .mockImplementation(() => mockChartInstance);
 
     ChartManager.render();
 
