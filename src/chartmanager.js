@@ -52,7 +52,6 @@ export const ChartManager = {
     const container = DOM.get('chartContainer');
     if (!container) return;
 
-    // Smart Update: If file count matches instances, just refresh colors/data
     if (this._canPerformSmartUpdate()) {
       this._performSmartUpdate();
       return;
@@ -75,6 +74,8 @@ export const ChartManager = {
       chart.options.scales.x.max =
         file.startTime + Math.min(file.duration, endSec + padding) * 1000;
       chart.update('none');
+
+      ChartManager._syncLocalSlider(chart);
     }
   },
 
@@ -274,9 +275,6 @@ export const ChartManager = {
 
   // --- Internal Logic (Private Conventions) ---
 
-  /**
-   * Synchronizes the local slider UI with the current chart viewport.
-   */
   _syncLocalSlider(chart) {
     const index = AppState.chartInstances.indexOf(chart);
     const file = AppState.files[index];
