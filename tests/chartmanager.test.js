@@ -131,8 +131,8 @@ describe('ChartManager Module Comprehensive Tests', () => {
       expect(container.querySelector('canvas')).not.toBeNull();
     });
 
-    test('removeFile() clears indices and updates state', () => {
-      ChartManager.removeFile(0);
+    test('removeChart() clears indices and updates state', () => {
+      ChartManager.removeChart(0);
       expect(AppState.files).toHaveLength(0);
       expect(UI.updateDataLoadedState).toHaveBeenCalledWith(false);
     });
