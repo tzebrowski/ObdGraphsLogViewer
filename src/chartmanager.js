@@ -121,7 +121,7 @@ export const ChartManager = {
 
   reset() {
     AppState.chartInstances.forEach((chart, idx) => {
-      resetChart(idx);
+      this.resetChart(idx);
     });
   },
 
