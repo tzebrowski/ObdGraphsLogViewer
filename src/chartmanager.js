@@ -78,22 +78,50 @@ export const ChartManager = {
     }
   },
 
-  reset() {
+  resetChart(idx) {
     AppState.activeHighlight = null;
 
     document
       .querySelectorAll('.result-item')
       .forEach((el) => el.classList.remove('selected'));
 
-    AppState.chartInstances.forEach((chart, idx) => {
-      const file = AppState.files[idx];
-      if (file) {
-        chart.options.scales.x.min = file.startTime;
-        chart.options.scales.x.max = file.startTime + file.duration * 1000;
-        chart.update('none');
+    const chart = AppState.chartInstances[idx];
+    const file = AppState.files[idx];
 
-        ChartManager.updateLabelVisibility(chart);
+    if (file && chart) {
+      chart.options.scales.x.min = file.startTime;
+      chart.options.scales.x.max = file.startTime + file.duration * 1000;
+      chart.update('none');
+
+      const chartCanvas = document.getElementById(`chart-${idx}`);
+      const card = chartCanvas?.closest('.chart-card-compact');
+
+      if (card) {
+        const startInput = card.querySelector('.local-range-start');
+        const endInput = card.querySelector('.local-range-end');
+        const highlight = card.querySelector(`#highlight-${idx}`);
+        const txtStart = card.querySelector(`#txt-start-${idx}`);
+        const txtEnd = card.querySelector(`#txt-end-${idx}`);
+
+        if (startInput) startInput.value = 0;
+        if (endInput) endInput.value = file.duration;
+
+        if (highlight) {
+          highlight.style.left = '0%';
+          highlight.style.width = '100%';
+        }
+
+        if (txtStart) txtStart.innerText = '0.0s';
+        if (txtEnd) txtEnd.innerText = file.duration.toFixed(1) + 's';
       }
+
+      ChartManager.updateLabelVisibility(chart);
+    }
+  },
+
+  reset() {
+    AppState.chartInstances.forEach((chart, idx) => {
+      resetChart(idx);
     });
   },
 
@@ -145,9 +173,40 @@ export const ChartManager = {
 
   manualZoom(index, zoomLevel) {
     const chart = AppState.chartInstances[index];
-    if (!chart) return;
+    const file = AppState.files[index];
+    if (!chart || !file) return;
 
     chart.zoom(zoomLevel);
+
+    const chartCanvas = document.getElementById(`chart-${index}`);
+    const card = chartCanvas?.closest('.chart-card-compact');
+
+    if (card) {
+      const startInput = card.querySelector('.local-range-start');
+      const endInput = card.querySelector('.local-range-end');
+      const highlight = card.querySelector(`#highlight-${index}`);
+      const txtStart = card.querySelector(`#txt-start-${index}`);
+      const txtEnd = card.querySelector(`#txt-end-${index}`);
+
+      const s = Math.max(0, (chart.scales.x.min - file.startTime) / 1000);
+      const e = Math.min(
+        file.duration,
+        (chart.scales.x.max - file.startTime) / 1000
+      );
+
+      if (startInput) startInput.value = s;
+      if (endInput) endInput.value = e;
+
+      if (txtStart) txtStart.innerText = s.toFixed(1) + 's';
+      if (txtEnd) txtEnd.innerText = e.toFixed(1) + 's';
+
+      if (highlight) {
+        const total = file.duration;
+        highlight.style.left = (s / total) * 100 + '%';
+        highlight.style.width = ((e - s) / total) * 100 + '%';
+      }
+    }
+
     this.updateLabelVisibility(chart);
   },
 
@@ -214,6 +273,45 @@ export const ChartManager = {
   },
 
   // --- Internal Logic (Private Conventions) ---
+
+  /**
+   * Synchronizes the local slider UI with the current chart viewport.
+   */
+  _syncLocalSlider(chart) {
+    const index = AppState.chartInstances.indexOf(chart);
+    const file = AppState.files[index];
+    if (index === -1 || !file) return;
+
+    const card = document
+      .getElementById(`chart-${index}`)
+      ?.closest('.chart-card-compact');
+    if (!card) return;
+
+    const startInput = card.querySelector('.local-range-start');
+    const endInput = card.querySelector('.local-range-end');
+    const highlight = card.querySelector(`#highlight-${index}`);
+    const txtStart = card.querySelector(`#txt-start-${index}`);
+    const txtEnd = card.querySelector(`#txt-end-${index}`);
+
+    // Calculate relative seconds from the chart's current millisecond scales
+    const s = Math.max(0, (chart.scales.x.min - file.startTime) / 1000);
+    const e = Math.min(
+      file.duration,
+      (chart.scales.x.max - file.startTime) / 1000
+    );
+
+    // Update DOM elements
+    if (startInput) startInput.value = s;
+    if (endInput) endInput.value = e;
+    if (txtStart) txtStart.innerText = s.toFixed(1) + 's';
+    if (txtEnd) txtEnd.innerText = e.toFixed(1) + 's';
+
+    if (highlight) {
+      const total = file.duration;
+      highlight.style.left = (s / total) * 100 + '%';
+      highlight.style.width = ((e - s) / total) * 100 + '%';
+    }
+  },
 
   _canPerformSmartUpdate() {
     return (
@@ -325,13 +423,20 @@ export const ChartManager = {
         },
 
         zoom: {
-          pan: { enabled: true, mode: 'x' },
+          pan: {
+            enabled: true,
+            mode: 'x',
+            onPan: ({ chart }) => {
+              this._syncLocalSlider(chart);
+            },
+          },
           zoom: {
             wheel: { enabled: true },
             pinch: { enabled: true },
             mode: 'x',
             onZoom: ({ chart }) => {
               this.updateLabelVisibility(chart);
+              this._syncLocalSlider(chart);
             },
           },
         },
@@ -353,28 +458,78 @@ export const ChartManager = {
   _renderChartCard(container, file, idx) {
     const wrapper = document.createElement('div');
     wrapper.className = 'chart-card-compact';
+
     wrapper.innerHTML = `
-      <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center;">
-          <span class="chart-name">${file.name}</span>
-          <div class="chart-actions" style="display: flex; gap: 8px; align-items: center;">
-              <button class="btn-icon" onclick="manualZoom(${idx}, 1.2)" title="Zoom In">
-                  <i class="fas fa-search-plus"></i>
-              </button>
-              <button class="btn-icon" onclick="manualZoom(${idx}, 0.8)" title="Zoom Out">
-                  <i class="fas fa-search-minus"></i>
-              </button>
-              <button class="btn-remove" onclick="removeFile(${idx})">×</button>
+      <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+          <span class="chart-name" style="font-weight: bold; font-size: 0.85em;">${file.name}</span>
+          <div class="chart-actions" style="display: flex; gap: 4px;">
+              <button class="btn-icon" onclick="manualZoom(${idx}, 1.1)" title="Zoom In"><i class="fas fa-plus"></i></button>
+              <button class="btn-icon" onclick="manualZoom(${idx}, 0.9)" title="Zoom Out"><i class="fas fa-minus"></i></button>
+              <button class="btn-icon" onclick="resetChart(${idx})" title="Reset View"><i class="fas fa-sync-alt"></i></button>
+              <button class="btn-remove" onclick="removeFile(${idx})" title="Remove Chart">×</button>
           </div>
       </div>
-      <div class="canvas-wrapper">
+      
+      <div class="local-slider-ui" style="padding: 10px 15px 5px 15px;">
+          <div style="position: relative; height: 16px; margin-bottom: 4px;">
+              <input type="range" class="local-range-start" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="0" 
+                    style="position: absolute; width: 100%; pointer-events: none; z-index: 3;">
+              <input type="range" class="local-range-end" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="${file.duration}" 
+                    style="position: absolute; width: 100%; pointer-events: none; z-index: 3;">
+              <div class="local-slider-track" style="position: absolute; width: 100%; height: 4px; background: #e0e0e0; top: 6px; border-radius: 2px;"></div>
+              <div id="highlight-${idx}" class="local-slider-selection" style="position: absolute; height: 4px; background: #e31837; top: 6px; z-index: 2;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.7em; font-family: monospace; color: #666;">
+              <span id="txt-start-${idx}">0.0s</span>
+              <span id="txt-end-${idx}">${file.duration.toFixed(1)}s</span>
+          </div>
+      </div>
+
+      <div class="canvas-wrapper" style="height: 300px; padding: 5px;">
           <canvas id="chart-${idx}" tabindex="0"></canvas>
       </div>
     `;
     container.appendChild(wrapper);
 
+    // Re-attach core logic
     const canvas = document.getElementById(`chart-${idx}`);
     this.createInstance(canvas, file, idx);
     this.initKeyboardControls(canvas, idx);
+    this._initLocalSlider(wrapper, idx);
+  },
+
+  _initLocalSlider(wrapper, idx) {
+    const startInput = wrapper.querySelector('.local-range-start');
+    const endInput = wrapper.querySelector('.local-range-end');
+    const txtStart = wrapper.querySelector(`#txt-start-${idx}`);
+    const txtEnd = wrapper.querySelector(`#txt-end-${idx}`);
+    const highlight = wrapper.querySelector(`#highlight-${idx}`);
+
+    const updateChartRange = () => {
+      let v1 = parseFloat(startInput.value);
+      let v2 = parseFloat(endInput.value);
+      if (v1 > v2) [v1, v2] = [v2, v1];
+
+      // Update Text and Highlight Bar
+      txtStart.innerText = v1.toFixed(1) + 's';
+      txtEnd.innerText = v2.toFixed(1) + 's';
+
+      const total = parseFloat(startInput.max);
+      highlight.style.left = (v1 / total) * 100 + '%';
+      highlight.style.width = ((v2 - v1) / total) * 100 + '%';
+
+      // Update the specific Chart Instance
+      const chart = AppState.chartInstances[idx];
+      const file = AppState.files[idx];
+      if (chart && file) {
+        chart.options.scales.x.min = file.startTime + v1 * 1000;
+        chart.options.scales.x.max = file.startTime + v2 * 1000;
+        chart.update('none');
+      }
+    };
+
+    startInput.addEventListener('input', updateChartRange);
+    endInput.addEventListener('input', updateChartRange);
   },
 
   _handleEmptyState() {

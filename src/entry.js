@@ -58,3 +58,4 @@ window.toggleFileSignals = (a, b) => UI.toggleFileSignals(a, b);
 window.clearSignalFilter = () => UI.clearSignalFilter();
 window.showAlert = (a, b, c) => Alert.showAlert(a, b, c);
 window.hideAlert = () => Alert.hideAlert();
+window.resetChart = (i) => ChartManager.resetChart(i);

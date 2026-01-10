@@ -2111,3 +2111,22 @@ body.analyzer-active {
   align-items: center;
   padding: 10px !important;
 }
+
+.local-slider-ui input[type='range'] {
+  appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.local-slider-ui input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #e31837;
+  cursor: pointer;
+  pointer-events: auto;
+  margin-top: -5px;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+}
