@@ -255,7 +255,7 @@ export const UI = {
 
       fileHeader.innerHTML = `
       <span style="display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove log" onclick="event.stopPropagation(); removeFile(${fileIdx})"></i>
+        <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove log" onclick="event.stopPropagation(); removeChart(${fileIdx})"></i>
         <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
         <i class="fas fa-file-alt"></i> ${file.name}
       </span>

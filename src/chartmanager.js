@@ -243,7 +243,7 @@ export const ChartManager = {
     });
   },
 
-  removeFile(index) {
+  removeChart(index) {
     this.hoverValue = null;
     this.activeChartIndex = null;
     AppState.files.splice(index, 1);
@@ -335,7 +335,6 @@ export const ChartManager = {
   },
 
   // --- Internal Rendering ---
-
   _renderChartCard(container, file, idx) {
     const wrapper = document.createElement('div');
     wrapper.className = 'chart-card-compact';
@@ -347,7 +346,7 @@ export const ChartManager = {
               <button class="btn-icon" onclick="manualZoom(${idx}, 1.1)" title="Zoom In"><i class="fas fa-plus"></i></button>
               <button class="btn-icon" onclick="manualZoom(${idx}, 0.9)" title="Zoom Out"><i class="fas fa-minus"></i></button>
               <button class="btn-icon" onclick="resetChart(${idx})" title="Reset View"><i class="fas fa-sync-alt"></i></button>
-              <button class="btn-remove" onclick="removeFile(${idx})" title="Remove Chart">×</button>
+              <button class="btn-remove" onclick="removeChart(${idx})" title="Remove Chart">×</button>
           </div>
       </div>
       
@@ -376,6 +375,7 @@ export const ChartManager = {
     this.createInstance(canvas, file, idx);
     this.initKeyboardControls(canvas, idx);
     this._initLocalSlider(wrapper, idx);
+    this._updateLocalSliderUI(idx);
   },
 
   _initLocalSlider(wrapper, idx) {
@@ -477,14 +477,22 @@ export const ChartManager = {
       AppState.chartInstances.length === AppState.files.length
     );
   },
+
   _performSmartUpdate() {
-    /* implementation same as previous */
+    AppState.chartInstances.forEach((chart, fIdx) => {
+      chart.data.datasets.forEach((ds, sIdx) => {
+        ds.borderColor = PaletteManager.getColorForSignal(fIdx, sIdx);
+      });
+      chart.update('none');
+    });
   },
+
   _handleEmptyState() {
     UI.updateDataLoadedState(false);
     AppState.globalStartTime = 0;
     AppState.logDuration = 0;
   },
+
   getAlphaColor: (hex, alpha = 0.1) => {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
