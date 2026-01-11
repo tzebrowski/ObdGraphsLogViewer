@@ -98,7 +98,12 @@ export const DataProcessor = {
    * @private
    */
   _transformRawData(data, fileName) {
-    const sorted = [...data].sort((a, b) => a.t - b.t); // Sort chronologically
+    const cleanedData = data.map((p) => ({
+      ...p,
+      s: p.s.replace(/\n/g, ' '),
+    }));
+
+    const sorted = [...cleanedData].sort((a, b) => a.t - b.t); // Sort chronologically
     const signals = {};
     let minT = Infinity,
       maxT = -Infinity;

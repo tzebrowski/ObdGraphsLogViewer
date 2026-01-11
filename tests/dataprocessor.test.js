@@ -189,3 +189,49 @@ test('loadConfiguration handles missing templates gracefully', async () => {
   });
   consoleSpy.mockRestore();
 });
+
+describe('DataProcessor: Cleaning Operation', () => {
+  test('should replace all newline characters with spaces in signal names', () => {
+    const rawData = [
+      { s: 'Engine\nTemp', t: 1000, v: 90 },
+      { s: 'Battery\nStatus\nMain', t: 2000, v: 12.5 },
+    ];
+    const fileName = 'test_log.json';
+
+    const result = DataProcessor._transformRawData(rawData, fileName);
+
+    // Assertions for cleaning
+    expect(result.rawData[0].s).toBe('Engine Temp');
+    expect(result.rawData[1].s).toBe('Battery Status Main');
+
+    // Assert keys in the 'signals' object are also cleaned
+    expect(Object.keys(result.signals)).toContain('Engine Temp');
+    expect(Object.keys(result.signals)).not.toContain('Engine\nTemp');
+  });
+
+  test('should not modify signal names that have no newlines', () => {
+    const rawData = [{ s: 'CleanName', t: 1000, v: 50 }];
+    const result = DataProcessor._transformRawData(rawData, 'test.json');
+
+    expect(result.rawData[0].s).toBe('CleanName');
+  });
+
+  test('should preserve timestamp (t) and value (v) during cleaning', () => {
+    const rawData = [{ s: 'Dirty\nName', t: 123456789, v: -42.5 }];
+    const result = DataProcessor._transformRawData(rawData, 'test.json');
+
+    expect(result.rawData[0].t).toBe(123456789);
+    expect(result.rawData[0].v).toBe(-42.5);
+  });
+
+  test('should correctly calculate duration after cleaning and sorting', () => {
+    const rawData = [
+      { s: 'A\nB', t: 5000, v: 1 },
+      { s: 'C\nD', t: 1000, v: 2 },
+    ];
+    const result = DataProcessor._transformRawData(rawData, 'test.json');
+
+    // (5000ms - 1000ms) / 1000 = 4 seconds
+    expect(result.duration).toBe(4);
+  });
+});

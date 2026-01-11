@@ -302,9 +302,8 @@ export const ChartManager = {
           labels: {
             font: { size: 11 },
             filter: (item) => {
-              const text = item.text.replace(/\n/g, ' ');
               const checkbox = document.querySelector(
-                `#signalList input[data-key="${text}"]`
+                `#signalList input[data-key="${item.text}"]`
               );
               return checkbox ? checkbox.checked : false;
             },
