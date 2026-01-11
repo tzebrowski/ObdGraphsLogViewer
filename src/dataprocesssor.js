@@ -110,11 +110,6 @@ export const DataProcessor = {
 
   // --- Internal Helper Methods (_) ---
 
-  _finalizeBatchLoad() {
-    UI.setLoading(false);
-    console.log('All files processed and state updated.');
-  },
-
   /**
    * @param {Array} data - The raw input array from the file.
    * @returns {Array} - The standardized and sanitized array.
