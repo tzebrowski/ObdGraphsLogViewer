@@ -276,3 +276,65 @@ describe('DataProcessor: Cleaning Operation', () => {
     expect(signalData.timestamp).toBeUndefined();
   });
 });
+
+describe('DataProcessor: CSV Handling', () => {
+  test('should parse a raw CSV string into an array of objects', () => {
+    const csvContent = `SensorName,Time_ms,Reading
+EngineTemp,1000,90
+OilPressure,2000,45`;
+
+    const result = DataProcessor._parseCSV(csvContent);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      SensorName: 'EngineTemp',
+      Time_ms: '1000',
+      Reading: '90',
+    });
+  });
+
+  test('should correctly preprocess and map CSV data using LEGACY_CSV schema', () => {
+    // rawData as it would come out of _parseCSV
+    const rawCsvData = [
+      { SensorName: ' RPM\n', Time_ms: '5000', Reading: '3000' },
+    ];
+
+    const [output] = DataProcessor._preprocess(rawCsvData);
+
+    // Assert that it used the LEGACY_CSV mapping (SensorName -> signal)
+    expect(output.signal).toBe('RPM'); // Mapped and cleaned
+    expect(output.timestamp).toBe(5000); // Mapped and cast to Number
+    expect(output.value).toBe(3000); // Mapped and cast to Number
+  });
+
+  test('should handle CSV files with trailing empty lines', () => {
+    const csvWithEmptyLine = `SensorName,Time_ms,Reading
+Battery,100,12.6
+\n   \n`; // Simulating empty lines at end of file
+
+    const result = DataProcessor._parseCSV(csvWithEmptyLine);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].SensorName).toBe('Battery');
+  });
+
+  test('should process a full CSV-to-Chart workflow', () => {
+    const csvContent = `SensorName,Time_ms,Reading
+Flow,100,10.5
+Flow,200,11.0`;
+
+    const parsed = DataProcessor._parseCSV(csvContent);
+    const result = DataProcessor._transformRawData(
+      DataProcessor._preprocess(parsed),
+      'data.csv'
+    );
+
+    // Verify signal grouping
+    expect(result.signals).toHaveProperty('Flow');
+    expect(result.signals.Flow).toHaveLength(2);
+
+    // Verify internal schema (x, y) mapping
+    expect(result.signals.Flow[0]).toEqual({ x: 100, y: 10.5 });
+    expect(result.signals.Flow[1]).toEqual({ x: 200, y: 11.0 });
+  });
+});
