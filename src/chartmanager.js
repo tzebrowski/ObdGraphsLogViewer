@@ -258,7 +258,11 @@ export const ChartManager = {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      interaction: { mode: 'index', intersect: false },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false,
+      },
       scales: {
         y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
         x: {
@@ -285,6 +289,7 @@ export const ChartManager = {
         tooltip: {
           enabled: true,
           mode: 'index',
+          axis: 'x',
           intersect: false,
           callbacks: {
             label: (context) => {
