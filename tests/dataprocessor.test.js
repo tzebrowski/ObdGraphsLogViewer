@@ -66,11 +66,9 @@ describe('DataProcessor Module Tests', () => {
       { s: 'RPM', t: 1000, v: 800 },
     ];
 
-    DataProcessor.process(unsortedData, 'unsorted.json');
-
-    const sortedData = AppState.files[0].rawData;
-    expect(sortedData[0].t).toBe(1000);
-    expect(sortedData[1].t).toBe(5000);
+    const sortedData = DataProcessor._process(unsortedData, 'unsorted.json');
+    expect(sortedData.rawData[0].timestamp).toBe(1000);
+    expect(sortedData.rawData[1].timestamp).toBe(5000);
   });
 
   /**
@@ -196,9 +194,9 @@ describe('DataProcessor: Cleaning Operation', () => {
 
     const [output] = DataProcessor._preprocess(input);
 
-    expect(output).toHaveProperty('s', 'Battery Level');
-    expect(output).toHaveProperty('t', 1600000000);
-    expect(output).toHaveProperty('v', 85);
+    expect(output).toHaveProperty('signal', 'Battery Level');
+    expect(output).toHaveProperty('timestamp', 1600000000);
+    expect(output).toHaveProperty('value', 85);
   });
 
   test('should replace all newline characters with spaces in signal names', () => {
@@ -206,14 +204,12 @@ describe('DataProcessor: Cleaning Operation', () => {
       { s: 'Engine\nTemp', t: 1000, v: 90 },
       { s: 'Battery\nStatus\nMain', t: 2000, v: 12.5 },
     ];
-    const fileName = 'test_log.json';
 
-    const cleanData = DataProcessor._preprocess(rawData);
-    const result = DataProcessor._transformRawData(cleanData, fileName);
+    const result = DataProcessor._process(rawData, 'test_log.json');
 
     // Assertions for cleaning
-    expect(result.rawData[0].s).toBe('Engine Temp');
-    expect(result.rawData[1].s).toBe('Battery Status Main');
+    expect(result.rawData[0].signal).toBe('Engine Temp');
+    expect(result.rawData[1].signal).toBe('Battery Status Main');
 
     // Assert keys in the 'signals' object are also cleaned
     expect(Object.keys(result.signals)).toContain('Engine Temp');
@@ -223,20 +219,18 @@ describe('DataProcessor: Cleaning Operation', () => {
   test('should not modify signal names that have no newlines', () => {
     const rawData = [{ s: 'CleanName', t: 1000, v: 50 }];
 
-    const cleanData = DataProcessor._preprocess(rawData);
-    const result = DataProcessor._transformRawData(cleanData, 'test.json');
+    const result = DataProcessor._process(rawData, 'test.json');
 
-    expect(result.rawData[0].s).toBe('CleanName');
+    expect(result.rawData[0].signal).toBe('CleanName');
   });
 
   test('should preserve timestamp (t) and value (v) during cleaning', () => {
     const rawData = [{ s: 'Dirty\nName', t: 123456789, v: -42.5 }];
 
-    const cleanData = DataProcessor._preprocess(rawData);
-    const result = DataProcessor._transformRawData(cleanData, 'test.json');
+    const result = DataProcessor._process(rawData, 'test.json');
 
-    expect(result.rawData[0].t).toBe(123456789);
-    expect(result.rawData[0].v).toBe(-42.5);
+    expect(result.rawData[0].timestamp).toBe(123456789);
+    expect(result.rawData[0].value).toBe(-42.5);
   });
 
   test('should correctly calculate duration after cleaning and sorting', () => {
@@ -245,19 +239,102 @@ describe('DataProcessor: Cleaning Operation', () => {
       { s: 'C\nD', t: 1000, v: 2 },
     ];
 
-    const cleanData = DataProcessor._preprocess(rawData);
-    const result = DataProcessor._transformRawData(cleanData, 'test.json');
+    const result = DataProcessor._process(rawData, 'test.json');
 
     // (5000ms - 1000ms) / 1000 = 4 seconds
     expect(result.duration).toBe(4);
   });
 
-  test('Preprocessor should trim strings and convert types', () => {
+  test('Preprocessor should map keys, trim strings, and convert types', () => {
+    // Input uses external schema (s, t, v)
     const input = [{ s: ' Speed\n', t: '1000', v: '50.5' }];
+
     const [output] = DataProcessor._preprocess(input);
 
-    expect(output.s).toBe('Speed'); // Cleaned and trimmed
-    expect(output.t).toBe(1000); // Converted to Number
-    expect(output.v).toBe(50.5); // Converted to Number
+    // Assertions must use the new internal schema keys
+    expect(output.signal).toBe('Speed'); // Was output.s
+    expect(output.timestamp).toBe(1000); // Was output.t
+    expect(output.value).toBe(50.5); // Was output.v
+
+    // Optional: Verify the old keys are no longer present on the root object
+    expect(output.s).toBeUndefined();
+  });
+
+  test('should map signals to internal chart schema (x and y)', () => {
+    const input = [{ s: 'Temp', t: 100, v: 25 }];
+    const result = DataProcessor._transformRawData(
+      DataProcessor._preprocess(input),
+      'test.json'
+    );
+
+    const signalData = result.signals['Temp'][0];
+
+    // Verify the chart-ready keys exist
+    expect(signalData).toHaveProperty('x', 100);
+    expect(signalData).toHaveProperty('y', 25);
+    // Verify the temporary preprocessing keys are not in the final chart data
+    expect(signalData.timestamp).toBeUndefined();
+  });
+});
+
+describe('DataProcessor: CSV Handling', () => {
+  test('should parse a raw CSV string into an array of objects', () => {
+    const csvContent = `SensorName,Time_ms,Reading
+EngineTemp,1000,90
+OilPressure,2000,45`;
+
+    const result = DataProcessor._parseCSV(csvContent);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      SensorName: 'EngineTemp',
+      Time_ms: '1000',
+      Reading: '90',
+    });
+  });
+
+  test('should correctly preprocess and map CSV data using LEGACY_CSV schema', () => {
+    // rawData as it would come out of _parseCSV
+    const rawCsvData = [
+      { SensorName: ' RPM\n', Time_ms: '5000', Reading: '3000' },
+    ];
+
+    const [output] = DataProcessor._preprocess(rawCsvData);
+
+    // Assert that it used the LEGACY_CSV mapping (SensorName -> signal)
+    expect(output.signal).toBe('RPM'); // Mapped and cleaned
+    expect(output.timestamp).toBe(5000); // Mapped and cast to Number
+    expect(output.value).toBe(3000); // Mapped and cast to Number
+  });
+
+  test('should handle CSV files with trailing empty lines', () => {
+    const csvWithEmptyLine = `SensorName,Time_ms,Reading
+Battery,100,12.6
+\n   \n`; // Simulating empty lines at end of file
+
+    const result = DataProcessor._parseCSV(csvWithEmptyLine);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].SensorName).toBe('Battery');
+  });
+
+  test('should process a full CSV-to-Chart workflow', () => {
+    const csvContent = `SensorName,Time_ms,Reading
+Flow,100,10.5
+Flow,200,11.0`;
+
+    const parsed = DataProcessor._parseCSV(csvContent);
+    const result = DataProcessor._transformRawData(
+      DataProcessor._preprocess(parsed),
+      'data.csv'
+    );
+
+    // Verify signal grouping
+    expect(result.signals).toHaveProperty('Flow');
+    expect(result.signals.Flow).toHaveLength(2);
+
+    // Verify internal schema (x, y) mapping
+    expect(result.signals.Flow[0]).toEqual({ x: 100, y: 10.5 });
+    expect(result.signals.Flow[1]).toEqual({ x: 200, y: 11.0 });
   });
 });
