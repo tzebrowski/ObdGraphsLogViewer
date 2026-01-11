@@ -191,6 +191,16 @@ test('loadConfiguration handles missing templates gracefully', async () => {
 });
 
 describe('DataProcessor: Cleaning Operation', () => {
+  test('should map input schema to internal application schema', () => {
+    const input = [{ s: 'Battery\nLevel', t: 1600000000, v: 85 }];
+
+    const [output] = DataProcessor._preprocess(input);
+
+    expect(output).toHaveProperty('s', 'Battery Level');
+    expect(output).toHaveProperty('t', 1600000000); 
+    expect(output).toHaveProperty('v', 85); 
+  });
+
   test('should replace all newline characters with spaces in signal names', () => {
     const rawData = [
       { s: 'Engine\nTemp', t: 1000, v: 90 },

@@ -10,7 +10,11 @@ import { Alert } from './alert.js';
  * Handles telemetry data parsing, chronological sorting, and state synchronization.
  */
 export const DataProcessor = {
-  // --- Configuration Management ---
+   SCHEMA_MAP: {
+    s: 's', // Internal 'signal' maps to input 's'
+    t: 't', // Internal 'timestamp' maps to input 't'
+    v: 'v', // Internal 'value' maps to input 'v'
+  },
 
   /**
    * Initializes anomaly detection templates.
@@ -103,20 +107,30 @@ export const DataProcessor = {
    */
   _preprocess(data) {
     return data.map((point) => {
-      // Create a shallow copy to maintain immutability
-      const p = { ...point };
+      const mapped = this._applySchema(point);
 
-      if (p.s && typeof p.s === 'string') {
-        p.s = p.s.replace(/\n/g, ' ').trim();
+      if (mapped.s && typeof mapped.s === 'string') {
+        mapped.s = mapped.s.replace(/\n/g, ' ').trim();
       }
 
-      p.t = Number(p.t);
-      p.v = Number(p.v);
+      mapped.t = Number(mapped.t);
+      mapped.v = Number(mapped.v);
 
-      // Future: Add unit conversions or scale factors here
-
-      return p;
+      return mapped;
     });
+  },
+
+  /**
+   * Translates input object keys based on SCHEMA_MAP.
+   * @private
+   */
+  _applySchema(rawPoint) {
+    return {
+      s: rawPoint[this.SCHEMA_MAP.s],
+      t: rawPoint[this.SCHEMA_MAP.t],
+      v: rawPoint[this.SCHEMA_MAP.v],
+      original: rawPoint,
+    };
   },
 
   /**
