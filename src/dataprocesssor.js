@@ -10,7 +10,11 @@ import { Alert } from './alert.js';
  * Handles telemetry data parsing, chronological sorting, and state synchronization.
  */
 export const DataProcessor = {
-  // --- Configuration Management ---
+  SCHEMA_MAP: {
+    s: 's', // Internal 'signal' maps to input 's'
+    t: 't', // Internal 'timestamp' maps to input 't'
+    v: 'v', // Internal 'value' maps to input 'v'
+  },
 
   /**
    * Initializes anomaly detection templates.
@@ -80,7 +84,9 @@ export const DataProcessor = {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
-      const fileEntry = this._transformRawData(data, fileName);
+      const cleanData = this._preprocess(data);
+      const fileEntry = this._transformRawData(cleanData, fileName);
+
       AppState.files.push(fileEntry);
 
       this._syncGlobalState(fileEntry);
@@ -94,11 +100,46 @@ export const DataProcessor = {
   // --- Internal Helper Methods (_) ---
 
   /**
+   * Sanitizes and normalizes raw data before transformation.
+   * @param {Array} data - The raw input array
+   * @returns {Array} - The sanitized array
+   * @private
+   */
+  _preprocess(data) {
+    return data.map((point) => {
+      const mapped = this._applySchema(point);
+
+      if (mapped.s && typeof mapped.s === 'string') {
+        mapped.s = mapped.s.replace(/\n/g, ' ').trim();
+      }
+
+      mapped.t = Number(mapped.t);
+      mapped.v = Number(mapped.v);
+
+      return mapped;
+    });
+  },
+
+  /**
+   * Translates input object keys based on SCHEMA_MAP.
+   * @private
+   */
+  _applySchema(rawPoint) {
+    return {
+      s: rawPoint[this.SCHEMA_MAP.s],
+      t: rawPoint[this.SCHEMA_MAP.t],
+      v: rawPoint[this.SCHEMA_MAP.v],
+      original: rawPoint,
+    };
+  },
+
+  /**
    * Transforms raw telemetry points into a structured file entry.
    * @private
    */
   _transformRawData(data, fileName) {
-    const sorted = [...data].sort((a, b) => a.t - b.t); // Sort chronologically
+    const sorted = [...data].sort((a, b) => a.t - b.t);
+
     const signals = {};
     let minT = Infinity,
       maxT = -Infinity;
@@ -116,7 +157,7 @@ export const DataProcessor = {
       rawData: sorted,
       signals: signals,
       startTime: minT,
-      duration: (maxT - minT) / 1000,
+      duration: data.length > 0 ? (maxT - minT) / 1000 : 0,
       availableSignals: Object.keys(signals).sort(),
     };
   },
