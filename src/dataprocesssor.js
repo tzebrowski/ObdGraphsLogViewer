@@ -80,7 +80,9 @@ export const DataProcessor = {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
-      const fileEntry = this._transformRawData(data, fileName);
+      const cleanData = this._preprocess(data);
+      const fileEntry = this._transformRawData(cleanData, fileName);
+
       AppState.files.push(fileEntry);
 
       this._syncGlobalState(fileEntry);
@@ -94,16 +96,36 @@ export const DataProcessor = {
   // --- Internal Helper Methods (_) ---
 
   /**
+   * Sanitizes and normalizes raw data before transformation.
+   * @param {Array} data - The raw input array
+   * @returns {Array} - The sanitized array
+   * @private
+   */
+  _preprocess(data) {
+    return data.map((point) => {
+      // Create a shallow copy to maintain immutability
+      const p = { ...point };
+
+      if (p.s && typeof p.s === 'string') {
+        p.s = p.s.replace(/\n/g, ' ').trim();
+      }
+
+      p.t = Number(p.t);
+      p.v = Number(p.v);
+
+      // Future: Add unit conversions or scale factors here
+
+      return p;
+    });
+  },
+
+  /**
    * Transforms raw telemetry points into a structured file entry.
    * @private
    */
   _transformRawData(data, fileName) {
-    const cleanedData = data.map((p) => ({
-      ...p,
-      s: p.s.replace(/\n/g, ' '),
-    }));
+    const sorted = [...data].sort((a, b) => a.t - b.t);
 
-    const sorted = [...cleanedData].sort((a, b) => a.t - b.t); // Sort chronologically
     const signals = {};
     let minT = Infinity,
       maxT = -Infinity;
@@ -121,7 +143,7 @@ export const DataProcessor = {
       rawData: sorted,
       signals: signals,
       startTime: minT,
-      duration: (maxT - minT) / 1000,
+      duration: data.length > 0 ? (maxT - minT) / 1000 : 0,
       availableSignals: Object.keys(signals).sort(),
     };
   },
