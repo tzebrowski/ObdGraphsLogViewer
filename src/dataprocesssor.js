@@ -71,14 +71,14 @@ export const DataProcessor = {
             rawData = JSON.parse(e.target.result);
           }
 
-          this.process(rawData, file.name);
+          DataProcessor.process(rawData, file.name);
         } catch (err) {
           const msg = `Error parsing ${file.name}: ${err.message}`;
           console.error(msg);
           Alert.showAlert(msg);
         } finally {
           loadedCount++;
-          if (loadedCount === files.length) this._finalizeBatchLoad();
+          if (loadedCount === files.length) DataProcessor._finalizeBatchLoad();
         }
       };
       reader.readAsText(file);
@@ -109,6 +109,11 @@ export const DataProcessor = {
   },
 
   // --- Internal Helper Methods (_) ---
+
+  _finalizeBatchLoad() {
+    UI.setLoading(false);
+    console.log('All files processed and state updated.');
+  },
 
   /**
    * @param {Array} data - The raw input array from the file.
