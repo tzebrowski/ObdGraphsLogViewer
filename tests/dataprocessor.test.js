@@ -197,8 +197,8 @@ describe('DataProcessor: Cleaning Operation', () => {
     const [output] = DataProcessor._preprocess(input);
 
     expect(output).toHaveProperty('s', 'Battery Level');
-    expect(output).toHaveProperty('t', 1600000000); 
-    expect(output).toHaveProperty('v', 85); 
+    expect(output).toHaveProperty('t', 1600000000);
+    expect(output).toHaveProperty('v', 85);
   });
 
   test('should replace all newline characters with spaces in signal names', () => {

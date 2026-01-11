@@ -10,7 +10,7 @@ import { Alert } from './alert.js';
  * Handles telemetry data parsing, chronological sorting, and state synchronization.
  */
 export const DataProcessor = {
-   SCHEMA_MAP: {
+  SCHEMA_MAP: {
     s: 's', // Internal 'signal' maps to input 's'
     t: 't', // Internal 'timestamp' maps to input 't'
     v: 'v', // Internal 'value' maps to input 'v'
