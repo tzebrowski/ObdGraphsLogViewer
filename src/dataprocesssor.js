@@ -10,7 +10,6 @@ import { Alert } from './alert.js';
  * Handles telemetry data parsing, chronological sorting, and state synchronization.
  */
 export const DataProcessor = {
-  
   SCHEMA_REGISTRY: {
     DEFAULT_JSON: { signal: 's', timestamp: 't', value: 'v' },
     LEGACY_CSV: {
@@ -220,7 +219,6 @@ export const DataProcessor = {
     let minT = Infinity,
       maxT = -Infinity;
 
-   
     const { timeKey, valueKey } = this.INTERNAL_SCHEMA;
 
     sorted.forEach((p) => {
