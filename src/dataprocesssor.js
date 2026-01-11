@@ -10,10 +10,18 @@ import { Alert } from './alert.js';
  * Handles telemetry data parsing, chronological sorting, and state synchronization.
  */
 export const DataProcessor = {
-  SCHEMA_MAP: {
-    s: 's', // Internal 'signal' maps to input 's'
-    t: 't', // Internal 'timestamp' maps to input 't'
-    v: 'v', // Internal 'value' maps to input 'v'
+  SCHEMA_REGISTRY: {
+    DEFAULT_JSON: { signal: 's', timestamp: 't', value: 'v' },
+    LEGACY_CSV: {
+      signal: 'SensorName',
+      timestamp: 'Time_ms',
+      value: 'Reading',
+    },
+  },
+
+  INTERNAL_SCHEMA: {
+    timeKey: 'x',
+    valueKey: 'y',
   },
 
   /**
@@ -52,23 +60,27 @@ export const DataProcessor = {
 
     files.forEach((file) => {
       const reader = new FileReader();
+      const isCsv = file.name.endsWith('.csv');
 
       reader.onload = (e) => {
         try {
-          const rawContent = JSON.parse(e.target.result);
-          DataProcessor.process(rawContent, file.name);
+          let rawData;
+          if (isCsv) {
+            rawData = this._parseCSV(e.target.result);
+          } else {
+            rawData = JSON.parse(e.target.result);
+          }
+
+          DataProcessor.process(rawData, file.name);
         } catch (err) {
-          const msg = `Invalid JSON: ${file.name} Error: ${err.message}`;
+          const msg = `Error parsing ${file.name}: ${err.message}`;
           console.error(msg);
           Alert.showAlert(msg);
         } finally {
           loadedCount++;
-          if (loadedCount === files.length) {
-            DataProcessor._finalizeBatchLoad();
-          }
+          if (loadedCount === files.length) DataProcessor._finalizeBatchLoad();
         }
       };
-
       reader.readAsText(file);
     });
   },
@@ -84,12 +96,11 @@ export const DataProcessor = {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
-      const cleanData = this._preprocess(data);
-      const fileEntry = this._transformRawData(cleanData, fileName);
+      const result = this._process(data, fileName);
 
-      AppState.files.push(fileEntry);
+      AppState.files.push(result);
 
-      this._syncGlobalState(fileEntry);
+      this._syncGlobalState(result);
       this._updateUIPipeline();
     } catch (error) {
       console.error('Error occured during file processing', error);
@@ -100,37 +111,102 @@ export const DataProcessor = {
   // --- Internal Helper Methods (_) ---
 
   /**
-   * Sanitizes and normalizes raw data before transformation.
-   * @param {Array} data - The raw input array
-   * @returns {Array} - The sanitized array
+   * @param {Array} data - The raw input array from the file.
+   * @returns {Array} - The standardized and sanitized array.
    * @private
    */
-  _preprocess(data) {
-    return data.map((point) => {
-      const mapped = this._applySchema(point);
+  _process(data, fileName) {
+    const schema = this._detectSchema(data[0]);
+    const preprocessed = data.map((item) =>
+      this._applyMappingAndCleaning(item, schema)
+    );
 
-      if (mapped.s && typeof mapped.s === 'string') {
-        mapped.s = mapped.s.replace(/\n/g, ' ').trim();
-      }
-
-      mapped.t = Number(mapped.t);
-      mapped.v = Number(mapped.v);
-
-      return mapped;
-    });
+    return this._transformRawData(preprocessed, fileName);
   },
 
   /**
-   * Translates input object keys based on SCHEMA_MAP.
+   * Preprocessing Layer: Abstracts and sanitizes raw data.
+   * Translates external file schemas (e.g., s, t, v) into internal application logic.
+   * @param {Array} data - The raw input array from the file.
+   * @returns {Array} - The standardized and sanitized array.
    * @private
    */
-  _applySchema(rawPoint) {
-    return {
-      s: rawPoint[this.SCHEMA_MAP.s],
-      t: rawPoint[this.SCHEMA_MAP.t],
-      v: rawPoint[this.SCHEMA_MAP.v],
-      original: rawPoint,
+  _preprocess(data) {
+    const schema = this._detectSchema(data[0]);
+
+    return data
+      .map((rawPoint) => {
+        const mapped = {
+          signal: rawPoint[schema.signal],
+          timestamp: rawPoint[schema.timestamp],
+          value: rawPoint[schema.value],
+        };
+
+        if (mapped.signal && typeof mapped.signal === 'string') {
+          mapped.signal = mapped.signal.replace(/\n/g, ' ').trim();
+        }
+
+        mapped.timestamp = Number(mapped.timestamp);
+        mapped.value = Number(mapped.value);
+
+        if (isNaN(mapped.timestamp) || isNaN(mapped.value)) {
+          console.warn('Preprocessing: Dropping malformed point', rawPoint);
+          return null;
+        }
+
+        return mapped;
+      })
+      .filter((point) => point !== null); // Remove any dropped points
+  },
+
+  /**
+   * Determines which schema to use based on the keys present in the first data point.
+   * @private
+   */
+  _detectSchema(samplePoint) {
+    if (!samplePoint) return this.SCHEMA_REGISTRY.DEFAULT_JSON;
+
+    if ('SensorName' in samplePoint) return this.SCHEMA_REGISTRY.LEGACY_CSV;
+    if ('ts' in samplePoint) return this.SCHEMA_REGISTRY.STRICT_API;
+
+    return this.SCHEMA_REGISTRY.DEFAULT_JSON;
+  },
+
+  /**
+   * Combines key mapping and data sanitization in one pass.
+   * @private
+   */
+  _applyMappingAndCleaning(rawPoint, schema) {
+    // 1. Map to internal schema
+    const mapped = {
+      signal: rawPoint[schema.signal],
+      timestamp: Number(rawPoint[schema.timestamp]),
+      value: Number(rawPoint[schema.value]),
     };
+
+    // 2. Sanitize signal string
+    if (typeof mapped.signal === 'string') {
+      mapped.signal = mapped.signal.replace(/\n/g, ' ').trim();
+    }
+
+    return mapped;
+  },
+
+  /**
+   * Simple CSV to Object parser (Helper)
+   * @private
+   */
+  _parseCSV(csvText) {
+    const lines = csvText.split('\n').filter((line) => line.trim());
+    const headers = lines[0].split(',').map((h) => h.trim());
+
+    return lines.slice(1).map((line) => {
+      const values = line.split(',');
+      return headers.reduce((obj, header, i) => {
+        obj[header] = values[i];
+        return obj;
+      }, {});
+    });
   },
 
   /**
@@ -138,18 +214,23 @@ export const DataProcessor = {
    * @private
    */
   _transformRawData(data, fileName) {
-    const sorted = [...data].sort((a, b) => a.t - b.t);
-
+    const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
     const signals = {};
     let minT = Infinity,
       maxT = -Infinity;
 
-    sorted.forEach((p) => {
-      if (!signals[p.s]) signals[p.s] = [];
-      signals[p.s].push({ x: p.t, y: p.v });
+    const { timeKey, valueKey } = this.INTERNAL_SCHEMA;
 
-      if (p.t < minT) minT = p.t;
-      if (p.t > maxT) maxT = p.t;
+    sorted.forEach((p) => {
+      if (!signals[p.signal]) signals[p.signal] = [];
+
+      signals[p.signal].push({
+        [timeKey]: p.timestamp,
+        [valueKey]: p.value,
+      });
+
+      if (p.timestamp < minT) minT = p.timestamp;
+      if (p.timestamp > maxT) maxT = p.timestamp;
     });
 
     return {
