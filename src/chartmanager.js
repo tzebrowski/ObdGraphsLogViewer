@@ -19,6 +19,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { messenger } from './bus.js';
 
 /**
  * ChartManager Module
@@ -47,6 +48,13 @@ export const ChartManager = {
       ChartDataLabels,
       zoomPlugin
     );
+
+    messenger.on('dataprocessor:batch-load-completed', (event) => {
+      console.error(
+        `ChartManager: received dataprocessor:batch-load-completed event ${event}`
+      );
+      ChartManager.render();
+    });
   },
 
   render() {

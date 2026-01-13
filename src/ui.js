@@ -1,9 +1,10 @@
 import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
-import { DataProcessor } from './dataprocesssor.js';
+import { dataProcessor } from './dataprocessor.js';
 import { Preferences } from './preferences.js';
 import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 import { ChartManager } from './chartmanager.js';
+import { messenger } from './bus.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -13,6 +14,15 @@ export const UI = {
     UI.initVersionInfo();
     UI.initSidebarSectionsCollapse();
     UI.initMobileUI();
+
+    messenger.on('dataprocessor:batch-load-completed', (event) => {
+      console.error(
+        `UI: received dataprocessor:batch-load-completed event ${event}`
+      );
+      UI.renderSignalList();
+      UI.updateDataLoadedState(true);
+      UI.setLoading(false);
+    });
   },
 
   get elements() {
@@ -403,7 +413,7 @@ export const UI = {
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
 
-      DataProcessor.process(data, 'sample-trip-giulia.json');
+      dataProcessor.process(data, 'sample-trip-giulia.json');
 
       if (showInfo) {
         InfoPage.toggleInfo();

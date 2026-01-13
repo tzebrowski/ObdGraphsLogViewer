@@ -1,28 +1,31 @@
 import templates from './templates.json';
 import { Config, AppState, DOM } from './config.js';
-import { Analysis } from './analysis.js';
-import { ChartManager } from './chartmanager.js';
 import { UI } from './ui.js';
 import { Alert } from './alert.js';
+import { messenger } from './bus.js';
 
 /**
  * DataProcessor Module
  * Handles telemetry data parsing, chronological sorting, and state synchronization.
  */
-export const DataProcessor = {
-  SCHEMA_REGISTRY: {
+class DataProcessor {
+  SCHEMA_REGISTRY = {
     DEFAULT_JSON: { signal: 's', timestamp: 't', value: 'v' },
     LEGACY_CSV: {
       signal: 'SensorName',
       timestamp: 'Time_ms',
       value: 'Reading',
     },
-  },
+  };
 
-  INTERNAL_SCHEMA: {
+  INTERNAL_SCHEMA = {
     timeKey: 'x',
     valueKey: 'y',
-  },
+  };
+
+  constructor() {
+    this.handleLocalFile = this.handleLocalFile.bind(this);
+  }
 
   /**
    * Initializes anomaly detection templates.
@@ -44,7 +47,7 @@ export const DataProcessor = {
         /* ignore */
       }
     }
-  },
+  }
 
   // --- Local File Handling ---
 
@@ -71,19 +74,19 @@ export const DataProcessor = {
             rawData = JSON.parse(e.target.result);
           }
 
-          DataProcessor.process(rawData, file.name);
+          this.process(rawData, file.name);
         } catch (err) {
           const msg = `Error parsing ${file.name}: ${err.message}`;
           console.error(msg);
           Alert.showAlert(msg);
         } finally {
           loadedCount++;
-          if (loadedCount === files.length) DataProcessor._finalizeBatchLoad();
+          if (loadedCount === files.length) this._finalizeBatchLoad();
         }
       };
       reader.readAsText(file);
     });
-  },
+  }
 
   // --- Data Transformation & State Sync ---
 
@@ -106,7 +109,7 @@ export const DataProcessor = {
       console.error('Error occured during file processing', error);
       UI.updateDataLoadedState(false);
     }
-  },
+  }
 
   // --- Internal Helper Methods (_) ---
 
@@ -117,47 +120,12 @@ export const DataProcessor = {
    */
   _process(data, fileName) {
     const schema = this._detectSchema(data[0]);
-    const preprocessed = data.map((item) =>
-      this._applyMappingAndCleaning(item, schema)
-    );
+    const processedPoints = data
+      .map((item) => this._applyMappingAndCleaning(item, schema))
+      .filter((point) => point !== null);
 
-    return this._transformRawData(preprocessed, fileName);
-  },
-
-  /**
-   * Preprocessing Layer: Abstracts and sanitizes raw data.
-   * Translates external file schemas (e.g., s, t, v) into internal application logic.
-   * @param {Array} data - The raw input array from the file.
-   * @returns {Array} - The standardized and sanitized array.
-   * @private
-   */
-  _preprocess(data) {
-    const schema = this._detectSchema(data[0]);
-
-    return data
-      .map((rawPoint) => {
-        const mapped = {
-          signal: rawPoint[schema.signal],
-          timestamp: rawPoint[schema.timestamp],
-          value: rawPoint[schema.value],
-        };
-
-        if (mapped.signal && typeof mapped.signal === 'string') {
-          mapped.signal = mapped.signal.replace(/\n/g, ' ').trim();
-        }
-
-        mapped.timestamp = Number(mapped.timestamp);
-        mapped.value = Number(mapped.value);
-
-        if (isNaN(mapped.timestamp) || isNaN(mapped.value)) {
-          console.warn('Preprocessing: Dropping malformed point', rawPoint);
-          return null;
-        }
-
-        return mapped;
-      })
-      .filter((point) => point !== null); // Remove any dropped points
-  },
+    return this._transformRawData(processedPoints, fileName);
+  }
 
   /**
    * Determines which schema to use based on the keys present in the first data point.
@@ -170,27 +138,34 @@ export const DataProcessor = {
     if ('ts' in samplePoint) return this.SCHEMA_REGISTRY.STRICT_API;
 
     return this.SCHEMA_REGISTRY.DEFAULT_JSON;
-  },
+  }
 
   /**
    * Combines key mapping and data sanitization in one pass.
    * @private
    */
   _applyMappingAndCleaning(rawPoint, schema) {
-    // 1. Map to internal schema
-    const mapped = {
-      signal: rawPoint[schema.signal],
-      timestamp: Number(rawPoint[schema.timestamp]),
-      value: Number(rawPoint[schema.value]),
-    };
+    try {
+      const mapped = {
+        signal: rawPoint[schema.signal],
+        timestamp: Number(rawPoint[schema.timestamp]),
+        value: Number(rawPoint[schema.value]),
+      };
 
-    // 2. Sanitize signal string
-    if (typeof mapped.signal === 'string') {
-      mapped.signal = mapped.signal.replace(/\n/g, ' ').trim();
+      if (typeof mapped.signal === 'string') {
+        mapped.signal = mapped.signal.replace(/\n/g, ' ').trim();
+      }
+
+      if (isNaN(mapped.timestamp) || isNaN(mapped.value)) {
+        console.warn('Preprocessing: Dropping malformed point', rawPoint);
+        return null;
+      }
+
+      return mapped;
+    } catch {
+      return null;
     }
-
-    return mapped;
-  },
+  }
 
   /**
    * Simple CSV to Object parser (Helper)
@@ -207,7 +182,7 @@ export const DataProcessor = {
         return obj;
       }, {});
     });
-  },
+  }
 
   /**
    * Transforms raw telemetry points into a structured file entry.
@@ -241,7 +216,7 @@ export const DataProcessor = {
       duration: data.length > 0 ? (maxT - minT) / 1000 : 0,
       availableSignals: Object.keys(signals).sort(),
     };
-  },
+  }
 
   /**
    * Synchronizes global application state upon the first file load.
@@ -251,9 +226,8 @@ export const DataProcessor = {
     if (AppState.files.length === 1) {
       AppState.globalStartTime = fileEntry.startTime;
       AppState.logDuration = fileEntry.duration;
-      Analysis.init();
     }
-  },
+  }
 
   /**
    * Triggers the UI update pipeline for charts, lists, and status indicators.
@@ -264,20 +238,17 @@ export const DataProcessor = {
     if (fileInfo) {
       fileInfo.innerText = `${AppState.files.length} logs loaded`;
     }
-
-    UI.renderSignalList();
-    ChartManager.render();
-    UI.updateDataLoadedState(true);
-    Analysis.refreshFilterOptions();
-  },
+  }
 
   /**
    * Handles cleanup tasks after a batch of files has been parsed.
    * @private
    */
   _finalizeBatchLoad() {
-    UI.setLoading(false);
+    messenger.emit('dataprocessor:batch-load-completed', {});
     const input = DOM.get('fileInput');
     if (input) input.value = '';
-  },
-};
+  }
+}
+
+export const dataProcessor = new DataProcessor();

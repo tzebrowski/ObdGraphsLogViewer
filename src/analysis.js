@@ -1,6 +1,7 @@
 import { Config, AppState, DOM, SIGNAL_MAPPINGS } from './config.js';
 import { UI } from './ui.js';
 import { ChartManager } from './chartmanager.js';
+import { messenger } from './bus.js';
 
 /**
  * Analysis Module
@@ -11,6 +12,13 @@ export const Analysis = {
     this.initTemplates();
     const scanBtn = DOM.get('btnRunScan');
     if (scanBtn) scanBtn.onclick = () => this.runScan();
+
+    messenger.on('dataprocessor:batch-load-completed', (event) => {
+      console.error(
+        `Analysis: received dataprocessor:batch-load-completed event ${event}`
+      );
+      Analysis.refreshFilterOptions();
+    });
   },
 
   initTemplates() {

@@ -2,7 +2,7 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { Drive } from '../../src/drive.js';
 import { DOM } from '../../src/config.js';
 import { UI } from '../../src/ui.js';
-import { DataProcessor } from '../../src/dataprocesssor.js';
+import { dataProcessor } from '../../src/dataprocessor.js';
 
 describe('Drive Module - API & Folder Discovery', () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe('Drive Module - Various Tests', () => {
     localStorage.clear();
     jest.clearAllMocks();
 
-    DataProcessor.process = jest.fn();
+    dataProcessor.process = jest.fn();
 
     // Global GAPI mock
     global.gapi = {
@@ -137,8 +137,8 @@ describe('Drive Module - Various Tests', () => {
     await Promise.all([promise1, promise2]);
 
     // DataProcessor should only be called for the second file
-    expect(DataProcessor.process).toHaveBeenCalledTimes(1);
-    expect(DataProcessor.process).not.toHaveBeenCalledWith(
+    expect(dataProcessor.process).toHaveBeenCalledTimes(1);
+    expect(dataProcessor.process).not.toHaveBeenCalledWith(
       expect.anything(),
       'file1'
     );
