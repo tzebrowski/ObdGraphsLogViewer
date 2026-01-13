@@ -59,7 +59,7 @@ describe('DataProcessor Module Tests', () => {
       { s: 'RPM', t: 1000, v: 800 },
     ];
 
-    const sortedData = dataProcessor._process(unsortedData, 'unsorted.json');
+    const sortedData = dataProcessor.process(unsortedData, 'unsorted.json');
     expect(sortedData.rawData[0].timestamp).toBe(1000);
     expect(sortedData.rawData[1].timestamp).toBe(5000);
   });
@@ -185,7 +185,7 @@ describe('DataProcessor: Cleaning Operation', () => {
   test('should map input schema to internal application schema', () => {
     const raw = [{ s: 'Battery\nLevel', t: 1600000000, v: 85 }];
 
-    const result = dataProcessor._process(raw, 'test.json');
+    const result = dataProcessor.process(raw, 'test.json');
 
     expect(result.rawData[0].signal).toBe('Battery Level');
     expect(result.rawData[0].timestamp).toBe(1600000000);
@@ -198,7 +198,7 @@ describe('DataProcessor: Cleaning Operation', () => {
       { s: 'Battery\nStatus\nMain', t: 2000, v: 12.5 },
     ];
 
-    const result = dataProcessor._process(rawData, 'test_log.json');
+    const result = dataProcessor.process(rawData, 'test_log.json');
 
     // Assertions for cleaning
     expect(result.rawData[0].signal).toBe('Engine Temp');
@@ -212,7 +212,7 @@ describe('DataProcessor: Cleaning Operation', () => {
   test('should not modify signal names that have no newlines', () => {
     const rawData = [{ s: 'CleanName', t: 1000, v: 50 }];
 
-    const result = dataProcessor._process(rawData, 'test.json');
+    const result = dataProcessor.process(rawData, 'test.json');
 
     expect(result.rawData[0].signal).toBe('CleanName');
   });
@@ -220,7 +220,7 @@ describe('DataProcessor: Cleaning Operation', () => {
   test('should preserve timestamp (t) and value (v) during cleaning', () => {
     const rawData = [{ s: 'Dirty\nName', t: 123456789, v: -42.5 }];
 
-    const result = dataProcessor._process(rawData, 'test.json');
+    const result = dataProcessor.process(rawData, 'test.json');
 
     expect(result.rawData[0].timestamp).toBe(123456789);
     expect(result.rawData[0].value).toBe(-42.5);
@@ -232,7 +232,7 @@ describe('DataProcessor: Cleaning Operation', () => {
       { s: 'C\nD', t: 1000, v: 2 },
     ];
 
-    const result = dataProcessor._process(rawData, 'test.json');
+    const result = dataProcessor.process(rawData, 'test.json');
 
     // (5000ms - 1000ms) / 1000 = 4 seconds
     expect(result.duration).toBe(4);
@@ -242,7 +242,7 @@ describe('DataProcessor: Cleaning Operation', () => {
     // Input uses external schema (s, t, v)
     const input = [{ s: ' Speed\n', t: '1000', v: '50.5' }];
 
-    const result = dataProcessor._process(input, 'test.json');
+    const result = dataProcessor.process(input, 'test.json');
 
     // Assertions must use the new internal schema keys
     expect(result.rawData[0].signal).toBe('Speed'); // Was output.s
@@ -255,7 +255,7 @@ describe('DataProcessor: Cleaning Operation', () => {
 
   test('should map signals to internal chart schema (x and y)', () => {
     const input = [{ s: 'Temp', t: 100, v: 25 }];
-    const result = dataProcessor._process(input, 'test.json');
+    const result = dataProcessor.process(input, 'test.json');
     const signalData = result.signals['Temp'][0];
 
     // Verify the chart-ready keys exist
@@ -288,7 +288,7 @@ OilPressure,2000,45`;
       { SensorName: ' RPM\n', Time_ms: '5000', Reading: '3000' },
     ];
 
-    const result = dataProcessor._process(rawCsvData, 'test.csv');
+    const result = dataProcessor.process(rawCsvData, 'test.csv');
 
     // Assert that it used the LEGACY_CSV mapping (SensorName -> signal)
     expect(result.rawData[0].signal).toBe('RPM'); // Mapped and cleaned

@@ -99,12 +99,18 @@ class DataProcessor {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
-      const result = this._process(data, fileName);
+      const schema = this._detectSchema(data[0]);
+      const processedPoints = data
+        .map((item) => this._applyMappingAndCleaning(item, schema))
+        .filter((point) => point !== null);
+
+      const result = this._transformRawData(processedPoints, fileName);
 
       AppState.files.push(result);
 
       this._syncGlobalState(result);
       this._updateUIPipeline();
+      return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
       UI.updateDataLoadedState(false);
@@ -112,20 +118,6 @@ class DataProcessor {
   }
 
   // --- Internal Helper Methods (_) ---
-
-  /**
-   * @param {Array} data - The raw input array from the file.
-   * @returns {Array} - The standardized and sanitized array.
-   * @private
-   */
-  _process(data, fileName) {
-    const schema = this._detectSchema(data[0]);
-    const processedPoints = data
-      .map((item) => this._applyMappingAndCleaning(item, schema))
-      .filter((point) => point !== null);
-
-    return this._transformRawData(processedPoints, fileName);
-  }
 
   /**
    * Determines which schema to use based on the keys present in the first data point.
