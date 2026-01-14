@@ -22,6 +22,11 @@ export const UI = {
       UI.renderSignalList();
       UI.updateDataLoadedState(true);
       UI.setLoading(false);
+
+      const fileInfo = DOM.get('fileInfo');
+      if (fileInfo) {
+        fileInfo.innerText = `${AppState.files.length} logs loaded`;
+      }
     });
   },
 

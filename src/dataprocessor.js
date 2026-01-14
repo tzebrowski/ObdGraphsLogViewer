@@ -109,7 +109,6 @@ class DataProcessor {
       AppState.files.push(result);
 
       this.#syncGlobalState(result);
-      this.#updateUIPipeline();
       return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
@@ -218,17 +217,6 @@ class DataProcessor {
     if (AppState.files.length === 1) {
       AppState.globalStartTime = fileEntry.startTime;
       AppState.logDuration = fileEntry.duration;
-    }
-  }
-
-  /**
-   * Triggers the UI update pipeline for charts, lists, and status indicators.
-   * @private
-   */
-  #updateUIPipeline() {
-    const fileInfo = DOM.get('fileInfo');
-    if (fileInfo) {
-      fileInfo.innerText = `${AppState.files.length} logs loaded`;
     }
   }
 
