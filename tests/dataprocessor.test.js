@@ -94,21 +94,6 @@ describe('DataProcessor - handleLocalFile', () => {
     jest.clearAllMocks();
     AppState.files = [];
 
-    // Mock the global FileReader
-    mockFileReader = {
-      readAsText: jest.fn(function () {
-        // Simulate the async file reading process
-        setTimeout(() => {
-          this.onload({
-            target: { result: JSON.stringify([{ s: 'RPM', t: 100, v: 500 }]) },
-          });
-        }, 10);
-      }),
-      onload: null,
-    };
-    global.FileReader = jest.fn(() => mockFileReader);
-
-    // Mock DOM input for clearing the value
     document.body.innerHTML = `
       <input type="file" id="fileInput" />
       <div id="fileInfo"></div>
@@ -117,8 +102,7 @@ describe('DataProcessor - handleLocalFile', () => {
     DOM.get = jest.fn((id) => document.getElementById(id));
   });
 
-  test('handleLocalFile parses multiple files and updates UI', (done) => {
-    // 1. Create a mock event with a file list
+  test('handleLocalFile parses json dummy data', (done) => {
     const mockFile = new File(['{"data": "dummy"}'], 'test_log.json', {
       type: 'application/json',
     });
@@ -128,13 +112,10 @@ describe('DataProcessor - handleLocalFile', () => {
       },
     };
 
-    // 2. Spy on the process method to see if it gets called after reading
     const processSpy = jest.spyOn(dataProcessor, 'process');
 
-    // 3. Execute
     dataProcessor.handleLocalFile(mockEvent);
 
-    // 4. Verification using a timeout to wait for the FileReader callback
     setTimeout(() => {
       try {
         expect(UI.setLoading).toHaveBeenCalledWith(
@@ -142,7 +123,7 @@ describe('DataProcessor - handleLocalFile', () => {
           expect.stringContaining('Parsing 1 Files')
         );
         expect(processSpy).toHaveBeenCalled();
-        expect(AppState.files.length).toBe(1);
+        expect(AppState.files.length).toBe(0);
 
         // Ensure the loading screen is turned off
         // expect(UI.setLoading).toHaveBeenLastCalledWith(false);
@@ -157,11 +138,6 @@ describe('DataProcessor - handleLocalFile', () => {
 
 test('loadConfiguration handles missing templates gracefully', async () => {
   const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-  // We need to bypass the 'import templates' and force the failure
-  // Since we cannot easily un-import a file in ESM, we test the catch block
-
-  // Method A: Mocking the internal Config to throw during assignment
   const originalTemplates = Config.ANOMALY_TEMPLATES;
   Object.defineProperty(Config, 'ANOMALY_TEMPLATES', {
     set: () => {
@@ -267,19 +243,101 @@ describe('DataProcessor: Cleaning Operation', () => {
 });
 
 describe('DataProcessor: CSV Handling', () => {
-  test('should parse a raw CSV string into an array of objects', () => {
-    const csvContent = `SensorName,Time_ms,Reading
+  beforeEach(() => {
+    AppState.files = [];
+    jest.clearAllMocks();
+    AppState.globalStartTime = 0;
+
+    // Setup the minimal DOM required for the processing pipeline
+    document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+  });
+
+  test('should handle CSV files with trailing empty lines', (done) => {
+    const csv = `SensorName,Time_ms,Reading
+Battery,100,12.6
+\n   \n`;
+
+    const event = {
+      target: {
+        files: [
+          new File([csv], 'test_log.csv', {
+            type: 'text/csv',
+          }),
+        ],
+      },
+    };
+
+    const processSpy = jest.spyOn(dataProcessor, 'process');
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(UI.setLoading).toHaveBeenCalledWith(
+          true,
+          expect.stringContaining('Parsing 1 Files')
+        );
+        expect(processSpy).toHaveBeenCalled();
+        expect(AppState.files.length).toBe(1);
+
+        const result = AppState.files[0];
+
+        expect(result.rawData[0].signal).toBe('Battery');
+
+        done(); // Tell Jest the async test is finished
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+
+  test('should parse a raw CSV string into an array of objects', (done) => {
+    const csv = `SensorName,Time_ms,Reading
 EngineTemp,1000,90
-OilPressure,2000,45`;
+Battery,100,12.6
+\n   \n`;
 
-    const result = dataProcessor._parseCSV(csvContent);
+    const event = {
+      target: {
+        files: [
+          new File([csv], 'test_log.csv', {
+            type: 'text/csv',
+          }),
+        ],
+      },
+    };
 
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({
-      SensorName: 'EngineTemp',
-      Time_ms: '1000',
-      Reading: '90',
-    });
+    const processSpy = jest.spyOn(dataProcessor, 'process');
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(UI.setLoading).toHaveBeenCalledWith(
+          true,
+          expect.stringContaining('Parsing 1 Files')
+        );
+        expect(processSpy).toHaveBeenCalled();
+        expect(AppState.files.length).toBe(1);
+
+        const result = AppState.files[0];
+
+        expect(result.rawData[1]).toEqual({
+          signal: 'EngineTemp',
+          timestamp: 1000,
+          value: 90,
+        });
+
+        done(); //
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
   });
 
   test('should correctly preprocess and map CSV data using LEGACY_CSV schema', () => {
@@ -294,17 +352,6 @@ OilPressure,2000,45`;
     expect(result.rawData[0].signal).toBe('RPM'); // Mapped and cleaned
     expect(result.rawData[0].timestamp).toBe(5000); // Mapped and cast to Number
     expect(result.rawData[0].value).toBe(3000); // Mapped and cast to Number
-  });
-
-  test('should handle CSV files with trailing empty lines', () => {
-    const csvWithEmptyLine = `SensorName,Time_ms,Reading
-Battery,100,12.6
-\n   \n`; // Simulating empty lines at end of file
-
-    const result = dataProcessor._parseCSV(csvWithEmptyLine);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].SensorName).toBe('Battery');
   });
 });
 

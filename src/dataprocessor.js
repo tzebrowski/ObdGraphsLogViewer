@@ -56,24 +56,24 @@ class DataProcessor {
    */
   handleLocalFile(event) {
     const files = Array.from(event.target.files);
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      return;
+    }
 
     UI.setLoading(true, `Parsing ${files.length} Files...`);
     let loadedCount = 0;
 
     files.forEach((file) => {
       const reader = new FileReader();
-      const isCsv = file.name.endsWith('.csv');
 
       reader.onload = (e) => {
         try {
           let rawData;
-          if (isCsv) {
-            rawData = this._parseCSV(e.target.result);
+          if (file.name.endsWith('.csv')) {
+            rawData = this.#parseCSV(e.target.result);
           } else {
             rawData = JSON.parse(e.target.result);
           }
-
           this.process(rawData, file.name);
         } catch (err) {
           const msg = `Error parsing ${file.name}: ${err.message}`;
@@ -81,7 +81,7 @@ class DataProcessor {
           Alert.showAlert(msg);
         } finally {
           loadedCount++;
-          if (loadedCount === files.length) this._finalizeBatchLoad();
+          if (loadedCount === files.length) this.#finalizeBatchLoad();
         }
       };
       reader.readAsText(file);
@@ -99,17 +99,17 @@ class DataProcessor {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
-      const schema = this._detectSchema(data[0]);
+      const schema = this.#detectSchema(data[0]);
       const processedPoints = data
-        .map((item) => this._applyMappingAndCleaning(item, schema))
+        .map((item) => this.#applyMappingAndCleaning(item, schema))
         .filter((point) => point !== null);
 
-      const result = this._transformRawData(processedPoints, fileName);
+      const result = this.#transformRawData(processedPoints, fileName);
 
       AppState.files.push(result);
 
-      this._syncGlobalState(result);
-      this._updateUIPipeline();
+      this.#syncGlobalState(result);
+      this.#updateUIPipeline();
       return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
@@ -123,7 +123,7 @@ class DataProcessor {
    * Determines which schema to use based on the keys present in the first data point.
    * @private
    */
-  _detectSchema(samplePoint) {
+  #detectSchema(samplePoint) {
     if (!samplePoint) return this.SCHEMA_REGISTRY.DEFAULT_JSON;
 
     if ('SensorName' in samplePoint) return this.SCHEMA_REGISTRY.LEGACY_CSV;
@@ -136,7 +136,7 @@ class DataProcessor {
    * Combines key mapping and data sanitization in one pass.
    * @private
    */
-  _applyMappingAndCleaning(rawPoint, schema) {
+  #applyMappingAndCleaning(rawPoint, schema) {
     try {
       const mapped = {
         signal: rawPoint[schema.signal],
@@ -163,7 +163,7 @@ class DataProcessor {
    * Simple CSV to Object parser (Helper)
    * @private
    */
-  _parseCSV(csvText) {
+  #parseCSV(csvText) {
     const lines = csvText.split('\n').filter((line) => line.trim());
     const headers = lines[0].split(',').map((h) => h.trim());
 
@@ -180,7 +180,7 @@ class DataProcessor {
    * Transforms raw telemetry points into a structured file entry.
    * @private
    */
-  _transformRawData(data, fileName) {
+  #transformRawData(data, fileName) {
     const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
     const signals = {};
     let minT = Infinity,
@@ -214,7 +214,7 @@ class DataProcessor {
    * Synchronizes global application state upon the first file load.
    * @private
    */
-  _syncGlobalState(fileEntry) {
+  #syncGlobalState(fileEntry) {
     if (AppState.files.length === 1) {
       AppState.globalStartTime = fileEntry.startTime;
       AppState.logDuration = fileEntry.duration;
@@ -225,7 +225,7 @@ class DataProcessor {
    * Triggers the UI update pipeline for charts, lists, and status indicators.
    * @private
    */
-  _updateUIPipeline() {
+  #updateUIPipeline() {
     const fileInfo = DOM.get('fileInfo');
     if (fileInfo) {
       fileInfo.innerText = `${AppState.files.length} logs loaded`;
@@ -236,7 +236,7 @@ class DataProcessor {
    * Handles cleanup tasks after a batch of files has been parsed.
    * @private
    */
-  _finalizeBatchLoad() {
+  #finalizeBatchLoad() {
     messenger.emit('dataprocessor:batch-load-completed', {});
     const input = DOM.get('fileInput');
     if (input) input.value = '';
