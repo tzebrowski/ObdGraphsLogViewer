@@ -16,9 +16,6 @@ export const UI = {
     UI.initMobileUI();
 
     messenger.on('dataprocessor:batch-load-completed', (event) => {
-      console.error(
-        `UI: received dataprocessor:batch-load-completed event ${event}`
-      );
       UI.renderSignalList();
       UI.updateDataLoadedState(true);
       UI.setLoading(false);

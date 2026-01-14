@@ -50,9 +50,6 @@ export const ChartManager = {
     );
 
     messenger.on('dataprocessor:batch-load-completed', (event) => {
-      console.error(
-        `ChartManager: received dataprocessor:batch-load-completed event ${event}`
-      );
       ChartManager.render();
     });
   },

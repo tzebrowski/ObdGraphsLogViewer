@@ -14,9 +14,6 @@ export const Analysis = {
     if (scanBtn) scanBtn.onclick = () => this.runScan();
 
     messenger.on('dataprocessor:batch-load-completed', (event) => {
-      console.error(
-        `Analysis: received dataprocessor:batch-load-completed event ${event}`
-      );
       Analysis.refreshFilterOptions();
     });
   },
