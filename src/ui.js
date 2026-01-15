@@ -15,6 +15,14 @@ export const UI = {
     UI.initSidebarSectionsCollapse();
     UI.initMobileUI();
 
+    messenger.on('ui:updateDataLoadedState', (event) => {
+      UI.updateDataLoadedState(event.status);
+    });
+
+    messenger.on('ui:set-loading', (event) => {
+      UI.setLoading(true, event.message);
+    });
+
     messenger.on('dataprocessor:batch-load-completed', (event) => {
       UI.renderSignalList();
       UI.updateDataLoadedState(true);

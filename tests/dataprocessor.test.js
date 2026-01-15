@@ -2,10 +2,12 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
 import { dataProcessor } from '../src/dataprocessor.js';
 import { AppState, DOM } from '../src/config.js';
-import { UI } from '../src/ui.js';
+import { messenger } from '../src/bus.js';
 import { Config } from '../src/config.js';
+import { UI } from '../src/ui.js';
 
 UI.setLoading = jest.fn();
+messenger.emit = jest.fn();
 
 describe('DataProcessor Module Tests', () => {
   beforeEach(() => {
@@ -112,21 +114,26 @@ describe('DataProcessor - handleLocalFile', () => {
       },
     };
 
-    const processSpy = jest.spyOn(dataProcessor, 'process');
-
     dataProcessor.handleLocalFile(mockEvent);
 
     setTimeout(() => {
       try {
-        expect(UI.setLoading).toHaveBeenCalledWith(
-          true,
-          expect.stringContaining('Parsing 1 Files')
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:set-loading'),
+          { message: 'Parsing 1 Files...' }
         );
-        expect(processSpy).toHaveBeenCalled();
-        expect(AppState.files.length).toBe(0);
 
-        // Ensure the loading screen is turned off
-        // expect(UI.setLoading).toHaveBeenLastCalledWith(false);
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:updateDataLoadedState'),
+          { status: false }
+        );
+
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('dataprocessor:batch-load-completed'),
+          {}
+        );
+
+        expect(AppState.files.length).toBe(0);
 
         done(); // Tell Jest the async test is finished
       } catch (error) {
@@ -272,17 +279,19 @@ Battery,100,12.6
       },
     };
 
-    const processSpy = jest.spyOn(dataProcessor, 'process');
-
     dataProcessor.handleLocalFile(event);
 
     setTimeout(() => {
       try {
-        expect(UI.setLoading).toHaveBeenCalledWith(
-          true,
-          expect.stringContaining('Parsing 1 Files')
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:set-loading'),
+          { message: 'Parsing 1 Files...' }
         );
-        expect(processSpy).toHaveBeenCalled();
+
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('dataprocessor:batch-load-completed'),
+          {}
+        );
         expect(AppState.files.length).toBe(1);
 
         const result = AppState.files[0];
@@ -312,17 +321,20 @@ Battery,100,12.6
       },
     };
 
-    const processSpy = jest.spyOn(dataProcessor, 'process');
-
     dataProcessor.handleLocalFile(event);
 
     setTimeout(() => {
       try {
-        expect(UI.setLoading).toHaveBeenCalledWith(
-          true,
-          expect.stringContaining('Parsing 1 Files')
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:set-loading'),
+          { message: 'Parsing 1 Files...' }
         );
-        expect(processSpy).toHaveBeenCalled();
+
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('dataprocessor:batch-load-completed'),
+          {}
+        );
+
         expect(AppState.files.length).toBe(1);
 
         const result = AppState.files[0];

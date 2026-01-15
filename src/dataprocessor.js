@@ -1,6 +1,5 @@
 import templates from './templates.json';
 import { Config, AppState, DOM } from './config.js';
-import { UI } from './ui.js';
 import { Alert } from './alert.js';
 import { messenger } from './bus.js';
 
@@ -60,7 +59,10 @@ class DataProcessor {
       return;
     }
 
-    UI.setLoading(true, `Parsing ${files.length} Files...`);
+    messenger.emit('ui:set-loading', {
+      message: `Parsing ${files.length} Files...`,
+    });
+
     let loadedCount = 0;
 
     files.forEach((file) => {
@@ -74,7 +76,7 @@ class DataProcessor {
           } else {
             rawData = JSON.parse(e.target.result);
           }
-          this.process(rawData, file.name);
+          this.#process(rawData, file.name);
         } catch (err) {
           const msg = `Error parsing ${file.name}: ${err.message}`;
           console.error(msg);
@@ -96,6 +98,14 @@ class DataProcessor {
    * @param {string} fileName - Source file identifier
    */
   process(data, fileName) {
+    const result = this.#process(data, fileName);
+    this.#finalizeBatchLoad();
+    return result;
+  }
+
+  // --- Internal Helper Methods (_) ---
+
+  #process(data, fileName) {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
@@ -105,18 +115,15 @@ class DataProcessor {
         .filter((point) => point !== null);
 
       const result = this.#transformRawData(processedPoints, fileName);
-
       AppState.files.push(result);
 
       this.#syncGlobalState(result);
       return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
-      UI.updateDataLoadedState(false);
+      messenger.emit('ui:updateDataLoadedState', { status: false });
     }
   }
-
-  // --- Internal Helper Methods (_) ---
 
   /**
    * Determines which schema to use based on the keys present in the first data point.
@@ -225,6 +232,7 @@ class DataProcessor {
    * @private
    */
   #finalizeBatchLoad() {
+    console.error('dataprocessor:batch-load-completed');
     messenger.emit('dataprocessor:batch-load-completed', {});
     const input = DOM.get('fileInput');
     if (input) input.value = '';
