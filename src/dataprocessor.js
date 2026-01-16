@@ -9,15 +9,15 @@ import { messenger } from './bus.js';
  */
 class DataProcessor {
   SCHEMA_REGISTRY = {
-    DEFAULT_JSON: { signal: 's', timestamp: 't', value: 'v' },
-    LEGACY_CSV: {
+    JSON: { signal: 's', timestamp: 't', value: 'v' },
+    CSV: {
       signal: 'SensorName',
       timestamp: 'Time_ms',
       value: 'Reading',
     },
   };
 
-  INTERNAL_SCHEMA = {
+  SCHEMA = {
     timeKey: 'x',
     valueKey: 'y',
   };
@@ -130,12 +130,11 @@ class DataProcessor {
    * @private
    */
   #detectSchema(samplePoint) {
-    if (!samplePoint) return this.SCHEMA_REGISTRY.DEFAULT_JSON;
+    if (!samplePoint) return this.SCHEMA_REGISTRY.JSON;
 
-    if ('SensorName' in samplePoint) return this.SCHEMA_REGISTRY.LEGACY_CSV;
-    if ('ts' in samplePoint) return this.SCHEMA_REGISTRY.STRICT_API;
+    if ('SensorName' in samplePoint) return this.SCHEMA_REGISTRY.CSV;
 
-    return this.SCHEMA_REGISTRY.DEFAULT_JSON;
+    return this.SCHEMA_REGISTRY.JSON;
   }
 
   /**
@@ -192,7 +191,7 @@ class DataProcessor {
     let minT = Infinity,
       maxT = -Infinity;
 
-    const { timeKey, valueKey } = this.INTERNAL_SCHEMA;
+    const { timeKey, valueKey } = this.SCHEMA;
 
     sorted.forEach((p) => {
       if (!signals[p.signal]) signals[p.signal] = [];
