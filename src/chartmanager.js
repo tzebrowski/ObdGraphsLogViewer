@@ -498,8 +498,6 @@ export const ChartManager = {
 
   _handleEmptyState() {
     UI.updateDataLoadedState(false);
-    AppState.globalStartTime = 0;
-    AppState.logDuration = 0;
   },
 
   getAlphaColor: (hex, alpha = 0.1) => {

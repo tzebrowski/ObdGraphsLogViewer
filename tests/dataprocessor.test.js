@@ -14,7 +14,6 @@ describe('DataProcessor Module Tests', () => {
     jest.clearAllMocks();
 
     AppState.files = [];
-    AppState.globalStartTime = 0;
 
     // Setup the minimal DOM required for the processing pipeline
     document.body.innerHTML = `
@@ -47,9 +46,7 @@ describe('DataProcessor Module Tests', () => {
     expect(file.availableSignals).toContain('Speed');
     expect(file.signals['RPM']).toHaveLength(2);
 
-    // Check Duration (2000 - 1000) / 1000 = 1s
     expect(file.duration).toBe(1);
-    expect(AppState.globalStartTime).toBe(1000);
   });
 
   /**
@@ -253,7 +250,6 @@ describe('DataProcessor: CSV Handling', () => {
   beforeEach(() => {
     AppState.files = [];
     jest.clearAllMocks();
-    AppState.globalStartTime = 0;
 
     // Setup the minimal DOM required for the processing pipeline
     document.body.innerHTML = `

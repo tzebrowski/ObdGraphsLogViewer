@@ -117,7 +117,6 @@ class DataProcessor {
       const result = this.#transformRawData(processedPoints, fileName);
       AppState.files.push(result);
 
-      this.#syncGlobalState(result);
       return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
@@ -213,17 +212,6 @@ class DataProcessor {
       duration: data.length > 0 ? (maxT - minT) / 1000 : 0,
       availableSignals: Object.keys(signals).sort(),
     };
-  }
-
-  /**
-   * Synchronizes global application state upon the first file load.
-   * @private
-   */
-  #syncGlobalState(fileEntry) {
-    if (AppState.files.length === 1) {
-      AppState.globalStartTime = fileEntry.startTime;
-      AppState.logDuration = fileEntry.duration;
-    }
   }
 
   /**
