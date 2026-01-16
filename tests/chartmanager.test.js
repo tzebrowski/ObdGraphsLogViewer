@@ -43,7 +43,6 @@ describe('ChartManager Module Comprehensive Tests', () => {
     jest.clearAllMocks();
     AppState.files = [mockFile];
     AppState.chartInstances = [];
-    AppState.globalStartTime = 0;
 
     document.body.innerHTML = `
       <div id="chartContainer">
@@ -121,7 +120,6 @@ describe('ChartManager Module Comprehensive Tests', () => {
       AppState.files = [];
       ChartManager.render();
       expect(UI.updateDataLoadedState).toHaveBeenCalledWith(false);
-      expect(AppState.globalStartTime).toBe(0);
     });
 
     test('render() creates card and canvas for uploaded files', () => {

@@ -35,8 +35,6 @@ export const AppState = {
   chartInstances: [],
   rawData: [],
   signals: {},
-  globalStartTime: 0,
-  logDuration: 0,
   chartInstance: null,
   activeHighlight: null,
   google: {
