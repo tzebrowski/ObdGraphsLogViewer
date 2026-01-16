@@ -1,6 +1,7 @@
 import { Config, AppState, DOM, SIGNAL_MAPPINGS } from './config.js';
 import { UI } from './ui.js';
 import { ChartManager } from './chartmanager.js';
+import { messenger } from './bus.js';
 
 /**
  * Analysis Module
@@ -11,6 +12,10 @@ export const Analysis = {
     this.initTemplates();
     const scanBtn = DOM.get('btnRunScan');
     if (scanBtn) scanBtn.onclick = () => this.runScan();
+
+    messenger.on('dataprocessor:batch-load-completed', (event) => {
+      Analysis.refreshFilterOptions();
+    });
   },
 
   initTemplates() {
@@ -109,6 +114,7 @@ export const Analysis = {
       const relevantCriteria = criteria.filter(
         (c) => c.fileIdx === -1 || c.fileIdx === fileIdx
       );
+
       if (relevantCriteria.length > 0) {
         aggregatedResults.push(
           ...this._scanFileData(file, fileIdx, relevantCriteria)
@@ -167,8 +173,8 @@ export const Analysis = {
       inEvent = false,
       startT = 0;
 
-    file.rawData.forEach((p) => {
-      state[p.s] = p.v;
+    file.rawData.forEach((row) => {
+      state[row.signal] = row.value;
       const match = criteria.every(
         (c) =>
           state[c.sig] !== undefined &&
@@ -177,10 +183,15 @@ export const Analysis = {
 
       if (match && !inEvent) {
         inEvent = true;
-        startT = p.t;
+        startT = row.timestamp;
       } else if (!match && inEvent) {
         inEvent = false;
-        results.push({ start: startT, end: p.t, fileName: file.name, fileIdx });
+        results.push({
+          start: startT,
+          end: row.timestamp,
+          fileName: file.name,
+          fileIdx,
+        });
       }
     });
     return results;

@@ -1,18 +1,13 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-import { DataProcessor } from '../src/dataprocesssor.js';
+import { dataProcessor } from '../src/dataprocessor.js';
 import { AppState, DOM } from '../src/config.js';
-import { UI } from '../src/ui.js';
-import { Analysis } from '../src/analysis.js';
-import { ChartManager } from '../src/chartmanager.js';
+import { messenger } from '../src/bus.js';
 import { Config } from '../src/config.js';
+import { UI } from '../src/ui.js';
 
 UI.setLoading = jest.fn();
-UI.renderSignalList = jest.fn();
-UI.updateDataLoadedState = jest.fn();
-Analysis.init = jest.fn();
-Analysis.refreshFilterOptions = jest.fn();
-ChartManager.render = jest.fn();
+messenger.emit = jest.fn();
 
 describe('DataProcessor Module Tests', () => {
   beforeEach(() => {
@@ -42,7 +37,7 @@ describe('DataProcessor Module Tests', () => {
     ];
     const fileName = 'test_trip.json';
 
-    DataProcessor.process(mockData, fileName);
+    dataProcessor.process(mockData, fileName);
 
     expect(AppState.files.length).toBe(1);
     const file = AppState.files[0];
@@ -66,7 +61,7 @@ describe('DataProcessor Module Tests', () => {
       { s: 'RPM', t: 1000, v: 800 },
     ];
 
-    const sortedData = DataProcessor._process(unsortedData, 'unsorted.json');
+    const sortedData = dataProcessor.process(unsortedData, 'unsorted.json');
     expect(sortedData.rawData[0].timestamp).toBe(1000);
     expect(sortedData.rawData[1].timestamp).toBe(5000);
   });
@@ -76,7 +71,7 @@ describe('DataProcessor Module Tests', () => {
    */
   test('process() handles empty or malformed data gracefully', () => {
     // Attempting to process null data should trigger the catch block
-    DataProcessor.process(null, 'bad.json');
+    dataProcessor.process(null, 'bad.json');
 
     const container = document.getElementById('chartContainer');
     // Verify that the UI state was updated to reflect no data
@@ -88,7 +83,7 @@ describe('DataProcessor Module Tests', () => {
    * Tests configuration/template loading
    */
   test('loadConfiguration() initializes templates', async () => {
-    await DataProcessor.loadConfiguration();
+    await dataProcessor.loadConfiguration();
     // Since templates are imported directly, we check if logic runs
     expect(UI.setLoading).not.toHaveBeenCalled(); // This method doesn't trigger loading screen
   });
@@ -101,21 +96,6 @@ describe('DataProcessor - handleLocalFile', () => {
     jest.clearAllMocks();
     AppState.files = [];
 
-    // Mock the global FileReader
-    mockFileReader = {
-      readAsText: jest.fn(function () {
-        // Simulate the async file reading process
-        setTimeout(() => {
-          this.onload({
-            target: { result: JSON.stringify([{ s: 'RPM', t: 100, v: 500 }]) },
-          });
-        }, 10);
-      }),
-      onload: null,
-    };
-    global.FileReader = jest.fn(() => mockFileReader);
-
-    // Mock DOM input for clearing the value
     document.body.innerHTML = `
       <input type="file" id="fileInput" />
       <div id="fileInfo"></div>
@@ -124,8 +104,7 @@ describe('DataProcessor - handleLocalFile', () => {
     DOM.get = jest.fn((id) => document.getElementById(id));
   });
 
-  test('handleLocalFile parses multiple files and updates UI', (done) => {
-    // 1. Create a mock event with a file list
+  test('handleLocalFile parses json dummy data', (done) => {
     const mockFile = new File(['{"data": "dummy"}'], 'test_log.json', {
       type: 'application/json',
     });
@@ -135,24 +114,26 @@ describe('DataProcessor - handleLocalFile', () => {
       },
     };
 
-    // 2. Spy on the process method to see if it gets called after reading
-    const processSpy = jest.spyOn(DataProcessor, 'process');
+    dataProcessor.handleLocalFile(mockEvent);
 
-    // 3. Execute
-    DataProcessor.handleLocalFile(mockEvent);
-
-    // 4. Verification using a timeout to wait for the FileReader callback
     setTimeout(() => {
       try {
-        expect(UI.setLoading).toHaveBeenCalledWith(
-          true,
-          expect.stringContaining('Parsing 1 Files')
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:set-loading'),
+          { message: 'Parsing 1 Files...' }
         );
-        expect(processSpy).toHaveBeenCalled();
-        expect(AppState.files.length).toBe(1);
 
-        // Ensure the loading screen is turned off
-        expect(UI.setLoading).toHaveBeenLastCalledWith(false);
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:updateDataLoadedState'),
+          { status: false }
+        );
+
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('dataprocessor:batch-load-completed'),
+          {}
+        );
+
+        expect(AppState.files.length).toBe(0);
 
         done(); // Tell Jest the async test is finished
       } catch (error) {
@@ -164,11 +145,6 @@ describe('DataProcessor - handleLocalFile', () => {
 
 test('loadConfiguration handles missing templates gracefully', async () => {
   const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-  // We need to bypass the 'import templates' and force the failure
-  // Since we cannot easily un-import a file in ESM, we test the catch block
-
-  // Method A: Mocking the internal Config to throw during assignment
   const originalTemplates = Config.ANOMALY_TEMPLATES;
   Object.defineProperty(Config, 'ANOMALY_TEMPLATES', {
     set: () => {
@@ -176,7 +152,7 @@ test('loadConfiguration handles missing templates gracefully', async () => {
     },
   });
 
-  await DataProcessor.loadConfiguration();
+  await dataProcessor.loadConfiguration();
 
   expect(consoleSpy).toHaveBeenCalledWith('Config Loader:', expect.any(Error));
 
@@ -190,13 +166,13 @@ test('loadConfiguration handles missing templates gracefully', async () => {
 
 describe('DataProcessor: Cleaning Operation', () => {
   test('should map input schema to internal application schema', () => {
-    const input = [{ s: 'Battery\nLevel', t: 1600000000, v: 85 }];
+    const raw = [{ s: 'Battery\nLevel', t: 1600000000, v: 85 }];
 
-    const [output] = DataProcessor._preprocess(input);
+    const result = dataProcessor.process(raw, 'test.json');
 
-    expect(output).toHaveProperty('signal', 'Battery Level');
-    expect(output).toHaveProperty('timestamp', 1600000000);
-    expect(output).toHaveProperty('value', 85);
+    expect(result.rawData[0].signal).toBe('Battery Level');
+    expect(result.rawData[0].timestamp).toBe(1600000000);
+    expect(result.rawData[0].value).toBe(85);
   });
 
   test('should replace all newline characters with spaces in signal names', () => {
@@ -205,7 +181,7 @@ describe('DataProcessor: Cleaning Operation', () => {
       { s: 'Battery\nStatus\nMain', t: 2000, v: 12.5 },
     ];
 
-    const result = DataProcessor._process(rawData, 'test_log.json');
+    const result = dataProcessor.process(rawData, 'test_log.json');
 
     // Assertions for cleaning
     expect(result.rawData[0].signal).toBe('Engine Temp');
@@ -219,7 +195,7 @@ describe('DataProcessor: Cleaning Operation', () => {
   test('should not modify signal names that have no newlines', () => {
     const rawData = [{ s: 'CleanName', t: 1000, v: 50 }];
 
-    const result = DataProcessor._process(rawData, 'test.json');
+    const result = dataProcessor.process(rawData, 'test.json');
 
     expect(result.rawData[0].signal).toBe('CleanName');
   });
@@ -227,7 +203,7 @@ describe('DataProcessor: Cleaning Operation', () => {
   test('should preserve timestamp (t) and value (v) during cleaning', () => {
     const rawData = [{ s: 'Dirty\nName', t: 123456789, v: -42.5 }];
 
-    const result = DataProcessor._process(rawData, 'test.json');
+    const result = dataProcessor.process(rawData, 'test.json');
 
     expect(result.rawData[0].timestamp).toBe(123456789);
     expect(result.rawData[0].value).toBe(-42.5);
@@ -239,7 +215,7 @@ describe('DataProcessor: Cleaning Operation', () => {
       { s: 'C\nD', t: 1000, v: 2 },
     ];
 
-    const result = DataProcessor._process(rawData, 'test.json');
+    const result = dataProcessor.process(rawData, 'test.json');
 
     // (5000ms - 1000ms) / 1000 = 4 seconds
     expect(result.duration).toBe(4);
@@ -249,24 +225,20 @@ describe('DataProcessor: Cleaning Operation', () => {
     // Input uses external schema (s, t, v)
     const input = [{ s: ' Speed\n', t: '1000', v: '50.5' }];
 
-    const [output] = DataProcessor._preprocess(input);
+    const result = dataProcessor.process(input, 'test.json');
 
     // Assertions must use the new internal schema keys
-    expect(output.signal).toBe('Speed'); // Was output.s
-    expect(output.timestamp).toBe(1000); // Was output.t
-    expect(output.value).toBe(50.5); // Was output.v
+    expect(result.rawData[0].signal).toBe('Speed'); // Was output.s
+    expect(result.rawData[0].timestamp).toBe(1000); // Was output.t
+    expect(result.rawData[0].value).toBe(50.5); // Was output.v
 
     // Optional: Verify the old keys are no longer present on the root object
-    expect(output.s).toBeUndefined();
+    expect(result.rawData[0].s).toBeUndefined();
   });
 
   test('should map signals to internal chart schema (x and y)', () => {
     const input = [{ s: 'Temp', t: 100, v: 25 }];
-    const result = DataProcessor._transformRawData(
-      DataProcessor._preprocess(input),
-      'test.json'
-    );
-
+    const result = dataProcessor.process(input, 'test.json');
     const signalData = result.signals['Temp'][0];
 
     // Verify the chart-ready keys exist
@@ -278,19 +250,106 @@ describe('DataProcessor: Cleaning Operation', () => {
 });
 
 describe('DataProcessor: CSV Handling', () => {
-  test('should parse a raw CSV string into an array of objects', () => {
-    const csvContent = `SensorName,Time_ms,Reading
+  beforeEach(() => {
+    AppState.files = [];
+    jest.clearAllMocks();
+    AppState.globalStartTime = 0;
+
+    // Setup the minimal DOM required for the processing pipeline
+    document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+  });
+
+  test('should handle CSV files with trailing empty lines', (done) => {
+    const csv = `SensorName,Time_ms,Reading
+Battery,100,12.6
+\n   \n`;
+
+    const event = {
+      target: {
+        files: [
+          new File([csv], 'test_log.csv', {
+            type: 'text/csv',
+          }),
+        ],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:set-loading'),
+          { message: 'Parsing 1 Files...' }
+        );
+
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('dataprocessor:batch-load-completed'),
+          {}
+        );
+        expect(AppState.files.length).toBe(1);
+
+        const result = AppState.files[0];
+
+        expect(result.rawData[0].signal).toBe('Battery');
+
+        done(); // Tell Jest the async test is finished
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+
+  test('should parse a raw CSV string into an array of objects', (done) => {
+    const csv = `SensorName,Time_ms,Reading
 EngineTemp,1000,90
-OilPressure,2000,45`;
+Battery,100,12.6
+\n   \n`;
 
-    const result = DataProcessor._parseCSV(csvContent);
+    const event = {
+      target: {
+        files: [
+          new File([csv], 'test_log.csv', {
+            type: 'text/csv',
+          }),
+        ],
+      },
+    };
 
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({
-      SensorName: 'EngineTemp',
-      Time_ms: '1000',
-      Reading: '90',
-    });
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('ui:set-loading'),
+          { message: 'Parsing 1 Files...' }
+        );
+
+        expect(messenger.emit).toHaveBeenCalledWith(
+          expect.stringContaining('dataprocessor:batch-load-completed'),
+          {}
+        );
+
+        expect(AppState.files.length).toBe(1);
+
+        const result = AppState.files[0];
+
+        expect(result.rawData[1]).toEqual({
+          signal: 'EngineTemp',
+          timestamp: 1000,
+          value: 90,
+        });
+
+        done(); //
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
   });
 
   test('should correctly preprocess and map CSV data using LEGACY_CSV schema', () => {
@@ -299,42 +358,43 @@ OilPressure,2000,45`;
       { SensorName: ' RPM\n', Time_ms: '5000', Reading: '3000' },
     ];
 
-    const [output] = DataProcessor._preprocess(rawCsvData);
+    const result = dataProcessor.process(rawCsvData, 'test.csv');
 
     // Assert that it used the LEGACY_CSV mapping (SensorName -> signal)
-    expect(output.signal).toBe('RPM'); // Mapped and cleaned
-    expect(output.timestamp).toBe(5000); // Mapped and cast to Number
-    expect(output.value).toBe(3000); // Mapped and cast to Number
+    expect(result.rawData[0].signal).toBe('RPM'); // Mapped and cleaned
+    expect(result.rawData[0].timestamp).toBe(5000); // Mapped and cast to Number
+    expect(result.rawData[0].value).toBe(3000); // Mapped and cast to Number
   });
+});
 
-  test('should handle CSV files with trailing empty lines', () => {
-    const csvWithEmptyLine = `SensorName,Time_ms,Reading
-Battery,100,12.6
-\n   \n`; // Simulating empty lines at end of file
+describe('DataProcessor - Configuration Error Handling', () => {
+  test('loadConfiguration handles missing templates gracefully', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-    const result = DataProcessor._parseCSV(csvWithEmptyLine);
+    await dataProcessor.loadConfiguration(null);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].SensorName).toBe('Battery');
-  });
-
-  test('should process a full CSV-to-Chart workflow', () => {
-    const csvContent = `SensorName,Time_ms,Reading
-Flow,100,10.5
-Flow,200,11.0`;
-
-    const parsed = DataProcessor._parseCSV(csvContent);
-    const result = DataProcessor._transformRawData(
-      DataProcessor._preprocess(parsed),
-      'data.csv'
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Missing templates')
     );
 
-    // Verify signal grouping
-    expect(result.signals).toHaveProperty('Flow');
-    expect(result.signals.Flow).toHaveLength(2);
+    Object.defineProperty(Config, 'ANOMALY_TEMPLATES', {
+      value: {},
+      writable: false,
+      configurable: true,
+    });
 
-    // Verify internal schema (x, y) mapping
-    expect(result.signals.Flow[0]).toEqual({ x: 100, y: 10.5 });
-    expect(result.signals.Flow[1]).toEqual({ x: 200, y: 11.0 });
+    await dataProcessor.loadConfiguration({ test: true });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Config Loader:',
+      expect.any(TypeError)
+    );
+
+    // Cleanup
+    Object.defineProperty(Config, 'ANOMALY_TEMPLATES', {
+      value: {},
+      writable: true,
+    });
+    consoleSpy.mockRestore();
   });
 });

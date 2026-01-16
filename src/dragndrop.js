@@ -1,5 +1,5 @@
 import { DOM } from './config.js';
-import { DataProcessor } from './dataprocesssor.js';
+import { dataProcessor } from './dataprocessor.js';
 import { UI } from './ui.js';
 import { Alert } from './alert.js';
 
@@ -63,7 +63,7 @@ export const DragnDrop = {
         const reader = new FileReader();
         reader.onload = (e) => {
           const data = JSON.parse(e.target.result);
-          DataProcessor.process(data, file.name);
+          dataProcessor.process(data, file.name);
           console.log('File loaded successfully:', file.name);
         };
         reader.readAsText(file);

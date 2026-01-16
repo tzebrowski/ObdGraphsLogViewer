@@ -5,14 +5,14 @@ import { ChartManager } from './chartmanager.js';
 import { UI, InfoPage } from './ui.js';
 import { Drive } from './drive.js';
 import { DragnDrop } from './dragndrop.js';
-import { DataProcessor } from './dataprocesssor.js';
+import { dataProcessor } from './dataprocessor.js';
 import { Preferences } from './preferences.js';
 import { Navigation } from './navigation.js';
 import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 
 window.onload = async function () {
-  await DataProcessor.loadConfiguration();
+  await dataProcessor.loadConfiguration();
 
   Auth.init();
   UI.init();
@@ -28,7 +28,7 @@ window.onload = async function () {
   const fileInput = DOM.get('fileInput');
   if (fileInput) {
     fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
-    fileInput.addEventListener('change', DataProcessor.handleLocalFile);
+    fileInput.addEventListener('change', dataProcessor.handleLocalFile);
   }
 };
 

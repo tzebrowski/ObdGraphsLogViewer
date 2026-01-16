@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { Drive } from '../../src/drive.js';
-import { DataProcessor } from '../../src/dataprocesssor.js';
+import { dataProcessor } from '../../src/dataprocessor.js';
 
 describe('Drive Module - Error Handling Tests', () => {
   let container;
@@ -14,7 +14,7 @@ describe('Drive Module - Error Handling Tests', () => {
     localStorage.clear();
     jest.clearAllMocks();
 
-    DataProcessor.process = jest.fn();
+    dataProcessor.process = jest.fn();
 
     // Global GAPI mock
     global.gapi = {

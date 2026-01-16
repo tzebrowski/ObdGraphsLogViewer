@@ -1,6 +1,6 @@
 import { DOM } from './config.js';
 import { UI } from './ui.js';
-import { DataProcessor } from './dataprocesssor.js';
+import { dataProcessor } from './dataprocessor.js';
 import { Alert } from './alert.js';
 import { debounce } from './debounce.js';
 
@@ -126,7 +126,7 @@ export const Drive = {
         alt: 'media',
       });
       if (currentToken !== this.activeLoadToken) return;
-      DataProcessor.process(response.result, fileName);
+      dataProcessor.process(response.result, fileName);
     } catch (error) {
       if (currentToken === this.activeLoadToken)
         Alert.showAlert(
