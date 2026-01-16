@@ -81,11 +81,6 @@ describe('Analysis Module - Deep Coverage', () => {
         name: 'log1.json',
         startTime: 1000,
         availableSignals: ['RPM', 'TPS'],
-        rawData: [
-          { s: 'RPM', t: 1000, v: 800 },
-          { s: 'RPM', t: 2000, v: 5000 },
-          { s: 'RPM', t: 3000, v: 800 },
-        ],
       },
     ];
 
