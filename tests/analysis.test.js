@@ -22,10 +22,10 @@ describe('Analysis Module - Public model API test', () => {
         startTime: 1000,
         availableSignals: ['RPM', 'Temp'],
         rawData: [
-          { s: 'RPM', t: 1000, v: 800 },
-          { s: 'RPM', t: 2000, v: 5000 }, // Spike Starts
-          { s: 'RPM', t: 3000, v: 5200 },
-          { s: 'RPM', t: 4000, v: 800 }, // Spike Ends
+          { signal: 'RPM', timestamp: 1000, value: 800 },
+          { signal: 'RPM', timestamp: 2000, value: 5000 }, // Spike Starts
+          { signal: 'RPM', timestamp: 3000, value: 5200 },
+          { signal: 'RPM', timestamp: 4000, value: 800 }, // Spike Ends
         ],
       },
     ];

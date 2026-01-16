@@ -232,7 +232,6 @@ class DataProcessor {
    * @private
    */
   #finalizeBatchLoad() {
-    console.error('dataprocessor:batch-load-completed');
     messenger.emit('dataprocessor:batch-load-completed', {});
     const input = DOM.get('fileInput');
     if (input) input.value = '';
