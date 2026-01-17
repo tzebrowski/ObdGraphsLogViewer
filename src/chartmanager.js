@@ -514,6 +514,7 @@ export const ChartManager = {
         ctx,
         chartArea: { top, bottom, left, right },
         scales: { x },
+        tooltip,
       } = chart;
       const chartIdx = AppState.chartInstances.indexOf(chart);
       if (chartIdx === -1) return;
@@ -539,18 +540,34 @@ export const ChartManager = {
         }
       }
 
-      if (
-        ChartManager.activeChartIndex === chartIdx &&
-        ChartManager.hoverValue
-      ) {
-        const xPixel = x.getPixelForValue(ChartManager.hoverValue);
+      if (tooltip && tooltip.getActiveElements().length > 0) {
+        const activePoint = tooltip.getActiveElements()[0];
+        const xPixel = activePoint.element.x;
+
         if (xPixel >= left && xPixel <= right) {
+          ctx.save();
           ctx.beginPath();
           ctx.strokeStyle = '#9a0000';
           ctx.lineWidth = 2;
           ctx.moveTo(xPixel, top);
           ctx.lineTo(xPixel, bottom);
           ctx.stroke();
+          ctx.restore();
+        }
+      } else if (
+        ChartManager.activeChartIndex === chartIdx &&
+        ChartManager.hoverValue
+      ) {
+        const xPixel = x.getPixelForValue(ChartManager.hoverValue);
+        if (xPixel >= left && xPixel <= right) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(154, 0, 0, 0.3)';
+          ctx.setLineDash([5, 5]);
+          ctx.moveTo(xPixel, top);
+          ctx.lineTo(xPixel, bottom);
+          ctx.stroke();
+          ctx.restore();
         }
       }
     },
