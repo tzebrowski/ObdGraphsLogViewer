@@ -429,7 +429,7 @@ describe('ChartManager Module Comprehensive Tests', () => {
     ChartManager.highlighterPlugin.afterDraw(mockChart);
 
     // Verify visual requirements
-    expect(mockChart.ctx.strokeStyle).toBe('#9a0000');
-    expect(mockChart.ctx.lineWidth).toBe(2);
+    expect(mockChart.ctx.strokeStyle).toBe('rgba(227, 24, 55, 0.6)');
+    expect(mockChart.ctx.lineWidth).toBe(3);
   });
 });
