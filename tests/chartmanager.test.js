@@ -96,6 +96,9 @@ describe('ChartManager Module Comprehensive Tests', () => {
       draw: jest.fn(),
       destroy: jest.fn(),
       width: 1000,
+      tooltip: {
+        getActiveElements: jest.fn(() => []), // Default to no active elements
+      },
       ctx: {
         save: jest.fn(),
         restore: jest.fn(),
@@ -171,15 +174,24 @@ describe('ChartManager Module Comprehensive Tests', () => {
 
     test('highlighterPlugin draws hover line only within boundaries', () => {
       ChartManager.activeChartIndex = 0;
+      AppState.chartInstances = [mockChart]; // Ensure the plugin can find the chart index
 
-      // Test within boundaries
-      ChartManager.hoverValue = 1000500;
+      // Test within boundaries: Mock tooltip active on a point at x = 50
+      // (Left is 10, Right is 190)
+      mockChart.tooltip.getActiveElements.mockReturnValue([
+        { element: { x: 50 } },
+      ]);
+
       ChartManager.highlighterPlugin.afterDraw(mockChart);
       expect(mockChart.ctx.stroke).toHaveBeenCalled();
 
-      // Test outside boundaries (Hits Line 534 guard)
+      // Test outside boundaries: Mock tooltip active on a point at x = 200
+      // (Hits the if (xPixel >= left && xPixel <= right) guard)
       mockChart.ctx.stroke.mockClear();
-      ChartManager.hoverValue = 2000000;
+      mockChart.tooltip.getActiveElements.mockReturnValue([
+        { element: { x: 200 } },
+      ]);
+
       ChartManager.highlighterPlugin.afterDraw(mockChart);
       expect(mockChart.ctx.stroke).not.toHaveBeenCalled();
     });
