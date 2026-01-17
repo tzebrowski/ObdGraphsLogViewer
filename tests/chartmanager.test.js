@@ -107,6 +107,7 @@ describe('ChartManager Module Comprehensive Tests', () => {
         moveTo: jest.fn(),
         lineTo: jest.fn(),
         stroke: jest.fn(),
+        setLineDash: jest.fn(),
       },
       chartArea: { top: 10, bottom: 90, left: 10, right: 190 },
     };
@@ -362,7 +363,6 @@ describe('ChartManager Module Comprehensive Tests', () => {
         stroke: jest.fn(),
       };
 
-      // CRITICAL: Reference must exist in AppState.chartInstances
       const pluginChart = mockChart;
       pluginChart.ctx = mockCtx;
       pluginChart.chartArea = { top: 10, bottom: 90, left: 10, right: 190 };
@@ -376,5 +376,60 @@ describe('ChartManager Module Comprehensive Tests', () => {
       expect(mockCtx.fillRect).toHaveBeenCalled();
       expect(mockCtx.restore).toHaveBeenCalled();
     });
+  });
+  test('highlighterPlugin uses raw hoverValue as fallback when tooltip is empty', () => {
+    ChartManager.activeChartIndex = 0;
+    AppState.chartInstances = [mockChart];
+
+    mockChart.tooltip.getActiveElements.mockReturnValue([]);
+
+    // Scale: (v - 1000000) / 10. For 1000500, pixel = 50.
+    ChartManager.hoverValue = 1000500;
+
+    ChartManager.highlighterPlugin.afterDraw(mockChart);
+
+    // Should still draw using the fallback logic
+    expect(mockChart.ctx.stroke).toHaveBeenCalled();
+  });
+
+  test('highlighterPlugin does not draw if chart is not the activeChartIndex', () => {
+    // Set active index to a different chart
+    ChartManager.activeChartIndex = 99;
+    ChartManager.hoverValue = 1000500;
+    mockChart.tooltip.getActiveElements.mockReturnValue([]);
+
+    ChartManager.highlighterPlugin.afterDraw(mockChart);
+
+    // Should exit early because chartIdx !== activeChartIndex
+    expect(mockChart.ctx.stroke).not.toHaveBeenCalled();
+  });
+
+  test('highlighterPlugin handles missing tooltip object gracefully', () => {
+    const chartWithoutTooltip = {
+      ...mockChart,
+      tooltip: undefined,
+    };
+    AppState.chartInstances = [chartWithoutTooltip];
+    ChartManager.activeChartIndex = 0;
+    ChartManager.hoverValue = 1000500;
+
+    // Should not crash and should use fallback hoverValue
+    expect(() => {
+      ChartManager.highlighterPlugin.afterDraw(chartWithoutTooltip);
+    }).not.toThrow();
+    expect(chartWithoutTooltip.ctx.stroke).toHaveBeenCalled();
+  });
+
+  test('highlighterPlugin draws vertical line with specific styling', () => {
+    ChartManager.activeChartIndex = 0;
+    mockChart.tooltip.getActiveElements.mockReturnValue([
+      { element: { x: 50 } },
+    ]);
+
+    ChartManager.highlighterPlugin.afterDraw(mockChart);
+
+    // Verify visual requirements
+    expect(mockChart.ctx.strokeStyle).toBe('#9a0000');
+    expect(mockChart.ctx.lineWidth).toBe(2);
   });
 });
