@@ -547,8 +547,9 @@ export const ChartManager = {
         if (xPixel >= left && xPixel <= right) {
           ctx.save();
           ctx.beginPath();
-          ctx.strokeStyle = '#9a0000';
-          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'rgba(227, 24, 55, 0.6)';
+          ctx.lineWidth = 3;
           ctx.moveTo(xPixel, top);
           ctx.lineTo(xPixel, bottom);
           ctx.stroke();
