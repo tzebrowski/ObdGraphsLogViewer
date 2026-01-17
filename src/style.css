@@ -358,7 +358,6 @@ input[type='number'] {
 }
 
 #filtersContainer {
-  max-height: 120px;
   overflow-y: auto;
   margin-bottom: 10px;
   border: 1px solid #f0f0f0;
