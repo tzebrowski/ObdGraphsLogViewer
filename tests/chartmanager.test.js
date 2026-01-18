@@ -16,6 +16,7 @@ const mockChartInstance = {
   destroy: jest.fn(),
   update: jest.fn(),
   draw: jest.fn(),
+  
   zoom: jest.fn(),
   pan: jest.fn(),
   width: 1000,
@@ -91,6 +92,7 @@ describe('ChartManager Module Comprehensive Tests', () => {
         },
       },
       update: jest.fn(),
+      resetZoom: jest.fn(),
       zoom: jest.fn(),
       pan: jest.fn(),
       draw: jest.fn(),
@@ -315,7 +317,7 @@ describe('ChartManager Module Comprehensive Tests', () => {
     });
 
     test('handles R key to reset', () => {
-      const resetSpy = jest.spyOn(ChartManager, 'reset');
+      const resetSpy = jest.spyOn(ChartManager, 'resetChart');
       canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
       expect(resetSpy).toHaveBeenCalled();
     });
