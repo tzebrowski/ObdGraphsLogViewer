@@ -1,10 +1,10 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { ChartManager } from '../src/chartmanager.js';
-import { AppState, DOM } from '../src/config.js';
-import { UI } from '../src/ui.js';
-import { PaletteManager } from '../src/palettemanager.js';
+import { ChartManager } from '../../src/chartmanager.js';
+import { AppState, DOM } from '../../src/config.js';
+import { UI } from '../../src/ui.js';
+import { PaletteManager } from '../../src/palettemanager.js';
 import { Chart } from 'chart.js';
-import { Preferences } from '../src/preferences.js';
+import { Preferences } from '../../src/preferences.js';
 
 // --- Global Mocks ---
 UI.updateDataLoadedState = jest.fn();

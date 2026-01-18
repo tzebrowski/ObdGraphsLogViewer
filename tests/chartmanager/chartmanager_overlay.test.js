@@ -1,6 +1,5 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-// --- 1. Define Mock Data ---
 const mockChartInstance = {
   destroy: jest.fn(),
   update: jest.fn(),
@@ -18,9 +17,6 @@ const mockChartInstance = {
   ctx: { save: jest.fn(), restore: jest.fn() },
 };
 
-// --- 2. Register Mocks ---
-
-// Mock Chart.js and Plugins
 await jest.unstable_mockModule('chart.js', () => {
   const MockChart = jest.fn(() => mockChartInstance);
   MockChart.register = jest.fn();
@@ -56,35 +52,32 @@ await jest.unstable_mockModule('hammerjs', () => ({
   default: jest.fn(),
 }));
 
-// Mock Internal Modules
-await jest.unstable_mockModule('../src/config.js', () => ({
+await jest.unstable_mockModule('../../src/config.js', () => ({
   AppState: { files: [], chartInstances: [] },
   DOM: { get: jest.fn() },
   DEFAULT_SIGNALS: [],
 }));
 
-await jest.unstable_mockModule('../src/ui.js', () => ({
+await jest.unstable_mockModule('../../src/ui.js', () => ({
   UI: { updateDataLoadedState: jest.fn(), renderSignalList: jest.fn() },
 }));
 
-await jest.unstable_mockModule('../src/palettemanager.js', () => ({
+await jest.unstable_mockModule('../../src/palettemanager.js', () => ({
   PaletteManager: { getColorForSignal: jest.fn(() => '#ff0000') },
 }));
 
-await jest.unstable_mockModule('../src/preferences.js', () => ({
+await jest.unstable_mockModule('../../src/preferences.js', () => ({
   Preferences: { prefs: { showAreaFills: false } },
 }));
 
-await jest.unstable_mockModule('../src/bus.js', () => ({
+await jest.unstable_mockModule('../../src/bus.js', () => ({
   messenger: { on: jest.fn() },
 }));
 
-// --- 3. Dynamic Imports ---
-const { ChartManager } = await import('../src/chartmanager.js');
-const { AppState, DOM } = await import('../src/config.js');
+const { ChartManager } = await import('../../src/chartmanager.js');
+const { AppState, DOM } = await import('../../src/config.js');
 const { Chart } = await import('chart.js');
 
-// --- 4. Tests ---
 describe('ChartManager Overlay & View Mode Tests', () => {
   let container;
 
