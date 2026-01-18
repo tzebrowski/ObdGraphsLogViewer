@@ -21,17 +21,12 @@ import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { messenger } from './bus.js';
 
-/**
- * ChartManager Module
- * Handles multi-chart rendering, synchronization, and interactive telemetry visualization.
- * Optimized for bidirectional sync between Chart.js and custom range sliders.
- */
 export const ChartManager = {
   hoverValue: null,
   activeChartIndex: null,
   datalabelsSettings: { timeRange: 5000, visibleDatasets: 5 },
+  viewMode: 'stack', // 'stack' | 'overlay'
 
-  // --- Core Lifecycle ---
   init() {
     window.Hammer = Hammer;
     Chart.register(
@@ -54,296 +49,139 @@ export const ChartManager = {
     });
   },
 
+  toggleViewMode(mode) {
+    if (this.viewMode === mode) return;
+    this.viewMode = mode;
+
+    document
+      .querySelectorAll('.view-mode-btn')
+      .forEach((btn) => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(`btn-mode-${mode}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    this.render();
+  },
+
   render() {
     const container = DOM.get('chartContainer');
     if (!container) return;
 
-    if (this._canPerformSmartUpdate()) {
-      this._performSmartUpdate();
+    // 1. Destroy existing chart instances
+    AppState.chartInstances.forEach((c) => c?.destroy());
+    AppState.chartInstances = [];
+
+    // 2. Preserve Empty State element safely
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) {
+      // Detach it from DOM so innerHTML='' doesn't destroy it
+      emptyState.remove();
+    }
+
+    // 3. Clear container (removes old charts/overlays)
+    container.innerHTML = '';
+
+    // 4. Restore Empty State (hidden by default via CSS if has-data class is present)
+    if (emptyState) {
+      container.appendChild(emptyState);
+    } else {
+      // Fallback: Re-create minimal empty state structure if lost
+      const fallback = document.createElement('div');
+      fallback.id = 'empty-state';
+      fallback.className = 'empty-state-container';
+      fallback.innerHTML = `<div class="empty-state-content"><h3>No Data</h3><p>Please reload the page.</p></div>`;
+      container.appendChild(fallback);
+    }
+
+    // 5. Handle No Data Case
+    if (AppState.files.length === 0) {
+      this._handleEmptyState();
       return;
     }
 
-    this._fullRebuild(container);
-  },
+    // 6. Render Data
+    UI.updateDataLoadedState(true);
 
-  // --- Interaction & Synchronization ---
-
-  /**
-   * Centralized utility to push the current chart viewport state to the DOM slider elements.
-   * Ensures mouse wheel zoom, panning, and manual zoom remain in sync.
-   */
-  _updateLocalSliderUI(idx) {
-    const chart = AppState.chartInstances[idx];
-    const file = AppState.files[idx];
-    if (!chart || !file) return;
-
-    const card = document
-      .getElementById(`chart-${idx}`)
-      ?.closest('.chart-card-compact');
-    if (!card) return;
-
-    // Convert chart absolute ms to relative seconds
-    const s = Math.max(0, (chart.scales.x.min - file.startTime) / 1000);
-    const e = Math.min(
-      file.duration,
-      (chart.scales.x.max - file.startTime) / 1000
-    );
-
-    const startInput = card.querySelector('.local-range-start');
-    const endInput = card.querySelector('.local-range-end');
-    const highlight = card.querySelector(`#highlight-${idx}`);
-    const txtStart = card.querySelector(`#txt-start-${idx}`);
-    const txtEnd = card.querySelector(`#txt-end-${idx}`);
-
-    if (startInput) startInput.value = s;
-    if (endInput) endInput.value = e;
-    if (txtStart) txtStart.innerText = `${s.toFixed(1)}s`;
-    if (txtEnd) txtEnd.innerText = `${e.toFixed(1)}s`;
-
-    if (highlight) {
-      highlight.style.left = `${(s / file.duration) * 100}%`;
-      highlight.style.width = `${((e - s) / file.duration) * 100}%`;
+    if (this.viewMode === 'overlay') {
+      this._renderOverlayMode(container);
+    } else {
+      AppState.files.forEach((file, idx) =>
+        this._renderChartCard(container, file, idx)
+      );
     }
   },
 
-  zoomTo(startSec, endSec, targetIndex = null) {
-    AppState.activeHighlight = { start: startSec, end: endSec, targetIndex };
+  _renderOverlayMode(container) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chart-card-compact';
+    wrapper.style.flex = '1';
+    wrapper.style.height = '100%';
 
-    if (targetIndex !== null && AppState.chartInstances[targetIndex]) {
-      const chart = AppState.chartInstances[targetIndex];
-      const file = AppState.files[targetIndex];
-      const duration = endSec - startSec;
-      const padding = duration * 4.0;
+    const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
+    const baseStartTime = AppState.files[0].startTime;
 
-      chart.options.scales.x.min =
-        file.startTime + Math.max(0, startSec - padding) * 1000;
-      chart.options.scales.x.max =
-        file.startTime + Math.min(file.duration, endSec + padding) * 1000;
-      chart.update('none');
+    wrapper.innerHTML = `
+      <div class="chart-header-sm">
+          <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
+          <div class="chart-actions">
+               <span style="font-size:0.8em; color:#666; margin-right:10px;">X-Axis: Relative Time (s)</span>
+              <button class="btn-icon" onclick="ChartManager.resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
+          </div>
+      </div>
+      <div class="canvas-wrapper" style="height: calc(100vh - 200px); padding: 5px;">
+          <canvas id="chart-overlay"></canvas>
+      </div>
+    `;
+    container.appendChild(wrapper);
 
-      this._updateLocalSliderUI(targetIndex);
-    }
-  },
-
-  manualZoom(index, zoomLevel) {
-    const chart = AppState.chartInstances[index];
-    if (!chart) return;
-
-    chart.zoom(zoomLevel);
-    this._updateLocalSliderUI(index);
-    this.updateLabelVisibility(chart);
-  },
-
-  resetChart(idx) {
-    AppState.activeHighlight = null;
-
-    document
-      .querySelectorAll('.result-item')
-      .forEach((el) => el.classList.remove('selected'));
-
-    const chart = AppState.chartInstances[idx];
-    const file = AppState.files[idx];
-
-    if (file && chart) {
-      chart.options.scales.x.min = file.startTime;
-      chart.options.scales.x.max = file.startTime + file.duration * 1000;
-      chart.update('none');
-
-      this._updateLocalSliderUI(idx);
-      this.updateLabelVisibility(chart);
-    }
-  },
-
-  reset() {
-    AppState.chartInstances.forEach((_, idx) => this.resetChart(idx));
-  },
-
-  updateAreaFills() {
-    const { showAreaFills } = Preferences.prefs;
-
-    AppState.chartInstances.forEach((chart) => {
-      chart.data.datasets.forEach((dataset) => {
-        const color = dataset.borderColor;
-        dataset.fill = showAreaFills ? 'origin' : false;
-        dataset.backgroundColor = showAreaFills
-          ? this.getAlphaColor(color, 0.1)
-          : 'transparent';
-      });
-      chart.update('none');
-    });
-  },
-
-  // --- Instance Management ---
-
-  createInstance(canvas, file, index) {
-    if (!canvas) return;
+    const canvas = document.getElementById('chart-overlay');
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
-    this._attachMouseListeners(canvas, index);
+    const datasets = [];
 
-    const datasets = file.availableSignals.map((key, idx) =>
-      this._buildDataset(file, key, index, idx)
-    );
+    AppState.files.forEach((file, fileIdx) => {
+      file.availableSignals.forEach((key, sigIdx) => {
+        const checkbox = document.querySelector(
+          `#signalList input[data-key="${key}"][data-file-idx="${fileIdx}"]`
+        );
+        if (!checkbox || !checkbox.checked) return;
+
+        const ds = this._buildDataset(file, key, fileIdx, sigIdx);
+
+        const fileStart = file.startTime;
+
+        ds.data = ds.data.map((p) => ({
+          x: baseStartTime + (p.x - fileStart),
+          y: p.y,
+        }));
+
+        ds.label = `${file.name.substring(0, 15)}... - ${key}`;
+        if (fileIdx > 0) {
+          ds.borderDash = [5, 5];
+          ds.pointRadius = 0;
+        }
+        if (fileIdx > 1) {
+          ds.borderDash = [2, 2];
+        }
+
+        datasets.push(ds);
+      });
+    });
+
+    const options = this._getChartOptions(AppState.files[0]);
+    options.scales.x.min = baseStartTime;
+    options.scales.x.max = baseStartTime + maxDuration * 1000;
 
     const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       plugins: [this.highlighterPlugin],
-      options: this._getChartOptions(file),
+      options: options,
     });
 
-    AppState.chartInstances[index] = chart;
+    AppState.chartInstances.push(chart);
+    this.initKeyboardControls(canvas, 0);
   },
 
-  updateLabelVisibility(chart) {
-    if (window.innerWidth <= 768) {
-      if (chart.options.plugins.datalabels.display !== false) {
-        chart.options.plugins.datalabels.display = false;
-        chart.update('none');
-      }
-      return;
-    }
-
-    const shouldShow = this._shouldShowLabels(chart);
-    if (chart.options.plugins.datalabels.display !== shouldShow) {
-      chart.options.plugins.datalabels.display = shouldShow;
-      chart.update('none');
-    }
-  },
-
-  initKeyboardControls(canvas, index) {
-    canvas.addEventListener('keydown', (e) => {
-      const chart = AppState.chartInstances[index];
-      if (!chart) return;
-      const amount = e.shiftKey ? 0.05 : 0.01;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          chart.pan({ x: chart.width * amount }, undefined, 'none');
-          break;
-        case 'ArrowRight':
-          chart.pan({ x: -chart.width * amount }, undefined, 'none');
-          break;
-        case '+':
-        case '=':
-          chart.zoom(1.1, undefined, 'none');
-          break;
-        case '-':
-        case '_':
-          chart.zoom(0.9, undefined, 'none');
-          break;
-        case 'r':
-        case 'R':
-          this.reset();
-          return;
-        default:
-          return;
-      }
-
-      this._updateLocalSliderUI(index);
-      this.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
-      this.activeChartIndex = index;
-      chart.draw();
-    });
-  },
-
-  removeChart(index) {
-    this.hoverValue = null;
-    this.activeChartIndex = null;
-    AppState.files.splice(index, 1);
-    this.render();
-    UI.renderSignalList();
-  },
-
-  // --- Configuration ---
-
-  _getChartOptions(file) {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      interaction: {
-        mode: 'nearest',
-        axis: 'x',
-        intersect: false,
-      },
-      scales: {
-        y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
-        x: {
-          type: 'time',
-          time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
-          min: file.startTime,
-          max: file.startTime + file.duration * 1000,
-        },
-      },
-      plugins: {
-        datalabels: {
-          display: (context) => this._shouldShowLabels(context.chart),
-          anchor: 'end',
-          align: 'top',
-          backgroundColor: (context) => context.dataset.borderColor,
-          color: 'white',
-          formatter: (value, context) => {
-            const ds = context.dataset;
-            const realY =
-              value.y * (ds.originalMax - ds.originalMin) + ds.originalMin;
-            return realY.toFixed(1);
-          },
-        },
-        tooltip: {
-          enabled: true,
-          mode: 'index',
-          axis: 'x',
-          intersect: false,
-          callbacks: {
-            label: (context) => {
-              const ds = context.dataset;
-              const realY =
-                context.parsed.y * (ds.originalMax - ds.originalMin) +
-                ds.originalMin;
-              return ` ${ds.label}: ${realY.toFixed(2)}`;
-            },
-          },
-        },
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            font: { size: 11 },
-            filter: (item) => {
-              const checkbox = document.querySelector(
-                `#signalList input[data-key="${item.text}"]`
-              );
-              return checkbox ? checkbox.checked : false;
-            },
-          },
-        },
-        zoom: {
-          pan: {
-            enabled: true,
-            mode: 'x',
-            onPan: ({ chart }) => {
-              const idx = AppState.chartInstances.indexOf(chart);
-              this._updateLocalSliderUI(idx);
-            },
-          },
-          zoom: {
-            wheel: { enabled: true },
-            pinch: { enabled: true },
-            mode: 'x',
-            onZoom: ({ chart }) => {
-              const idx = AppState.chartInstances.indexOf(chart);
-              this._updateLocalSliderUI(idx);
-              this.updateLabelVisibility(chart);
-            },
-          },
-        },
-      },
-    };
-  },
-
-  // --- Internal Rendering ---
   _renderChartCard(container, file, idx) {
     const wrapper = document.createElement('div');
     wrapper.className = 'chart-card-compact';
@@ -390,6 +228,7 @@ export const ChartManager = {
   _initLocalSlider(wrapper, idx) {
     const startInput = wrapper.querySelector('.local-range-start');
     const endInput = wrapper.querySelector('.local-range-end');
+    if (!startInput) return;
 
     const updateHandler = () => {
       let v1 = parseFloat(startInput.value);
@@ -410,22 +249,137 @@ export const ChartManager = {
     endInput.addEventListener('input', updateHandler);
   },
 
-  _fullRebuild(container) {
-    AppState.chartInstances.forEach((c) => c?.destroy());
-    AppState.chartInstances = [];
-    container
-      .querySelectorAll('.chart-card-compact')
-      .forEach((card) => card.remove());
+  _updateLocalSliderUI(idx) {
+    const chart = AppState.chartInstances[idx];
+    const file =
+      this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
 
-    if (AppState.files.length === 0) {
-      this._handleEmptyState();
-      return;
-    }
+    if (!chart || !file) return;
 
-    UI.updateDataLoadedState(true);
-    AppState.files.forEach((file, idx) =>
-      this._renderChartCard(container, file, idx)
+    const card =
+      this.viewMode === 'overlay'
+        ? document
+            .getElementById(`chart-overlay`)
+            ?.closest('.chart-card-compact')
+        : document
+            .getElementById(`chart-${idx}`)
+            ?.closest('.chart-card-compact');
+
+    if (!card) return;
+
+    if (this.viewMode === 'overlay') return;
+
+    const s = Math.max(0, (chart.scales.x.min - file.startTime) / 1000);
+    const e = Math.min(
+      file.duration,
+      (chart.scales.x.max - file.startTime) / 1000
     );
+
+    const startInput = card.querySelector('.local-range-start');
+    const endInput = card.querySelector('.local-range-end');
+    const highlight = card.querySelector(`#highlight-${idx}`);
+    const txtStart = card.querySelector(`#txt-start-${idx}`);
+    const txtEnd = card.querySelector(`#txt-end-${idx}`);
+
+    if (startInput) startInput.value = s;
+    if (endInput) endInput.value = e;
+    if (txtStart) txtStart.innerText = `${s.toFixed(1)}s`;
+    if (txtEnd) txtEnd.innerText = `${e.toFixed(1)}s`;
+
+    if (highlight) {
+      highlight.style.left = `${(s / file.duration) * 100}%`;
+      highlight.style.width = `${((e - s) / file.duration) * 100}%`;
+    }
+  },
+
+  resetChart(idx) {
+    AppState.activeHighlight = null;
+    const chart = AppState.chartInstances[idx];
+    const file =
+      this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
+
+    if (file && chart) {
+      chart.options.scales.x.min = file.startTime;
+      chart.options.scales.x.max =
+        file.startTime +
+        (this.viewMode === 'overlay'
+          ? Math.max(...AppState.files.map((f) => f.duration)) * 1000
+          : file.duration * 1000);
+
+      chart.resetZoom();
+      chart.update('none');
+      if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
+    }
+  },
+
+  manualZoom(index, zoomLevel) {
+    const chart = AppState.chartInstances[index];
+    if (!chart) return;
+    chart.zoom(zoomLevel);
+    if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+  },
+
+  reset() {
+    AppState.chartInstances.forEach((_, idx) => this.resetChart(idx));
+  },
+
+  updateAreaFills() {
+    const { showAreaFills } = Preferences.prefs;
+    AppState.chartInstances.forEach((chart) => {
+      chart.data.datasets.forEach((dataset) => {
+        dataset.fill = showAreaFills ? 'origin' : false;
+        dataset.backgroundColor = showAreaFills
+          ? this.getAlphaColor(dataset.borderColor, 0.1)
+          : 'transparent';
+      });
+      chart.update('none');
+    });
+  },
+
+  zoomTo(startSec, endSec, targetIndex = null) {
+    AppState.activeHighlight = { start: startSec, end: endSec, targetIndex };
+    if (targetIndex !== null && AppState.chartInstances[targetIndex]) {
+      const chart = AppState.chartInstances[targetIndex];
+      const file = AppState.files[targetIndex];
+      const duration = endSec - startSec;
+      const padding = duration * 4.0;
+      chart.options.scales.x.min =
+        file.startTime + Math.max(0, startSec - padding) * 1000;
+      chart.options.scales.x.max =
+        file.startTime + Math.min(file.duration, endSec + padding) * 1000;
+      chart.update('none');
+      this._updateLocalSliderUI(targetIndex);
+    }
+  },
+
+  removeChart(index) {
+    if (this.viewMode === 'overlay') return;
+    this.hoverValue = null;
+    this.activeChartIndex = null;
+    AppState.files.splice(index, 1);
+    this.render();
+    UI.renderSignalList();
+  },
+
+  createInstance(canvas, file, index) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    this._attachMouseListeners(canvas, index);
+
+    const datasets = file.availableSignals.map((key, idx) =>
+      this._buildDataset(file, key, index, idx)
+    );
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      plugins: [this.highlighterPlugin],
+      options: this._getChartOptions(file),
+    });
+
+    AppState.chartInstances[index] = chart;
   },
 
   _buildDataset(file, key, fileIdx, sigIdx) {
@@ -461,6 +415,88 @@ export const ChartManager = {
     };
   },
 
+  _getChartOptions(file) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      scales: {
+        y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
+        x: {
+          type: 'time',
+          time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
+          min: file.startTime,
+          max: file.startTime + file.duration * 1000,
+        },
+      },
+      plugins: {
+        datalabels: {
+          display: (ctx) => this._shouldShowLabels(ctx.chart),
+          anchor: 'end',
+          align: 'top',
+          backgroundColor: (ctx) => ctx.dataset.borderColor,
+          color: 'white',
+          formatter: (value, context) => {
+            const ds = context.dataset;
+            const realY =
+              value.y * (ds.originalMax - ds.originalMin) + ds.originalMin;
+            return realY.toFixed(1);
+          },
+        },
+        tooltip: {
+          enabled: true,
+          mode: 'index',
+          axis: 'x',
+          intersect: false,
+          callbacks: {
+            label: (context) => {
+              const ds = context.dataset;
+              const realY =
+                context.parsed.y * (ds.originalMax - ds.originalMin) +
+                ds.originalMin;
+              return ` ${ds.label}: ${realY.toFixed(2)}`;
+            },
+          },
+        },
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            font: { size: 11 },
+            filter: (item) => {
+              if (this.viewMode === 'overlay') return true;
+              const checkbox = document.querySelector(
+                `#signalList input[data-key="${item.text}"]`
+              );
+              return checkbox ? checkbox.checked : false;
+            },
+          },
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x',
+            onPan: ({ chart }) => {
+              const idx = AppState.chartInstances.indexOf(chart);
+              if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
+            },
+          },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: 'x',
+            onZoom: ({ chart }) => {
+              const idx = AppState.chartInstances.indexOf(chart);
+              if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
+              this.updateLabelVisibility(chart);
+            },
+          },
+        },
+      },
+    };
+  },
+
   _attachMouseListeners(canvas, index) {
     canvas.addEventListener('mousemove', (e) => {
       const chart = AppState.chartInstances[index];
@@ -482,6 +518,7 @@ export const ChartManager = {
 
   _canPerformSmartUpdate() {
     return (
+      this.viewMode !== 'overlay' &&
       AppState.chartInstances.length > 0 &&
       AppState.chartInstances.length === AppState.files.length
     );
@@ -500,11 +537,63 @@ export const ChartManager = {
     UI.updateDataLoadedState(false);
   },
 
+  initKeyboardControls(canvas, index) {
+    canvas.addEventListener('keydown', (e) => {
+      const chart = AppState.chartInstances[index];
+      if (!chart) return;
+      const amount = e.shiftKey ? 0.05 : 0.01;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          chart.pan({ x: chart.width * amount }, undefined, 'none');
+          break;
+        case 'ArrowRight':
+          chart.pan({ x: -chart.width * amount }, undefined, 'none');
+          break;
+        case '+':
+        case '=':
+          chart.zoom(1.1, undefined, 'none');
+          break;
+        case '-':
+        case '_':
+          chart.zoom(0.9, undefined, 'none');
+          break;
+        case 'r':
+        case 'R':
+          this.resetChart(index);
+          return;
+        default:
+          return;
+      }
+
+      if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+      this.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
+      this.activeChartIndex = index;
+      chart.draw();
+    });
+  },
+
   getAlphaColor: (hex, alpha = 0.1) => {
+    if (!hex || typeof hex !== 'string') return `rgba(128,128,128, ${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  },
+
+  updateLabelVisibility(chart) {
+    if (window.innerWidth <= 768) {
+      if (chart.options.plugins.datalabels.display !== false) {
+        chart.options.plugins.datalabels.display = false;
+        chart.update('none');
+      }
+      return;
+    }
+    const shouldShow = this._shouldShowLabels(chart);
+    if (chart.options.plugins.datalabels.display !== shouldShow) {
+      chart.options.plugins.datalabels.display = shouldShow;
+      chart.update('none');
+    }
   },
 
   highlighterPlugin: {
@@ -521,29 +610,30 @@ export const ChartManager = {
 
       if (AppState.activeHighlight?.targetIndex === chartIdx) {
         const file = AppState.files[chartIdx];
-        const pxStart = x.getPixelForValue(
-          file.startTime + AppState.activeHighlight.start * 1000
-        );
-        const pxEnd = x.getPixelForValue(
-          file.startTime + AppState.activeHighlight.end * 1000
-        );
-        if (!isNaN(pxStart) && !isNaN(pxEnd)) {
-          ctx.save();
-          ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
-          ctx.fillRect(
-            Math.max(pxStart, left),
-            top,
-            Math.min(pxEnd, right) - Math.max(pxStart, left),
-            bottom - top
+        if (file) {
+          const pxStart = x.getPixelForValue(
+            file.startTime + AppState.activeHighlight.start * 1000
           );
-          ctx.restore();
+          const pxEnd = x.getPixelForValue(
+            file.startTime + AppState.activeHighlight.end * 1000
+          );
+          if (!isNaN(pxStart) && !isNaN(pxEnd)) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
+            ctx.fillRect(
+              Math.max(pxStart, left),
+              top,
+              Math.min(pxEnd, right) - Math.max(pxStart, left),
+              bottom - top
+            );
+            ctx.restore();
+          }
         }
       }
 
       if (tooltip && tooltip.getActiveElements().length > 0) {
         const activePoint = tooltip.getActiveElements()[0];
         const xPixel = activePoint.element.x;
-
         if (xPixel >= left && xPixel <= right) {
           ctx.save();
           ctx.beginPath();
