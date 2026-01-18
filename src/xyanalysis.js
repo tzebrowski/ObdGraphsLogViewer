@@ -1,0 +1,161 @@
+import { AppState } from './config.js';
+import { UI } from './ui.js';
+
+import {
+  Chart,
+  ScatterController,
+  PointElement,
+  LinearScale,
+  Tooltip,
+} from 'chart.js';
+
+export const XYAnalysis = {
+  chartInstance: null,
+
+  init() {
+    Chart.register(ScatterController, PointElement, LinearScale, Tooltip);
+  },
+
+  openXYModal() {
+    document.getElementById('xyModal').style.display = 'flex';
+    UI.populateXYSelectors();
+  },
+
+  closeXYModal() {
+    document.getElementById('xyModal').style.display = 'none';
+  },
+
+  generateXY() {
+    const fileIdx = document.getElementById('xyFileSelect').value;
+    const x = document.getElementById('xyXAxis').value;
+    const y = document.getElementById('xyYAxis').value;
+    XYAnalysis.renderXYChart('xyChartCanvas', fileIdx, x, y);
+  },
+
+  generateScatterData(fileIndex, signalXName, signalYName) {
+    const file = AppState.files[fileIndex];
+    if (!file) {
+      console.warn('XYAnalysis: File not found at index', fileIndex);
+      return [];
+    }
+
+    const rawX = file.signals[signalXName];
+    const rawY = file.signals[signalYName];
+
+    if (!rawX || !rawY) {
+      console.warn('XYAnalysis: Signals not found', signalXName, signalYName);
+      return [];
+    }
+
+    const scatterPoints = [];
+
+    let yIndex = 0;
+
+    const isMilliseconds = rawX.length > 0 && rawX[0].x > 100000;
+    const tolerance = isMilliseconds ? 500 : 0.5;
+
+    rawX.forEach((pointX) => {
+      const time = pointX.x;
+
+      while (
+        yIndex < rawY.length - 1 &&
+        Math.abs(rawY[yIndex + 1].x - time) < Math.abs(rawY[yIndex].x - time)
+      ) {
+        yIndex++;
+      }
+
+      const pointY = rawY[yIndex];
+
+      if (pointY && Math.abs(pointY.x - time) <= tolerance) {
+        scatterPoints.push({
+          x: parseFloat(pointX.y),
+          y: parseFloat(pointY.y),
+        });
+      }
+    });
+
+    console.log(
+      `XYAnalysis: Generated ${scatterPoints.length} points (Tolerance: ${tolerance})`
+    );
+    return scatterPoints;
+  },
+
+  renderXYChart(canvasId, fileIndex, signalX, signalY) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const data = this.generateScatterData(fileIndex, signalX, signalY);
+
+    if (data.length === 0) {
+      if (this.chartInstance) {
+        this.chartInstance.destroy();
+        this.chartInstance = null;
+      }
+      console.warn(
+        'XYAnalysis: No overlapping data found. Check sync tolerance.'
+      );
+      return;
+    }
+
+    if (this.chartInstance) {
+      this.chartInstance.destroy();
+    }
+
+    const isDark = document.body.classList.contains('dark-theme');
+    const color = isDark ? 'rgba(255, 99, 132, 0.8)' : 'rgba(227, 24, 55, 0.6)';
+    const gridColor = isDark
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.1)';
+    const textColor = isDark ? '#eee' : '#333';
+
+    this.chartInstance = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          {
+            label: `${signalY} vs ${signalX}`,
+            data: data,
+            backgroundColor: color,
+            borderColor: color,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: { display: true, text: signalX, color: textColor },
+            type: 'linear',
+            position: 'bottom',
+            grid: { color: gridColor },
+            ticks: { color: textColor },
+          },
+          y: {
+            title: { display: true, text: signalY, color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor },
+            beginAtZero: false,
+          },
+        },
+        plugins: {
+          datalabels: {
+            display: false,
+          },
+          legend: {
+            labels: { color: textColor },
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) =>
+                `X: ${context.parsed.x.toFixed(2)}, Y: ${context.parsed.y.toFixed(2)}`,
+            },
+          },
+        },
+      },
+    });
+  },
+};

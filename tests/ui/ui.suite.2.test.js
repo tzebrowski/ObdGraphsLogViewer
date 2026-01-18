@@ -1,7 +1,7 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { UI, InfoPage } from '../src/ui.js';
-import { AppState } from '../src/config.js';
-import { Preferences } from '../src/preferences.js';
+import { UI, InfoPage } from '../../src/ui.js';
+import { AppState } from '../../src/config.js';
+import { Preferences } from '../../src/preferences.js';
 
 Preferences.savePreferences = jest.fn();
 Preferences.customPalette = jest.fn();

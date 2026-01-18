@@ -1,6 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { UI } from '../src/ui.js';
-import { AppState, DOM } from '../src/config.js';
+import { UI } from '../../src/ui.js';
+import { AppState, DOM } from '../../src/config.js';
 
 describe('UI Module - Toggle tests', () => {
   beforeEach(() => {

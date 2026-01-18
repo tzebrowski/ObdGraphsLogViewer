@@ -49,6 +49,47 @@ export const UI = {
     };
   },
 
+  populateXYSelectors() {
+    const fileSel = document.getElementById('xyFileSelect');
+    const xSel = document.getElementById('xyXAxis');
+    const ySel = document.getElementById('xyYAxis');
+
+    if (!fileSel) return;
+
+    fileSel.innerHTML = '';
+
+    if (AppState.files.length === 0) {
+      fileSel.innerHTML = '<option>No files loaded</option>';
+      return;
+    }
+
+    fileSel.innerHTML = AppState.files
+      .map((f, i) => `<option value="${i}">${f.name}</option>`)
+      .join('');
+
+    const updateSignals = () => {
+      const file = AppState.files[fileSel.value];
+      if (!file) return;
+
+      const options = file.availableSignals
+        .sort()
+        .map((s) => `<option value="${s}">${s}</option>`)
+        .join('');
+      xSel.innerHTML = options;
+      ySel.innerHTML = options;
+
+      if (file.availableSignals.includes('Engine Rpm'))
+        xSel.value = 'Engine Rpm';
+      else if (file.availableSignals.includes('Rpm')) xSel.value = 'Rpm';
+
+      if (file.availableSignals.includes('Boost Pressure'))
+        ySel.value = 'Boost Pressure';
+    };
+
+    fileSel.onchange = updateSignals;
+    updateSignals();
+  },
+
   updateDataLoadedState: (hasData) => {
     const container = document.getElementById('chartContainer');
 
@@ -229,16 +270,31 @@ export const UI = {
       document.exitFullscreen();
     }
   },
+
   toggleFileSignals(fileIdx, shouldCheck) {
     const inputs = UI.elements.signalList.querySelectorAll(
       `input[data-file-idx="${fileIdx}"]`
     );
     inputs.forEach((i) => (i.checked = shouldCheck));
 
-    const chart = AppState.chartInstances[fileIdx];
-    if (chart) {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
+    // --- FIX FOR OVERLAY MODE ---
+    if (ChartManager.viewMode === 'overlay') {
+      const chart = AppState.chartInstances[0];
+      if (chart) {
+        chart.data.datasets.forEach((ds) => {
+          if (ds._fileIdx === fileIdx) {
+            ds.hidden = !shouldCheck;
+          }
+        });
+        chart.update('none');
+      }
+    } else {
+      // Standard Mode
+      const chart = AppState.chartInstances[fileIdx];
+      if (chart) {
+        chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+        chart.update('none');
+      }
     }
   },
 
@@ -354,7 +410,6 @@ export const UI = {
 
         items.forEach((item) => {
           const attr = item.getAttribute('data-signal-name');
-          // FIX: Added safety check for null attribute
           const isMatch = attr && attr.includes(term);
           item.style.display = isMatch ? 'flex' : 'none';
           if (isMatch) matchCount++;
@@ -385,12 +440,28 @@ export const UI = {
   },
 
   syncSignalVisibility(key, isVisible, fileIdx) {
-    const chart = AppState.chartInstances[fileIdx];
-    if (chart) {
-      const dataset = chart.data.datasets.find((d) => d.label === key);
-      if (dataset) {
-        dataset.hidden = !isVisible;
-        chart.update('none');
+    // --- FIX FOR OVERLAY MODE ---
+    if (ChartManager.viewMode === 'overlay') {
+      const chart = AppState.chartInstances[0]; // In overlay, there's only one chart
+      if (chart) {
+        // Find dataset using our custom metadata keys added in ChartManager
+        const dataset = chart.data.datasets.find(
+          (d) => d._fileIdx === fileIdx && d._signalKey === key
+        );
+        if (dataset) {
+          dataset.hidden = !isVisible;
+          chart.update('none');
+        }
+      }
+    } else {
+      // Standard Stack Mode
+      const chart = AppState.chartInstances[fileIdx];
+      if (chart) {
+        const dataset = chart.data.datasets.find((d) => d.label === key);
+        if (dataset) {
+          dataset.hidden = !isVisible;
+          chart.update('none');
+        }
       }
     }
   },
@@ -403,10 +474,20 @@ export const UI = {
       .querySelectorAll('input')
       .forEach((i) => (i.checked = shouldCheck));
 
-    AppState.chartInstances.forEach((chart) => {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
-    });
+    // --- FIX FOR OVERLAY MODE ---
+    if (ChartManager.viewMode === 'overlay') {
+      const chart = AppState.chartInstances[0];
+      if (chart) {
+        chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+        chart.update('none');
+      }
+    } else {
+      // Standard Mode
+      AppState.chartInstances.forEach((chart) => {
+        chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+        chart.update('none');
+      });
+    }
   },
 
   loadSampleData: async (showInfo) => {

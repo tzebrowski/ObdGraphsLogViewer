@@ -2073,7 +2073,6 @@ body.analyzer-active {
   transform: translateY(-2px);
 }
 
-/* Outline Style (Light) */
 .source-btn.outline {
   background: #f8f9fa;
   color: #7f8c8d;
@@ -2087,7 +2086,6 @@ body.analyzer-active {
   transform: translateY(-2px);
 }
 
-/* Subtle Status Text */
 .status-text-subtle {
   font-size: 0.75em;
   color: #95a5a6;
@@ -2127,4 +2125,79 @@ body.analyzer-active {
   margin-top: -5px;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+}
+
+.view-controls-wrapper {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.view-mode-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:not(.active):hover {
+  background-color: #f1f3f5;
+  color: var(--text-main);
+  border-color: #adb5bd;
+}
+
+.view-mode-btn.active {
+  background-color: var(--brand-blue);
+  color: white;
+  border-color: var(--brand-blue);
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgb(28 61 114 / 20%);
+}
+
+.view-mode-btn.active i {
+  color: white;
+}
+
+.view-mode-btn.xy-btn {
+  flex: 0 0 auto;
+  border-color: var(--border-color);
+  background-color: #fff;
+}
+
+.view-mode-btn.xy-btn:hover {
+  color: var(--brand-red);
+  border-color: var(--brand-red);
+  background-color: #fff5f5;
+}
+
+#xyModal .modal-content {
+  width: 95vw !important;
+  max-width: none !important;
+  height: 90vh !important;
+  display: flex;
+  flex-direction: column;
+}
+
+#xyModal .modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+
+#xyModal .modal-body > div:last-child {
+  height: 100%;
+  width: 100%;
 }

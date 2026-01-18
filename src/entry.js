@@ -10,6 +10,7 @@ import { Preferences } from './preferences.js';
 import { Navigation } from './navigation.js';
 import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
+import { XYAnalysis } from './xyanalysis.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
@@ -24,6 +25,7 @@ window.onload = async function () {
   Preferences.init();
   Navigation.init();
   PaletteManager.init();
+  XYAnalysis.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {
@@ -59,3 +61,8 @@ window.resetChart = (i) => ChartManager.resetChart(i);
 window.removeChart = (f) => ChartManager.removeChart(f);
 window.resetZoom = () => ChartManager.reset();
 window.manualZoom = (e, f) => ChartManager.manualZoom(e, f);
+window.toggleViewMode = (f) => ChartManager.toggleViewMode(f);
+
+window.openXYModal = () => XYAnalysis.openXYModal();
+window.closeXYModal = () => XYAnalysis.closeXYModal();
+window.generateXY = () => XYAnalysis.generateXY();
