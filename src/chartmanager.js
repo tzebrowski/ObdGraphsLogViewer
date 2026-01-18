@@ -25,7 +25,7 @@ export const ChartManager = {
   hoverValue: null,
   activeChartIndex: null,
   datalabelsSettings: { timeRange: 5000, visibleDatasets: 5 },
-  viewMode: 'stack', // 'stack' | 'overlay'
+  viewMode: 'stack',
 
   init() {
     window.ChartManager = this;
@@ -67,11 +67,9 @@ export const ChartManager = {
     const container = DOM.get('chartContainer');
     if (!container) return;
 
-    // Clean up
     AppState.chartInstances.forEach((c) => c?.destroy());
     AppState.chartInstances = [];
 
-    // Handle Empty State DOM
     let emptyState = document.getElementById('empty-state');
     if (emptyState && container.contains(emptyState)) {
       container.removeChild(emptyState);
@@ -141,16 +139,11 @@ export const ChartManager = {
 
     AppState.files.forEach((file, fileIdx) => {
       file.availableSignals.forEach((key, sigIdx) => {
-        // FIX: Removed the checkbox check "if (!checked) return".
-        // We build ALL datasets now, and let _buildDataset decide if they are hidden.
-
         const ds = this._buildDataset(file, key, fileIdx, sigIdx);
 
-        // Add metadata for UI sync
         ds._fileIdx = fileIdx;
         ds._signalKey = key;
 
-        // Normalize time for overlay
         const fileStart = file.startTime;
         ds.data = ds.data.map((p) => ({
           x: baseStartTime + (p.x - fileStart),
@@ -256,9 +249,9 @@ export const ChartManager = {
     const chart = AppState.chartInstances[idx];
     const file =
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
+
     if (!chart || !file) return;
 
-    // Skip update for overlay mode sliders as they are not implemented yet
     if (this.viewMode === 'overlay') return;
 
     const card = document
@@ -395,7 +388,6 @@ export const ChartManager = {
     const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
     const { showAreaFills } = Preferences.prefs;
 
-    // FIX: Determine initial visibility based on UI checkbox state if it exists
     const checkbox = document.querySelector(
       `#signalList input[data-key="${key}"][data-file-idx="${fileIdx}"]`
     );
@@ -423,11 +415,16 @@ export const ChartManager = {
   },
 
   _getChartOptions(file) {
+    const isOverlay = this.viewMode === 'overlay';
     return {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      interaction: {
+        mode: isOverlay ? 'index' : 'nearest',
+        axis: 'x',
+        intersect: false,
+      },
       scales: {
         y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
         x: {
@@ -456,13 +453,28 @@ export const ChartManager = {
           mode: 'index',
           axis: 'x',
           intersect: false,
+          position: 'nearest',
+          itemSort: (a, b) => b.parsed.y - a.parsed.y,
           callbacks: {
+            title: (items) => {
+              if (!items.length) return '';
+              const xVal = items[0].parsed.x;
+              if (isOverlay) {
+                const seconds = (xVal - items[0].chart.scales.x.min) / 1000;
+                return `T + ${Math.max(0, seconds).toFixed(2)}s`;
+              }
+              return new Date(xVal).toISOString().substring(14, 19);
+            },
             label: (context) => {
               const ds = context.dataset;
               const realY =
                 context.parsed.y * (ds.originalMax - ds.originalMin) +
                 ds.originalMin;
-              return ` ${ds.label}: ${realY.toFixed(2)}`;
+              let label = ds.label || '';
+              if (label) {
+                label += ': ';
+              }
+              return label + realY.toFixed(2);
             },
           },
         },
@@ -471,8 +483,10 @@ export const ChartManager = {
           position: 'bottom',
           labels: {
             font: { size: 11 },
-            filter: (item) => {
-              // In overlay, we trust the item.hidden property which matches the dataset
+            filter: (item, chartData) => {
+              if (isOverlay) {
+                return !chartData.datasets[item.datasetIndex].hidden;
+              }
               const checkbox = document.querySelector(
                 `#signalList input[data-key="${item.text}"]`
               );
