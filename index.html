@@ -249,23 +249,32 @@
 
           <div class="control-group gray-box">
             <h3>View Controls</h3>
-            <div style="display: flex; gap: 8px; margin-top: 10px">
+            <div class="view-controls-wrapper">
               <button
                 id="btn-mode-stack"
-                class="btn btn-sm active"
+                class="view-mode-btn active"
                 onclick="toggleViewMode('stack')"
               >
-                <i class="fas fa-stream"></i> Stacked
+                <i class="fas fa-stream"></i>
+                <span>Stacked</span>
               </button>
+
               <button
                 id="btn-mode-overlay"
-                class="btn btn-sm"
+                class="view-mode-btn"
                 onclick="toggleViewMode('overlay')"
               >
-                <i class="fas fa-layer-group"></i> Overlay
+                <i class="fas fa-layer-group"></i>
+                <span>Overlay</span>
               </button>
-              <button class="btn btn-sm" onclick="openXYModal()">
-                <i class="fas fa-braille"></i> XY Plot
+
+              <button
+                class="view-mode-btn xy-btn"
+                onclick="openXYModal()"
+                title="Open Scatter Plot Analysis"
+              >
+                <i class="fas fa-braille"></i>
+                <span>XY</span>
               </button>
             </div>
           </div>

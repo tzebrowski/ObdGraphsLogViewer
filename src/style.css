@@ -2128,3 +2128,57 @@ body.analyzer-active {
   border: 2px solid white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
 }
+
+.view-controls-wrapper {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.view-mode-btn {
+  flex: 1; /* Przyciski dzielą się miejscem po równo */
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:not(.active):hover {
+  background-color: #f1f3f5;
+  color: var(--text-main);
+  border-color: #adb5bd;
+}
+
+.view-mode-btn.active {
+  background-color: var(--brand-blue);
+  color: white;
+  border-color: var(--brand-blue);
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgb(28 61 114 / 20%); /* Lekki cień */
+}
+
+.view-mode-btn.active i {
+  color: white;
+}
+
+.view-mode-btn.xy-btn {
+  flex: 0 0 auto; /* Nie rozciągaj go tak mocno jak trybów widoku */
+  border-color: var(--border-color);
+  background-color: #fff;
+}
+
+.view-mode-btn.xy-btn:hover {
+  color: var(--brand-red);
+  border-color: var(--brand-red);
+  background-color: #fff5f5;
+}
