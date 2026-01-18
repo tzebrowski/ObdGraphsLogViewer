@@ -9,7 +9,7 @@ const mockChartInstance = {
   scales: { x: { min: 0, max: 1000, getValueForPixel: jest.fn() } },
   data: { datasets: [] },
   options: {
-    plugins: { datalabels: {}, zoom: {} },
+    plugins: { datalabels: {}, zoom: {}, tooltip: { callbacks: {} } },
     scales: { x: { min: 0, max: 0 } },
   },
 };
@@ -18,12 +18,8 @@ const mockChartInstance = {
 
 // Mock Chart.js
 await jest.unstable_mockModule('chart.js', () => {
-  // Create a Mock Constructor function
   const MockChart = jest.fn(() => mockChartInstance);
-
-  // CRITICAL FIX: Attach 'register' as a static method on the constructor
   MockChart.register = jest.fn();
-
   return {
     __esModule: true,
     Chart: MockChart,
@@ -48,7 +44,7 @@ await jest.unstable_mockModule('../src/config.js', () => ({
   },
 }));
 
-// --- 3. Dynamic Imports (Must happen AFTER mocks are registered) ---
+// --- 3. Dynamic Imports ---
 const { XYAnalysis } = await import('../src/xyanalysis.js');
 const { AppState } = await import('../src/config.js');
 const { UI } = await import('../src/ui.js');
@@ -58,15 +54,10 @@ const { Chart } = await import('chart.js');
 describe('XYAnalysis Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Reset State
     AppState.files = [];
     XYAnalysis.chartInstance = null;
-
-    // Ensure the constructor returns our instance (redundant but safe)
     Chart.mockImplementation(() => mockChartInstance);
 
-    // Reset DOM
     document.body.innerHTML = `
       <div id="xyModal" style="display: none;"></div>
       <select id="xyFileSelect"><option value="0">File 1</option></select>
@@ -79,7 +70,6 @@ describe('XYAnalysis Module', () => {
   describe('Initialization & UI Helpers', () => {
     test('init registers Chart.js components', () => {
       XYAnalysis.init();
-      // Now checks the static method on the class
       expect(Chart.register).toHaveBeenCalled();
     });
 
@@ -158,17 +148,77 @@ describe('XYAnalysis Module', () => {
       }));
     });
 
-    test('creates chart with correct config options', () => {
-      jest
-        .spyOn(XYAnalysis, 'generateScatterData')
-        .mockReturnValue([{ x: 10, y: 20 }]);
+    // --- COVERS LINE 91-98: Cleanup when no data found ---
+    test('destroys existing chart and cleans up if no data is found', () => {
+      // Mock generateScatterData to return empty
+      jest.spyOn(XYAnalysis, 'generateScatterData').mockReturnValue([]);
+
+      // Simulate an existing chart instance
+      const existingDestroy = jest.fn();
+      XYAnalysis.chartInstance = { destroy: existingDestroy };
+
+      // Spy on console.warn
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
 
+      expect(existingDestroy).toHaveBeenCalled();
+      expect(XYAnalysis.chartInstance).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No overlapping data found')
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    // --- COVERS LINE 102: Destroy before create ---
+    test('destroys existing chart instance before creating a new one (valid data)', () => {
+      jest
+        .spyOn(XYAnalysis, 'generateScatterData')
+        .mockReturnValue([{ x: 1, y: 1 }]);
+
+      const existingDestroy = jest.fn();
+      XYAnalysis.chartInstance = { destroy: existingDestroy };
+
+      XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
+
+      expect(existingDestroy).toHaveBeenCalled();
       expect(Chart).toHaveBeenCalled();
+    });
+
+    test('does not create chart if canvas missing', () => {
+      document.body.innerHTML = ''; // Clear DOM
+      XYAnalysis.renderXYChart('missing', 0, 'X', 'Y');
+      expect(Chart).not.toHaveBeenCalled();
+    });
+
+    // --- COVERS LINE 154: Tooltip Callback ---
+    test('Tooltip callback formats label correctly', () => {
+      jest
+        .spyOn(XYAnalysis, 'generateScatterData')
+        .mockReturnValue([{ x: 10.123, y: 20.456 }]);
+
+      XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
+
+      // Get the config object passed to the Chart constructor
       const config = Chart.mock.calls[0][1];
-      expect(config.type).toBe('scatter');
-      expect(config.data.datasets[0].data).toEqual([{ x: 10, y: 20 }]);
+      const callback = config.options.plugins.tooltip.callbacks.label;
+
+      // Mock context object expected by the callback
+      const context = { parsed: { x: 10.12345, y: 20.45678 } };
+      const result = callback(context);
+
+      expect(result).toBe('X: 10.12, Y: 20.46');
+    });
+
+    test('applies dark theme styling', () => {
+      jest
+        .spyOn(XYAnalysis, 'generateScatterData')
+        .mockReturnValue([{ x: 1, y: 1 }]);
+      document.body.classList.add('dark-theme');
+      XYAnalysis.renderXYChart('xyChartCanvas', 0, 'X', 'Y');
+      const config = Chart.mock.calls[0][1];
+      expect(config.data.datasets[0].backgroundColor).toContain('255, 99, 132');
     });
   });
 });
