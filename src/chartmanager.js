@@ -28,6 +28,7 @@ export const ChartManager = {
   viewMode: 'stack', // 'stack' | 'overlay'
 
   init() {
+    window.ChartManager = this;
     window.Hammer = Hammer;
     Chart.register(
       LineController,
@@ -66,39 +67,39 @@ export const ChartManager = {
     const container = DOM.get('chartContainer');
     if (!container) return;
 
-    // 1. Destroy existing chart instances
+    // Clean up
     AppState.chartInstances.forEach((c) => c?.destroy());
     AppState.chartInstances = [];
 
-    // 2. Preserve Empty State element safely
-    const emptyState = document.getElementById('empty-state');
-    if (emptyState) {
-      // Detach it from DOM so innerHTML='' doesn't destroy it
-      emptyState.remove();
+    // Handle Empty State DOM
+    let emptyState = document.getElementById('empty-state');
+    if (emptyState && container.contains(emptyState)) {
+      container.removeChild(emptyState);
+    } else if (!emptyState) {
+      emptyState = document.createElement('div');
+      emptyState.id = 'empty-state';
+      emptyState.className = 'empty-state-container';
+      emptyState.innerHTML = `
+          <div class="empty-state-content">
+            <i class="fas fa-chart-area empty-icon"></i>
+            <h3>No Telemetry Loaded</h3>
+            <p>Start by scanning your Google Drive or uploading a local JSON trip log.</p>
+            <div class="empty-state-actions">
+              <button class="btn btn-primary mobile-only-btn" onclick="toggleSidebar()"><i class="fas fa-folder-open"></i> Open Log Source</button>
+              <button class="btn" onclick="loadSampleData(false)"><i class="fas fa-vial"></i> Load Sample Trip</button>
+            </div>
+          </div>
+        `;
     }
 
-    // 3. Clear container (removes old charts/overlays)
     container.innerHTML = '';
+    container.appendChild(emptyState);
 
-    // 4. Restore Empty State (hidden by default via CSS if has-data class is present)
-    if (emptyState) {
-      container.appendChild(emptyState);
-    } else {
-      // Fallback: Re-create minimal empty state structure if lost
-      const fallback = document.createElement('div');
-      fallback.id = 'empty-state';
-      fallback.className = 'empty-state-container';
-      fallback.innerHTML = `<div class="empty-state-content"><h3>No Data</h3><p>Please reload the page.</p></div>`;
-      container.appendChild(fallback);
-    }
-
-    // 5. Handle No Data Case
     if (AppState.files.length === 0) {
       this._handleEmptyState();
       return;
     }
 
-    // 6. Render Data
     UI.updateDataLoadedState(true);
 
     if (this.viewMode === 'overlay') {
@@ -124,7 +125,7 @@ export const ChartManager = {
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
           <div class="chart-actions">
                <span style="font-size:0.8em; color:#666; margin-right:10px;">X-Axis: Relative Time (s)</span>
-              <button class="btn-icon" onclick="ChartManager.resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
+              <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
       </div>
       <div class="canvas-wrapper" style="height: calc(100vh - 200px); padding: 5px;">
@@ -140,15 +141,17 @@ export const ChartManager = {
 
     AppState.files.forEach((file, fileIdx) => {
       file.availableSignals.forEach((key, sigIdx) => {
-        const checkbox = document.querySelector(
-          `#signalList input[data-key="${key}"][data-file-idx="${fileIdx}"]`
-        );
-        if (!checkbox || !checkbox.checked) return;
+        // FIX: Removed the checkbox check "if (!checked) return".
+        // We build ALL datasets now, and let _buildDataset decide if they are hidden.
 
         const ds = this._buildDataset(file, key, fileIdx, sigIdx);
 
-        const fileStart = file.startTime;
+        // Add metadata for UI sync
+        ds._fileIdx = fileIdx;
+        ds._signalKey = key;
 
+        // Normalize time for overlay
+        const fileStart = file.startTime;
         ds.data = ds.data.map((p) => ({
           x: baseStartTime + (p.x - fileStart),
           y: p.y,
@@ -253,21 +256,15 @@ export const ChartManager = {
     const chart = AppState.chartInstances[idx];
     const file =
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
-
     if (!chart || !file) return;
 
-    const card =
-      this.viewMode === 'overlay'
-        ? document
-            .getElementById(`chart-overlay`)
-            ?.closest('.chart-card-compact')
-        : document
-            .getElementById(`chart-${idx}`)
-            ?.closest('.chart-card-compact');
-
-    if (!card) return;
-
+    // Skip update for overlay mode sliders as they are not implemented yet
     if (this.viewMode === 'overlay') return;
+
+    const card = document
+      .getElementById(`chart-${idx}`)
+      ?.closest('.chart-card-compact');
+    if (!card) return;
 
     const s = Math.max(0, (chart.scales.x.min - file.startTime) / 1000);
     const e = Math.min(
@@ -383,7 +380,6 @@ export const ChartManager = {
   },
 
   _buildDataset(file, key, fileIdx, sigIdx) {
-    const isImportant = DEFAULT_SIGNALS.some((k) => key.includes(k));
     const rawData = file.signals[key];
     const yValues = rawData.map((d) => parseFloat(d.y) || 0);
 
@@ -399,19 +395,30 @@ export const ChartManager = {
     const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
     const { showAreaFills } = Preferences.prefs;
 
+    // FIX: Determine initial visibility based on UI checkbox state if it exists
+    const checkbox = document.querySelector(
+      `#signalList input[data-key="${key}"][data-file-idx="${fileIdx}"]`
+    );
+    let isVisible = false;
+    if (checkbox) {
+      isVisible = checkbox.checked;
+    } else {
+      isVisible = DEFAULT_SIGNALS.some((k) => key.includes(k));
+    }
+
     return {
       label: key,
       originalMin: min,
       originalMax: max,
       data: normalizedData,
       borderColor: color,
-      borderWidth: isImportant ? 3 : 1.5,
+      borderWidth: isVisible ? 3 : 1.5,
       pointRadius: 0,
       backgroundColor: showAreaFills
         ? this.getAlphaColor(color, 0.1)
         : 'transparent',
       fill: showAreaFills ? 'origin' : false,
-      hidden: !isImportant,
+      hidden: !isVisible,
     };
   },
 
@@ -465,7 +472,7 @@ export const ChartManager = {
           labels: {
             font: { size: 11 },
             filter: (item) => {
-              if (this.viewMode === 'overlay') return true;
+              // In overlay, we trust the item.hidden property which matches the dataset
               const checkbox = document.querySelector(
                 `#signalList input[data-key="${item.text}"]`
               );

@@ -92,16 +92,26 @@ export const UI = {
 
   updateDataLoadedState: (hasData) => {
     const container = document.getElementById('chartContainer');
-    if (!container) return;
-    if (hasData) container.classList.add('has-data');
-    else container.classList.remove('has-data');
+
+    if (!container) {
+      console.warn('UI: chartContainer not found. Skipping state update.');
+      return;
+    }
+
+    if (hasData) {
+      container.classList.add('has-data');
+    } else {
+      container.classList.remove('has-data');
+    }
   },
 
   toggleItem(i) {
     const p = DOM.get(i);
     if (!p) return;
+
     const isHidden = p.style.display === 'none' || p.style.display === '';
     p.style.display = isHidden ? 'block' : 'none';
+
     if (AppState.chartInstance) AppState.chartInstance.resize();
   },
 
@@ -112,17 +122,23 @@ export const UI = {
         e.target.closest('h3') ||
         e.target.closest('.group-header') ||
         e.target.closest('.group-header-row');
+
       if (header) {
         const group = header.closest('.control-group');
+
         if (group) {
           if (
             e.target.tagName === 'BUTTON' ||
             e.target.classList.contains('config-link')
-          )
+          ) {
             return;
+          }
+
           group.classList.toggle('collapsed');
           const prefs = Preferences.prefs;
-          if (prefs?.persistence) UI.saveSidebarState();
+          if (prefs?.persistence) {
+            UI.saveSidebarState();
+          }
         }
       }
     });
@@ -130,9 +146,11 @@ export const UI = {
 
   initMobileUI: () => {
     const sidebar = UI.elements.sidebar;
+
     const backdrop = document.createElement('div');
     backdrop.className = 'sidebar-backdrop';
     document.body.appendChild(backdrop);
+
     backdrop.addEventListener('click', () => {
       sidebar.classList.remove('active');
       backdrop.classList.remove('active');
@@ -143,6 +161,7 @@ export const UI = {
     const resizer = UI.elements.resizer;
     const sidebar = UI.elements.sidebar;
     let isResizing = false;
+
     if (!resizer || !sidebar) return;
 
     resizer.addEventListener('mousedown', () => {
@@ -150,14 +169,21 @@ export const UI = {
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     });
+
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
+
       let newWidth = e.clientX;
+
       if (newWidth >= 250 && newWidth <= 600) {
         sidebar.style.width = `${newWidth}px`;
-        if (AppState.chartInstance) AppState.chartInstance.resize();
+
+        if (AppState.chartInstance) {
+          AppState.chartInstance.resize();
+        }
       }
     });
+
     document.addEventListener('mouseup', () => {
       if (isResizing) {
         isResizing = false;
@@ -178,11 +204,14 @@ export const UI = {
   restoreSidebarState: () => {
     const savedData = localStorage.getItem(UI.STORAGE_KEY);
     if (!savedData) return;
+
     try {
       const states = JSON.parse(savedData);
       const groups = document.querySelectorAll('.sidebar .control-group');
       groups.forEach((group, index) => {
-        if (states[index] === true) group.classList.add('collapsed');
+        if (states[index] === true) {
+          group.classList.add('collapsed');
+        }
       });
     } catch (e) {
       console.error('Could not restore sidebar state', e);
@@ -207,7 +236,9 @@ export const UI = {
   resetScannerUI() {
     AppState.activeHighlight = null;
     const { scanResults, scanCount } = this.elements;
+
     if (!scanResults || !scanCount) return;
+
     scanResults.innerHTML = '';
     scanResults.style.display = 'none';
     scanCount.innerText = '';
@@ -216,6 +247,7 @@ export const UI = {
   toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.querySelector('.sidebar-backdrop');
+
     if (window.innerWidth <= 768) {
       sidebar.classList.toggle('active');
       backdrop.classList.toggle('active');
@@ -227,8 +259,13 @@ export const UI = {
   toggleFullScreen() {
     const content = UI.elements.mainContent;
     if (!content) return;
+
     if (!document.fullscreenElement) {
-      content.requestFullscreen().catch((err) => console.error(err));
+      content.requestFullscreen().catch((err) => {
+        console.error(
+          `Error attempting to enable full-screen mode: ${err.message}`
+        );
+      });
     } else {
       document.exitFullscreen();
     }
@@ -239,10 +276,25 @@ export const UI = {
       `input[data-file-idx="${fileIdx}"]`
     );
     inputs.forEach((i) => (i.checked = shouldCheck));
-    const chart = AppState.chartInstances[fileIdx];
-    if (chart) {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
+
+    // --- FIX FOR OVERLAY MODE ---
+    if (ChartManager.viewMode === 'overlay') {
+      const chart = AppState.chartInstances[0];
+      if (chart) {
+        chart.data.datasets.forEach((ds) => {
+          if (ds._fileIdx === fileIdx) {
+            ds.hidden = !shouldCheck;
+          }
+        });
+        chart.update('none');
+      }
+    } else {
+      // Standard Mode
+      const chart = AppState.chartInstances[fileIdx];
+      if (chart) {
+        chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+        chart.update('none');
+      }
     }
   },
 
@@ -272,6 +324,7 @@ export const UI = {
     AppState.files.forEach((file, fileIdx) => {
       const fileGroup = document.createElement('div');
       fileGroup.className = 'file-group-container';
+
       const fileHeader = document.createElement('div');
       fileHeader.className = 'file-meta-header';
       fileHeader.style.cssText = `padding: 8px 5px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--sidebar-bg);`;
@@ -310,7 +363,10 @@ export const UI = {
         signalItem.setAttribute('data-signal-name', signal.toLowerCase());
         signalItem.style.cssText =
           'display: flex; align-items: center; gap: 8px; padding: 2px 5px;';
+
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
+
+        // Color picker styling
         const pickerStyle = `width: 18px; height: 18px; border: none; padding: 0; background: none; cursor: ${isCustomEnabled ? 'pointer' : 'default'}; opacity: ${isCustomEnabled ? '1' : '0.4'};`;
 
         signalItem.innerHTML = `
@@ -328,6 +384,7 @@ export const UI = {
           Preferences.customPalette = customMap;
           if (typeof ChartManager !== 'undefined') ChartManager.render();
         };
+
         signalListContainer.appendChild(signalItem);
       });
 
@@ -345,16 +402,19 @@ export const UI = {
     searchInput.addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase().trim();
       clearBtn.style.display = term.length > 0 ? 'block' : 'none';
+
       const groups = contentContainer.querySelectorAll('.file-group-container');
       groups.forEach((group) => {
         let matchCount = 0;
         const items = group.querySelectorAll('.signal-item');
+
         items.forEach((item) => {
           const attr = item.getAttribute('data-signal-name');
           const isMatch = attr && attr.includes(term);
           item.style.display = isMatch ? 'flex' : 'none';
           if (isMatch) matchCount++;
         });
+
         group.style.display = matchCount > 0 ? 'block' : 'none';
         const sigList = group.querySelector('[id^="sig-list-f"]');
         if (term.length > 0 && matchCount > 0 && sigList)
@@ -380,12 +440,28 @@ export const UI = {
   },
 
   syncSignalVisibility(key, isVisible, fileIdx) {
-    const chart = AppState.chartInstances[fileIdx];
-    if (chart) {
-      const dataset = chart.data.datasets.find((d) => d.label === key);
-      if (dataset) {
-        dataset.hidden = !isVisible;
-        chart.update('none');
+    // --- FIX FOR OVERLAY MODE ---
+    if (ChartManager.viewMode === 'overlay') {
+      const chart = AppState.chartInstances[0]; // In overlay, there's only one chart
+      if (chart) {
+        // Find dataset using our custom metadata keys added in ChartManager
+        const dataset = chart.data.datasets.find(
+          (d) => d._fileIdx === fileIdx && d._signalKey === key
+        );
+        if (dataset) {
+          dataset.hidden = !isVisible;
+          chart.update('none');
+        }
+      }
+    } else {
+      // Standard Stack Mode
+      const chart = AppState.chartInstances[fileIdx];
+      if (chart) {
+        const dataset = chart.data.datasets.find((d) => d.label === key);
+        if (dataset) {
+          dataset.hidden = !isVisible;
+          chart.update('none');
+        }
       }
     }
   },
@@ -393,18 +469,31 @@ export const UI = {
   toggleAllSignals(shouldCheck) {
     const container = UI.elements.signalList;
     if (!container) return;
+
     container
       .querySelectorAll('input')
       .forEach((i) => (i.checked = shouldCheck));
-    AppState.chartInstances.forEach((chart) => {
-      chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
-      chart.update('none');
-    });
+
+    // --- FIX FOR OVERLAY MODE ---
+    if (ChartManager.viewMode === 'overlay') {
+      const chart = AppState.chartInstances[0];
+      if (chart) {
+        chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+        chart.update('none');
+      }
+    } else {
+      // Standard Mode
+      AppState.chartInstances.forEach((chart) => {
+        chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
+        chart.update('none');
+      });
+    }
   },
 
   loadSampleData: async (showInfo) => {
     const sampleUrl =
       'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
+
     try {
       const btn = document.querySelector('.btn-sample');
       const originalText = btn.innerText;
@@ -416,7 +505,10 @@ export const UI = {
       const data = await response.json();
 
       dataProcessor.process(data, 'sample-trip-giulia.json');
-      if (showInfo) InfoPage.toggleInfo();
+
+      if (showInfo) {
+        InfoPage.toggleInfo();
+      }
 
       btn.innerText = originalText;
       btn.disabled = false;
@@ -437,6 +529,7 @@ export const UI = {
       : 'rgba(0, 0, 0, 0.1)';
 
     document.body.classList.toggle('dark-theme', isDark);
+
     document
       .getElementById('btn-theme-light')
       ?.classList.toggle('active', !isDark);
@@ -461,30 +554,46 @@ export const UI = {
   initVersionInfo() {
     const container = DOM.get('appVersion');
     if (!container) return;
+
     const { tag, repoUrl } = AppState.version;
+
     if (tag === 'dev') {
       container.innerText = 'v.development';
       return;
     }
+
     const tagHtml = tag
-      ? `<a href="${repoUrl}/releases/tag/${tag}" target="_blank" class="version-badge-tag" title="View release notes for ${tag}">${tag}</a>`
+      ? `<a href="${repoUrl}/releases/tag/${tag}" 
+              target="_blank" 
+              class="version-badge-tag"
+              title="View release notes for ${tag}">
+              ${tag}
+           </a>`
       : '';
-    container.innerHTML = `<div class="version-container">${tagHtml}</div>`;
+
+    container.innerHTML = `
+            <div class="version-container">
+                ${tagHtml}
+            </div>
+        `;
   },
 };
 
 export const InfoPage = {
   STORAGE_KEY: 'hide_info_page',
+
   init: () => {
     const hideCheckbox = DOM.get('hideInfoCheckbox');
     const closeBtn = DOM.get('closeInfoBtn');
     const showBtn = DOM.get('showInfoBtn');
+
     if (showBtn) {
       showBtn.addEventListener('click', () => {
         if (hideCheckbox) hideCheckbox.checked = false;
         InfoPage.open();
       });
     }
+
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         if (hideCheckbox && hideCheckbox.checked) {
@@ -495,21 +604,28 @@ export const InfoPage = {
         InfoPage.close();
       });
     }
+
     const userPrefersHide =
       localStorage.getItem(InfoPage.STORAGE_KEY) === 'true';
-    if (!userPrefersHide) InfoPage.open();
+    if (!userPrefersHide) {
+      InfoPage.open();
+    }
   },
+
   open: () => {
     const modal = DOM.get('infoModal');
     if (modal) modal.style.display = 'flex';
   },
+
   close: () => {
     const modal = DOM.get('infoModal');
     if (modal) modal.style.display = 'none';
   },
+
   toggleInfo: () => {
     const modal = document.getElementById('infoModal');
     if (!modal) return;
+
     const isHidden = modal.style.display === 'none';
     modal.style.display = isHidden ? 'flex' : 'none';
   },
