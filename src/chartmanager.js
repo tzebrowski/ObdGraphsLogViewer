@@ -26,9 +26,9 @@ export const ChartManager = {
   activeChartIndex: null,
   datalabelsSettings: { timeRange: 5000, visibleDatasets: 5 },
   viewMode: 'stack',
+  _rafId: null,
 
   init() {
-    window.ChartManager = this;
     window.Hammer = Hammer;
     Chart.register(
       LineController,
@@ -127,7 +127,7 @@ export const ChartManager = {
           </div>
       </div>
       <div class="canvas-wrapper" style="height: calc(100vh - 200px); padding: 5px;">
-          <canvas id="chart-overlay"></canvas>
+          <canvas id="chart-overlay" tabindex="0"></canvas>
       </div>
     `;
     container.appendChild(wrapper);
@@ -249,7 +249,6 @@ export const ChartManager = {
     const chart = AppState.chartInstances[idx];
     const file =
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
-
     if (!chart || !file) return;
 
     if (this.viewMode === 'overlay') return;
@@ -522,9 +521,26 @@ export const ChartManager = {
     canvas.addEventListener('mousemove', (e) => {
       const chart = AppState.chartInstances[index];
       if (!chart) return;
-      this.hoverValue = chart.scales.x.getValueForPixel(e.offsetX);
+
+      const newValue = chart.scales.x.getValueForPixel(e.offsetX);
+      this.hoverValue = newValue;
       this.activeChartIndex = index;
-      chart.draw();
+
+      if (this._rafId) {
+        cancelAnimationFrame(this._rafId);
+      }
+      this._rafId = requestAnimationFrame(() => {
+        chart.draw();
+        this._rafId = null;
+      });
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      const chart = AppState.chartInstances[index];
+      if (!chart) return;
+      this.hoverValue = null;
+      this.activeChartIndex = null;
+      requestAnimationFrame(() => chart.draw());
     });
   },
 
