@@ -9,11 +9,26 @@ import {
   Tooltip,
 } from 'chart.js';
 
+import zoomPlugin from 'chartjs-plugin-zoom';
+
 export const XYAnalysis = {
   chartInstance: null,
 
   init() {
-    Chart.register(ScatterController, PointElement, LinearScale, Tooltip);
+    Chart.register(
+      ScatterController,
+      PointElement,
+      LinearScale,
+      Tooltip,
+      zoomPlugin
+    );
+
+    const resetBtn = document.getElementById('xyResetZoom');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        this.resetZoom();
+      });
+    }
   },
 
   openXYModal() {
@@ -32,6 +47,12 @@ export const XYAnalysis = {
     XYAnalysis.renderXYChart('xyChartCanvas', fileIdx, x, y);
   },
 
+  resetZoom() {
+    if (this.chartInstance) {
+      this.chartInstance.resetZoom();
+    }
+  },
+
   generateScatterData(fileIndex, signalXName, signalYName) {
     const file = AppState.files[fileIndex];
     if (!file) {
@@ -48,24 +69,19 @@ export const XYAnalysis = {
     }
 
     const scatterPoints = [];
-
     let yIndex = 0;
-
     const isMilliseconds = rawX.length > 0 && rawX[0].x > 100000;
     const tolerance = isMilliseconds ? 500 : 0.5;
 
     rawX.forEach((pointX) => {
       const time = pointX.x;
-
       while (
         yIndex < rawY.length - 1 &&
         Math.abs(rawY[yIndex + 1].x - time) < Math.abs(rawY[yIndex].x - time)
       ) {
         yIndex++;
       }
-
       const pointY = rawY[yIndex];
-
       if (pointY && Math.abs(pointY.x - time) <= tolerance) {
         scatterPoints.push({
           x: parseFloat(pointX.y),
@@ -74,9 +90,6 @@ export const XYAnalysis = {
       }
     });
 
-    console.log(
-      `XYAnalysis: Generated ${scatterPoints.length} points (Tolerance: ${tolerance})`
-    );
     return scatterPoints;
   },
 
@@ -92,9 +105,7 @@ export const XYAnalysis = {
         this.chartInstance.destroy();
         this.chartInstance = null;
       }
-      console.warn(
-        'XYAnalysis: No overlapping data found. Check sync tolerance.'
-      );
+      console.warn('XYAnalysis: No overlapping data found.');
       return;
     }
 
@@ -102,8 +113,17 @@ export const XYAnalysis = {
       this.chartInstance.destroy();
     }
 
+    // --- NEW HEATMAP LOGIC START ---
+    // 1. Find Min and Max Y values to establish the scale
+    const yValues = data.map((p) => p.y);
+    const minY = Math.min(...yValues);
+    const maxY = Math.max(...yValues);
+
+    // 2. Generate an array of colors, one for each data point
+    const pointColors = data.map((p) => this.getHeatColor(p.y, minY, maxY));
+    // --- NEW HEATMAP LOGIC END ---
+
     const isDark = document.body.classList.contains('dark-theme');
-    const color = isDark ? 'rgba(255, 99, 132, 0.8)' : 'rgba(227, 24, 55, 0.6)';
     const gridColor = isDark
       ? 'rgba(255, 255, 255, 0.1)'
       : 'rgba(0, 0, 0, 0.1)';
@@ -116,10 +136,11 @@ export const XYAnalysis = {
           {
             label: `${signalY} vs ${signalX}`,
             data: data,
-            backgroundColor: color,
-            borderColor: color,
-            pointRadius: 2,
-            pointHoverRadius: 5,
+            // 3. Apply the generated colors array
+            backgroundColor: pointColors,
+            borderColor: pointColors,
+            pointRadius: 3, // Slightly larger dots look better for heatmaps
+            pointHoverRadius: 6,
           },
         ],
       },
@@ -142,20 +163,53 @@ export const XYAnalysis = {
           },
         },
         plugins: {
-          datalabels: {
-            display: false,
-          },
+          datalabels: { display: false },
           legend: {
-            labels: { color: textColor },
+            display: false,
           },
           tooltip: {
             callbacks: {
-              label: (context) =>
-                `X: ${context.parsed.x.toFixed(2)}, Y: ${context.parsed.y.toFixed(2)}`,
+              label: (context) => {
+                return [
+                  `${signalY}: ${context.parsed.y.toFixed(2)}`,
+                  `${signalX}: ${context.parsed.x.toFixed(2)}`,
+                ];
+              },
+            },
+          },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: 'xy',
+            },
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              drag: {
+                enabled: true,
+                backgroundColor: 'rgba(227, 24, 55, 0.3)',
+              },
+              mode: 'xy',
             },
           },
         },
       },
     });
+  },
+
+  getHeatColor(value, min, max) {
+    if (min === max) return 'hsla(240, 100%, 50%, 0.8)'; // Default to blue if flat line
+
+    // Normalize value between 0 and 1
+    let ratio = (value - min) / (max - min);
+
+    // Clamp ratio to ensure it stays within bounds
+    ratio = Math.max(0, Math.min(1, ratio));
+
+    // Map 0 -> 1 (Ratio) to 240 -> 0 (Hue)
+    // 240 is Blue, 0 is Red.
+    const hue = (1 - ratio) * 240;
+
+    return `hsla(${hue}, 100%, 50%, 0.8)`;
   },
 };
