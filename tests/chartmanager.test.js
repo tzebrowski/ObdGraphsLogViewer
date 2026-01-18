@@ -16,7 +16,7 @@ const mockChartInstance = {
   destroy: jest.fn(),
   update: jest.fn(),
   draw: jest.fn(),
-  
+
   zoom: jest.fn(),
   pan: jest.fn(),
   width: 1000,
