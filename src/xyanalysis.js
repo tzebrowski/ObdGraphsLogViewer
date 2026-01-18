@@ -34,23 +34,39 @@ export const XYAnalysis = {
 
   generateScatterData(fileIndex, signalXName, signalYName) {
     const file = AppState.files[fileIndex];
-    if (!file) return [];
+    if (!file) {
+      console.warn('XYAnalysis: File not found at index', fileIndex);
+      return [];
+    }
 
     const rawX = file.signals[signalXName];
     const rawY = file.signals[signalYName];
 
-    if (!rawX || !rawY) return [];
+    if (!rawX || !rawY) {
+      console.warn('XYAnalysis: Signals not found', signalXName, signalYName);
+      return [];
+    }
 
     const scatterPoints = [];
+
+    let yIndex = 0;
+
+    const isMilliseconds = rawX.length > 0 && rawX[0].x > 100000;
+    const tolerance = isMilliseconds ? 500 : 0.5;
 
     rawX.forEach((pointX) => {
       const time = pointX.x;
 
-      const pointY = rawY.reduce((prev, curr) =>
-        Math.abs(curr.x - time) < Math.abs(prev.x - time) ? curr : prev
-      );
+      while (
+        yIndex < rawY.length - 1 &&
+        Math.abs(rawY[yIndex + 1].x - time) < Math.abs(rawY[yIndex].x - time)
+      ) {
+        yIndex++;
+      }
 
-      if (Math.abs(pointY.x - time) < 0.5) {
+      const pointY = rawY[yIndex];
+
+      if (pointY && Math.abs(pointY.x - time) <= tolerance) {
         scatterPoints.push({
           x: parseFloat(pointX.y),
           y: parseFloat(pointY.y),
@@ -58,6 +74,9 @@ export const XYAnalysis = {
       }
     });
 
+    console.log(
+      `XYAnalysis: Generated ${scatterPoints.length} points (Tolerance: ${tolerance})`
+    );
     return scatterPoints;
   },
 
@@ -67,6 +86,17 @@ export const XYAnalysis = {
 
     const ctx = canvas.getContext('2d');
     const data = this.generateScatterData(fileIndex, signalX, signalY);
+
+    if (data.length === 0) {
+      if (this.chartInstance) {
+        this.chartInstance.destroy();
+        this.chartInstance = null;
+      }
+      console.warn(
+        'XYAnalysis: No overlapping data found. Check sync tolerance.'
+      );
+      return;
+    }
 
     if (this.chartInstance) {
       this.chartInstance.destroy();
@@ -84,12 +114,12 @@ export const XYAnalysis = {
       data: {
         datasets: [
           {
-            label: `${signalY} (Y) vs ${signalX} (X)`,
+            label: `${signalY} vs ${signalX}`,
             data: data,
             backgroundColor: color,
             borderColor: color,
-            pointRadius: 3,
-            pointHoverRadius: 6,
+            pointRadius: 2,
+            pointHoverRadius: 5,
           },
         ],
       },
@@ -112,6 +142,9 @@ export const XYAnalysis = {
           },
         },
         plugins: {
+          datalabels: {
+            display: false,
+          },
           legend: {
             labels: { color: textColor },
           },

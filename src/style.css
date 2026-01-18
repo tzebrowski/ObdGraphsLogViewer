@@ -2073,7 +2073,6 @@ body.analyzer-active {
   transform: translateY(-2px);
 }
 
-/* Outline Style (Light) */
 .source-btn.outline {
   background: #f8f9fa;
   color: #7f8c8d;
@@ -2087,7 +2086,6 @@ body.analyzer-active {
   transform: translateY(-2px);
 }
 
-/* Subtle Status Text */
 .status-text-subtle {
   font-size: 0.75em;
   color: #95a5a6;
@@ -2137,7 +2135,7 @@ body.analyzer-active {
 }
 
 .view-mode-btn {
-  flex: 1; /* Przyciski dzielą się miejscem po równo */
+  flex: 1;
   padding: 10px;
   font-size: 0.9rem;
   font-weight: 500;
@@ -2164,7 +2162,7 @@ body.analyzer-active {
   color: white;
   border-color: var(--brand-blue);
   font-weight: 600;
-  box-shadow: 0 4px 6px rgb(28 61 114 / 20%); /* Lekki cień */
+  box-shadow: 0 4px 6px rgb(28 61 114 / 20%);
 }
 
 .view-mode-btn.active i {
@@ -2172,7 +2170,7 @@ body.analyzer-active {
 }
 
 .view-mode-btn.xy-btn {
-  flex: 0 0 auto; /* Nie rozciągaj go tak mocno jak trybów widoku */
+  flex: 0 0 auto;
   border-color: var(--border-color);
   background-color: #fff;
 }
@@ -2181,4 +2179,25 @@ body.analyzer-active {
   color: var(--brand-red);
   border-color: var(--brand-red);
   background-color: #fff5f5;
+}
+
+#xyModal .modal-content {
+  width: 95vw !important;
+  max-width: none !important;
+  height: 90vh !important;
+  display: flex;
+  flex-direction: column;
+}
+
+#xyModal .modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+
+#xyModal .modal-body > div:last-child {
+  height: 100%;
+  width: 100%;
 }
