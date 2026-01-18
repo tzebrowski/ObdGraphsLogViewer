@@ -1,7 +1,7 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { UI } from '../src/ui.js';
-import { AppState, DOM } from '../src/config.js';
-import { PaletteManager } from '../src/palettemanager.js';
+import { UI } from '../../src/ui.js';
+import { AppState, DOM } from '../../src/config.js';
+import { PaletteManager } from '../../src/palettemanager.js';
 
 describe('UI Module Tests', () => {
   beforeEach(() => {

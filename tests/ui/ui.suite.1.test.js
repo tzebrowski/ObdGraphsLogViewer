@@ -11,12 +11,12 @@ import {
 
 // Mock Dependencies
 const mockMessenger = { on: jest.fn(), emit: jest.fn() };
-await jest.unstable_mockModule('../src/bus.js', () => ({
+await jest.unstable_mockModule('../../src/bus.js', () => ({
   messenger: mockMessenger,
 }));
 
 const mockDataProcessor = { process: jest.fn() };
-await jest.unstable_mockModule('../src/dataprocessor.js', () => ({
+await jest.unstable_mockModule('../../src/dataprocessor.js', () => ({
   dataProcessor: mockDataProcessor,
 }));
 
@@ -24,18 +24,20 @@ const mockPreferences = {
   prefs: { useCustomPalette: true, persistence: true },
   customPalette: {},
 };
-await jest.unstable_mockModule('../src/preferences.js', () => ({
+await jest.unstable_mockModule('../../src/preferences.js', () => ({
   Preferences: mockPreferences,
 }));
 
 const mockAlert = { showAlert: jest.fn() };
-await jest.unstable_mockModule('../src/alert.js', () => ({ Alert: mockAlert }));
+await jest.unstable_mockModule('../../src/alert.js', () => ({
+  Alert: mockAlert,
+}));
 
 const mockPaletteManager = {
   getColorForSignal: jest.fn(() => '#ff0000'),
   getSignalKey: jest.fn((fname, sname) => `${fname}-${sname}`),
 };
-await jest.unstable_mockModule('../src/palettemanager.js', () => ({
+await jest.unstable_mockModule('../../src/palettemanager.js', () => ({
   PaletteManager: mockPaletteManager,
 }));
 
@@ -53,7 +55,7 @@ const mockChartManager = {
   render: jest.fn(),
   viewMode: 'stack',
 };
-await jest.unstable_mockModule('../src/chartmanager.js', () => ({
+await jest.unstable_mockModule('../../src/chartmanager.js', () => ({
   ChartManager: mockChartManager,
 }));
 
@@ -64,14 +66,14 @@ const mockAppState = {
   version: { tag: 'v1.0', repoUrl: 'http://repo' },
   activeHighlight: null,
 };
-await jest.unstable_mockModule('../src/config.js', () => ({
+await jest.unstable_mockModule('../../src/config.js', () => ({
   AppState: mockAppState,
   DOM: { get: (id) => document.getElementById(id) },
   DEFAULT_SIGNALS: ['RPM'],
 }));
 
 // --- 2. Imports ---
-const { UI, InfoPage } = await import('../src/ui.js');
+const { UI, InfoPage } = await import('../../src/ui.js');
 
 // --- 3. Test Suite ---
 describe('UI Module', () => {
