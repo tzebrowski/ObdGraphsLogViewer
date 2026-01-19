@@ -113,15 +113,11 @@ export const XYAnalysis = {
       this.chartInstance.destroy();
     }
 
-    // --- NEW HEATMAP LOGIC START ---
-    // 1. Find Min and Max Y values to establish the scale
     const yValues = data.map((p) => p.y);
     const minY = Math.min(...yValues);
     const maxY = Math.max(...yValues);
 
-    // 2. Generate an array of colors, one for each data point
     const pointColors = data.map((p) => this.getHeatColor(p.y, minY, maxY));
-    // --- NEW HEATMAP LOGIC END ---
 
     const isDark = document.body.classList.contains('dark-theme');
     const gridColor = isDark
@@ -136,10 +132,9 @@ export const XYAnalysis = {
           {
             label: `${signalY} vs ${signalX}`,
             data: data,
-            // 3. Apply the generated colors array
             backgroundColor: pointColors,
             borderColor: pointColors,
-            pointRadius: 3, // Slightly larger dots look better for heatmaps
+            pointRadius: 3,
             pointHoverRadius: 6,
           },
         ],
@@ -198,18 +193,11 @@ export const XYAnalysis = {
   },
 
   getHeatColor(value, min, max) {
-    if (min === max) return 'hsla(240, 100%, 50%, 0.8)'; // Default to blue if flat line
+    if (min === max) return 'hsla(240, 100%, 50%, 0.8)';
 
-    // Normalize value between 0 and 1
     let ratio = (value - min) / (max - min);
-
-    // Clamp ratio to ensure it stays within bounds
     ratio = Math.max(0, Math.min(1, ratio));
-
-    // Map 0 -> 1 (Ratio) to 240 -> 0 (Hue)
-    // 240 is Blue, 0 is Red.
     const hue = (1 - ratio) * 240;
-
     return `hsla(${hue}, 100%, 50%, 0.8)`;
   },
 };

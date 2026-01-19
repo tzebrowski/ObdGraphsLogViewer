@@ -49,6 +49,7 @@ await jest.unstable_mockModule('chart.js', () => {
     TimeScale: jest.fn(),
     Title: jest.fn(),
     Tooltip: jest.fn(),
+    Tooltip: { positioners: {} },
     Legend: jest.fn(),
     Filler: jest.fn(),
   };

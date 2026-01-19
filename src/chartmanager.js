@@ -30,6 +30,18 @@ export const ChartManager = {
 
   init() {
     window.Hammer = Hammer;
+
+    Tooltip.positioners.topRightCorner = function (elements, eventPosition) {
+      if (!this.chart) return;
+
+      const { chartArea } = this.chart;
+
+      return {
+        x: chartArea.right - 10,
+        y: chartArea.top,
+      };
+    };
+
     Chart.register(
       LineController,
       LineElement,
@@ -48,6 +60,59 @@ export const ChartManager = {
     messenger.on('dataprocessor:batch-load-completed', (event) => {
       ChartManager.render();
     });
+  },
+
+  exportDataRange(index) {
+    const file = AppState.files[index];
+    const chart = AppState.chartInstances[index];
+    if (!file || !chart) return;
+
+    const minTime = chart.scales.x.min;
+    const maxTime = chart.scales.x.max;
+
+    let csvContent = 'data:text/csv;charset=utf-8,';
+
+    const visibleSignals = file.availableSignals.filter((sig) => {
+      const checkbox = document.querySelector(
+        `#signalList input[data-key="${sig}"][data-file-idx="${index}"]`
+      );
+      return checkbox && checkbox.checked;
+    });
+
+    csvContent += 'Time (s),' + visibleSignals.join(',') + '\n';
+
+    if (visibleSignals.length === 0) {
+      alert('No signals visible to export.');
+      return;
+    }
+
+    const masterSignal = file.signals[visibleSignals[0]];
+
+    masterSignal.forEach((point) => {
+      if (point.x >= minTime && point.x <= maxTime) {
+        const relTime = (point.x - file.startTime) / 1000;
+        let row = [relTime.toFixed(3)];
+
+        visibleSignals.forEach((sigKey) => {
+          const sigData = file.signals[sigKey];
+          const valPoint = sigData.find((p) => Math.abs(p.x - point.x) < 100); // 100ms tolerancji
+          row.push(valPoint ? parseFloat(valPoint.y).toFixed(3) : '');
+        });
+
+        csvContent += row.join(',') + '\n';
+      }
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute(
+      'download',
+      `${file.name}_export_${Math.round(minTime)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   },
 
   showChartInfo(index) {
@@ -162,12 +227,18 @@ export const ChartManager = {
     const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
     const baseStartTime = AppState.files[0].startTime;
 
+    const shortcuts = this._getShortcutsText();
     wrapper.innerHTML = `
       <div class="chart-header-sm">
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
           <div class="chart-actions">
                <span style="font-size:0.8em; color:#666; margin-right:10px;">X-Axis: Relative Time (s)</span>
-              <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
+               
+               <button class="btn-icon" style="cursor: help;" title="${shortcuts}">
+                  <i class="fas fa-keyboard"></i>
+               </button>
+               
+               <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
       </div>
       <div class="canvas-wrapper" style="height: calc(100vh - 200px); padding: 5px;">
@@ -241,6 +312,7 @@ export const ChartManager = {
     const dateStr =
       dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
     const durationStr = this.formatDuration(file.duration);
+    const shortcuts = this._getShortcutsText();
 
     wrapper.innerHTML = `
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
@@ -251,6 +323,12 @@ export const ChartManager = {
              </span>
           </div>
           <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
+              <button class="btn-icon" onclick="exportDataRange(${idx})" title="Export Visible CSV"><i class="fas fa-file-csv"></i></button>
+
+              <button class="btn-icon" style="cursor: help;" title="${shortcuts}">
+                  <i class="fas fa-keyboard"></i>
+              </button>
+
               <button class="btn-icon" onclick="showChartInfo(${idx})" title="Log Details"><i class="fas fa-info-circle"></i></button>
               <div style="width: 1px; height: 16px; background: #ddd; margin: 0 4px;"></div>
               <button class="btn-icon" onclick="manualZoom(${idx}, 1.1)" title="Zoom In"><i class="fas fa-plus"></i></button>
@@ -487,7 +565,7 @@ export const ChartManager = {
       maintainAspectRatio: false,
       animation: false,
       interaction: {
-        mode: isOverlay ? 'index' : 'nearest',
+        mode: 'index',
         axis: 'x',
         intersect: false,
       },
@@ -517,9 +595,12 @@ export const ChartManager = {
         tooltip: {
           enabled: true,
           mode: 'index',
+          position: 'topRightCorner',
+          yAlign: 'top',
+          xAlign: 'right',
           axis: 'x',
+          caretSize: 0,
           intersect: false,
-          position: 'nearest',
           itemSort: (a, b) => b.parsed.y - a.parsed.y,
           callbacks: {
             title: (items) => {
@@ -766,5 +847,15 @@ export const ChartManager = {
         }
       }
     },
+  },
+
+  _getShortcutsText() {
+    return `Keyboard Shortcuts:
+    \u2190 / \u2192 : Pan Left/Right (Shift for faster)
+    + / - : Zoom In / Out
+    R : Reset View
+    A : Add Annotation (at cursor position)
+    E : Export Visible Data (CSV)
+    L : Toggle Legend Visibility`;
   },
 };
