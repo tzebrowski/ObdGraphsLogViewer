@@ -1,6 +1,5 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-// --- 1. Define the Mock Data Structure ---
 const mockChartInstance = {
   destroy: jest.fn(),
   update: jest.fn(),
@@ -13,8 +12,6 @@ const mockChartInstance = {
     scales: { x: { min: 0, max: 0 } },
   },
 };
-
-// --- 2. Register Mocks using unstable_mockModule ---
 
 // Mock Chart.js
 await jest.unstable_mockModule('chart.js', () => {
@@ -148,7 +145,6 @@ describe('XYAnalysis Module', () => {
       }));
     });
 
-    // --- COVERS LINE 91-98: Cleanup when no data found ---
     test('destroys existing chart and cleans up if no data is found', () => {
       // Mock generateScatterData to return empty
       jest.spyOn(XYAnalysis, 'generateScatterData').mockReturnValue([]);
@@ -171,7 +167,6 @@ describe('XYAnalysis Module', () => {
       warnSpy.mockRestore();
     });
 
-    // --- COVERS LINE 102: Destroy before create ---
     test('destroys existing chart instance before creating a new one (valid data)', () => {
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
@@ -192,7 +187,6 @@ describe('XYAnalysis Module', () => {
       expect(Chart).not.toHaveBeenCalled();
     });
 
-    // --- COVERS LINE 154: Tooltip Callback ---
     test('Tooltip callback formats label correctly', () => {
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
@@ -208,7 +202,7 @@ describe('XYAnalysis Module', () => {
       const context = { parsed: { x: 10.12345, y: 20.45678 } };
       const result = callback(context);
 
-      expect(result).toBe('X: 10.12, Y: 20.46');
+      expect(result).toEqual(['Boost: 20.46', 'RPM: 10.12']);
     });
 
     test('applies dark theme styling', () => {
@@ -218,7 +212,9 @@ describe('XYAnalysis Module', () => {
       document.body.classList.add('dark-theme');
       XYAnalysis.renderXYChart('xyChartCanvas', 0, 'X', 'Y');
       const config = Chart.mock.calls[0][1];
-      expect(config.data.datasets[0].backgroundColor).toContain('255, 99, 132');
+      expect(config.data.datasets[0].backgroundColor).toContain(
+        'hsla(240, 100%, 50%, 0.8)'
+      );
     });
   });
 });
