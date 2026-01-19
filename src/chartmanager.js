@@ -50,6 +50,49 @@ export const ChartManager = {
     });
   },
 
+  showChartInfo(index) {
+    const file = AppState.files[index];
+    if (!file) return;
+
+    const existing = document.getElementById('metadataModal');
+    if (existing) existing.remove();
+
+    const createRow = (label, value) => `
+        <div style="display:flex; justify-content:space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
+            <strong style="color: #555;">${label}</strong>
+            <span style="font-family: monospace; color: #333;">${value || 'N/A'}</span>
+        </div>`;
+
+    const meta = file.metadata || {};
+
+    const modalHtml = `
+      <div id="metadataModal" class="modal-overlay" style="display: flex;">
+        <div class="modal-content" style="max-width: 500px;">
+          <div class="modal-header">
+            <h2>Log Details</h2>
+            <button class="btn-close" onclick="document.getElementById('metadataModal').remove()">×</button>
+          </div>
+          <div class="modal-body">
+            <h4 style="margin-top:0; color:#c22636;">${file.name}</h4>
+            
+            ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
+            ${createRow('Duration', file.duration.toFixed(2) + ' seconds')}
+            ${createRow('Signals Count', file.availableSignals.length)}
+            ${createRow('Profile Name', meta.profileName || 'Unknown')}
+            ${createRow('ECU ID', meta.ecuId || 'N/A')}
+            ${createRow('App Version', meta.appVersion || 'N/A')}
+            
+            <div style="margin-top: 20px; text-align: right;">
+               <button class="btn btn-primary" onclick="document.getElementById('metadataModal').remove()">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  },
+
   toggleViewMode(mode) {
     if (this.viewMode === mode) return;
     this.viewMode = mode;
@@ -182,10 +225,22 @@ export const ChartManager = {
     const wrapper = document.createElement('div');
     wrapper.className = 'chart-card-compact';
 
+    const dateObj = new Date(file.startTime);
+    const dateStr =
+      dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
+    const durationStr = file.duration.toFixed(1) + 's';
+
     wrapper.innerHTML = `
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
-          <span class="chart-name" style="font-weight: bold; font-size: 0.85em;">${file.name}</span>
-          <div class="chart-actions" style="display: flex; gap: 4px;">
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+             <span class="chart-name" style="font-weight: bold; font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.name}</span>
+             <span class="chart-meta-info" style="font-size: 0.75em; color: #666;">
+                <i class="far fa-clock"></i> ${dateStr} &nbsp;|&nbsp; <i class="fas fa-stopwatch"></i> ${durationStr}
+             </span>
+          </div>
+          <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
+              <button class="btn-icon" onclick="showChartInfo(${idx})" title="Log Details"><i class="fas fa-info-circle"></i></button>
+              <div style="width: 1px; height: 16px; background: #ddd; margin: 0 4px;"></div>
               <button class="btn-icon" onclick="manualZoom(${idx}, 1.1)" title="Zoom In"><i class="fas fa-plus"></i></button>
               <button class="btn-icon" onclick="manualZoom(${idx}, 0.9)" title="Zoom Out"><i class="fas fa-minus"></i></button>
               <button class="btn-icon" onclick="resetChart(${idx})" title="Reset View"><i class="fas fa-sync-alt"></i></button>
