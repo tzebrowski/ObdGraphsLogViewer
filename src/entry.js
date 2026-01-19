@@ -66,3 +66,4 @@ window.toggleViewMode = (f) => ChartManager.toggleViewMode(f);
 window.openXYModal = () => XYAnalysis.openXYModal();
 window.closeXYModal = () => XYAnalysis.closeXYModal();
 window.generateXY = () => XYAnalysis.generateXY();
+window.showChartInfo = (e) => ChartManager.showChartInfo(e);
