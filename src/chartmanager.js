@@ -64,6 +64,7 @@ export const ChartManager = {
         </div>`;
 
     const meta = file.metadata || {};
+    const durationFormatted = this.formatDuration(file.duration);
 
     const modalHtml = `
       <div id="metadataModal" class="modal-overlay" style="display: flex;">
@@ -76,7 +77,7 @@ export const ChartManager = {
             <h4 style="margin-top:0; color:#c22636;">${file.name}</h4>
             
             ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
-            ${createRow('Duration', file.duration.toFixed(2) + ' seconds')}
+            ${createRow('Duration', durationFormatted)}
             ${createRow('Signals Count', file.availableSignals.length)}
             ${createRow('Profile Name', meta.profileName || 'Unknown')}
             ${createRow('ECU ID', meta.ecuId || 'N/A')}
@@ -221,6 +222,17 @@ export const ChartManager = {
     this.initKeyboardControls(canvas, 0);
   },
 
+  formatDuration(totalSeconds) {
+    if (typeof totalSeconds !== 'number' || isNaN(totalSeconds)) return '0s';
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  },
+
   _renderChartCard(container, file, idx) {
     const wrapper = document.createElement('div');
     wrapper.className = 'chart-card-compact';
@@ -228,7 +240,7 @@ export const ChartManager = {
     const dateObj = new Date(file.startTime);
     const dateStr =
       dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
-    const durationStr = file.duration.toFixed(1) + 's';
+    const durationStr = this.formatDuration(file.duration);
 
     wrapper.innerHTML = `
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
