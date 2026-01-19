@@ -49,6 +49,7 @@ await jest.unstable_mockModule('chart.js', () => {
     TimeScale: jest.fn(),
     Title: jest.fn(),
     Tooltip: jest.fn(),
+    Tooltip: { positioners: {} },
     Legend: jest.fn(),
     Filler: jest.fn(),
   };
@@ -350,5 +351,133 @@ describe('ChartManager: Interactions & UI Logic', () => {
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
       expect(mockChartInstance.ctx.stroke).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('CSV Export Logic tests', () => {
+  let mockFile, anchorSpy, clickSpy, alertSpy;
+
+  beforeEach(() => {
+    // 1. Setup Data
+    mockFile = {
+      name: 'test_log.json',
+      startTime: 1000, // Start at 1s (1000ms)
+      availableSignals: ['RPM', 'Speed'],
+      signals: {
+        RPM: [
+          { x: 1000, y: 800 }, // t=0s relative
+          { x: 2000, y: 1500 }, // t=1s relative
+          { x: 3000, y: 3000 }, // t=2s relative
+        ],
+        Speed: [
+          { x: 1000, y: 10 },
+          { x: 2000, y: 20 },
+          { x: 3000, y: 30 },
+        ],
+      },
+    };
+    AppState.files = [mockFile];
+    AppState.chartInstances = [mockChartInstance];
+
+    // 2. Mock Chart Zoom State (Visible range: 0.5s to 1.5s relative)
+    // Absolute: 1500ms to 2500ms
+    mockChartInstance.scales.x.min = 1500;
+    mockChartInstance.scales.x.max = 2500;
+
+    // 3. Mock DOM Elements for Download
+    clickSpy = jest.fn();
+    anchorSpy = {
+      setAttribute: jest.fn(),
+      click: clickSpy,
+    };
+    jest.spyOn(document, 'createElement').mockReturnValue(anchorSpy);
+    jest.spyOn(document.body, 'appendChild').mockImplementation(() => {});
+    jest.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+
+    // 4. Mock Alert
+    alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('Exports only visible data within the current zoom range', () => {
+    // Setup: Only 'RPM' is visible, 'Speed' is unchecked
+    jest.spyOn(document, 'querySelector').mockImplementation((selector) => {
+      if (selector.includes('RPM')) return { checked: true };
+      if (selector.includes('Speed')) return { checked: false };
+      return null;
+    });
+
+    // Execute
+    ChartManager.exportDataRange(0);
+
+    // Assert: Verify Anchor Attributes
+    expect(document.createElement).toHaveBeenCalledWith('a');
+    expect(anchorSpy.setAttribute).toHaveBeenCalledWith(
+      'download',
+      expect.stringContaining('test_log.json_export')
+    );
+
+    // Assert: Verify CSV Content
+    // We expect only the point at x=2000 (relative t=1.000) because:
+    // x=1000 is < min(1500)
+    // x=3000 is > max(2500)
+    const lastCall = anchorSpy.setAttribute.mock.calls.find(
+      (call) => call[0] === 'href'
+    );
+    const encodedContent = lastCall[1];
+    const csvContent = decodeURI(encodedContent);
+
+    // Check Header: Should contain Time and RPM, but NOT Speed
+    expect(csvContent).toContain('Time (s),RPM');
+    expect(csvContent).not.toContain('Speed');
+
+    // Check Data: Should contain the point at t=1.000 (relative)
+    // Relative calculation: (2000 - 1000) / 1000 = 1.000
+    expect(csvContent).toContain('1.000,1500.000');
+
+    // Should NOT contain data points outside zoom range
+    expect(csvContent).not.toContain('0.000,800.000'); // Too early
+    expect(csvContent).not.toContain('2.000,3000.000'); // Too late
+  });
+
+  test('Includes multiple signals if checked', () => {
+    // Setup: Both signals checked
+    jest.spyOn(document, 'querySelector').mockReturnValue({ checked: true });
+
+    // Execute
+    ChartManager.exportDataRange(0);
+
+    // Verify CSV
+    const href = anchorSpy.setAttribute.mock.calls.find(
+      (c) => c[0] === 'href'
+    )[1];
+    const csv = decodeURI(href);
+
+    expect(csv).toContain('Time (s),RPM,Speed');
+    // Should have data for both: Time, RPM_Value, Speed_Value
+    expect(csv).toContain('1.000,1500.000,20.000');
+  });
+
+  test('Alerts and aborts if no signals are visible', () => {
+    // Setup: Nothing visible
+    jest.spyOn(document, 'querySelector').mockReturnValue({ checked: false });
+
+    // Execute
+    ChartManager.exportDataRange(0);
+
+    // Assert
+    expect(alertSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No signals visible')
+    );
+    expect(document.createElement).not.toHaveBeenCalled();
+  });
+
+  test('Handles missing file gracefully', () => {
+    AppState.files = []; // Empty
+    ChartManager.exportDataRange(0);
+    expect(document.createElement).not.toHaveBeenCalled();
   });
 });

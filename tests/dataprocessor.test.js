@@ -394,3 +394,146 @@ describe('DataProcessor - Configuration Error Handling', () => {
     consoleSpy.mockRestore();
   });
 });
+
+describe('DataProcessor: Wide CSV Import (Exported Format)', () => {
+  beforeEach(() => {
+    AppState.files = [];
+    jest.clearAllMocks();
+
+    document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+    DOM.get = jest.fn((id) => document.getElementById(id));
+  });
+
+  test('should normalize Wide CSV (Time (s), Sig1, Sig2) to internal format', (done) => {
+    // This simulates a CSV exported by the app: Time in seconds, signals in columns
+    const csv = `Time (s),RPM,Speed
+1.000,2000,50
+2.500,2500,60`;
+
+    const event = {
+      target: {
+        files: [new File([csv], 'export.csv', { type: 'text/csv' })],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(AppState.files.length).toBe(1);
+        const file = AppState.files[0];
+
+        // 1. Verify Signals were extracted from headers
+        expect(file.availableSignals).toEqual(
+          expect.arrayContaining(['RPM', 'Speed'])
+        );
+
+        // 2. Verify Time Conversion (Seconds -> Milliseconds)
+        // Row 1: 1.000s -> 1000ms
+        const rpmPoint = file.signals['RPM'][0];
+        expect(rpmPoint.x).toBe(1000);
+        expect(rpmPoint.y).toBe(2000);
+
+        // Row 2: 2.500s -> 2500ms
+        const speedPoint = file.signals['Speed'][1];
+        expect(speedPoint.x).toBe(2500);
+        expect(speedPoint.y).toBe(60);
+
+        done();
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+
+  test('should handle sparse data (empty cells) in Wide CSV', (done) => {
+    // Scenario: RPM updates at T=1, Speed updates at T=2. Cells are empty otherwise.
+    const csv = `Time (s),RPM,Speed
+1.0,2000,
+2.0,,55`;
+
+    const event = {
+      target: {
+        files: [new File([csv], 'sparse.csv', { type: 'text/csv' })],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        const file = AppState.files[0];
+
+        // RPM should only have 1 point at T=1000
+        expect(file.signals['RPM'].length).toBe(1);
+        expect(file.signals['RPM'][0].y).toBe(2000);
+
+        // Speed should only have 1 point at T=2000
+        expect(file.signals['Speed'].length).toBe(1);
+        expect(file.signals['Speed'][0].y).toBe(55);
+
+        done();
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+
+  test('should not multiply time if header does not contain "(s)"', (done) => {
+    // Scenario: Header is just "time" (implies ms or raw units), not "Time (s)"
+    const csv = `time,Boost
+1000,1.5`;
+
+    const event = {
+      target: {
+        files: [new File([csv], 'raw_time.csv', { type: 'text/csv' })],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        const file = AppState.files[0];
+        const point = file.signals['Boost'][0];
+
+        // Should REMAIN 1000, not become 1,000,000
+        expect(point.x).toBe(1000);
+        expect(point.y).toBe(1.5);
+
+        done();
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+
+  test('should ignore non-numeric time rows', (done) => {
+    const csv = `Time (s),RPM
+invalid,2000
+1.0,2500`;
+
+    const event = {
+      target: {
+        files: [new File([csv], 'bad_rows.csv', { type: 'text/csv' })],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        const file = AppState.files[0];
+        // Should skip the 'invalid' row and only parse the 1.0 row
+        expect(file.signals['RPM'].length).toBe(1);
+        expect(file.signals['RPM'][0].x).toBe(1000);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    }, 50);
+  });
+});

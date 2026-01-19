@@ -2214,3 +2214,10 @@ body.analyzer-active {
 #chartContainer::-webkit-scrollbar-thumb:hover {
   background: #999;
 }
+
+/* --- Export & Annotation Controls --- */
+.btn-xs {
+  padding: 2px 6px;
+  font-size: 0.7em;
+  margin-left: 5px;
+}
