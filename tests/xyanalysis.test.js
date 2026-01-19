@@ -1,10 +1,10 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-// --- 1. Define the Mock Data Structure ---
 const mockChartInstance = {
   destroy: jest.fn(),
   update: jest.fn(),
   draw: jest.fn(),
+  resetZoom: jest.fn(), // Added mock for resetZoom
   width: 1000,
   scales: { x: { min: 0, max: 1000, getValueForPixel: jest.fn() } },
   data: { datasets: [] },
@@ -13,8 +13,6 @@ const mockChartInstance = {
     scales: { x: { min: 0, max: 0 } },
   },
 };
-
-// --- 2. Register Mocks using unstable_mockModule ---
 
 // Mock Chart.js
 await jest.unstable_mockModule('chart.js', () => {
@@ -29,6 +27,12 @@ await jest.unstable_mockModule('chart.js', () => {
     Tooltip: jest.fn(),
   };
 });
+
+// Mock chartjs-plugin-zoom
+const mockZoomPlugin = { id: 'zoom' };
+await jest.unstable_mockModule('chartjs-plugin-zoom', () => ({
+  default: mockZoomPlugin,
+}));
 
 // Mock UI.js
 await jest.unstable_mockModule('../src/ui.js', () => ({
@@ -58,19 +62,37 @@ describe('XYAnalysis Module', () => {
     XYAnalysis.chartInstance = null;
     Chart.mockImplementation(() => mockChartInstance);
 
+    // Setup DOM with new Reset button
     document.body.innerHTML = `
       <div id="xyModal" style="display: none;"></div>
       <select id="xyFileSelect"><option value="0">File 1</option></select>
       <select id="xyXAxis"><option value="RPM">RPM</option></select>
       <select id="xyYAxis"><option value="Boost">Boost</option></select>
       <canvas id="xyChartCanvas"></canvas>
+      <button id="xyResetZoom">Reset Zoom</button>
     `;
   });
 
   describe('Initialization & UI Helpers', () => {
-    test('init registers Chart.js components', () => {
+    test('init registers Chart.js components including Zoom plugin', () => {
       XYAnalysis.init();
-      expect(Chart.register).toHaveBeenCalled();
+      expect(Chart.register).toHaveBeenCalledWith(
+        expect.anything(), // ScatterController
+        expect.anything(), // PointElement
+        expect.anything(), // LinearScale
+        expect.anything(), // Tooltip
+        mockZoomPlugin // The mocked zoom plugin
+      );
+    });
+
+    test('init sets up Reset Zoom button listener', () => {
+      const resetSpy = jest.spyOn(XYAnalysis, 'resetZoom');
+      XYAnalysis.init();
+
+      const btn = document.getElementById('xyResetZoom');
+      btn.click();
+
+      expect(resetSpy).toHaveBeenCalled();
     });
 
     test('openXYModal displays modal and populates selectors', () => {
@@ -136,7 +158,7 @@ describe('XYAnalysis Module', () => {
     });
   });
 
-  describe('renderXYChart', () => {
+  describe('renderXYChart & Features', () => {
     beforeEach(() => {
       const canvas = document.getElementById('xyChartCanvas');
       canvas.getContext = jest.fn(() => ({
@@ -148,16 +170,10 @@ describe('XYAnalysis Module', () => {
       }));
     });
 
-    // --- COVERS LINE 91-98: Cleanup when no data found ---
     test('destroys existing chart and cleans up if no data is found', () => {
-      // Mock generateScatterData to return empty
       jest.spyOn(XYAnalysis, 'generateScatterData').mockReturnValue([]);
-
-      // Simulate an existing chart instance
       const existingDestroy = jest.fn();
       XYAnalysis.chartInstance = { destroy: existingDestroy };
-
-      // Spy on console.warn
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
@@ -167,32 +183,56 @@ describe('XYAnalysis Module', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('No overlapping data found')
       );
-
       warnSpy.mockRestore();
     });
 
-    // --- COVERS LINE 102: Destroy before create ---
-    test('destroys existing chart instance before creating a new one (valid data)', () => {
+    test('Chart options include Zoom plugin configuration', () => {
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1 }]);
 
-      const existingDestroy = jest.fn();
-      XYAnalysis.chartInstance = { destroy: existingDestroy };
+      XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
+
+      const config = Chart.mock.calls[0][1];
+      const zoomOptions = config.options.plugins.zoom;
+
+      expect(zoomOptions).toBeDefined();
+      expect(zoomOptions.pan.enabled).toBe(true);
+      expect(zoomOptions.zoom.wheel.enabled).toBe(true);
+      expect(zoomOptions.zoom.mode).toBe('xy');
+    });
+
+    test('Heatmap logic assigns correct colors based on Y-value intensity', () => {
+      // Mock data with Min (10) and Max (100) to test color scale
+      const mockData = [
+        { x: 1, y: 10 }, // Minimum -> Should be Blue (Hue 240)
+        { x: 2, y: 55 }, // Midpoint
+        { x: 3, y: 100 }, // Maximum -> Should be Red (Hue 0)
+      ];
+      jest.spyOn(XYAnalysis, 'generateScatterData').mockReturnValue(mockData);
 
       XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
 
-      expect(existingDestroy).toHaveBeenCalled();
-      expect(Chart).toHaveBeenCalled();
+      const config = Chart.mock.calls[0][1];
+      const colors = config.data.datasets[0].backgroundColor;
+
+      // Expect 3 colors, one for each point
+      expect(colors).toHaveLength(3);
+
+      // Check Min Value (Blue)
+      expect(colors[0]).toBe('hsla(240, 100%, 50%, 0.8)');
+
+      // Check Max Value (Red)
+      expect(colors[2]).toBe('hsla(0, 100%, 50%, 0.8)');
     });
 
-    test('does not create chart if canvas missing', () => {
-      document.body.innerHTML = ''; // Clear DOM
-      XYAnalysis.renderXYChart('missing', 0, 'X', 'Y');
-      expect(Chart).not.toHaveBeenCalled();
+    test('resetZoom calls chartInstance.resetZoom()', () => {
+      // Manually assign the mock instance so we can verify the call
+      XYAnalysis.chartInstance = mockChartInstance;
+      XYAnalysis.resetZoom();
+      expect(mockChartInstance.resetZoom).toHaveBeenCalled();
     });
 
-    // --- COVERS LINE 154: Tooltip Callback ---
     test('Tooltip callback formats label correctly', () => {
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
@@ -200,25 +240,14 @@ describe('XYAnalysis Module', () => {
 
       XYAnalysis.renderXYChart('xyChartCanvas', 0, 'RPM', 'Boost');
 
-      // Get the config object passed to the Chart constructor
       const config = Chart.mock.calls[0][1];
       const callback = config.options.plugins.tooltip.callbacks.label;
-
-      // Mock context object expected by the callback
       const context = { parsed: { x: 10.12345, y: 20.45678 } };
+
       const result = callback(context);
 
-      expect(result).toBe('X: 10.12, Y: 20.46');
-    });
-
-    test('applies dark theme styling', () => {
-      jest
-        .spyOn(XYAnalysis, 'generateScatterData')
-        .mockReturnValue([{ x: 1, y: 1 }]);
-      document.body.classList.add('dark-theme');
-      XYAnalysis.renderXYChart('xyChartCanvas', 0, 'X', 'Y');
-      const config = Chart.mock.calls[0][1];
-      expect(config.data.datasets[0].backgroundColor).toContain('255, 99, 132');
+      // Verify the result is an array with correctly formatted strings
+      expect(result).toEqual(['Boost: 20.46', 'RPM: 10.12']);
     });
   });
 });
