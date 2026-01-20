@@ -181,23 +181,25 @@ describe('ChartManager Module Comprehensive Tests', () => {
 
     test('highlighterPlugin draws hover line only within boundaries', () => {
       ChartManager.activeChartIndex = 0;
-      AppState.chartInstances = [mockChart]; // Ensure the plugin can find the chart index
+      AppState.chartInstances = [mockChart];
 
-      // Test within boundaries: Mock tooltip active on a point at x = 50
-      // (Left is 10, Right is 190)
-      mockChart.tooltip.getActiveElements.mockReturnValue([
-        { element: { x: 50 } },
-      ]);
+      // Test within boundaries
+      // Left is 10, Right is 190. We want pixel 50.
+      // Mock getPixelForValue to return 50
+      mockChart.scales.x.getPixelForValue.mockReturnValue(50);
+
+      // Set hoverValue (value doesn't matter as long as getPixel returns 50)
+      ChartManager.hoverValue = 1000500;
 
       ChartManager.highlighterPlugin.afterDraw(mockChart);
       expect(mockChart.ctx.stroke).toHaveBeenCalled();
 
-      // Test outside boundaries: Mock tooltip active on a point at x = 200
-      // (Hits the if (xPixel >= left && xPixel <= right) guard)
+      // Test outside boundaries
       mockChart.ctx.stroke.mockClear();
-      mockChart.tooltip.getActiveElements.mockReturnValue([
-        { element: { x: 200 } },
-      ]);
+
+      // We want pixel 200 (outside right boundary 190)
+      mockChart.scales.x.getPixelForValue.mockReturnValue(200);
+      ChartManager.hoverValue = 1000900;
 
       ChartManager.highlighterPlugin.afterDraw(mockChart);
       expect(mockChart.ctx.stroke).not.toHaveBeenCalled();
@@ -428,14 +430,17 @@ describe('ChartManager Module Comprehensive Tests', () => {
 
   test('highlighterPlugin draws vertical line with specific styling', () => {
     ChartManager.activeChartIndex = 0;
-    mockChart.tooltip.getActiveElements.mockReturnValue([
-      { element: { x: 50 } },
-    ]);
+    AppState.chartInstances = [mockChart];
+
+    // Setup consistent state
+    ChartManager.hoverValue = 1000500;
+    mockChart.scales.x.getPixelForValue.mockReturnValue(50); // Valid pixel
 
     ChartManager.highlighterPlugin.afterDraw(mockChart);
 
     // Verify visual requirements
     expect(mockChart.ctx.strokeStyle).toBe('rgba(227, 24, 55, 0.6)');
-    expect(mockChart.ctx.lineWidth).toBe(3);
+    // FIX: Expect 2 instead of 3, matching the new code
+    expect(mockChart.ctx.lineWidth).toBe(2);
   });
 });
