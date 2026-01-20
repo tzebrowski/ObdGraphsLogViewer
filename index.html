@@ -617,9 +617,8 @@
         <div
           class="modal-content"
           style="
-            width: 800px;
-            max-width: 95%;
-            height: 600px;
+            width: 95vw;
+            height: 90vh;
             display: flex;
             flex-direction: column;
           "
@@ -628,6 +627,7 @@
             <h2>XY Scatter Analysis</h2>
             <button class="btn-close" onclick="closeXYModal()">×</button>
           </div>
+
           <div
             class="modal-body"
             style="
@@ -635,104 +635,153 @@
               flex-direction: column;
               flex: 1;
               overflow: hidden;
+              padding: 0;
             "
           >
             <div
               style="
+                padding: 10px;
+                border-bottom: 1px solid #ddd;
+                background: #f8f9fa;
                 display: flex;
                 gap: 10px;
-                margin-bottom: 15px;
-                flex-wrap: wrap;
-                background: #f8f9fa;
-                padding: 10px;
-                border-radius: 4px;
+                align-items: center;
               "
             >
+              <label style="font-weight: bold; color: #555">Log File:</label>
               <select
-                id="xyFileSelect"
+                id="xyGlobalFile"
                 class="template-select"
-                style="flex: 1; min-width: 150px"
-              ></select>
-              <select
-                id="xyXAxis"
-                class="template-select"
-                style="flex: 1; min-width: 150px"
-              ></select>
-              <select
-                id="xyYAxis"
-                class="template-select"
-                style="flex: 1; min-width: 150px"
+                style="max-width: 300px"
+                onchange="XYAnalysis.onFileChange()"
               ></select>
               <button
-                class="btn btn-primary"
-                style="width: auto"
-                onclick="generateXY()"
-              >
-                Plot
-              </button>
-              <button
-                id="xyResetZoom"
                 class="btn"
-                style="width: auto; margin-left: 5px"
+                style="width: auto"
+                onclick="XYAnalysis.resetAllZooms()"
               >
-                <i class="fas fa-compress-arrows-alt"></i> Reset Zoom
+                <i class="fas fa-compress-arrows-alt"></i> Reset All
               </button>
             </div>
 
-            <div
-              style="
-                flex: 1;
-                position: relative;
-                min-height: 0;
-                display: flex;
-                flex-direction: row;
-                gap: 10px;
-              "
-            >
-              <div style="flex-grow: 1; position: relative; min-width: 0">
-                <canvas id="xyChartCanvas"></canvas>
-              </div>
-
+            <div id="xySplitView" style="display: flex; flex: 1; min-height: 0">
               <div
-                id="xyLegendContainer"
+                class="xy-panel"
                 style="
-                  display: none;
-                  width: 60px;
+                  flex: 1;
+                  display: flex;
                   flex-direction: column;
-                  align-items: center;
-                  justify-content: space-between;
-                  padding: 10px 0;
-                  background: rgba(0, 0, 0, 0.02);
-                  border-left: 1px solid #eee;
+                  border-right: 1px solid #ddd;
+                  padding: 10px;
+                  min-width: 0;
                 "
               >
-                <span
-                  id="xyLegendMax"
-                  style="font-size: 0.75em; font-weight: bold"
-                ></span>
-
+                <div
+                  class="xy-panel-toolbar"
+                  style="display: flex; gap: 5px; margin-bottom: 10px"
+                >
+                  <select
+                    id="xyX-0"
+                    class="template-select"
+                    style="flex: 1"
+                  ></select>
+                  <span
+                    style="align-self: center; font-weight: bold; color: #888"
+                    >vs</span
+                  >
+                  <select
+                    id="xyY-0"
+                    class="template-select"
+                    style="flex: 1"
+                  ></select>
+                  <button
+                    class="btn btn-primary"
+                    style="width: auto"
+                    onclick="plot(0)"
+                  >
+                    Plot
+                  </button>
+                </div>
                 <div
                   style="
                     flex: 1;
-                    width: 12px;
-                    margin: 5px 0;
-                    border-radius: 6px;
-                    border: 1px solid #ccc;
-                    background: linear-gradient(
-                      to top,
-                      blue,
-                      cyan,
-                      lime,
-                      yellow,
-                      red
-                    );
+                    position: relative;
+                    min-height: 0;
+                    display: flex;
                   "
-                ></div>
+                >
+                  <div style="flex: 1; position: relative">
+                    <canvas id="xyCanvas-0"></canvas>
+                  </div>
+                  <div
+                    id="xyLegend-0"
+                    class="xy-legend-strip"
+                    style="display: none"
+                  >
+                    <span class="max-val"></span>
+                    <div class="gradient-bar"></div>
+                    <span class="min-val"></span>
+                  </div>
+                </div>
+              </div>
 
-                <span
-                  id="xyLegendMin"
-                  style="font-size: 0.75em; font-weight: bold"
-                ></span>
+              <div
+                class="xy-panel"
+                style="
+                  flex: 1;
+                  display: flex;
+                  flex-direction: column;
+                  padding: 10px;
+                  min-width: 0;
+                "
+              >
+                <div
+                  class="xy-panel-toolbar"
+                  style="display: flex; gap: 5px; margin-bottom: 10px"
+                >
+                  <select
+                    id="xyX-1"
+                    class="template-select"
+                    style="flex: 1"
+                  ></select>
+                  <span
+                    style="align-self: center; font-weight: bold; color: #888"
+                    >vs</span
+                  >
+                  <select
+                    id="xyY-1"
+                    class="template-select"
+                    style="flex: 1"
+                  ></select>
+                  <button
+                    class="btn btn-primary"
+                    style="width: auto"
+                    onclick="plot(1)"
+                  >
+                    Plot
+                  </button>
+                </div>
+                <div
+                  style="
+                    flex: 1;
+                    position: relative;
+                    min-height: 0;
+                    display: flex;
+                  "
+                >
+                  <div style="flex: 1; position: relative">
+                    <canvas id="xyCanvas-1"></canvas>
+                  </div>
+                  <div
+                    id="xyLegend-1"
+                    class="xy-legend-strip"
+                    style="display: none"
+                  >
+                    <span class="max-val"></span>
+                    <div class="gradient-bar"></div>
+                    <span class="min-val"></span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
