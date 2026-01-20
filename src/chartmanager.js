@@ -76,7 +76,7 @@ export const ChartManager = {
       currentVal = (chart.scales.x.min + chart.scales.x.max) / 2;
     }
 
-    const stepSize = 100; // 0.1s (could be configurable)
+    const stepSize = 100; // 0.1s
     let newVal = currentVal + stepCount * stepSize;
 
     // Clamp values to file boundaries
@@ -88,15 +88,24 @@ export const ChartManager = {
     this.hoverValue = newVal;
     this.activeChartIndex = index;
 
-    // 3. Handle Panning (Auto-scroll if cursor leaves view)
+    // 3. View Shift (Replaces Panning)
+    // If cursor hits the border, shift the view window so the cursor has context.
     let viewChanged = false;
-    const padding = (chart.scales.x.max - chart.scales.x.min) * 0.1;
+    const currentMin = chart.scales.x.min;
+    const currentMax = chart.scales.x.max;
+    const viewDuration = currentMax - currentMin;
 
-    if (newVal > chart.scales.x.max) {
-      chart.pan({ x: -padding }, undefined, 'none');
+    if (newVal >= currentMax) {
+      // Hit right edge: Shift view so cursor is at 20% of the new window (Context on left)
+      const newMin = newVal - viewDuration * 0.2;
+      chart.options.scales.x.min = newMin;
+      chart.options.scales.x.max = newMin + viewDuration;
       viewChanged = true;
-    } else if (newVal < chart.scales.x.min) {
-      chart.pan({ x: padding }, undefined, 'none');
+    } else if (newVal <= currentMin) {
+      // Hit left edge: Shift view so cursor is at 80% of the new window (Context on right)
+      const newMin = newVal - viewDuration * 0.8;
+      chart.options.scales.x.min = newMin;
+      chart.options.scales.x.max = newMin + viewDuration;
       viewChanged = true;
     }
 
@@ -106,29 +115,20 @@ export const ChartManager = {
     }
 
     // 4. ROBUST TOOLTIP ACTIVATION (Overlay Compatible)
-    // We must find the nearest point for EACH dataset individually,
-    // because files in overlay mode have different lengths/sampling rates.
-
     const xTarget = chart.scales.x.getPixelForValue(newVal);
     const activeElements = [];
 
-    // Iterate through all datasets on the chart
     chart.data.datasets.forEach((ds, dsIdx) => {
-      // Skip hidden datasets
       if (!chart.isDatasetVisible(dsIdx)) return;
 
       const meta = chart.getDatasetMeta(dsIdx);
       const data = meta.data || [];
 
-      // Find the nearest point in THIS specific dataset
       let closestIndex = -1;
       let minDiff = Infinity;
 
-      // Linear search (fast enough for UI interactions)
       for (let i = 0; i < data.length; i++) {
         const element = data[i];
-
-        // Safety check for sparse/gap data
         if (!element || typeof element.x !== 'number' || isNaN(element.x))
           continue;
 
@@ -136,10 +136,8 @@ export const ChartManager = {
         if (diff < minDiff) {
           minDiff = diff;
           closestIndex = i;
-        } else {
-          // Optimization: If difference starts increasing, we passed the closest point
-          // (Assuming sorted data, which is true for time-series)
-          if (diff > minDiff + 5) break;
+        } else if (diff > minDiff + 5) {
+          break;
         }
       }
 
@@ -150,17 +148,12 @@ export const ChartManager = {
 
     if (activeElements.length > 0) {
       chart.setActiveElements(activeElements);
-
-      // Position tooltip at the cursor target X, not the point X.
-      // This keeps the tooltip stable even if points are slightly misaligned.
       chart.tooltip.setActiveElements(activeElements, {
         x: xTarget,
         y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
       });
-
       chart.update();
     } else {
-      // Fallback: just refresh to draw the cursor line
       chart.update();
     }
 
