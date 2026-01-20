@@ -618,7 +618,7 @@
           class="modal-content"
           style="
             width: 95vw;
-            height: 90vh;
+            height: 95vh;
             display: flex;
             flex-direction: column;
           "
@@ -660,7 +660,15 @@
               </button>
             </div>
 
-            <div id="xySplitView" style="display: flex; flex: 1; min-height: 0">
+            <div
+              id="xySplitView"
+              style="
+                display: flex;
+                flex: 2;
+                min-height: 0;
+                border-bottom: 2px solid #ccc;
+              "
+            >
               <div
                 class="xy-panel"
                 style="
@@ -682,11 +690,7 @@
                   "
                 >
                   <div style="flex: 1; min-width: 0">
-                    <div
-                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
-                    >
-                      X Axis
-                    </div>
+                    <div style="font-size: 0.7em; color: #666">X Axis</div>
                     <select
                       id="xyX-0"
                       class="template-select"
@@ -694,11 +698,7 @@
                     ></select>
                   </div>
                   <div style="flex: 1; min-width: 0">
-                    <div
-                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
-                    >
-                      Y Axis
-                    </div>
+                    <div style="font-size: 0.7em; color: #666">Y Axis</div>
                     <select
                       id="xyY-0"
                       class="template-select"
@@ -706,9 +706,7 @@
                     ></select>
                   </div>
                   <div style="flex: 1; min-width: 0">
-                    <div
-                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
-                    >
+                    <div style="font-size: 0.7em; color: #666">
                       Z Axis (Color)
                     </div>
                     <select
@@ -740,11 +738,7 @@
                     id="xyLegend-0"
                     class="xy-legend-strip"
                     style="display: none"
-                  >
-                    <span class="max-val"></span>
-                    <div class="gradient-bar"></div>
-                    <span class="min-val"></span>
-                  </div>
+                  ></div>
                 </div>
               </div>
 
@@ -768,11 +762,7 @@
                   "
                 >
                   <div style="flex: 1; min-width: 0">
-                    <div
-                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
-                    >
-                      X Axis
-                    </div>
+                    <div style="font-size: 0.7em; color: #666">X Axis</div>
                     <select
                       id="xyX-1"
                       class="template-select"
@@ -780,11 +770,7 @@
                     ></select>
                   </div>
                   <div style="flex: 1; min-width: 0">
-                    <div
-                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
-                    >
-                      Y Axis
-                    </div>
+                    <div style="font-size: 0.7em; color: #666">Y Axis</div>
                     <select
                       id="xyY-1"
                       class="template-select"
@@ -792,9 +778,7 @@
                     ></select>
                   </div>
                   <div style="flex: 1; min-width: 0">
-                    <div
-                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
-                    >
+                    <div style="font-size: 0.7em; color: #666">
                       Z Axis (Color)
                     </div>
                     <select
@@ -826,12 +810,35 @@
                     id="xyLegend-1"
                     class="xy-legend-strip"
                     style="display: none"
-                  >
-                    <span class="max-val"></span>
-                    <div class="gradient-bar"></div>
-                    <span class="min-val"></span>
-                  </div>
+                  ></div>
                 </div>
+              </div>
+            </div>
+
+            <div
+              id="xyTimelineView"
+              style="
+                display: flex;
+                flex: 1;
+                min-height: 0;
+                flex-direction: column;
+                padding: 5px;
+                background: #fafafa;
+              "
+            >
+              <div
+                style="
+                  font-size: 0.8em;
+                  font-weight: bold;
+                  color: #555;
+                  margin-bottom: 5px;
+                  padding-left: 5px;
+                "
+              >
+                <i class="fas fa-clock"></i> Timeline Reference (Active Signals)
+              </div>
+              <div style="flex: 1; position: relative; min-height: 0">
+                <canvas id="xyTimelineCanvas"></canvas>
               </div>
             </div>
           </div>
