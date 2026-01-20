@@ -62,6 +62,93 @@ export const ChartManager = {
     });
   },
 
+  stepCursor(index, stepCount) {
+    const chart = AppState.chartInstances[index];
+    const file =
+      this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[index];
+
+    if (!chart || !file) return;
+
+    let currentVal = this.hoverValue;
+    if (currentVal === null) {
+      currentVal = (chart.scales.x.min + chart.scales.x.max) / 2;
+    }
+
+    const stepSize = 100;
+    let newVal = currentVal + stepCount * stepSize;
+
+    const maxTime = file.startTime + file.duration * 1000;
+    if (newVal < file.startTime) newVal = file.startTime;
+    if (newVal > maxTime) newVal = maxTime;
+
+    this.hoverValue = newVal;
+    this.activeChartIndex = index;
+
+    let viewChanged = false;
+    const padding = (chart.scales.x.max - chart.scales.x.min) * 0.1;
+
+    if (newVal > chart.scales.x.max) {
+      chart.pan({ x: -padding }, undefined, 'none');
+      viewChanged = true;
+    } else if (newVal < chart.scales.x.min) {
+      chart.pan({ x: padding }, undefined, 'none');
+      viewChanged = true;
+    }
+
+    if (viewChanged) {
+      chart.update('none');
+    }
+
+    const visibleDatasetIndex = chart.data.datasets.findIndex(
+      (d) => !chart.isDatasetVisible(chart.data.datasets.indexOf(d))
+    );
+    const targetDatasetIndex =
+      visibleDatasetIndex !== -1 ? visibleDatasetIndex : 0;
+
+    const meta = chart.getDatasetMeta(targetDatasetIndex);
+    const data = meta.data;
+
+    if (data.length > 0) {
+      const xTarget = chart.scales.x.getPixelForValue(newVal);
+
+      let closestElement = null;
+      let minDiff = Infinity;
+      let closestIndex = 0;
+
+      for (let i = 0; i < data.length; i++) {
+        const diff = Math.abs(data[i].x - xTarget);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestElement = data[i];
+          closestIndex = i;
+        }
+        if (diff > minDiff) break;
+      }
+
+      if (closestElement) {
+        const activeElements = [];
+        chart.data.datasets.forEach((ds, dsIdx) => {
+          if (chart.isDatasetVisible(dsIdx)) {
+            activeElements.push({ datasetIndex: dsIdx, index: closestIndex });
+          }
+        });
+
+        chart.setActiveElements(activeElements);
+
+        chart.tooltip.setActiveElements(activeElements, {
+          x: closestElement.x,
+          y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
+        });
+
+        chart.update();
+      }
+    } else {
+      chart.update();
+    }
+
+    if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+  },
+
   exportDataRange(index) {
     const file = AppState.files[index];
     const chart = AppState.chartInstances[index];
@@ -238,6 +325,13 @@ export const ChartManager = {
                   <i class="fas fa-keyboard"></i>
                </button>
                
+               <div style="display: inline-flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff; vertical-align: middle;">
+                  <button class="btn-icon" onclick="stepCursor(0, -10)" title="-1s" style="border:none;"><i class="fas fa-backward"></i></button>
+                  <button class="btn-icon" onclick="stepCursor(0, -1)" title="-0.1s" style="border:none;"><i class="fas fa-caret-left" style="font-size: 1.2em;"></i></button>
+                  <button class="btn-icon" onclick="stepCursor(0, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
+                  <button class="btn-icon" onclick="stepCursor(0, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
+              </div>
+
                <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
       </div>
@@ -323,6 +417,13 @@ export const ChartManager = {
              </span>
           </div>
           <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
+              <div style="display: flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff;">
+                  <button class="btn-icon" onclick="stepCursor(${idx}, -10)" title="-1s" style="border:none;"><i class="fas fa-backward"></i></button>
+                  <button class="btn-icon" onclick="stepCursor(${idx}, -1)" title="-0.1s" style="border:none;"><i class="fas fa-caret-left" style="font-size: 1.2em;"></i></button>
+                  <button class="btn-icon" onclick="stepCursor(${idx}, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
+                  <button class="btn-icon" onclick="stepCursor(${idx}, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
+              </div>  
+          
               <button class="btn-icon" onclick="exportDataRange(${idx})" title="Export Visible CSV"><i class="fas fa-file-csv"></i></button>
 
               <button class="btn-icon" style="cursor: help;" title="${shortcuts}">

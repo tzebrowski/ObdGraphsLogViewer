@@ -68,3 +68,4 @@ window.closeXYModal = () => XYAnalysis.closeXYModal();
 window.generateXY = () => XYAnalysis.generateXY();
 window.showChartInfo = (e) => ChartManager.showChartInfo(e);
 window.exportDataRange = (e) => ChartManager.exportDataRange(e);
+window.stepCursor = (idx, step) => ChartManager.stepCursor(idx, step);

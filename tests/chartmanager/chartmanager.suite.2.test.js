@@ -7,6 +7,8 @@ const mockChartInstance = {
   resetZoom: jest.fn(),
   pan: jest.fn(),
   zoom: jest.fn(),
+  // Added this method to the root chart instance mock
+  setActiveElements: jest.fn(),
   width: 1000,
   scales: {
     x: {
@@ -41,7 +43,15 @@ const mockChartInstance = {
     textBaseline: '',
   },
   chartArea: { top: 10, bottom: 90, left: 10, right: 190 },
-  tooltip: { getActiveElements: jest.fn(() => []) },
+  tooltip: {
+    getActiveElements: jest.fn(() => []),
+    // FIX: Added setActiveElements here
+    setActiveElements: jest.fn(),
+  },
+  // Helper to verify dataset visibility logic in stepCursor
+  isDatasetVisible: jest.fn(() => true),
+  getDatasetMeta: jest.fn(() => ({ data: [] })),
+  getElementsAtEventForMode: jest.fn(() => []),
 };
 
 await jest.unstable_mockModule('chart.js', () => {
@@ -666,5 +676,172 @@ describe('Annotations tests', () => {
 
     // 6. Assert: Text should NOT be drawn because 50s > 20s (max)
     expect(mockChartInstance.ctx.fillText).not.toHaveBeenCalled();
+  });
+});
+
+describe('Step Cursor Navigation tests', () => {
+  let mockFile;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // 1. Setup File Data (10 seconds long)
+    mockFile = {
+      name: 'test.json',
+      startTime: 1000,
+      duration: 10,
+      availableSignals: ['RPM'],
+      signals: { RPM: [] }, // Content doesn't matter for this test, we mock chart data
+    };
+
+    AppState.files = [mockFile];
+    AppState.chartInstances = [mockChartInstance];
+
+    // Reset ChartManager state
+    ChartManager.hoverValue = null;
+    ChartManager.activeChartIndex = 0;
+
+    // 2. Setup Default Chart Scale (Visible range: 0s to 5s)
+    mockChartInstance.scales.x.min = 1000;
+    mockChartInstance.scales.x.max = 6000;
+
+    // Mock chart area for Y positioning
+    mockChartInstance.chartArea = { top: 10, bottom: 90 };
+
+    // 3. Mock Dataset Metadata (The points rendered on the chart)
+    // We simulate 3 points at x=10, x=110, x=210 pixels
+    const mockPoints = [
+      { x: 10, y: 50 },
+      { x: 110, y: 50 },
+      { x: 210, y: 50 },
+    ];
+
+    mockChartInstance.getDatasetMeta = jest.fn(() => ({
+      data: mockPoints,
+    }));
+
+    mockChartInstance.data.datasets = [{}]; // One dataset
+    mockChartInstance.isDatasetVisible = jest.fn(() => true);
+
+    // Mock setActiveElements (used in stepCursor)
+    mockChartInstance.setActiveElements = jest.fn();
+  });
+
+  test('Moves cursor forward by step size (0.1s)', () => {
+    // Setup: Start exactly at file start
+    ChartManager.hoverValue = 1000;
+
+    // Execute: Step forward +1 (should be +100ms)
+    ChartManager.stepCursor(0, 1);
+
+    // Assert
+    expect(ChartManager.hoverValue).toBe(1100);
+    expect(mockChartInstance.update).toHaveBeenCalled();
+  });
+
+  test('Clamps cursor to start time (cannot go negative)', () => {
+    // Setup: Start at file start
+    ChartManager.hoverValue = 1000;
+
+    // Execute: Step backward -10
+    ChartManager.stepCursor(0, -10);
+
+    // Assert: Should stay at 1000
+    expect(ChartManager.hoverValue).toBe(1000);
+  });
+
+  test('Clamps cursor to end time', () => {
+    // Setup: Start at end (11000ms = 1000 + 10s)
+    ChartManager.hoverValue = 11000;
+
+    // Execute: Step forward
+    ChartManager.stepCursor(0, 5);
+
+    // Assert
+    expect(ChartManager.hoverValue).toBe(11000);
+  });
+
+  test('Triggers Auto-Pan when cursor moves out of view (Right)', () => {
+    // Setup: View is 1000-6000. Cursor is at edge 6000.
+    mockChartInstance.scales.x.max = 6000;
+    ChartManager.hoverValue = 6000;
+
+    // Execute: Step forward to 6100
+    ChartManager.stepCursor(0, 1);
+
+    // Assert: Pan called
+    expect(mockChartInstance.pan).toHaveBeenCalledWith(
+      expect.objectContaining({ x: expect.any(Number) }), // Negative x for panning right
+      undefined,
+      'none'
+    );
+    // Ensure layout updated before finding tooltip
+    expect(mockChartInstance.update).toHaveBeenCalledWith('none');
+  });
+
+  test('Triggers Auto-Pan when cursor moves out of view (Left)', () => {
+    // Setup: View is 1000-6000. Cursor at 1000.
+    mockChartInstance.scales.x.min = 1000;
+    ChartManager.hoverValue = 1000;
+
+    // Execute: Force move to start (assuming data allows)
+    // To test left pan, we assume the user was panned in and moves back
+    // Let's set start time to 0, current min to 1000, current val to 1000
+    mockFile.startTime = 0;
+    ChartManager.hoverValue = 1000;
+
+    ChartManager.stepCursor(0, -1); // Becomes 900
+
+    // Assert
+    expect(mockChartInstance.pan).toHaveBeenCalledWith(
+      expect.objectContaining({ x: expect.any(Number) }), // Positive x for panning left
+      undefined,
+      'none'
+    );
+  });
+
+  test('Finds nearest data point index and activates tooltip', () => {
+    // Setup
+    ChartManager.hoverValue = 1000;
+
+    // Mock Pixel Conversion:
+    // Let's say the new cursor position (1100ms) maps to pixel 115.
+    // Our mock points are at x=10, x=110, x=210.
+    // 115 is closest to 110 (index 1).
+    mockChartInstance.scales.x.getPixelForValue.mockReturnValue(115);
+
+    // Execute
+    ChartManager.stepCursor(0, 1);
+
+    // Assert
+    // 1. Should calculate distance and find index 1 (closest to 115)
+    // 2. Should call setActiveElements for index 1
+    expect(mockChartInstance.setActiveElements).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ index: 1, datasetIndex: 0 }),
+      ])
+    );
+
+    // 3. Should force tooltip to that element's X position
+    expect(mockChartInstance.tooltip.setActiveElements).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        x: 110, // The X position of the matched point, not the cursor
+        y: 50, // (10+90)/2 = 50
+      })
+    );
+  });
+
+  test('Does not crash if no points found', () => {
+    // Setup: Empty data
+    mockChartInstance.getDatasetMeta.mockReturnValue({ data: [] });
+    ChartManager.hoverValue = 1000;
+
+    // Execute
+    ChartManager.stepCursor(0, 1);
+
+    // Assert: Should run update() but not setActiveElements
+    expect(mockChartInstance.update).toHaveBeenCalled();
+    expect(mockChartInstance.setActiveElements).not.toHaveBeenCalled();
   });
 });
