@@ -687,13 +687,13 @@ describe('Step Cursor Navigation tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // 1. Setup File Data (10 seconds long)
+    // 1. Setup File Data
     mockFile = {
       name: 'test.json',
       startTime: 1000,
-      duration: 10,
+      duration: 20, // 20 seconds duration
       availableSignals: ['RPM'],
-      signals: { RPM: [] }, // Content doesn't matter for this test, we mock chart data
+      signals: { RPM: [] },
     };
 
     AppState.files = [mockFile];
@@ -703,18 +703,19 @@ describe('Step Cursor Navigation tests', () => {
     ChartManager.hoverValue = null;
     ChartManager.activeChartIndex = 0;
 
-    // 2. Setup Default Chart Scale (Visible range: 0s to 5s)
+    // 2. Setup Default Chart Scale (Visible range: 1000ms to 6000ms, Duration: 5000ms)
     mockChartInstance.scales.x.min = 1000;
     mockChartInstance.scales.x.max = 6000;
+    mockChartInstance.options.scales.x.min = 1000;
+    mockChartInstance.options.scales.x.max = 6000;
 
-    // Mock chart area for Y positioning
+    // Mock chart area
     mockChartInstance.chartArea = { top: 10, bottom: 90 };
 
-    // 3. Mock Dataset Metadata (The points rendered on the chart)
-    // We simulate 3 points at x=10, x=110, x=210 pixels
+    // 3. Mock Dataset Metadata
     const mockPoints = [
       { x: 10, y: 50 },
-      { x: 110, y: 50 },
+      { x: 110, y: 50 }, // Pixel 115 will target this
       { x: 210, y: 50 },
     ];
 
@@ -722,114 +723,99 @@ describe('Step Cursor Navigation tests', () => {
       data: mockPoints,
     }));
 
-    mockChartInstance.data.datasets = [{}]; // One dataset
+    mockChartInstance.data.datasets = [{}];
     mockChartInstance.isDatasetVisible = jest.fn(() => true);
-
-    // Mock setActiveElements (used in stepCursor)
     mockChartInstance.setActiveElements = jest.fn();
   });
 
   test('Moves cursor forward by step size (0.1s)', () => {
-    // Setup: Start exactly at file start
     ChartManager.hoverValue = 1000;
-
-    // Execute: Step forward +1 (should be +100ms)
     ChartManager.stepCursor(0, 1);
 
-    // Assert
     expect(ChartManager.hoverValue).toBe(1100);
     expect(mockChartInstance.update).toHaveBeenCalled();
   });
 
-  test('Clamps cursor to start time (cannot go negative)', () => {
-    // Setup: Start at file start
+  test('Clamps cursor to start time', () => {
     ChartManager.hoverValue = 1000;
-
-    // Execute: Step backward -10
     ChartManager.stepCursor(0, -10);
-
-    // Assert: Should stay at 1000
     expect(ChartManager.hoverValue).toBe(1000);
   });
 
   test('Clamps cursor to end time', () => {
-    // Setup: Start at end (11000ms = 1000 + 10s)
-    ChartManager.hoverValue = 11000;
-
-    // Execute: Step forward
+    // End is 21000 (1000 start + 20s duration)
+    ChartManager.hoverValue = 21000;
     ChartManager.stepCursor(0, 5);
-
-    // Assert
-    expect(ChartManager.hoverValue).toBe(11000);
+    expect(ChartManager.hoverValue).toBe(21000);
   });
 
-  test('Triggers Auto-Pan when cursor moves out of view (Right)', () => {
-    // Setup: View is 1000-6000. Cursor is at edge 6000.
-    mockChartInstance.scales.x.max = 6000;
+  test('Shifts view forward when cursor hits right edge', () => {
+    // Setup: View 1000-6000 (Range 5000). Cursor at edge 6000.
     ChartManager.hoverValue = 6000;
 
-    // Execute: Step forward to 6100
+    // Execute: Step forward (becomes 6100)
     ChartManager.stepCursor(0, 1);
 
-    // Assert: Pan called
-    expect(mockChartInstance.pan).toHaveBeenCalledWith(
-      expect.objectContaining({ x: expect.any(Number) }), // Negative x for panning right
-      undefined,
-      'none'
-    );
-    // Ensure layout updated before finding tooltip
+    // Assert: View should shift.
+    // New Range: 5000.
+    // Logic: New Min = Val(6100) - (Range(5000) * 0.2) = 6100 - 1000 = 5100.
+    // New Max = 5100 + 5000 = 10100.
+    expect(mockChartInstance.options.scales.x.min).toBe(5100);
+    expect(mockChartInstance.options.scales.x.max).toBe(10100);
     expect(mockChartInstance.update).toHaveBeenCalledWith('none');
   });
 
-  test('Triggers Auto-Pan when cursor moves out of view (Left)', () => {
-    // Setup: View is 1000-6000. Cursor at 1000.
-    mockChartInstance.scales.x.min = 1000;
-    ChartManager.hoverValue = 1000;
+  test('Shifts view backward when cursor hits left edge', () => {
+    // Setup: View 2000-7000 (Range 5000). Cursor at edge 2000.
+    mockChartInstance.scales.x.min = 2000;
+    mockChartInstance.scales.x.max = 7000;
+    ChartManager.hoverValue = 2000;
 
-    // Execute: Force move to start (assuming data allows)
-    // To test left pan, we assume the user was panned in and moves back
-    // Let's set start time to 0, current min to 1000, current val to 1000
+    // Execute: Step backward (becomes 1900)
+    ChartManager.stepCursor(0, -1);
+
+    // Assert: View should shift.
+    // Logic: New Min = Val(1900) - (Range(5000) * 0.8) = 1900 - 4000 = -2100?
+    // Wait, the logic is: newMin = val - 0.8*range.
+    // 1900 - 4000 = -2100.
+    // New Max = -2100 + 5000 = 2900.
+    // Note: The clamp logic (step 1) prevents newVal from going below start time (1000).
+    // Let's retry with values safe from clamping.
+
+    // RE-SETUP for safe left shift:
+    // File start: 0. View: 5000-10000. Cursor: 5000.
     mockFile.startTime = 0;
-    ChartManager.hoverValue = 1000;
+    mockChartInstance.scales.x.min = 5000;
+    mockChartInstance.scales.x.max = 10000;
+    ChartManager.hoverValue = 5000;
 
-    ChartManager.stepCursor(0, -1); // Becomes 900
+    // Step back to 4900
+    ChartManager.stepCursor(0, -1);
 
-    // Assert
-    expect(mockChartInstance.pan).toHaveBeenCalledWith(
-      expect.objectContaining({ x: expect.any(Number) }), // Positive x for panning left
-      undefined,
-      'none'
-    );
+    // Calc: 4900 - (5000 * 0.8) = 4900 - 4000 = 900.
+    expect(mockChartInstance.options.scales.x.min).toBe(900);
+    expect(mockChartInstance.options.scales.x.max).toBe(5900);
   });
 
   test('Finds nearest data point index and activates tooltip', () => {
-    // Setup
     ChartManager.hoverValue = 1000;
-
-    // Mock Pixel Conversion:
-    // Let's say the new cursor position (1100ms) maps to pixel 115.
-    // Our mock points are at x=10, x=110, x=210.
-    // 115 is closest to 110 (index 1).
+    // Map cursor target 1100 -> pixel 115
     mockChartInstance.scales.x.getPixelForValue.mockReturnValue(115);
 
-    // Execute
     ChartManager.stepCursor(0, 1);
 
-    // Assert
-    // 1. Should calculate distance and find index 1 (closest to 115)
-    // 2. Should call setActiveElements for index 1
     expect(mockChartInstance.setActiveElements).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ index: 1, datasetIndex: 0 }),
       ])
     );
 
-    // 3. Should force tooltip to the CURSOR target X position (for overlay stability)
+    // Should position tooltip at xTarget (115), not point x (110)
     expect(mockChartInstance.tooltip.setActiveElements).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        x: 115, // Updated: Expect xTarget (cursor pos), NOT closestElement.x (110)
-        y: 50, // (10+90)/2 = 50
+        x: 115,
+        y: 50,
       })
     );
   });
