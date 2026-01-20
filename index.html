@@ -653,13 +653,9 @@
                 id="xyGlobalFile"
                 class="template-select"
                 style="max-width: 300px"
-                onchange="XYAnalysis.onFileChange()"
+                onchange="onFileChange()"
               ></select>
-              <button
-                class="btn"
-                style="width: auto"
-                onclick="XYAnalysis.resetAllZooms()"
-              >
+              <button class="btn" style="width: auto" onclick="resetAllZooms()">
                 <i class="fas fa-compress-arrows-alt"></i> Reset All
               </button>
             </div>
@@ -678,25 +674,52 @@
               >
                 <div
                   class="xy-panel-toolbar"
-                  style="display: flex; gap: 5px; margin-bottom: 10px"
+                  style="
+                    display: flex;
+                    gap: 5px;
+                    margin-bottom: 10px;
+                    align-items: center;
+                  "
                 >
-                  <select
-                    id="xyX-0"
-                    class="template-select"
-                    style="flex: 1"
-                  ></select>
-                  <span
-                    style="align-self: center; font-weight: bold; color: #888"
-                    >vs</span
-                  >
-                  <select
-                    id="xyY-0"
-                    class="template-select"
-                    style="flex: 1"
-                  ></select>
+                  <div style="flex: 1; min-width: 0">
+                    <div
+                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
+                    >
+                      X Axis
+                    </div>
+                    <select
+                      id="xyX-0"
+                      class="template-select"
+                      style="width: 100%"
+                    ></select>
+                  </div>
+                  <div style="flex: 1; min-width: 0">
+                    <div
+                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
+                    >
+                      Y Axis
+                    </div>
+                    <select
+                      id="xyY-0"
+                      class="template-select"
+                      style="width: 100%"
+                    ></select>
+                  </div>
+                  <div style="flex: 1; min-width: 0">
+                    <div
+                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
+                    >
+                      Z Axis (Color)
+                    </div>
+                    <select
+                      id="xyZ-0"
+                      class="template-select"
+                      style="width: 100%"
+                    ></select>
+                  </div>
                   <button
                     class="btn btn-primary"
-                    style="width: auto"
+                    style="width: auto; height: 32px; align-self: flex-end"
                     onclick="plot(0)"
                   >
                     Plot
@@ -737,25 +760,52 @@
               >
                 <div
                   class="xy-panel-toolbar"
-                  style="display: flex; gap: 5px; margin-bottom: 10px"
+                  style="
+                    display: flex;
+                    gap: 5px;
+                    margin-bottom: 10px;
+                    align-items: center;
+                  "
                 >
-                  <select
-                    id="xyX-1"
-                    class="template-select"
-                    style="flex: 1"
-                  ></select>
-                  <span
-                    style="align-self: center; font-weight: bold; color: #888"
-                    >vs</span
-                  >
-                  <select
-                    id="xyY-1"
-                    class="template-select"
-                    style="flex: 1"
-                  ></select>
+                  <div style="flex: 1; min-width: 0">
+                    <div
+                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
+                    >
+                      X Axis
+                    </div>
+                    <select
+                      id="xyX-1"
+                      class="template-select"
+                      style="width: 100%"
+                    ></select>
+                  </div>
+                  <div style="flex: 1; min-width: 0">
+                    <div
+                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
+                    >
+                      Y Axis
+                    </div>
+                    <select
+                      id="xyY-1"
+                      class="template-select"
+                      style="width: 100%"
+                    ></select>
+                  </div>
+                  <div style="flex: 1; min-width: 0">
+                    <div
+                      style="font-size: 0.7em; color: #666; margin-bottom: 2px"
+                    >
+                      Z Axis (Color)
+                    </div>
+                    <select
+                      id="xyZ-1"
+                      class="template-select"
+                      style="width: 100%"
+                    ></select>
+                  </div>
                   <button
                     class="btn btn-primary"
-                    style="width: auto"
+                    style="width: auto; height: 32px; align-self: flex-end"
                     onclick="plot(1)"
                   >
                     Plot
