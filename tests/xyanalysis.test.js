@@ -34,7 +34,7 @@ await jest.unstable_mockModule('chartjs-plugin-zoom', () => ({
   default: mockZoomPlugin,
 }));
 
-// Mock UI.js (populateXYSelectors removed in new impl, so we mock generic UI if needed)
+// Mock UI.js
 await jest.unstable_mockModule('../src/ui.js', () => ({
   UI: {},
 }));
@@ -56,7 +56,6 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     AppState.files = [];
-    // Reset internal state
     XYAnalysis.charts = [null, null];
 
     Chart.mockImplementation(() => mockChartInstance);
@@ -73,19 +72,13 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
       <select id="xyY-0"><option value="Boost">Boost</option></select>
       <select id="xyZ-0"><option value="AFR">AFR</option></select>
       <canvas id="xyCanvas-0"></canvas>
-      <div id="xyLegend-0" style="display:none;">
-        <span class="max-val"></span>
-        <span class="min-val"></span>
-      </div>
+      <div id="xyLegend-0" style="display:none;"></div>
 
       <select id="xyX-1"><option value="RPM">RPM</option></select>
       <select id="xyY-1"><option value="MAF">MAF</option></select>
       <select id="xyZ-1"><option value="IAT">IAT</option></select>
       <canvas id="xyCanvas-1"></canvas>
-      <div id="xyLegend-1" style="display:none;">
-        <span class="max-val"></span>
-        <span class="min-val"></span>
-      </div>
+      <div id="xyLegend-1" style="display:none;"></div>
     `;
   });
 
@@ -118,19 +111,16 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
         },
       ];
 
-      // Mock DOM elements for options
       const fileSel = document.getElementById('xyGlobalFile');
       fileSel.innerHTML = '<option value="0">Log1</option>';
       fileSel.value = '0';
 
       XYAnalysis.onFileChange();
 
-      // Check Panel 0
       const x0 = document.getElementById('xyX-0');
       expect(x0.innerHTML).toContain('RPM');
       expect(x0.innerHTML).toContain('Boost');
 
-      // Check Panel 1
       const x1 = document.getElementById('xyX-1');
       expect(x1.innerHTML).toContain('RPM');
     });
@@ -144,43 +134,35 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
     });
 
     test('synchronizes X, Y, and Z signals correctly', () => {
-      // Setup: 3 signals with slight timing offsets
       AppState.files = [
         {
           signals: {
             RPM: [
               { x: 1.0, y: 1000 },
               { x: 2.0, y: 2000 },
-            ], // Base Time
+            ],
             Boost: [
               { x: 1.1, y: 1.5 },
               { x: 2.1, y: 2.5 },
-            ], // Y Signal
+            ],
             AFR: [
               { x: 1.05, y: 14.7 },
               { x: 2.05, y: 12.5 },
-            ], // Z Signal
+            ],
           },
         },
       ];
 
-      // Execute with new Z-axis param
       const result = XYAnalysis.generateScatterData(0, 'RPM', 'Boost', 'AFR');
 
-      // Assert
       expect(result).toHaveLength(2);
-
-      // Point 1: 1000 RPM, 1.5 Boost, 14.7 AFR
       expect(result[0]).toEqual({ x: 1000, y: 1.5, z: 14.7 });
-
-      // Point 2: 2000 RPM, 2.5 Boost, 12.5 AFR
       expect(result[1]).toEqual({ x: 2000, y: 2.5, z: 12.5 });
     });
   });
 
   describe('renderChart & Z-Axis Visualization', () => {
     beforeEach(() => {
-      // Mock Canvas Contexts
       ['xyCanvas-0', 'xyCanvas-1'].forEach((id) => {
         const canvas = document.getElementById(id);
         canvas.getContext = jest.fn(() => ({
@@ -194,24 +176,21 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
     });
 
     test('renderChart updates correct panel instance', () => {
-      // Setup Data
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1, z: 10 }]);
 
-      // Render Panel 1
       XYAnalysis.renderChart('1', 0, 'RPM', 'Boost', 'AFR');
 
-      // Check specific slot in charts array
       expect(XYAnalysis.charts[1]).not.toBeNull();
-      expect(XYAnalysis.charts[0]).toBeNull(); // Panel 0 should stay empty
+      expect(XYAnalysis.charts[0]).toBeNull();
     });
 
     test('assigns Z-Axis colors (Heatmap Logic)', () => {
       const mockData = [
-        { x: 1, y: 10, z: 10 }, // Min Z -> Blue (Hue 240)
-        { x: 2, y: 50, z: 55 }, // Mid Z
-        { x: 3, y: 90, z: 100 }, // Max Z -> Red (Hue 0)
+        { x: 1, y: 10, z: 10 },
+        { x: 2, y: 50, z: 55 },
+        { x: 3, y: 90, z: 100 },
       ];
       jest.spyOn(XYAnalysis, 'generateScatterData').mockReturnValue(mockData);
 
@@ -223,8 +202,6 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
 
       expect(bgColors[0]).toBe('hsla(240, 100%, 50%, 0.8)'); // Blue
       expect(bgColors[2]).toBe('hsla(0, 100%, 50%, 0.8)'); // Red
-
-      // Ensure border matches background (as per updated requirements)
       expect(borderColors).toEqual(bgColors);
     });
 
@@ -238,8 +215,15 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
 
       const legend = document.getElementById('xyLegend-0');
       expect(legend.style.display).toBe('flex');
-      expect(legend.querySelector('.min-val').innerText).toBe('10.0');
-      expect(legend.querySelector('.max-val').innerText).toBe('20.0');
+
+      // The legend now generates a list of 5 values inside .legend-values
+      const valueSpans = legend.querySelectorAll('.legend-values span');
+      expect(valueSpans.length).toBe(5);
+
+      // Verify Top (Max)
+      expect(valueSpans[0].innerText).toBe('20.0');
+      // Verify Bottom (Min)
+      expect(valueSpans[valueSpans.length - 1].innerText).toBe('10.0');
     });
 
     test('Tooltip callback includes Z-Axis value', () => {
@@ -269,7 +253,6 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
         .spyOn(XYAnalysis, 'renderChart')
         .mockImplementation(() => {});
 
-      // Setup Inputs: We must create matching <options> for .value assignment to work in JSDOM
       const fileSel = document.getElementById('xyGlobalFile');
       fileSel.innerHTML = '<option value="0">File 0</option>';
       fileSel.value = '0';
@@ -286,10 +269,8 @@ describe('XYAnalysis Module (Multi-Chart & Z-Axis)', () => {
       zSel.innerHTML = '<option value="SignalC">SignalC</option>';
       zSel.value = 'SignalC';
 
-      // Execute
       XYAnalysis.plot('0');
 
-      // Assert
       expect(renderSpy).toHaveBeenCalledWith(
         '0',
         '0',
