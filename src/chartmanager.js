@@ -70,7 +70,6 @@ export const ChartManager = {
 
     if (!chart || !file) return;
 
-    // 1. Calculate the new time value
     let currentVal = this.hoverValue;
     if (currentVal === null) {
       currentVal = (chart.scales.x.min + chart.scales.x.max) / 2;
@@ -84,11 +83,11 @@ export const ChartManager = {
     if (newVal < file.startTime) newVal = file.startTime;
     if (newVal > maxTime) newVal = maxTime;
 
-    // 2. Update global state
+    // Update global state
     this.hoverValue = newVal;
     this.activeChartIndex = index;
 
-    // 3. View Shift (Replaces Panning)
+    // View Shift (Replaces Panning)
     // If cursor hits the border, shift the view window so the cursor has context.
     let viewChanged = false;
     const currentMin = chart.scales.x.min;
@@ -114,7 +113,7 @@ export const ChartManager = {
       chart.update('none');
     }
 
-    // 4. ROBUST TOOLTIP ACTIVATION (Overlay Compatible)
+    // ROBUST TOOLTIP ACTIVATION (Overlay Compatible)
     const xTarget = chart.scales.x.getPixelForValue(newVal);
     const activeElements = [];
 
@@ -157,7 +156,7 @@ export const ChartManager = {
       chart.update();
     }
 
-    // 5. Update Local Sliders
+    // Update Local Sliders
     if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
   },
 

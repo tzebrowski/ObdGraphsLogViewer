@@ -2240,14 +2240,15 @@ body.analyzer-active {
 }
 
 .xy-legend-strip {
-  width: 50px;
+  position: relative;
+  width: 65px; /* Increased width to fit text */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 10px 0;
   margin-left: 5px;
-  background: rgb(0 0 0 / 2%);
+  background: rgba(0, 0, 0, 0.02);
   border-left: 1px solid #eee;
   font-size: 0.75em;
   font-weight: bold;
@@ -2257,10 +2258,28 @@ body.analyzer-active {
 .xy-legend-strip .gradient-bar {
   flex: 1;
   width: 12px;
-  margin: 5px 0;
+  margin: 5px 0 5px 15px; /* Add left margin to make room for text */
   border-radius: 6px;
   border: 1px solid #ccc;
   background: linear-gradient(to top, blue, cyan, lime, yellow, red);
+  z-index: 2;
+}
+
+.z-axis-label {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg); /* Rotate text vertically */
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 80%;
+  text-align: center;
+  letter-spacing: 0.5px;
 }
 
 .xy-panel-toolbar select {

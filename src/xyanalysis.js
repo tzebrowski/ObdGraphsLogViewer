@@ -99,22 +99,19 @@ export const XYAnalysis = {
       this.charts[panelIdx].destroy();
     }
 
-    // Generate 3D Data (X, Y, Z)
     const data = this.generateScatterData(fileIdx, signalX, signalY, signalZ);
 
     if (data.length === 0) {
       return;
     }
 
-    // Determine Color Scale based on Z axis
     const zValues = data.map((p) => p.z);
     const minZ = Math.min(...zValues);
     const maxZ = Math.max(...zValues);
 
     const pointColors = data.map((p) => this.getHeatColor(p.z, minZ, maxZ));
 
-    // Update Legend with Z values
-    this.updateLegend(panelIdx, minZ, maxZ);
+    this.updateLegend(panelIdx, minZ, maxZ, signalZ);
 
     const isDark = document.body.classList.contains('dark-theme');
     const color = isDark ? '#eee' : '#333';
@@ -179,14 +176,23 @@ export const XYAnalysis = {
     });
   },
 
-  updateLegend(panelIdx, min, max) {
+  updateLegend(panelIdx, min, max, zLabel) {
     const legend = document.getElementById(`xyLegend-${panelIdx}`);
     if (!legend) return;
 
     legend.style.display = 'flex';
     legend.querySelector('.max-val').innerText = max.toFixed(1);
     legend.querySelector('.min-val').innerText = min.toFixed(1);
-    legend.title = `Color Scale (Z Axis): ${min.toFixed(2)} - ${max.toFixed(2)}`;
+
+    let labelSpan = legend.querySelector('.z-axis-label');
+    if (!labelSpan) {
+      labelSpan = document.createElement('span');
+      labelSpan.className = 'z-axis-label';
+      legend.appendChild(labelSpan);
+    }
+    labelSpan.innerText = zLabel || 'Z-Axis';
+
+    legend.title = `${zLabel} Scale: ${min.toFixed(2)} - ${max.toFixed(2)}`;
   },
 
   generateScatterData(fileIndex, signalXName, signalYName, signalZName) {
