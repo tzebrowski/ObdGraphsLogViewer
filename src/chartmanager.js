@@ -64,26 +64,31 @@ export const ChartManager = {
 
   stepCursor(index, stepCount) {
     const chart = AppState.chartInstances[index];
+    // In overlay mode, we always use the first file as the time reference base
     const file =
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[index];
 
     if (!chart || !file) return;
 
+    // 1. Calculate the new time value
     let currentVal = this.hoverValue;
     if (currentVal === null) {
       currentVal = (chart.scales.x.min + chart.scales.x.max) / 2;
     }
 
-    const stepSize = 100;
+    const stepSize = 100; // 0.1s (could be configurable)
     let newVal = currentVal + stepCount * stepSize;
 
+    // Clamp values to file boundaries
     const maxTime = file.startTime + file.duration * 1000;
     if (newVal < file.startTime) newVal = file.startTime;
     if (newVal > maxTime) newVal = maxTime;
 
+    // 2. Update global state
     this.hoverValue = newVal;
     this.activeChartIndex = index;
 
+    // 3. Handle Panning (Auto-scroll if cursor leaves view)
     let viewChanged = false;
     const padding = (chart.scales.x.max - chart.scales.x.min) * 0.1;
 
@@ -95,57 +100,71 @@ export const ChartManager = {
       viewChanged = true;
     }
 
+    // If view changed, update layout before searching for points
     if (viewChanged) {
       chart.update('none');
     }
 
-    const visibleDatasetIndex = chart.data.datasets.findIndex(
-      (d) => !chart.isDatasetVisible(chart.data.datasets.indexOf(d))
-    );
-    const targetDatasetIndex =
-      visibleDatasetIndex !== -1 ? visibleDatasetIndex : 0;
+    // 4. ROBUST TOOLTIP ACTIVATION (Overlay Compatible)
+    // We must find the nearest point for EACH dataset individually,
+    // because files in overlay mode have different lengths/sampling rates.
 
-    const meta = chart.getDatasetMeta(targetDatasetIndex);
-    const data = meta.data;
+    const xTarget = chart.scales.x.getPixelForValue(newVal);
+    const activeElements = [];
 
-    if (data.length > 0) {
-      const xTarget = chart.scales.x.getPixelForValue(newVal);
+    // Iterate through all datasets on the chart
+    chart.data.datasets.forEach((ds, dsIdx) => {
+      // Skip hidden datasets
+      if (!chart.isDatasetVisible(dsIdx)) return;
 
-      let closestElement = null;
+      const meta = chart.getDatasetMeta(dsIdx);
+      const data = meta.data || [];
+
+      // Find the nearest point in THIS specific dataset
+      let closestIndex = -1;
       let minDiff = Infinity;
-      let closestIndex = 0;
 
+      // Linear search (fast enough for UI interactions)
       for (let i = 0; i < data.length; i++) {
-        const diff = Math.abs(data[i].x - xTarget);
+        const element = data[i];
+
+        // Safety check for sparse/gap data
+        if (!element || typeof element.x !== 'number' || isNaN(element.x))
+          continue;
+
+        const diff = Math.abs(element.x - xTarget);
         if (diff < minDiff) {
           minDiff = diff;
-          closestElement = data[i];
           closestIndex = i;
+        } else {
+          // Optimization: If difference starts increasing, we passed the closest point
+          // (Assuming sorted data, which is true for time-series)
+          if (diff > minDiff + 5) break;
         }
-        if (diff > minDiff) break;
       }
 
-      if (closestElement) {
-        const activeElements = [];
-        chart.data.datasets.forEach((ds, dsIdx) => {
-          if (chart.isDatasetVisible(dsIdx)) {
-            activeElements.push({ datasetIndex: dsIdx, index: closestIndex });
-          }
-        });
-
-        chart.setActiveElements(activeElements);
-
-        chart.tooltip.setActiveElements(activeElements, {
-          x: closestElement.x,
-          y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
-        });
-
-        chart.update();
+      if (closestIndex !== -1) {
+        activeElements.push({ datasetIndex: dsIdx, index: closestIndex });
       }
+    });
+
+    if (activeElements.length > 0) {
+      chart.setActiveElements(activeElements);
+
+      // Position tooltip at the cursor target X, not the point X.
+      // This keeps the tooltip stable even if points are slightly misaligned.
+      chart.tooltip.setActiveElements(activeElements, {
+        x: xTarget,
+        y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
+      });
+
+      chart.update();
     } else {
+      // Fallback: just refresh to draw the cursor line
       chart.update();
     }
 
+    // 5. Update Local Sliders
     if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
   },
 
@@ -913,16 +932,15 @@ export const ChartManager = {
         ctx,
         chartArea: { top, bottom, left, right },
         scales: { x },
-        tooltip,
       } = chart;
 
       const chartIdx = AppState.chartInstances.indexOf(chart);
       if (chartIdx === -1) return;
 
       const file = AppState.files[chartIdx];
-      if (!file) return;
 
-      if (AppState.activeHighlight?.targetIndex === chartIdx) {
+      // 1. ANOMALY HIGHLIGHT (Red Background)
+      if (file && AppState.activeHighlight?.targetIndex === chartIdx) {
         const pxStart = x.getPixelForValue(
           file.startTime + AppState.activeHighlight.start * 1000
         );
@@ -942,8 +960,8 @@ export const ChartManager = {
         }
       }
 
-      if (file.annotations && file.annotations.length > 0) {
-        //
+      // 2. ANNOTATIONS (Orange Lines & Text)
+      if (file && file.annotations && file.annotations.length > 0) {
         ctx.save();
         ctx.font = '11px Arial';
         ctx.textAlign = 'left';
@@ -973,29 +991,21 @@ export const ChartManager = {
         ctx.restore();
       }
 
-      if (tooltip && tooltip.getActiveElements().length > 0) {
-        const activePoint = tooltip.getActiveElements()[0];
-        const xPixel = activePoint.element.x;
-        if (xPixel >= left && xPixel <= right) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.setLineDash([5, 5]);
-          ctx.strokeStyle = 'rgba(227, 24, 55, 0.6)';
-          ctx.lineWidth = 3;
-          ctx.moveTo(xPixel, top);
-          ctx.lineTo(xPixel, bottom);
-          ctx.stroke();
-          ctx.restore();
-        }
-      } else if (
+      // 3. CURSOR LINE (Unified Logic)
+      // We check strict inequality (!== null) because hoverValue can be 0.0
+      if (
         ChartManager.activeChartIndex === chartIdx &&
-        ChartManager.hoverValue
+        ChartManager.hoverValue !== null
       ) {
         const xPixel = x.getPixelForValue(ChartManager.hoverValue);
+
+        // Only draw if within the visible chart area
         if (xPixel >= left && xPixel <= right) {
           ctx.save();
           ctx.beginPath();
-          ctx.strokeStyle = 'rgba(154, 0, 0, 0.3)';
+          // Consistent "Active" Red color
+          ctx.strokeStyle = 'rgba(227, 24, 55, 0.6)';
+          ctx.lineWidth = 2;
           ctx.setLineDash([5, 5]);
           ctx.moveTo(xPixel, top);
           ctx.lineTo(xPixel, bottom);
@@ -1005,7 +1015,6 @@ export const ChartManager = {
       }
     },
   },
-
   _getShortcutsText() {
     return `Keyboard Shortcuts:
     \u2190 / \u2192 : Pan Left/Right (Shift for faster)
