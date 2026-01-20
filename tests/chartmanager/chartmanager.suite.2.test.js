@@ -335,6 +335,22 @@ describe('ChartManager: Interactions & UI Logic', () => {
         .mockReturnValue(mockChartInstance.ctx);
     });
 
+    test('Draws cursor line when hoverValue is set (Unified Logic)', () => {
+      // The new logic ignores tooltip state and relies solely on hoverValue
+      ChartManager.activeChartIndex = 0;
+      ChartManager.hoverValue = 1005; // Valid value
+
+      // Mock pixel conversion
+      mockChartInstance.scales.x.getPixelForValue.mockReturnValue(50);
+
+      ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
+
+      expect(mockChartInstance.ctx.setLineDash).toHaveBeenCalledWith([5, 5]);
+      // Expect the unified "Active" Red color
+      expect(mockChartInstance.ctx.strokeStyle).toBe('rgba(227, 24, 55, 0.6)');
+      expect(mockChartInstance.ctx.stroke).toHaveBeenCalled();
+    });
+
     test('Draws anomaly highlight box tests', () => {
       // Setup Anomaly Highlight State
       AppState.activeHighlight = { start: 0, end: 5, targetIndex: 0 };
@@ -345,20 +361,6 @@ describe('ChartManager: Interactions & UI Logic', () => {
       expect(mockChartInstance.ctx.fillRect).toHaveBeenCalled();
     });
 
-    test('Draws snapped tooltip line tests', () => {
-      // Setup Active Tooltip State
-      mockChartInstance.tooltip.getActiveElements.mockReturnValue([
-        { element: { x: 50 } },
-      ]);
-      ChartManager.hoverValue = null; // Ensure we rely on tooltip, not hoverValue
-
-      ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
-
-      expect(mockChartInstance.ctx.setLineDash).toHaveBeenCalledWith([5, 5]);
-      expect(mockChartInstance.ctx.strokeStyle).toBe('rgba(227, 24, 55, 0.6)');
-      expect(mockChartInstance.ctx.stroke).toHaveBeenCalled();
-    });
-
     test('Draws mouse hover line when no tooltip tests', () => {
       // Setup Hover State
       mockChartInstance.tooltip.getActiveElements.mockReturnValue([]);
@@ -367,7 +369,7 @@ describe('ChartManager: Interactions & UI Logic', () => {
 
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
 
-      expect(mockChartInstance.ctx.strokeStyle).toBe('rgba(154, 0, 0, 0.3)');
+      expect(mockChartInstance.ctx.strokeStyle).toBe('rgba(227, 24, 55, 0.6)');
       expect(mockChartInstance.ctx.stroke).toHaveBeenCalled();
     });
 
@@ -822,11 +824,11 @@ describe('Step Cursor Navigation tests', () => {
       ])
     );
 
-    // 3. Should force tooltip to that element's X position
+    // 3. Should force tooltip to the CURSOR target X position (for overlay stability)
     expect(mockChartInstance.tooltip.setActiveElements).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        x: 110, // The X position of the matched point, not the cursor
+        x: 115, // Updated: Expect xTarget (cursor pos), NOT closestElement.x (110)
         y: 50, // (10+90)/2 = 50
       })
     );
