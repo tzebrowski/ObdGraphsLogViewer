@@ -334,22 +334,23 @@ export const ChartManager = {
     const baseStartTime = AppState.files[0].startTime;
 
     const shortcuts = this._getShortcutsText();
+
     wrapper.innerHTML = `
       <div class="chart-header-sm">
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
-          <div class="chart-actions">
+          <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
                <span style="font-size:0.8em; color:#666; margin-right:10px;">X-Axis: Relative Time (s)</span>
                
-               <button class="btn-icon" style="cursor: help;" title="${shortcuts}">
-                  <i class="fas fa-keyboard"></i>
-               </button>
-               
-               <div style="display: inline-flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff; vertical-align: middle;">
+               <div style="display: flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff;">
                   <button class="btn-icon" onclick="stepCursor(0, -10)" title="-1s" style="border:none;"><i class="fas fa-backward"></i></button>
                   <button class="btn-icon" onclick="stepCursor(0, -1)" title="-0.1s" style="border:none;"><i class="fas fa-caret-left" style="font-size: 1.2em;"></i></button>
                   <button class="btn-icon" onclick="stepCursor(0, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
                   <button class="btn-icon" onclick="stepCursor(0, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
               </div>
+
+               <button class="btn-icon" style="cursor: help;" title="${shortcuts}">
+                  <i class="fas fa-keyboard"></i>
+               </button>
 
                <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
