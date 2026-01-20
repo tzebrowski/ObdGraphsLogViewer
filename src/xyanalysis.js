@@ -34,6 +34,8 @@ export const XYAnalysis = {
   openXYModal() {
     document.getElementById('xyModal').style.display = 'flex';
     UI.populateXYSelectors();
+    const legend = document.getElementById('xyLegendContainer');
+    if (legend) legend.style.display = 'none';
   },
 
   closeXYModal() {
@@ -119,6 +121,8 @@ export const XYAnalysis = {
 
     const pointColors = data.map((p) => this.getHeatColor(p.y, minY, maxY));
 
+    this.updateLegendUI(minY, maxY);
+
     const isDark = document.body.classList.contains('dark-theme');
     const gridColor = isDark
       ? 'rgba(255, 255, 255, 0.1)'
@@ -134,6 +138,7 @@ export const XYAnalysis = {
             data: data,
             backgroundColor: pointColors,
             borderColor: pointColors,
+            borderWidth: 1,
             pointRadius: 3,
             pointHoverRadius: 6,
           },
@@ -190,6 +195,20 @@ export const XYAnalysis = {
         },
       },
     });
+  },
+
+  updateLegendUI(min, max) {
+    const legendContainer = document.getElementById('xyLegendContainer');
+    const maxLabel = document.getElementById('xyLegendMax');
+    const minLabel = document.getElementById('xyLegendMin');
+
+    if (legendContainer && maxLabel && minLabel) {
+      legendContainer.style.display = 'flex';
+      maxLabel.innerText = max.toFixed(2);
+      minLabel.innerText = min.toFixed(2);
+
+      legendContainer.title = `Color Scale (Y Axis: ${min.toFixed(2)} - ${max.toFixed(2)})`;
+    }
   },
 
   getHeatColor(value, min, max) {

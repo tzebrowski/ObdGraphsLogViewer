@@ -2221,3 +2221,20 @@ body.analyzer-active {
   font-size: 0.7em;
   margin-left: 5px;
 }
+
+#xyLegendContainer div {
+  background: linear-gradient(
+    to top,
+    hsl(240deg 100% 50%),
+    hsl(180deg 100% 50%),
+    hsl(120deg 100% 50%),
+    hsl(60deg 100% 50%),
+    hsl(0deg 100% 50%)
+  ) !important;
+  box-shadow: inset 1px 1px 3px rgb(0 0 0 / 20%);
+}
+
+.xy-legend-val {
+  font-family: monospace;
+  color: var(--text-color);
+}

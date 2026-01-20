@@ -678,8 +678,62 @@
                 <i class="fas fa-compress-arrows-alt"></i> Reset Zoom
               </button>
             </div>
-            <div style="flex: 1; position: relative; min-height: 0">
-              <canvas id="xyChartCanvas"></canvas>
+
+            <div
+              style="
+                flex: 1;
+                position: relative;
+                min-height: 0;
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+              "
+            >
+              <div style="flex-grow: 1; position: relative; min-width: 0">
+                <canvas id="xyChartCanvas"></canvas>
+              </div>
+
+              <div
+                id="xyLegendContainer"
+                style="
+                  display: none;
+                  width: 60px;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 10px 0;
+                  background: rgba(0, 0, 0, 0.02);
+                  border-left: 1px solid #eee;
+                "
+              >
+                <span
+                  id="xyLegendMax"
+                  style="font-size: 0.75em; font-weight: bold"
+                ></span>
+
+                <div
+                  style="
+                    flex: 1;
+                    width: 12px;
+                    margin: 5px 0;
+                    border-radius: 6px;
+                    border: 1px solid #ccc;
+                    background: linear-gradient(
+                      to top,
+                      blue,
+                      cyan,
+                      lime,
+                      yellow,
+                      red
+                    );
+                  "
+                ></div>
+
+                <span
+                  id="xyLegendMin"
+                  style="font-size: 0.75em; font-weight: bold"
+                ></span>
+              </div>
             </div>
           </div>
         </div>
