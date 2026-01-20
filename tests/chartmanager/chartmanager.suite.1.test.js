@@ -102,6 +102,9 @@ describe('ChartManager Overlay & View Mode Tests', () => {
 
     container = document.getElementById('chartContainer');
     DOM.get.mockReturnValue(container);
+    jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(mockChartInstance.ctx);
   });
 
   describe('toggleViewMode', () => {

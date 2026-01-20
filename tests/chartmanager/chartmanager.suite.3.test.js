@@ -114,6 +114,10 @@ describe('ChartManager Module Comprehensive Tests', () => {
       chartArea: { top: 10, bottom: 90, left: 10, right: 190 },
     };
     AppState.chartInstances = [mockChart];
+
+    jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(mockChartInstance.ctx);
   });
 
   describe('Core Lifecycle', () => {
