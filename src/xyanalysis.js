@@ -176,23 +176,43 @@ export const XYAnalysis = {
     });
   },
 
+  /* Inside src/xyanalysis.js */
+
   updateLegend(panelIdx, min, max, zLabel) {
-    const legend = document.getElementById(`xyLegend-${panelIdx}`);
-    if (!legend) return;
+     const legend = document.getElementById(`xyLegend-${panelIdx}`);
+     if(!legend) return;
+     
+     legend.style.display = 'flex';
+     legend.innerHTML = ''; // Clear previous content
 
-    legend.style.display = 'flex';
-    legend.querySelector('.max-val').innerText = max.toFixed(1);
-    legend.querySelector('.min-val').innerText = min.toFixed(1);
+     const labelContainer = document.createElement('div');
+     labelContainer.className = 'legend-label-container';
+     
+     const labelSpan = document.createElement('span');
+     labelSpan.className = 'z-axis-label';
+     labelSpan.innerText = zLabel || 'Z-Axis';
+     labelContainer.appendChild(labelSpan);
+     legend.appendChild(labelContainer);
 
-    let labelSpan = legend.querySelector('.z-axis-label');
-    if (!labelSpan) {
-      labelSpan = document.createElement('span');
-      labelSpan.className = 'z-axis-label';
-      legend.appendChild(labelSpan);
-    }
-    labelSpan.innerText = zLabel || 'Z-Axis';
+     const bar = document.createElement('div');
+     bar.className = 'gradient-bar';
+     legend.appendChild(bar);
 
-    legend.title = `${zLabel} Scale: ${min.toFixed(2)} - ${max.toFixed(2)}`;
+     const valuesContainer = document.createElement('div');
+     valuesContainer.className = 'legend-values';
+     
+     const steps = 5;
+     for(let i = 0; i < steps; i++) {
+         const pct = 1 - (i / (steps - 1)); 
+         const val = min + (max - min) * pct;
+         
+         const valSpan = document.createElement('span');
+         valSpan.innerText = val.toFixed(1); // Format to 1 decimal place
+         valuesContainer.appendChild(valSpan);
+     }
+     legend.appendChild(valuesContainer);
+
+     legend.title = `${zLabel} Scale: ${min.toFixed(2)} - ${max.toFixed(2)}`;
   },
 
   generateScatterData(fileIndex, signalXName, signalYName, signalZName) {

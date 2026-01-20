@@ -2240,19 +2240,42 @@ body.analyzer-active {
 }
 
 .xy-legend-strip {
-  position: relative;
-  width: 65px; /* Increased width to fit text */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  margin-left: 5px;
-  background: rgba(0, 0, 0, 0.02);
-  border-left: 1px solid #eee;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: var(--text-color);
+    position: relative;
+    width: 90px; /* Increased width to fit values */
+    display: flex;
+    flex-direction: row; /* Side-by-side layout */
+    align-items: stretch;
+    padding: 10px 0;
+    margin-left: 5px;
+    background: rgb(0 0 0 / 2%);
+    border-left: 1px solid #eee;
+    color: var(--text-color);
+}
+
+.legend-label-container {
+    width: 20px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.gradient-bar {
+    width: 12px;
+    margin: 0 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: linear-gradient(to top, blue, cyan, lime, yellow, red);
+    flex-shrink: 0;
+}
+
+.legend-values {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Evenly spaces the numbers */
+    font-size: 0.75em;
+    font-weight: bold;
+    font-family: monospace;
+    padding-right: 5px;
+    flex: 1;
 }
 
 .xy-legend-strip .gradient-bar {
@@ -2266,20 +2289,16 @@ body.analyzer-active {
 }
 
 .z-axis-label {
-  position: absolute;
-  left: 2px;
-  top: 50%;
-  transform: translateY(-50%) rotate(180deg); /* Rotate text vertically */
-  writing-mode: vertical-rl;
-  font-size: 11px;
-  font-weight: 600;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-height: 80%;
-  text-align: center;
-  letter-spacing: 0.5px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(180deg);
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    text-align: center;
 }
 
 .xy-panel-toolbar select {
