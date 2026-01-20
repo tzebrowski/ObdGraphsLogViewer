@@ -2247,7 +2247,7 @@ body.analyzer-active {
   justify-content: space-between;
   padding: 10px 0;
   margin-left: 5px;
-  background: rgba(0, 0, 0, 0.02);
+  background: rgb(0 0 0 / 2%);
   border-left: 1px solid #eee;
   font-size: 0.75em;
   font-weight: bold;
