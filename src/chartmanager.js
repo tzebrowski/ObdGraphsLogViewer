@@ -690,6 +690,24 @@ export const ChartManager = {
       this.activeChartIndex = null;
       requestAnimationFrame(() => chart.draw());
     });
+
+    canvas.addEventListener('dblclick', (e) => {
+      const chart = AppState.chartInstances[index];
+      const file = AppState.files[index];
+
+      const clickVal = chart.scales.x.getValueForPixel(e.offsetX);
+      const relTime = (clickVal - file.startTime) / 1000;
+
+      const text = prompt(`Add annotation at ${relTime.toFixed(1)}s:`, '');
+      if (text) {
+        if (!file.annotations) file.annotations = [];
+        file.annotations.push({
+          time: relTime,
+          text: text,
+        });
+        chart.draw();
+      }
+    });
   },
 
   _shouldShowLabels(chart) {
@@ -743,6 +761,12 @@ export const ChartManager = {
         case '_':
           chart.zoom(0.9, undefined, 'none');
           break;
+        case 'a':
+          this._addAnnotationViaKeyboard(index);
+          break;
+        case 'e':
+          this.exportDataRange(index);
+          break;
         case 'r':
         case 'R':
           this.resetChart(index);
@@ -790,30 +814,62 @@ export const ChartManager = {
         scales: { x },
         tooltip,
       } = chart;
+
       const chartIdx = AppState.chartInstances.indexOf(chart);
       if (chartIdx === -1) return;
 
+      const file = AppState.files[chartIdx];
+      if (!file) return;
+
       if (AppState.activeHighlight?.targetIndex === chartIdx) {
-        const file = AppState.files[chartIdx];
-        if (file) {
-          const pxStart = x.getPixelForValue(
-            file.startTime + AppState.activeHighlight.start * 1000
+        const pxStart = x.getPixelForValue(
+          file.startTime + AppState.activeHighlight.start * 1000
+        );
+        const pxEnd = x.getPixelForValue(
+          file.startTime + AppState.activeHighlight.end * 1000
+        );
+        if (!isNaN(pxStart) && !isNaN(pxEnd)) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
+          ctx.fillRect(
+            Math.max(pxStart, left),
+            top,
+            Math.min(pxEnd, right) - Math.max(pxStart, left),
+            bottom - top
           );
-          const pxEnd = x.getPixelForValue(
-            file.startTime + AppState.activeHighlight.end * 1000
-          );
-          if (!isNaN(pxStart) && !isNaN(pxEnd)) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
-            ctx.fillRect(
-              Math.max(pxStart, left),
-              top,
-              Math.min(pxEnd, right) - Math.max(pxStart, left),
-              bottom - top
-            );
-            ctx.restore();
-          }
+          ctx.restore();
         }
+      }
+
+      if (file.annotations && file.annotations.length > 0) {
+        //
+        ctx.save();
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+
+        file.annotations.forEach((note) => {
+          const absTime = file.startTime + note.time * 1000;
+
+          if (absTime >= x.min && absTime <= x.max) {
+            const xPix = x.getPixelForValue(absTime);
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 2;
+            ctx.moveTo(xPix, top);
+            ctx.lineTo(xPix, bottom);
+            ctx.stroke();
+
+            const textWidth = ctx.measureText(note.text).width;
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
+            ctx.fillRect(xPix + 2, top + 25, textWidth + 6, 20);
+
+            ctx.fillStyle = 'white';
+            ctx.fillText(note.text, xPix + 5, top + 39);
+          }
+        });
+        ctx.restore();
       }
 
       if (tooltip && tooltip.getActiveElements().length > 0) {
@@ -857,5 +913,27 @@ export const ChartManager = {
     A : Add Annotation (at cursor position)
     E : Export Visible Data (CSV)
     L : Toggle Legend Visibility`;
+  },
+
+  _addAnnotationViaKeyboard(index) {
+    if (this.hoverValue === null || this.activeChartIndex !== index) {
+      alert(
+        'Move your mouse over the chart to select a time for the annotation.'
+      );
+      return;
+    }
+
+    const file = AppState.files[index];
+    const relTime = (this.hoverValue - file.startTime) / 1000;
+
+    const text = prompt(`Add annotation at ${relTime.toFixed(2)}s:`, '');
+    if (text) {
+      if (!file.annotations) file.annotations = [];
+      file.annotations.push({
+        time: relTime,
+        text: text,
+      });
+      AppState.chartInstances[index].draw();
+    }
   },
 };

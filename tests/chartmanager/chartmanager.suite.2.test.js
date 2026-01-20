@@ -15,6 +15,10 @@ const mockChartInstance = {
       getValueForPixel: jest.fn(),
       getPixelForValue: jest.fn(),
     },
+    y: {
+      min: 0,
+      max: 100,
+    },
   },
   data: { datasets: [] },
   options: {
@@ -30,6 +34,11 @@ const mockChartInstance = {
     lineTo: jest.fn(),
     stroke: jest.fn(),
     setLineDash: jest.fn(),
+    fillText: jest.fn(),
+    measureText: jest.fn(() => ({ width: 20 })),
+    font: '',
+    textAlign: '',
+    textBaseline: '',
   },
   chartArea: { top: 10, bottom: 90, left: 10, right: 190 },
   tooltip: { getActiveElements: jest.fn(() => []) },
@@ -230,6 +239,9 @@ describe('ChartManager: Interactions & UI Logic', () => {
       ChartManager.render();
       AppState.chartInstances = [mockChartInstance];
       canvas = document.querySelector('canvas');
+      jest
+        .spyOn(HTMLCanvasElement.prototype, 'getContext')
+        .mockReturnValue(mockChartInstance.ctx);
     });
 
     test('handles Pan Keys', () => {
@@ -308,6 +320,9 @@ describe('ChartManager: Interactions & UI Logic', () => {
         right: 100,
       };
       mockChartInstance.scales.x.getPixelForValue.mockReturnValue(50);
+      jest
+        .spyOn(HTMLCanvasElement.prototype, 'getContext')
+        .mockReturnValue(mockChartInstance.ctx);
     });
 
     test('Draws anomaly highlight box tests', () => {
@@ -396,6 +411,10 @@ describe('CSV Export Logic tests', () => {
 
     // 4. Mock Alert
     alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+    jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(mockChartInstance.ctx);
   });
 
   afterEach(() => {
@@ -479,5 +498,173 @@ describe('CSV Export Logic tests', () => {
     AppState.files = []; // Empty
     ChartManager.exportDataRange(0);
     expect(document.createElement).not.toHaveBeenCalled();
+  });
+});
+
+describe('Annotations tests', () => {
+  let mockFile;
+
+  beforeEach(() => {
+    // Setup a clean file and chart instance
+    mockFile = {
+      name: 'test_annotations.json',
+      startTime: 1000,
+      duration: 100,
+      annotations: [],
+      availableSignals: ['RPM'],
+      signals: { RPM: [{ x: 1000, y: 0 }] },
+    };
+
+    AppState.files = [mockFile];
+    AppState.chartInstances = [mockChartInstance];
+
+    jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(mockChartInstance.ctx);
+
+    mockChartInstance.tooltip.getActiveElements.mockReturnValue([]);
+    mockChartInstance.ctx.fillText.mockClear();
+    mockChartInstance.ctx.beginPath.mockClear();
+    mockChartInstance.ctx.stroke.mockClear();
+
+    ChartManager.render();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('Adds annotation via "_addAnnotationViaKeyboard" logic', () => {
+    ChartManager.activeChartIndex = 0;
+    ChartManager.hoverValue = 3500; // 1000 (start) + 2500 (2.5s)
+
+    // Mock user input
+    jest.spyOn(window, 'prompt').mockReturnValue('Keyboard Note');
+
+    // Execute
+    ChartManager._addAnnotationViaKeyboard(0);
+
+    // Assert
+    expect(mockFile.annotations).toHaveLength(1);
+    expect(mockFile.annotations[0]).toEqual({
+      time: 2.5,
+      text: 'Keyboard Note',
+    });
+    // Should redraw chart to show new annotation
+    expect(mockChartInstance.draw).toHaveBeenCalled();
+  });
+
+  test('Does not add annotation if prompt is cancelled', () => {
+    ChartManager.activeChartIndex = 0;
+    ChartManager.hoverValue = 3500;
+
+    // User pressed Cancel
+    jest.spyOn(window, 'prompt').mockReturnValue(null);
+
+    ChartManager._addAnnotationViaKeyboard(0);
+
+    expect(mockFile.annotations).toHaveLength(0);
+  });
+
+  test('Adds annotation via Double Click event on canvas', () => {
+    // Setup Scale to return a specific time for the click
+    mockChartInstance.scales.x.getValueForPixel.mockReturnValue(6000); // 5s relative
+
+    jest.spyOn(window, 'prompt').mockReturnValue('Mouse Note');
+
+    const canvas = document.getElementById('chart-0');
+
+    // Trigger Double Click
+    const dblClickEvent = new MouseEvent('dblclick', {
+      bubbles: true,
+      cancelable: true,
+    });
+    // Define offsetX since MouseEvent constructor doesn't support it directly
+    Object.defineProperty(dblClickEvent, 'offsetX', { value: 100 });
+
+    canvas.dispatchEvent(dblClickEvent);
+
+    // Assert
+    expect(mockFile.annotations).toHaveLength(1);
+    expect(mockFile.annotations[0]).toEqual({
+      time: 5.0, // (6000 - 1000) / 1000
+      text: 'Mouse Note',
+    });
+  });
+
+  test('Highlighter plugin renders visible annotations', () => {
+    mockFile.annotations = [{ time: 10.0, text: 'Visible Note' }];
+
+    // 2. Setup Zoom Range (Viewer sees 0s to 20s)
+    mockChartInstance.scales.x.min = 1000;
+    mockChartInstance.scales.x.max = 21000;
+
+    // 3. Mock pixel conversion
+    mockChartInstance.scales.x.getPixelForValue.mockReturnValue(50);
+
+    // 4. IMPORTANT: Disable Hover/Tooltip interference
+    // If these are active, the plugin draws a RED line after the ORANGE annotation,
+    // overwriting ctx.strokeStyle in the mock.
+    ChartManager.hoverValue = null;
+    mockChartInstance.tooltip.getActiveElements.mockReturnValue([]);
+
+    // 5. Execute
+    ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
+
+    // 6. Assert
+    expect(mockChartInstance.ctx.beginPath).toHaveBeenCalled();
+
+    // Check that Orange color was applied (Annotation style)
+    // Note: We use toHaveBeenCalledWith because the value might be overwritten later
+    // by subsequent draw calls if we aren't careful, but checking the setter logic is safer.
+    // However, since we disabled hover above, .toBe('#FFA500') should now work.
+    expect(mockChartInstance.ctx.strokeStyle).toBe('#FFA500');
+
+    expect(mockChartInstance.ctx.moveTo).toHaveBeenCalledWith(
+      50,
+      expect.any(Number)
+    );
+    expect(mockChartInstance.ctx.lineTo).toHaveBeenCalledWith(
+      50,
+      expect.any(Number)
+    );
+    expect(mockChartInstance.ctx.stroke).toHaveBeenCalled();
+
+    // Check Text
+    expect(mockChartInstance.ctx.fillText).toHaveBeenCalledWith(
+      'Visible Note',
+      expect.any(Number),
+      expect.any(Number)
+    );
+  });
+
+  test('Highlighter plugin skips annotations outside zoom range', () => {
+    // 1. Setup Data: Annotation at 50s
+    const localMockFile = {
+      ...mockFile,
+      annotations: [{ time: 50.0, text: 'Hidden Note' }],
+    };
+
+    // Force AppState to use this specific file instance to avoid pollution
+    AppState.files = [localMockFile];
+    AppState.chartInstances = [mockChartInstance];
+
+    // 2. Setup View Range: Only 0s to 20s visible
+    mockChartInstance.scales.x.min = 1000;
+    mockChartInstance.scales.x.max = 21000;
+
+    // 3. Setup Pixel Calculation
+    // Even if getPixel returns a value, the logic checks time vs min/max first
+    mockChartInstance.scales.x.getPixelForValue.mockReturnValue(500);
+
+    // 4. Disable Hover
+    ChartManager.hoverValue = null;
+    mockChartInstance.tooltip.getActiveElements.mockReturnValue([]);
+
+    // 5. Execute
+    ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
+
+    // 6. Assert: Text should NOT be drawn because 50s > 20s (max)
+    expect(mockChartInstance.ctx.fillText).not.toHaveBeenCalled();
   });
 });
