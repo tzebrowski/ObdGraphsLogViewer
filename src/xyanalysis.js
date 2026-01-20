@@ -179,40 +179,40 @@ export const XYAnalysis = {
   /* Inside src/xyanalysis.js */
 
   updateLegend(panelIdx, min, max, zLabel) {
-     const legend = document.getElementById(`xyLegend-${panelIdx}`);
-     if(!legend) return;
-     
-     legend.style.display = 'flex';
-     legend.innerHTML = ''; // Clear previous content
+    const legend = document.getElementById(`xyLegend-${panelIdx}`);
+    if (!legend) return;
 
-     const labelContainer = document.createElement('div');
-     labelContainer.className = 'legend-label-container';
-     
-     const labelSpan = document.createElement('span');
-     labelSpan.className = 'z-axis-label';
-     labelSpan.innerText = zLabel || 'Z-Axis';
-     labelContainer.appendChild(labelSpan);
-     legend.appendChild(labelContainer);
+    legend.style.display = 'flex';
+    legend.innerHTML = ''; // Clear previous content
 
-     const bar = document.createElement('div');
-     bar.className = 'gradient-bar';
-     legend.appendChild(bar);
+    const labelContainer = document.createElement('div');
+    labelContainer.className = 'legend-label-container';
 
-     const valuesContainer = document.createElement('div');
-     valuesContainer.className = 'legend-values';
-     
-     const steps = 5;
-     for(let i = 0; i < steps; i++) {
-         const pct = 1 - (i / (steps - 1)); 
-         const val = min + (max - min) * pct;
-         
-         const valSpan = document.createElement('span');
-         valSpan.innerText = val.toFixed(1); // Format to 1 decimal place
-         valuesContainer.appendChild(valSpan);
-     }
-     legend.appendChild(valuesContainer);
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'z-axis-label';
+    labelSpan.innerText = zLabel || 'Z-Axis';
+    labelContainer.appendChild(labelSpan);
+    legend.appendChild(labelContainer);
 
-     legend.title = `${zLabel} Scale: ${min.toFixed(2)} - ${max.toFixed(2)}`;
+    const bar = document.createElement('div');
+    bar.className = 'gradient-bar';
+    legend.appendChild(bar);
+
+    const valuesContainer = document.createElement('div');
+    valuesContainer.className = 'legend-values';
+
+    const steps = 5;
+    for (let i = 0; i < steps; i++) {
+      const pct = 1 - i / (steps - 1);
+      const val = min + (max - min) * pct;
+
+      const valSpan = document.createElement('span');
+      valSpan.innerText = val.toFixed(1); // Format to 1 decimal place
+      valuesContainer.appendChild(valSpan);
+    }
+    legend.appendChild(valuesContainer);
+
+    legend.title = `${zLabel} Scale: ${min.toFixed(2)} - ${max.toFixed(2)}`;
   },
 
   generateScatterData(fileIndex, signalXName, signalYName, signalZName) {
