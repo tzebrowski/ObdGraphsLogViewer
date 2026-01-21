@@ -15,6 +15,8 @@ export const UI = {
     UI.initSidebarSectionsCollapse();
     UI.initMobileUI();
 
+    UI.updateDataLoadedState(false);
+
     messenger.on('ui:updateDataLoadedState', (event) => {
       UI.updateDataLoadedState(event.status);
     });
@@ -94,7 +96,6 @@ export const UI = {
     const container = document.getElementById('chartContainer');
 
     if (!container) {
-      console.warn('UI: chartContainer not found. Skipping state update.');
       return;
     }
 
@@ -103,6 +104,17 @@ export const UI = {
     } else {
       container.classList.remove('has-data');
     }
+
+    const xyBtn = document.querySelector('.xy-btn');
+    const histBtn = document.querySelector('button[title="View Histogram"]');
+
+    [xyBtn, histBtn].forEach((btn) => {
+      if (btn) {
+        btn.disabled = !hasData;
+        btn.style.opacity = hasData ? '1' : '0.5';
+        btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
+      }
+    });
   },
 
   toggleItem(i) {
@@ -146,6 +158,7 @@ export const UI = {
 
   initMobileUI: () => {
     const sidebar = UI.elements.sidebar;
+    if (!sidebar) return;
 
     const backdrop = document.createElement('div');
     backdrop.className = 'sidebar-backdrop';
@@ -247,10 +260,11 @@ export const UI = {
   toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.querySelector('.sidebar-backdrop');
+    if (!sidebar) return;
 
     if (window.innerWidth <= 768) {
       sidebar.classList.toggle('active');
-      backdrop.classList.toggle('active');
+      if (backdrop) backdrop.classList.toggle('active');
     } else {
       sidebar.classList.toggle('collapsed');
     }
@@ -277,7 +291,6 @@ export const UI = {
     );
     inputs.forEach((i) => (i.checked = shouldCheck));
 
-    // --- FIX FOR OVERLAY MODE ---
     if (ChartManager.viewMode === 'overlay') {
       const chart = AppState.chartInstances[0];
       if (chart) {
@@ -289,7 +302,6 @@ export const UI = {
         chart.update('none');
       }
     } else {
-      // Standard Mode
       const chart = AppState.chartInstances[fileIdx];
       if (chart) {
         chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
@@ -366,7 +378,6 @@ export const UI = {
 
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
 
-        // Color picker styling
         const pickerStyle = `width: 18px; height: 18px; border: none; padding: 0; background: none; cursor: ${isCustomEnabled ? 'pointer' : 'default'}; opacity: ${isCustomEnabled ? '1' : '0.4'};`;
 
         signalItem.innerHTML = `
@@ -399,28 +410,33 @@ export const UI = {
     const searchInput = document.getElementById('signalSearchInput');
     const clearBtn = document.getElementById('clearSignalSearch');
 
-    searchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase().trim();
-      clearBtn.style.display = term.length > 0 ? 'block' : 'none';
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        if (clearBtn)
+          clearBtn.style.display = term.length > 0 ? 'block' : 'none';
 
-      const groups = contentContainer.querySelectorAll('.file-group-container');
-      groups.forEach((group) => {
-        let matchCount = 0;
-        const items = group.querySelectorAll('.signal-item');
+        const groups = contentContainer.querySelectorAll(
+          '.file-group-container'
+        );
+        groups.forEach((group) => {
+          let matchCount = 0;
+          const items = group.querySelectorAll('.signal-item');
 
-        items.forEach((item) => {
-          const attr = item.getAttribute('data-signal-name');
-          const isMatch = attr && attr.includes(term);
-          item.style.display = isMatch ? 'flex' : 'none';
-          if (isMatch) matchCount++;
+          items.forEach((item) => {
+            const attr = item.getAttribute('data-signal-name');
+            const isMatch = attr && attr.includes(term);
+            item.style.display = isMatch ? 'flex' : 'none';
+            if (isMatch) matchCount++;
+          });
+
+          group.style.display = matchCount > 0 ? 'block' : 'none';
+          const sigList = group.querySelector('[id^="sig-list-f"]');
+          if (term.length > 0 && matchCount > 0 && sigList)
+            sigList.style.display = 'block';
         });
-
-        group.style.display = matchCount > 0 ? 'block' : 'none';
-        const sigList = group.querySelector('[id^="sig-list-f"]');
-        if (term.length > 0 && matchCount > 0 && sigList)
-          sigList.style.display = 'block';
       });
-    });
+    }
 
     container.onchange = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
@@ -440,11 +456,9 @@ export const UI = {
   },
 
   syncSignalVisibility(key, isVisible, fileIdx) {
-    // --- FIX FOR OVERLAY MODE ---
     if (ChartManager.viewMode === 'overlay') {
-      const chart = AppState.chartInstances[0]; // In overlay, there's only one chart
+      const chart = AppState.chartInstances[0];
       if (chart) {
-        // Find dataset using our custom metadata keys added in ChartManager
         const dataset = chart.data.datasets.find(
           (d) => d._fileIdx === fileIdx && d._signalKey === key
         );
@@ -454,7 +468,6 @@ export const UI = {
         }
       }
     } else {
-      // Standard Stack Mode
       const chart = AppState.chartInstances[fileIdx];
       if (chart) {
         const dataset = chart.data.datasets.find((d) => d.label === key);
@@ -474,7 +487,6 @@ export const UI = {
       .querySelectorAll('input')
       .forEach((i) => (i.checked = shouldCheck));
 
-    // --- FIX FOR OVERLAY MODE ---
     if (ChartManager.viewMode === 'overlay') {
       const chart = AppState.chartInstances[0];
       if (chart) {
@@ -482,7 +494,6 @@ export const UI = {
         chart.update('none');
       }
     } else {
-      // Standard Mode
       AppState.chartInstances.forEach((chart) => {
         chart.data.datasets.forEach((ds) => (ds.hidden = !shouldCheck));
         chart.update('none');
@@ -496,9 +507,11 @@ export const UI = {
 
     try {
       const btn = document.querySelector('.btn-sample');
-      const originalText = btn.innerText;
-      btn.innerText = '⌛ Downloading & Analyzing...';
-      btn.disabled = true;
+      const originalText = btn ? btn.innerText : 'Load Sample';
+      if (btn) {
+        btn.innerText = '⌛ Downloading & Analyzing...';
+        btn.disabled = true;
+      }
 
       const response = await fetch(sampleUrl);
       if (!response.ok) throw new Error('Network response was not ok');
@@ -510,14 +523,18 @@ export const UI = {
         InfoPage.toggleInfo();
       }
 
-      btn.innerText = originalText;
-      btn.disabled = false;
+      if (btn) {
+        btn.innerText = originalText;
+        btn.disabled = false;
+      }
     } catch (error) {
       console.error('Error:', error);
       Alert.showAlert('Failed to load sample data.');
       const btn = document.querySelector('.btn-sample');
-      btn.innerText = '📂 Load Sample Trip (JSON)';
-      btn.disabled = false;
+      if (btn) {
+        btn.innerText = '📂 Load Sample Trip (JSON)';
+        btn.disabled = false;
+      }
     }
   },
 
