@@ -67,8 +67,7 @@ await jest.unstable_mockModule('chart.js', () => {
     LogarithmicScale: jest.fn(),
     TimeScale: jest.fn(),
     Title: jest.fn(),
-    Tooltip: jest.fn(),
-    Tooltip: { positioners: {} },
+    Tooltip: Object.assign(jest.fn(), { positioners: {} }),
     Legend: jest.fn(),
     Filler: jest.fn(),
   };
@@ -162,7 +161,6 @@ describe('ChartManager: Interactions & UI Logic', () => {
 
       const container = document.getElementById('chartContainer');
       const startInput = container.querySelector('.local-range-start');
-      const endInput = container.querySelector('.local-range-end');
 
       // Test Valid Input
       startInput.value = '10';

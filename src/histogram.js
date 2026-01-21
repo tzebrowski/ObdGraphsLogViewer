@@ -2,7 +2,6 @@ import { AppState } from './config.js';
 import { Chart, registerables } from 'chart.js';
 
 class HistogramManager {
-  #chart = null;
   #modalId = 'histModal';
   #canvasId = 'histCanvas';
 
@@ -77,7 +76,7 @@ class HistogramManager {
     const isDark = document.body.classList.contains('dark-theme');
     const textColor = isDark ? '#eee' : '#333';
 
-    this.#chart = new Chart(ctx, {
+    new Chart(ctx, {
       type: 'bar',
       data: {
         labels: labels,

@@ -31,7 +31,7 @@ export const ChartManager = {
   init() {
     window.Hammer = Hammer;
 
-    Tooltip.positioners.topRightCorner = function (elements, eventPosition) {
+    Tooltip.positioners.topRightCorner = function (_elements, _eventPosition) {
       if (!this.chart) return;
 
       const { chartArea } = this.chart;
@@ -57,7 +57,7 @@ export const ChartManager = {
       zoomPlugin
     );
 
-    messenger.on('dataprocessor:batch-load-completed', (event) => {
+    messenger.on('dataprocessor:batch-load-completed', (_event) => {
       ChartManager.render();
     });
   },
