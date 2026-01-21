@@ -87,8 +87,6 @@ describe('DataProcessor Module Tests', () => {
 });
 
 describe('DataProcessor - handleLocalFile', () => {
-  let mockFileReader;
-
   beforeEach(() => {
     jest.clearAllMocks();
     AppState.files = [];

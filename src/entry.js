@@ -11,6 +11,7 @@ import { Navigation } from './navigation.js';
 import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 import { XYAnalysis } from './xyanalysis.js';
+import { Histogram } from './histogram.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
@@ -26,6 +27,7 @@ window.onload = async function () {
   Navigation.init();
   PaletteManager.init();
   XYAnalysis.init();
+  Histogram.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {
@@ -71,3 +73,5 @@ window.stepCursor = (idx, step) => ChartManager.stepCursor(idx, step);
 window.plot = (e) => XYAnalysis.plot(e);
 window.resetAllZooms = () => XYAnalysis.resetAllZooms();
 window.onFileChange = () => XYAnalysis.onFileChange();
+window.histogram_openModal = () => Histogram.openModal();
+window.histogram_generate = () => Histogram.generate();

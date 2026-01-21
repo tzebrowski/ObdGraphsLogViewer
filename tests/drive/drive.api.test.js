@@ -71,14 +71,12 @@ describe('Drive Module - API & Folder Discovery', () => {
 });
 
 describe('Drive Module - Various Tests', () => {
-  let container;
-
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="driveList"></div>
       <div id="driveFileContainer"></div>
     `;
-    container = document.getElementById('driveFileContainer');
+
     localStorage.clear();
     jest.clearAllMocks();
 

@@ -1,4 +1,4 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect } from '@jest/globals';
 import { Alert } from '../src/alert.js';
 
 describe('Alert Module Tests', () => {
