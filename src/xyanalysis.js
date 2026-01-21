@@ -21,6 +21,15 @@ export const XYAnalysis = {
   timelineChart: null,
 
   init() {
+    Tooltip.positioners.xyFixed = function (elements, eventPosition) {
+      if (!this.chart) return;
+      const { chartArea } = this.chart;
+      return {
+        x: chartArea.right - 10,
+        y: chartArea.top + 10,
+      };
+    };
+
     Chart.register(
       ScatterController,
       LineController,
@@ -35,7 +44,17 @@ export const XYAnalysis = {
   },
 
   openXYModal() {
-    document.getElementById('xyModal').style.display = 'flex';
+    const modal = document.getElementById('xyModal');
+    modal.style.display = 'flex';
+
+    const splitView = document.getElementById('xySplitView');
+    const timelineView = document.getElementById('xyTimelineView');
+
+    if (splitView && timelineView) {
+      splitView.style.flex = '1';
+      timelineView.style.flex = '1';
+    }
+
     this.populateGlobalFileSelector();
   },
 
@@ -66,7 +85,6 @@ export const XYAnalysis = {
       document.getElementById(`xyY-${panelIdx}`).innerHTML = options;
       document.getElementById(`xyZ-${panelIdx}`).innerHTML = options;
 
-      // Defaults
       if (panelIdx === '0') {
         this.setSelectValue(`xyX-0`, 'Engine Rpm');
         this.setSelectValue(`xyY-0`, 'Intake Manifold Pressure');
@@ -78,7 +96,8 @@ export const XYAnalysis = {
       }
     });
 
-    // Initial render of timeline with default signals
+    this.plot('0');
+    this.plot('1');
     this.updateTimeline();
   },
 
@@ -113,9 +132,12 @@ export const XYAnalysis = {
 
     const signals = new Set();
     ['0', '1'].forEach((idx) => {
-      signals.add(document.getElementById(`xyX-${idx}`).value);
-      signals.add(document.getElementById(`xyY-${idx}`).value);
-      signals.add(document.getElementById(`xyZ-${idx}`).value);
+      const x = document.getElementById(`xyX-${idx}`).value;
+      const y = document.getElementById(`xyY-${idx}`).value;
+      const z = document.getElementById(`xyZ-${idx}`).value;
+      if (x) signals.add(x);
+      if (y) signals.add(y);
+      if (z) signals.add(z);
     });
 
     const uniqueSignals = Array.from(signals).filter((s) => s);
@@ -138,7 +160,6 @@ export const XYAnalysis = {
         const rawData = file.signals[sigName];
         if (!rawData) return null;
 
-        // Normalize to 0-1 for overlaying multiple signals
         const yValues = rawData.map((p) => parseFloat(p.y));
         const min = Math.min(...yValues);
         const max = Math.max(...yValues);
@@ -168,19 +189,48 @@ export const XYAnalysis = {
           data: data,
           borderColor: color,
           backgroundColor: color,
-          borderWidth: 1.5, // Clean line width
-          pointRadius: 0, // Hides all points
-          pointHoverRadius: 0, // No hover dots for cleaner UI
-          hitRadius: 10, // Easier to hover line
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          hitRadius: 10,
           fill: false,
-          tension: 0.1, // Slight smoothing
+          tension: 0.1,
         };
       })
       .filter((ds) => ds !== null);
 
+    const hoverLinePlugin = {
+      id: 'xyHoverLine',
+      afterDraw: (chart) => {
+        if (chart.tooltip?._active && chart.tooltip._active.length) {
+          const activePoint = chart.tooltip._active[0];
+          const ctx = chart.ctx;
+          const x = activePoint.element.x;
+          const topY = chart.scales.y.top;
+          const bottomY = chart.scales.y.bottom;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, topY);
+          ctx.lineTo(x, bottomY);
+          ctx.lineWidth = 1;
+          const isDark = document.body.classList.contains('dark-theme');
+          ctx.strokeStyle = isDark
+            ? 'rgba(255, 255, 255, 0.5)'
+            : 'rgba(0, 0, 0, 0.5)';
+          ctx.stroke();
+          ctx.restore();
+        }
+      },
+    };
+
+    const isDark = document.body.classList.contains('dark-theme');
+    const textColor = isDark ? '#eee' : '#333';
+
     this.timelineChart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
+      plugins: [hoverLinePlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -189,23 +239,36 @@ export const XYAnalysis = {
         scales: {
           x: {
             type: 'linear',
-            title: { display: true, text: 'Time (s)', font: { size: 10 } },
-            grid: { color: 'rgba(0,0,0,0.05)' },
-            ticks: { font: { size: 10 } },
+            title: {
+              display: true,
+              text: 'Time (s)',
+              font: { size: 10 },
+              color: textColor,
+            },
+            grid: {
+              color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            },
+            ticks: { font: { size: 10 }, color: textColor },
           },
           y: { display: false, min: -0.05, max: 1.05 },
         },
         plugins: {
-          // 1. CRITICAL FIX: Disable Data Labels (Removes the gray noise)
           datalabels: { display: false },
-
           legend: {
             display: true,
             position: 'top',
-            labels: { boxWidth: 10, font: { size: 10 }, usePointStyle: true },
+            labels: {
+              boxWidth: 10,
+              font: { size: 10 },
+              usePointStyle: true,
+              color: textColor,
+            },
           },
           tooltip: {
             enabled: true,
+            position: 'xyFixed',
+            mode: 'index',
+            intersect: false,
             callbacks: {
               label: (context) => {
                 const raw = context.raw.originalValue;
@@ -280,6 +343,7 @@ export const XYAnalysis = {
           legend: { display: false },
           datalabels: { display: false },
           tooltip: {
+            position: 'xyFixed',
             callbacks: {
               label: (ctx) =>
                 `X: ${ctx.raw.x.toFixed(2)}, Y: ${ctx.raw.y.toFixed(2)}, Z: ${ctx.raw.z.toFixed(2)}`,
