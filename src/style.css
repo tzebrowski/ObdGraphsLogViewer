@@ -17,6 +17,7 @@
   --text-main: #333;
   --text-muted: #666;
   --text-color: #333;
+  --text-empty-state: #fdf2f2;
   --transition-speed: 0.3s;
   --active-bg: #fdf2f2;
   --shadow-sm: 0 2px 4px rgb(0 0 0 / 10%);
@@ -1821,7 +1822,7 @@ body.analyzer-active .nav-title {
   height: 100%;
   text-align: center;
   padding: 20px;
-  color: var(--text-muted);
+  color: var(--text-empty-state);
 }
 
 .empty-icon {
@@ -2303,4 +2304,21 @@ body.analyzer-active {
 
 .xy-panel-toolbar select {
   min-width: 0; /* Flexbox fix */
+}
+
+#analyzer-page {
+  background-image:
+    linear-gradient(rgb(10 24 61 / 85%), rgb(10 24 61 / 95%)),
+    url('../resources/background.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.app-container,
+.main-content,
+#chartContainer,
+.empty-state-container {
+  background: transparent !important;
 }
