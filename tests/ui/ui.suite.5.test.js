@@ -3,61 +3,61 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 // 1. Mock Dependencies
 const mockMessenger = {
   on: jest.fn(),
-  emit: jest.fn()
+  emit: jest.fn(),
 };
 
 const mockAppState = {
   files: [],
   chartInstances: [],
-  version: { tag: 'v1.0', repoUrl: 'http://test.url' }
+  version: { tag: 'v1.0', repoUrl: 'http://test.url' },
 };
 
 const mockPreferences = {
   prefs: { useCustomPalette: false, persistence: false },
-  customPalette: {}
+  customPalette: {},
 };
 
 const mockPaletteManager = {
   getColorForSignal: jest.fn(() => '#ff0000'),
-  getSignalKey: jest.fn((f, s) => `${f}:${s}`)
+  getSignalKey: jest.fn((f, s) => `${f}:${s}`),
 };
 
 const mockChartManager = {
   viewMode: 'stack',
-  render: jest.fn()
+  render: jest.fn(),
 };
 
 // 2. Register Mocks
 await jest.unstable_mockModule('../../src/bus.js', () => ({
-  messenger: mockMessenger
+  messenger: mockMessenger,
 }));
 
 await jest.unstable_mockModule('../../src/config.js', () => ({
   AppState: mockAppState,
   DOM: {
-    get: jest.fn((id) => document.getElementById(id))
+    get: jest.fn((id) => document.getElementById(id)),
   },
-  DEFAULT_SIGNALS: ['Rpm']
+  DEFAULT_SIGNALS: ['Rpm'],
 }));
 
 await jest.unstable_mockModule('../../src/preferences.js', () => ({
-  Preferences: mockPreferences
+  Preferences: mockPreferences,
 }));
 
 await jest.unstable_mockModule('../../src/palettemanager.js', () => ({
-  PaletteManager: mockPaletteManager
+  PaletteManager: mockPaletteManager,
 }));
 
 await jest.unstable_mockModule('../../src/chartmanager.js', () => ({
-  ChartManager: mockChartManager
+  ChartManager: mockChartManager,
 }));
 
 await jest.unstable_mockModule('../../src/dataprocessor.js', () => ({
-  dataProcessor: {}
+  dataProcessor: {},
 }));
 
 await jest.unstable_mockModule('../../src/alert.js', () => ({
-  Alert: { showAlert: jest.fn() }
+  Alert: { showAlert: jest.fn() },
 }));
 
 // 3. Import Module Under Test
@@ -111,7 +111,7 @@ describe('UI: Button State & Data Loading', () => {
   test('updateDataLoadedState(false) disables buttons and removes class', () => {
     // First enable them
     UI.updateDataLoadedState(true);
-    
+
     // Then disable
     UI.updateDataLoadedState(false);
 
@@ -133,10 +133,12 @@ describe('UI: Button State & Data Loading', () => {
 
   test('Reacts to ui:updateDataLoadedState event', () => {
     UI.init();
-    
+
     // Find the callback registered to the event
-    const callback = mockMessenger.on.mock.calls.find(call => call[0] === 'ui:updateDataLoadedState')[1];
-    
+    const callback = mockMessenger.on.mock.calls.find(
+      (call) => call[0] === 'ui:updateDataLoadedState'
+    )[1];
+
     // Trigger it with true
     callback({ status: true });
     expect(xyBtn.disabled).toBe(false);
@@ -151,8 +153,10 @@ describe('UI: Button State & Data Loading', () => {
 
     // Simulate batch load completion
     mockAppState.files = [{}, {}]; // 2 files
-    const callback = mockMessenger.on.mock.calls.find(call => call[0] === 'dataprocessor:batch-load-completed')[1];
-    
+    const callback = mockMessenger.on.mock.calls.find(
+      (call) => call[0] === 'dataprocessor:batch-load-completed'
+    )[1];
+
     callback();
 
     // Should enable UI
