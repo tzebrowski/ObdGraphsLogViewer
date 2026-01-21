@@ -51,7 +51,7 @@ export const XYAnalysis = {
     const timelineView = document.getElementById('xyTimelineView');
 
     if (splitView && timelineView) {
-      splitView.style.flex = '1';
+      splitView.style.flex = '3';
       timelineView.style.flex = '1';
     }
 
