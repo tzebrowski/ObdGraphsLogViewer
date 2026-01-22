@@ -314,9 +314,15 @@ export const UI = {
     const container = UI.elements.signalList;
     if (!container) return;
 
+    if (!AppState.files || AppState.files.length === 0) {
+      container.innerHTML =
+        '<div style="padding:10px; color:#666;">No signals available. Load a file first.</div>';
+      return;
+    }
+
     const isCustomEnabled = Preferences.prefs.useCustomPalette;
 
-    container.innerHTML = `
+    const searchHtml = `
       <div class="signal-search-wrapper" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
         <div style="position: relative; display: flex; align-items: center;">
           <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
@@ -330,6 +336,8 @@ export const UI = {
       <div id="signalListContent"></div>
     `;
 
+    container.innerHTML = searchHtml;
+
     const contentContainer = document.getElementById('signalListContent');
     const fragment = document.createDocumentFragment();
 
@@ -342,16 +350,16 @@ export const UI = {
       fileHeader.style.cssText = `padding: 8px 5px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--sidebar-bg);`;
 
       fileHeader.innerHTML = `
-      <span style="display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove log" onclick="event.stopPropagation(); removeChart(${fileIdx})"></i>
-        <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
-        <i class="fas fa-file-alt"></i> ${file.name}
-      </span>
-      <div class="button-row-sm" style="display: flex; gap: 4px;">
-        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
-        <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
-      </div>
-    `;
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove log" onclick="event.stopPropagation(); removeChart(${fileIdx})"></i>
+          <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
+          <i class="fas fa-file-alt"></i> ${file.name}
+        </span>
+        <div class="button-row-sm" style="display: flex; gap: 4px;">
+          <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
+        </div>
+      `;
 
       const signalListContainer = document.createElement('div');
       signalListContainer.id = `sig-list-f${fileIdx}`;
@@ -366,7 +374,29 @@ export const UI = {
       };
 
       file.availableSignals.forEach((signal, sigIdx) => {
+        const isMath = signal.startsWith('Math:');
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
+
+        let isCurrentlyVisible = false;
+
+        if (ChartManager.viewMode === 'overlay') {
+          const chart = AppState.chartInstances[0];
+          if (chart) {
+            const ds = chart.data.datasets.find(
+              (d) => d._fileIdx === fileIdx && d._signalKey === signal
+            );
+            if (ds && !ds.hidden) isCurrentlyVisible = true;
+          }
+        } else {
+          const chart = AppState.chartInstances[fileIdx];
+          if (chart) {
+            const ds = chart.data.datasets.find((d) => d.label === signal);
+            if (ds && !ds.hidden) isCurrentlyVisible = true;
+          }
+        }
+
+        const isChecked = isCurrentlyVisible || isImportant;
+
         const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
         const signalKey = PaletteManager.getSignalKey(file.name, signal);
 
@@ -377,15 +407,18 @@ export const UI = {
           'display: flex; align-items: center; gap: 8px; padding: 2px 5px;';
 
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
-
         const pickerStyle = `width: 18px; height: 18px; border: none; padding: 0; background: none; cursor: ${isCustomEnabled ? 'pointer' : 'default'}; opacity: ${isCustomEnabled ? '1' : '0.4'};`;
+
+        const labelStyle = isMath
+          ? 'font-size: 0.85em; flex-grow: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #01804f; font-weight: bold;'
+          : 'font-size: 0.85em; flex-grow: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
 
         signalItem.innerHTML = `
           <input type="color" value="${color}" class="signal-color-picker" 
                  style="${pickerStyle}" ${isCustomEnabled ? '' : 'disabled'}
                  data-signal-key="${signalKey}">
-          <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isImportant ? 'checked' : ''}>
-          <label for="${uniqueId}" style="font-size: 0.85em; flex-grow: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${signal}</label>
+          <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isChecked ? 'checked' : ''}>
+          <label for="${uniqueId}" style="${labelStyle}">${signal}</label>
       `;
 
         const picker = signalItem.querySelector('.signal-color-picker');
@@ -404,7 +437,6 @@ export const UI = {
       fragment.appendChild(fileGroup);
     });
 
-    contentContainer.innerHTML = '';
     contentContainer.appendChild(fragment);
 
     const searchInput = document.getElementById('signalSearchInput');
@@ -465,6 +497,8 @@ export const UI = {
         if (dataset) {
           dataset.hidden = !isVisible;
           chart.update('none');
+        } else if (isVisible) {
+          ChartManager.render();
         }
       }
     } else {
@@ -474,6 +508,8 @@ export const UI = {
         if (dataset) {
           dataset.hidden = !isVisible;
           chart.update('none');
+        } else if (isVisible) {
+          ChartManager.render();
         }
       }
     }

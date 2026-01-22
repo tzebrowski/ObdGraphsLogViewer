@@ -289,6 +289,27 @@
           </div>
 
           <div class="control-group gray-box">
+            <h3 class="group-header">Math Channels</h3>
+
+            <div style="padding: 5px 0">
+              <p style="font-size: 0.8em; color: #666; margin: 0 0 10px 0">
+                Create virtual sensors using formulas (e.g. Boost, HP).
+              </p>
+
+              <button
+                class="source-btn outline"
+                onclick="openMathModal()"
+                style="width: 100%; justify-content: center"
+              >
+                <div class="btn-content" style="flex-direction: row; gap: 10px">
+                  <i class="fas fa-calculator"></i>
+                  <span>Create New Channel</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-group gray-box">
             <h3>Anomaly Scanner</h3>
             <div style="margin-bottom: 10px">
               <select
@@ -853,6 +874,57 @@
           </div>
         </div>
       </div>
+
+      <div id="mathModal" class="modal-overlay" style="display: none">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Create Math Channel</h2>
+            <button class="btn-close" onclick="closeMathModal()">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="control-group">
+              <label>Select Formula:</label>
+              <select
+                id="mathFormulaSelect"
+                class="template-select"
+                onchange="onMathFormulaChange()"
+              ></select>
+            </div>
+            <div
+              id="mathInputsContainer"
+              style="
+                margin-top: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+              "
+            ></div>
+            <div class="control-group" style="margin-top: 15px">
+              <label>New Channel Name:</label>
+              <input
+                type="text"
+                id="mathChannelName"
+                placeholder="e.g. My Boost Pressure"
+                style="
+                  width: 100%;
+                  padding: 8px;
+                  box-sizing: border-box;
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
+                "
+              />
+            </div>
+          </div>
+          <div
+            class="modal-footer"
+            style="padding: 15px; text-align: right; border-top: 1px solid #eee"
+          >
+            <button class="btn btn-primary" onclick="createMathChannel()">
+              Create Channel
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <div class="footer">
@@ -892,5 +964,6 @@
     <script type="module" src="./src/xyanalysis.js"></script>
     <script type="module" src="./src/bus.js"></script>
     <script type="module" src="./src/navigation.js"></script>
+    <script type="module" src="./src/mathchannels.js"></script>
   </body>
 </html>
