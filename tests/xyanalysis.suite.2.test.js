@@ -184,7 +184,13 @@ describe('XYAnalysis Comprehensive Coverage', () => {
 
   describe('Timeline Rendering', () => {
     test('renderTimeline() skips signals not found in file', () => {
-      AppState.files = [{ startTime: 0, signals: { A: [{ x: 0, y: 0 }] } }];
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['A'], // ADDED: needed for color lookup
+          signals: { A: [{ x: 0, y: 0 }] },
+        },
+      ];
 
       XYAnalysis.renderTimeline(0, ['A', 'B']);
 
@@ -198,6 +204,7 @@ describe('XYAnalysis Comprehensive Coverage', () => {
       AppState.files = [
         {
           startTime: 0,
+          availableSignals: ['Flat'], // ADDED
           signals: {
             Flat: [
               { x: 0, y: 100 },
@@ -216,7 +223,13 @@ describe('XYAnalysis Comprehensive Coverage', () => {
     });
 
     test('Tooltip Callback execution (Timeline)', () => {
-      AppState.files = [{ startTime: 0, signals: { S1: [{ x: 0, y: 50 }] } }];
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['S1'], // ADDED
+          signals: { S1: [{ x: 0, y: 50 }] },
+        },
+      ];
       XYAnalysis.renderTimeline(0, ['S1']);
 
       const config = Chart.mock.calls[0][1];
@@ -232,34 +245,63 @@ describe('XYAnalysis Comprehensive Coverage', () => {
     });
 
     test('Color Logic: Uses window.PaletteManager if present', () => {
-      AppState.files = [{ startTime: 0, signals: { S1: [{ x: 0, y: 0 }] } }];
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['S1'], // ADDED
+          signals: { S1: [{ x: 0, y: 0 }] },
+        },
+      ];
 
       window.PaletteManager = { getColorForSignal: jest.fn(() => '#ABCDEF') };
 
       XYAnalysis.renderTimeline(0, ['S1']);
 
       const config = Chart.mock.calls[0][1];
+      // Note: Test expects #ff0000 because we mock the module import at the top
+      // which overrides the window object logic in some environments depending on import order.
+      // However, the code prioritizes window.PaletteManager if it exists.
+      // Let's verify the behavior based on the code:
+      // const color = window.PaletteManager ... ? ... : ...
+
+      // Since we mocked the module return above to #ff0000, and the code imports it,
+      // usually standard ES modules are read-only bindings.
+      // The implementation in xyanalysis.js uses `PaletteManager.getColorForSignal`.
+      // The test sets `window.PaletteManager`.
+
+      // If the source code uses `import { PaletteManager } ...` and calls `PaletteManager.getColor...`
+      // setting `window.PaletteManager` might be ignored unless the source code explicitly checks `window.PaletteManager`.
+      // Looking at the provided source code:
+      // `const color = window.PaletteManager && PaletteManager.getColorForSignal ...`
+
+      // It checks window.PaletteManager existence, but calls the imported PaletteManager object.
+      // So the mock at the top of this file controls the output.
       expect(config.data.datasets[0].borderColor).toBe('#ff0000');
     });
   });
 
   describe('Scatter Plot Interaction', () => {
-    test('Tooltip Callback execution (Scatter)', () => {
+    test('Scatter Chart uses External Tooltip Handler', () => {
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 2, z: 3 }]);
 
+      // Needs availableSignals for internal logic inside tooltip (even if not called here)
+      AppState.files = [
+        {
+          availableSignals: ['A', 'B', 'C'],
+          signals: {},
+        },
+      ];
+
       XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
 
       const config = Chart.mock.calls[0][1];
-      const callback = config.options.plugins.tooltip.callbacks.label;
+      const tooltipConfig = config.options.plugins.tooltip;
 
-      const context = { raw: { x: 1.111, y: 2.222, z: 3.333 } };
-      const text = callback(context);
-
-      expect(text).toContain('X: 1.11');
-      expect(text).toContain('Y: 2.22');
-      expect(text).toContain('Z: 3.33');
+      // Assert that we switched to external tooltip
+      expect(tooltipConfig.enabled).toBe(false);
+      expect(typeof tooltipConfig.external).toBe('function');
     });
   });
 });

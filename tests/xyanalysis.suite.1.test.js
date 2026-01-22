@@ -22,7 +22,7 @@ const mockChartInstance = {
   },
 };
 
-// 2. Mock Chart.js with specific Tooltip support to prevent init() crashes
+// 2. Mock Chart.js
 await jest.unstable_mockModule('chart.js', () => {
   const MockChart = jest.fn(() => mockChartInstance);
   MockChart.register = jest.fn();
@@ -68,26 +68,29 @@ let Chart;
 
 describe('XYAnalysis Controller', () => {
   beforeEach(async () => {
-    // 3. Reset modules to clear singleton state (Crucial for 'init' tests)
     jest.resetModules();
     jest.clearAllMocks();
 
-    // 4. Setup DOM *before* importing modules so top-level lookups find elements
+    // 4. Setup DOM - Note: IDs match what the code expects.
+    // The code replaces <select> with <div> wrappers, so we start with the "before" state
+    // or just empty containers where the code will append stuff.
+    // Based on the code: if it finds a SELECT, it replaces it. If it finds a DIV, it uses it.
+    // We will start with DIVs to simulate the "ready" state or SELECTs to test replacement.
     document.body.innerHTML = `
       <div id="xyModal" style="display: none;">
         <div class="modal-body"></div>
       </div>
-      <select id="xyGlobalFile"></select>
+      <div id="xyGlobalFile"></div>
       
-      <select id="xyX-0"></select>
-      <select id="xyY-0"></select>
-      <select id="xyZ-0"></select>
+      <div id="xyX-0"></div>
+      <div id="xyY-0"></div>
+      <div id="xyZ-0"></div>
       <canvas id="xyCanvas-0"></canvas>
       <div id="xyLegend-0" style="display:none;"></div>
 
-      <select id="xyX-1"></select>
-      <select id="xyY-1"></select>
-      <select id="xyZ-1"></select>
+      <div id="xyX-1"></div>
+      <div id="xyY-1"></div>
+      <div id="xyZ-1"></div>
       <canvas id="xyCanvas-1"></canvas>
       <div id="xyLegend-1" style="display:none;"></div>
       
@@ -102,7 +105,6 @@ describe('XYAnalysis Controller', () => {
       measureText: jest.fn(() => ({ width: 0 })),
     });
 
-    // 5. Dynamic imports to ensure a fresh XYAnalysis instance
     const xyModule = await import('../src/xyanalysis.js');
     XYAnalysis = xyModule.XYAnalysis;
 
@@ -115,14 +117,24 @@ describe('XYAnalysis Controller', () => {
 
     if (XYAnalysis.charts) XYAnalysis.charts = [null, null];
     if (XYAnalysis.timelineChart) XYAnalysis.timelineChart = null;
+    XYAnalysis.currentFileIndex = undefined; // Reset state
 
     Chart.mockImplementation(() => mockChartInstance);
-    delete window.PaletteManager;
+    // Ensure PaletteManager is available globally if code relies on window.PaletteManager
+    // or checks it. The code imports it, but some checks use window.PaletteManager.
+    // The mock above handles the import.
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
+
+  // Helper to get value from the custom searchable select
+  const getCustomValue = (id) => {
+    const container = document.getElementById(id);
+    const input = container.querySelector('input');
+    return input ? input.value : '';
+  };
 
   describe('UI Interaction', () => {
     test('init registers Chart.js plugins', () => {
@@ -149,8 +161,7 @@ describe('XYAnalysis Controller', () => {
       expect(modal.style.display).toBe('none');
     });
 
-    test('populateGlobalFileSelector fills dropdown and triggers change', () => {
-      // Prevent crash by providing 'signals' object
+    test('populateGlobalFileSelector fills searchable list and triggers change', () => {
       AppState.files = [
         { name: 'Trip A', availableSignals: [], signals: {} },
         { name: 'Trip B', availableSignals: [], signals: {} },
@@ -159,9 +170,19 @@ describe('XYAnalysis Controller', () => {
 
       XYAnalysis.populateGlobalFileSelector();
 
-      const select = document.getElementById('xyGlobalFile');
-      expect(select.children.length).toBe(2);
-      expect(select.children[0].text).toBe('Trip A');
+      const container = document.getElementById('xyGlobalFile');
+      const input = container.querySelector('input');
+      const list = container.querySelector('.search-results-list');
+
+      // Default selection sets input value, which acts as a filter
+      expect(input.value).toBe('Trip A');
+
+      // Clear filter to show all options
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+
+      expect(list.children.length).toBe(2);
+      expect(list.children[0].innerText).toBe('Trip A');
       expect(spy).toHaveBeenCalled();
     });
 
@@ -182,43 +203,23 @@ describe('XYAnalysis Controller', () => {
         },
       ];
 
-      const globalSel = document.getElementById('xyGlobalFile');
-      globalSel.innerHTML = '<option value="0">Trip A</option>';
-      globalSel.value = '0';
+      // Setup global file selector first
+      XYAnalysis.populateGlobalFileSelector();
 
       const updateTimelineSpy = jest.spyOn(XYAnalysis, 'updateTimeline');
 
       XYAnalysis.onFileChange();
 
-      expect(document.getElementById('xyX-0').value).toBe('Engine Rpm');
-      expect(document.getElementById('xyY-0').value).toBe(
-        'Intake Manifold Pressure'
-      );
+      expect(getCustomValue('xyX-0')).toBe('Engine Rpm');
+      expect(getCustomValue('xyY-0')).toBe('Intake Manifold Pressure');
       expect(updateTimelineSpy).toHaveBeenCalled();
     });
 
     test('onFileChange handles missing file gracefully', () => {
       AppState.files = [];
-      document.getElementById('xyGlobalFile').value = '0';
-
+      // Manually set index to something invalid or just call it
+      XYAnalysis.currentFileIndex = 0;
       expect(() => XYAnalysis.onFileChange()).not.toThrow();
-    });
-
-    test('setSelectValue selects option if partial match found', () => {
-      const select = document.getElementById('xyX-0');
-      select.innerHTML = '<option value="Some Long Signal Name">Label</option>';
-
-      XYAnalysis.setSelectValue('xyX-0', 'Signal Name');
-      expect(select.value).toBe('Some Long Signal Name');
-    });
-
-    test('setSelectValue does nothing if no match found', () => {
-      const select = document.getElementById('xyX-0');
-      select.innerHTML = '<option value="A">A</option>';
-      select.value = 'A';
-
-      XYAnalysis.setSelectValue('xyX-0', 'Z');
-      expect(select.value).toBe('A');
     });
   });
 
@@ -320,22 +321,27 @@ describe('XYAnalysis Controller', () => {
       expect(mockChartInstance.resetZoom).toHaveBeenCalledTimes(2);
     });
 
-    test('Scatter tooltip callback formats values correctly', () => {
+    test('Scatter chart uses external tooltip handler', () => {
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 2, z: 3 }]);
 
+      // Need valid file with availableSignals for tooltip logic
+      AppState.files = [
+        {
+          availableSignals: ['A', 'B', 'C'],
+          signals: {},
+        },
+      ];
+
       XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
 
       const config = Chart.mock.calls[0][1];
-      const callback = config.options.plugins.tooltip.callbacks.label;
-      const context = { raw: { x: 1.111, y: 2.222, z: 3.333 } };
+      const tooltipConfig = config.options.plugins.tooltip;
 
-      const text = callback(context);
-
-      expect(text).toContain('X: 1.11');
-      expect(text).toContain('Y: 2.22');
-      expect(text).toContain('Z: 3.33');
+      // New implementation disables default tooltip and uses external
+      expect(tooltipConfig.enabled).toBe(false);
+      expect(typeof tooltipConfig.external).toBe('function');
     });
   });
 
@@ -344,6 +350,7 @@ describe('XYAnalysis Controller', () => {
       AppState.files = [
         {
           startTime: 1000,
+          availableSignals: ['RPM', 'Boost'], // Required for color lookup
           signals: {
             RPM: [
               { x: 1000, y: 0 },
@@ -371,7 +378,15 @@ describe('XYAnalysis Controller', () => {
     });
 
     test('Timeline tooltip returns original values', () => {
-      AppState.files = [{ startTime: 0, signals: { S1: [{ x: 0, y: 50 }] } }];
+      // Required for color lookup inside renderTimeline map loop
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['S1'],
+          signals: { S1: [{ x: 0, y: 50 }] },
+        },
+      ];
+
       XYAnalysis.renderTimeline(0, ['S1']);
 
       const config = Chart.mock.calls[0][1];
@@ -385,11 +400,16 @@ describe('XYAnalysis Controller', () => {
     });
 
     test('renderTimeline uses PaletteManager module color', () => {
-      AppState.files = [{ startTime: 0, signals: { SigA: [{ x: 0, y: 0 }] } }];
-      window.PaletteManager = { getColorForSignal: jest.fn(() => '#123456') };
-
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['SigA'],
+          signals: { SigA: [{ x: 0, y: 0 }] },
+        },
+      ];
+      // Removed erroneous require()
+      // The PaletteManager mock is active via jest.unstable_mockModule
       XYAnalysis.renderTimeline(0, ['SigA']);
-
       const config = Chart.mock.calls[0][1];
       expect(config.data.datasets[0].borderColor).toBe('#ff0000');
     });
@@ -398,6 +418,7 @@ describe('XYAnalysis Controller', () => {
       AppState.files = [
         {
           startTime: 0,
+          availableSignals: ['Flat'],
           signals: {
             Flat: [
               { x: 0, y: 100 },
@@ -421,20 +442,34 @@ describe('XYAnalysis Controller', () => {
     });
 
     test('updateTimeline aggregates signals and calls render', () => {
-      const setVal = (id, val) => {
-        const el = document.getElementById(id);
-        el.innerHTML = `<option value="${val}">${val}</option>`;
-        el.value = val;
+      // Helper to set value in custom input
+      const setCustomVal = (id, val) => {
+        const container = document.getElementById(id);
+        // Ensure container has input (it should from beforeEach)
+        if (!container.querySelector('input')) {
+          container.innerHTML = `<input class="searchable-input" value="${val}" />`;
+        } else {
+          container.querySelector('input').value = val;
+        }
       };
-      setVal('xyGlobalFile', '0');
-      setVal('xyX-0', 'S1');
-      setVal('xyY-0', 'S2');
-      setVal('xyZ-0', 'S1');
-      setVal('xyX-1', 'S3');
-      setVal('xyY-1', '');
-      setVal('xyZ-1', '');
 
-      AppState.files = [{ startTime: 0, signals: { S1: [], S2: [], S3: [] } }];
+      // Mock createSearchableSelect behavior manually since we are not clicking UI
+      setCustomVal('xyGlobalFile', '0');
+      setCustomVal('xyX-0', 'S1');
+      setCustomVal('xyY-0', 'S2');
+      setCustomVal('xyZ-0', 'S1');
+      setCustomVal('xyX-1', 'S3');
+      setCustomVal('xyY-1', '');
+      setCustomVal('xyZ-1', '');
+
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['S1', 'S2', 'S3'],
+          signals: { S1: [], S2: [], S3: [] },
+        },
+      ];
+      XYAnalysis.currentFileIndex = 0;
 
       const spy = jest.spyOn(XYAnalysis, 'renderTimeline');
 
@@ -454,20 +489,16 @@ describe('XYAnalysis Controller', () => {
         .spyOn(XYAnalysis, 'updateTimeline')
         .mockImplementation(() => {});
 
-      const setVal = (id, val) => {
-        const el = document.getElementById(id);
-        el.innerHTML = `<option value="${val}">${val}</option>`;
-        el.value = val;
+      // Manually setup inputs
+      const setCustomVal = (id, val) => {
+        document.getElementById(id).innerHTML = `<input value="${val}">`;
       };
-
-      document.getElementById('xyGlobalFile').innerHTML =
-        '<option value="0">F</option>';
-      document.getElementById('xyGlobalFile').value = '0';
-      setVal('xyX-0', 'A');
-      setVal('xyY-0', 'B');
-      setVal('xyZ-0', 'C');
+      setCustomVal('xyX-0', 'A');
+      setCustomVal('xyY-0', 'B');
+      setCustomVal('xyZ-0', 'C');
 
       AppState.files = [{ name: 'F', startTime: 0, signals: {} }];
+      XYAnalysis.currentFileIndex = 0;
 
       XYAnalysis.plot('0');
 
@@ -486,6 +517,7 @@ describe('XYAnalysis Controller', () => {
     test('renderChart configures Axis Titles and Zoom options', () => {
       AppState.files = [
         {
+          availableSignals: ['X', 'Y', 'Z'],
           signals: {
             X: [{ x: 1, y: 1 }],
             Y: [{ x: 1, y: 1 }],
