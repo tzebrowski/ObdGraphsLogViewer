@@ -106,6 +106,23 @@ describe('MathChannels', () => {
       expect(result[0].y).toBeCloseTo(135, 1);
     });
 
+    test('Estimated Power from g/s (MAF * Factor)', () => {
+      // MAF = 100 g/s. Factor = 1.35. Result should be 135.
+      const mafData = [{ x: 1, y: 100 }];
+
+      AppState.files = [
+        {
+          signals: { MAF: mafData },
+          availableSignals: ['MAF'],
+        },
+      ];
+
+      mathChannels.createChannel(0, 'est_power_gs', ['MAF', '1.35'], 'EstHP');
+      const result = AppState.files[0].signals['EstHP'];
+
+      expect(result[0].y).toBeCloseTo(135, 1);
+    });
+
     test('successfully creates a channel with Multiply by Constant (Signal + Constant)', () => {
       const signalData = [
         { x: 0, y: 10 },
@@ -257,6 +274,94 @@ describe('MathChannels', () => {
       const res = AppState.files[0].signals['Result'];
 
       expect(res[0].y).toBe(10 - 20); // -10
+    });
+
+    test('Acceleration (m/s²) - Custom Process', () => {
+      // 0 to 100 km/h in 5 seconds linear acceleration.
+      // 100 km/h = 27.777 m/s
+      // Accel = 27.777 / 5 = 5.55 m/s^2
+
+      const speedData = [
+        { x: 0, y: 0 },
+        { x: 1000, y: 20 }, // 20 km/h
+        { x: 2000, y: 40 }, // 40 km/h
+      ];
+      // At t=1000 (1s), deltaV = 20 km/h = 5.555... m/s. deltaT = 1s.
+
+      AppState.files = [
+        {
+          signals: { Speed: speedData },
+          availableSignals: ['Speed'],
+        },
+      ];
+
+      // Input 0: Speed, Input 1: Window Size (1)
+      mathChannels.createChannel(0, 'acceleration', ['Speed', '1'], 'Accel');
+      const result = AppState.files[0].signals['Accel'];
+
+      // The logic loop starts at i=windowSize (1)
+      expect(result.length).toBeGreaterThan(0);
+
+      // Obliczamy oczekiwaną wartość dokładnie tak jak kod: (20 km/h w m/s) / 1s
+      const expectedValue = 20 / 3.6 / 1;
+
+      expect(result[0].y).toBeCloseTo(expectedValue, 4);
+    });
+
+    test('Smoothing (Moving Average) - Custom Process', () => {
+      const noisySignal = [
+        { x: 1, y: 10 },
+        { x: 2, y: 20 },
+        { x: 3, y: 10 },
+        { x: 4, y: 20 },
+      ];
+
+      AppState.files = [
+        {
+          signals: { Noisy: noisySignal },
+          availableSignals: ['Noisy'],
+        },
+      ];
+
+      // Input 0: Signal, Input 1: Window Size (2)
+      mathChannels.createChannel(0, 'smoothing', ['Noisy', '2'], 'Smooth');
+      const result = AppState.files[0].signals['Smooth'];
+
+      // Index 0 (x=1): Avg(10) = 10
+      expect(result[0].y).toBe(10);
+
+      // Index 1 (x=2): Avg(10, 20) = 15
+      expect(result[1].y).toBe(15);
+
+      // Index 2 (x=3): Avg(20, 10) = 15
+      expect(result[2].y).toBe(15);
+    });
+
+    test('Pressure Ratio (MAP / Baro) with Zero Division check', () => {
+      const mapData = [
+        { x: 1, y: 2000 },
+        { x: 2, y: 2000 },
+      ];
+      const baroData = [
+        { x: 1, y: 1000 }, // Normal case
+        { x: 2, y: 0 }, // Edge case: Division by zero
+      ];
+
+      AppState.files = [
+        {
+          signals: { MAP: mapData, Baro: baroData },
+          availableSignals: ['MAP', 'Baro'],
+        },
+      ];
+
+      mathChannels.createChannel(0, 'pressure_ratio', ['MAP', 'Baro'], 'PR');
+      const result = AppState.files[0].signals['PR'];
+
+      // Case 1: 2000 / 1000 = 2
+      expect(result[0].y).toBe(2);
+
+      // Case 2: 2000 / 0 -> Should be handled (returns 0 in formula)
+      expect(result[1].y).toBe(0);
     });
   });
 

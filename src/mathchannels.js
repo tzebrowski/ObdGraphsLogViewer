@@ -12,6 +12,79 @@ class MathChannels {
   #getDefinitions() {
     return [
       {
+        id: 'acceleration',
+        name: 'Acceleration (m/s²) [0-100 Logic]',
+        description:
+          'Calculates acceleration from Speed. Use window to smooth noise.',
+        inputs: [
+          { name: 'speed', label: 'Speed (km/h)' },
+          {
+            name: 'window',
+            label: 'Smoothing Window (Samples)',
+            isConstant: true,
+            defaultValue: 4,
+          },
+        ],
+        customProcess: (sourceData, constants) => {
+          const windowSize = Math.max(1, Math.round(constants[0]));
+          const result = [];
+
+          for (let i = windowSize; i < sourceData.length; i++) {
+            const p1 = sourceData[i - windowSize];
+            const p2 = sourceData[i];
+
+            const dt = (p2.x - p1.x) / 1000;
+            if (dt <= 0) continue;
+
+            const dv = (p2.y - p1.y) / 3.6;
+
+            const accel = dv / dt;
+
+            result.push({
+              x: p2.x,
+              y: accel,
+            });
+          }
+          return result;
+        },
+      },
+      {
+        id: 'smoothing',
+        name: 'Smooth Signal (Moving Average)',
+        description: 'Reduces noise by averaging the last N samples.',
+        inputs: [
+          { name: 'source', label: 'Signal to Smooth' },
+          {
+            name: 'window',
+            label: 'Window Size (Samples)',
+            isConstant: true,
+            defaultValue: 5,
+          },
+        ],
+        customProcess: (sourceData, constants) => {
+          const windowSize = Math.max(1, Math.round(constants[0]));
+          const smoothed = [];
+
+          for (let i = 0; i < sourceData.length; i++) {
+            let sum = 0;
+            let count = 0;
+
+            for (let j = 0; j < windowSize; j++) {
+              if (i - j >= 0) {
+                sum += sourceData[i - j].y;
+                count++;
+              }
+            }
+
+            smoothed.push({
+              x: sourceData[i].x,
+              y: sum / count,
+            });
+          }
+          return smoothed;
+        },
+      },
+      {
         id: 'est_power_kgh',
         name: 'Estimated Power (HP) [Source: kg/h]',
         description:
@@ -115,6 +188,15 @@ class MathChannels {
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) throw new Error('Invalid formula definition.');
 
+    if (definition.customProcess) {
+      return this.#executeCustomProcess(
+        file,
+        definition,
+        inputMapping,
+        newChannelName
+      );
+    }
+
     const sourceSignals = [];
     let masterTimeBase = null;
 
@@ -169,6 +251,66 @@ class MathChannels {
     }
 
     const finalName = newChannelName || `Math: ${definition.name}`;
+
+    file.signals[finalName] = resultData;
+
+    if (!file.metadata) file.metadata = {};
+    file.metadata[finalName] = {
+      min: min,
+      max: max,
+      unit: 'Math',
+    };
+
+    if (!file.availableSignals.includes(finalName)) {
+      file.availableSignals.push(finalName);
+      file.availableSignals.sort();
+    }
+
+    return finalName;
+  }
+
+  #executeCustomProcess(file, definition, inputMapping, newChannelName) {
+    // Extract inputs strictly for custom processor
+    const signals = [];
+    const constants = [];
+
+    definition.inputs.forEach((input, idx) => {
+      if (input.isConstant) {
+        const val = parseFloat(inputMapping[idx]);
+        if (isNaN(val))
+          throw new Error(`Invalid constant value for ${input.label}`);
+        constants.push(val);
+      } else {
+        const signalName = inputMapping[idx];
+        const signalData = file.signals[signalName];
+        if (!signalData) throw new Error(`Signal '${signalName}' not found.`);
+        signals.push(signalData);
+      }
+    });
+
+    // For smoothing, we assume 1 signal input.
+    // Generalizing this would require more complex mapping, but for now:
+    if (signals.length === 0)
+      throw new Error('Custom process requires at least one signal.');
+
+    // Run the custom processor logic defined in #getDefinitions
+    const resultData = definition.customProcess(signals[0], constants);
+
+    return this.#finalizeChannel(
+      file,
+      resultData,
+      newChannelName || `Math: ${definition.name}`
+    );
+  }
+
+  #finalizeChannel(file, resultData, finalName) {
+    let min = Infinity;
+    let max = -Infinity;
+
+    for (const point of resultData) {
+      if (point.y < min) min = point.y;
+      if (point.y > max) max = point.y;
+    }
 
     file.signals[finalName] = resultData;
 
