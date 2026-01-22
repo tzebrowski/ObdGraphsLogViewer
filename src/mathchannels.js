@@ -213,6 +213,11 @@ class MathChannels {
   }
 
   #openModal() {
+    if (AppState.files.length === 0) {
+      alert('Please load a log file first.');
+      return;
+    }
+
     const modal = document.getElementById('mathModal');
     if (modal) modal.style.display = 'flex';
 
