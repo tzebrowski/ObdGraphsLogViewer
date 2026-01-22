@@ -5,6 +5,7 @@ import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
+import './mathchannels.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -95,20 +96,19 @@ export const UI = {
   updateDataLoadedState: (hasData) => {
     const container = document.getElementById('chartContainer');
 
-    if (!container) {
-      return;
-    }
-
-    if (hasData) {
-      container.classList.add('has-data');
-    } else {
-      container.classList.remove('has-data');
+    if (container) {
+      if (hasData) {
+        container.classList.add('has-data');
+      } else {
+        container.classList.remove('has-data');
+      }
     }
 
     const xyBtn = document.querySelector('.xy-btn');
     const histBtn = document.querySelector('button[title="View Histogram"]');
+    const mathBtn = document.getElementById('btn-create-math');
 
-    [xyBtn, histBtn].forEach((btn) => {
+    [xyBtn, histBtn, mathBtn].forEach((btn) => {
       if (btn) {
         btn.disabled = !hasData;
         btn.style.opacity = hasData ? '1' : '0.5';
