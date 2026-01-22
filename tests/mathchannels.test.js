@@ -68,6 +68,44 @@ describe('MathChannels', () => {
       }).toThrow("Signal 'MissingSignal' not found");
     });
 
+    test('Calculated Power from Torque (Torque * RPM / 7127)', () => {
+      // Torque = 400 Nm, RPM = 5000
+      // HP = (400 * 5000) / 7127 = 280.62...
+      const torqueData = [{ x: 100, y: 400 }];
+      const rpmData = [{ x: 100, y: 5000 }];
+
+      AppState.files = [
+        {
+          signals: { TQ: torqueData, RPM: rpmData },
+          availableSignals: ['TQ', 'RPM'],
+        },
+      ];
+
+      mathChannels.createChannel(0, 'power_from_torque', ['TQ', 'RPM'], 'HP');
+      const result = AppState.files[0].signals['HP'];
+
+      const expected = (400 * 5000) / 7127;
+      expect(result[0].y).toBeCloseTo(expected, 4);
+    });
+
+    test('Estimated Power from kg/h (MAF/3.6 * Factor)', () => {
+      // MAF = 360 kg/h -> 100 g/s. Factor = 1.35. Result should be 135.
+      const mafData = [{ x: 1, y: 360 }];
+
+      AppState.files = [
+        {
+          signals: { MAF: mafData },
+          availableSignals: ['MAF'],
+        },
+      ];
+
+      // Input 0: Signal, Input 1: Constant
+      mathChannels.createChannel(0, 'est_power_kgh', ['MAF', '1.35'], 'EstHP');
+      const result = AppState.files[0].signals['EstHP'];
+
+      expect(result[0].y).toBeCloseTo(135, 1);
+    });
+
     test('successfully creates a channel with Multiply by Constant (Signal + Constant)', () => {
       const signalData = [
         { x: 0, y: 10 },
