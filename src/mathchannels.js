@@ -43,6 +43,17 @@ class MathChannels {
         formula: (values) => values[0] * values[1],
       },
       {
+        id: 'power_from_torque',
+        name: 'Calculated Power (HP) [Source: Torque]',
+        description:
+          'Calculates HP from Torque (Nm) and RPM. (Torque * RPM / 7127)',
+        inputs: [
+          { name: 'torque', label: 'Torque (Nm)' },
+          { name: 'rpm', label: 'Engine RPM' },
+        ],
+        formula: (values) => (values[0] * values[1]) / 7127,
+      },
+      {
         id: 'boost',
         name: 'Boost Pressure (Bar)',
         description: 'MAP - Baro (Manifold - Atmospheric)',
@@ -213,11 +224,12 @@ class MathChannels {
   }
 
   #openModal() {
+ 
     if (AppState.files.length === 0) {
       alert('Please load a log file first.');
       return;
     }
-
+ 
     const modal = document.getElementById('mathModal');
     if (modal) modal.style.display = 'flex';
 
