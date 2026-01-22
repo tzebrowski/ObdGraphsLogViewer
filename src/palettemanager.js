@@ -8,6 +8,10 @@ class PaletteManagerClass {
   #LIGHT_PALETTE;
   #DEFAULT_COLOR;
 
+  // Performance: Cache results to avoid re-calculation and DOM access
+  #colorCache;
+  #cachedPalette;
+
   constructor() {
     this.#DARK_PALETTE = [
       '#e31837',
@@ -40,59 +44,74 @@ class PaletteManagerClass {
     ];
 
     this.#DEFAULT_COLOR = '#888888';
+    this.#colorCache = new Map();
+    this.#cachedPalette = null;
   }
 
   init() {
     const customToggle = document.getElementById('pref-custom-palette');
     customToggle?.addEventListener('change', () => {
       Preferences.savePreferences();
+      this.resetCache();
       UI.renderSignalList();
       if (typeof ChartManager !== 'undefined') {
         ChartManager.render();
       }
     });
+
+    // Performance: Observe DOM for theme changes instead of checking classList on every render
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'class') {
+          this.resetCache();
+          break;
+        }
+      }
+    });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+  }
+
+  resetCache() {
+    this.#colorCache.clear();
+    this.#cachedPalette = null;
   }
 
   getSignalKey(fileName, signalName) {
     return `${fileName}_${signalName}`;
   }
 
-  hasColor(signalName, fileIdx = 0) {
-    return !!signalName;
-  }
-
   getColorForSignal(fileIdx, sigIdx) {
     const fIdx = parseInt(fileIdx) || 0;
     const sIdx = parseInt(sigIdx) || 0;
+
+    // 1. Check Cache (Fastest Path)
+    const cacheKey = `${fIdx}:${sIdx}`;
+    if (this.#colorCache.has(cacheKey)) {
+      return this.#colorCache.get(cacheKey);
+    }
 
     const file = AppState.files[fIdx];
     if (!file) return this.#DEFAULT_COLOR;
 
     const signalName = file.availableSignals[sIdx] || `Signal_${sIdx}`;
+    const color = this.#resolveColor(file.name, signalName, fIdx, sIdx);
 
-    return this.#resolveColor(file.name, signalName, fIdx, sIdx);
-  }
+    // 2. Update Cache
+    this.#colorCache.set(cacheKey, color);
 
-  getColor(signalName, fileIdx = 0) {
-    const file = AppState.files[fileIdx];
-    if (!file) return this.#DEFAULT_COLOR;
-
-    const idx = file.availableSignals.indexOf(signalName);
-
-    if (idx !== -1) {
-      return this.getColorForSignal(fileIdx, idx);
-    }
-
-    return this.#resolveColor(file.name, signalName, fileIdx, 999);
+    return color;
   }
 
   #resolveColor(fileName, signalName, fIdx, sIdx) {
     const key = this.getSignalKey(fileName, signalName);
     const { useCustomPalette } = Preferences.prefs;
-    const customMap = Preferences.customPalette;
 
-    if (useCustomPalette && customMap[key]) {
-      return customMap[key];
+    if (useCustomPalette) {
+      const custom = Preferences.customPalette[key];
+      if (custom) return custom;
     }
 
     if (signalName.startsWith('Math:')) {
@@ -100,11 +119,10 @@ class PaletteManagerClass {
     }
 
     const palette = this.#getDefaultChartColors();
+
+    // Handle overflow or unknown signals gracefully
     if (sIdx === 999) {
-      let hash = 0;
-      for (let i = 0; i < signalName.length; i++)
-        hash = signalName.charCodeAt(i) + ((hash << 5) - hash);
-      return palette[Math.abs(hash) % palette.length];
+      return this.#generateHashColor(signalName, palette);
     }
 
     const colorIndex = (fIdx * 10 + sIdx) % palette.length;
@@ -112,15 +130,25 @@ class PaletteManagerClass {
   }
 
   #getDefaultChartColors() {
+    // Return cached palette reference if valid
+    if (this.#cachedPalette) return this.#cachedPalette;
+
+    // DOM access happens only once per theme change
     const isDarkMode = document.body.classList.contains('pref-theme-dark');
-    return isDarkMode ? this.#DARK_PALETTE : this.#LIGHT_PALETTE;
+    this.#cachedPalette = isDarkMode ? this.#DARK_PALETTE : this.#LIGHT_PALETTE;
+    return this.#cachedPalette;
   }
 
-  #generateHashColor(str) {
+  #generateHashColor(str, palette = null) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
+
+    if (palette) {
+      return palette[Math.abs(hash) % palette.length];
+    }
+
     const c = (hash & 0x00ffffff).toString(16).toUpperCase();
     return '#' + '00000'.substring(0, 6 - c.length) + c;
   }
