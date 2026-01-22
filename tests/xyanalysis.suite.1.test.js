@@ -24,6 +24,11 @@ const mockChartInstance = {
 await jest.unstable_mockModule('chart.js', () => {
   const MockChart = jest.fn(() => mockChartInstance);
   MockChart.register = jest.fn();
+
+  // Fix 1: specific mock for Tooltip to allow setting positioners
+  const MockTooltip = jest.fn();
+  MockTooltip.positioners = {};
+
   return {
     __esModule: true,
     Chart: MockChart,
@@ -34,7 +39,7 @@ await jest.unstable_mockModule('chart.js', () => {
     LinearScale: jest.fn(),
     TimeScale: jest.fn(),
     Legend: jest.fn(),
-    Tooltip: jest.fn(),
+    Tooltip: MockTooltip,
     _adapters: { _date: {} },
   };
 });
@@ -130,9 +135,10 @@ describe('XYAnalysis Controller', () => {
     });
 
     test('populateGlobalFileSelector fills dropdown and triggers change', () => {
+      // Fix 2: Add 'signals' property to prevent crash in data generation
       AppState.files = [
-        { name: 'Trip A', availableSignals: [] },
-        { name: 'Trip B', availableSignals: [] },
+        { name: 'Trip A', availableSignals: [], signals: {} },
+        { name: 'Trip B', availableSignals: [], signals: {} },
       ];
       const spy = jest.spyOn(XYAnalysis, 'onFileChange');
 
