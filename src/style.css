@@ -1,18 +1,13 @@
 :root {
-  /* Brand Color Palette */
   --brand-green: #01804f;
   --brand-red: #c22636;
   --brand-blue: #1c3d72;
-
-  /* Global Colors */
   --dark-bg: #0a0a0a;
   --light-text: #f4f4f4;
   --gray-text: #a0a0a0;
   --bg-color: #fcfcfc;
   --sidebar-bg: #f8f9fa;
   --border-color: #ddd;
-
-  /* Functional Variable Mappings */
   --primary-red: var(--brand-red);
   --text-main: #333;
   --text-muted: #666;
@@ -27,15 +22,22 @@
   --nav-border: rgb(255 255 255 / 10%);
   --nav-text: #fff;
   --nav-shadow: 0 4px 30px rgb(0 0 0 / 10%);
+  --input-bg: #fff;
+  --input-border: #ddd;
 }
 
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
   --text-main: #333;
   --text-muted: #666;
+  --card-bg: #1e1e1e;
+  --sidebar-bg: #252525;
+  --border-color: #333;
+  --input-bg: #2d2d2d;
+  --input-border: #444;
+  --text-color: #eee;
 }
 
-/* Combined the duplicate sidebar selectors into one block */
 body.dark-theme .sidebar-left,
 body.dark-theme .sidebar-right {
   font-weight: 500;
@@ -69,7 +71,6 @@ canvas {
   border-radius: 4px;
 }
 
-/* Base Layout */
 body,
 html {
   margin: 0;
@@ -163,7 +164,6 @@ body.docs-body.dark-theme .feature-card {
   user-select: none;
 }
 
-/* Add a chevron icon using CSS */
 .control-group h3::after {
   content: '\f107';
   font-family: 'Font Awesome 6 Free';
@@ -753,38 +753,150 @@ input[type='range']::-webkit-slider-thumb {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgb(0 0 0 / 70%);
-  display: flex;
-  justify-content: center;
+  z-index: 10000;
+  display: none;
   align-items: center;
-  z-index: 2000;
+  justify-content: center;
   backdrop-filter: blur(4px);
+  background-color: rgb(0 0 0 / 50%);
+  transition: opacity 0.3s ease;
 }
 
 .modal-content {
-  background: white;
-  width: 90%;
-  max-width: 600px;
+  background: var(--card-bg, #fff);
   border-radius: 12px;
-  box-shadow: 0 20px 40px rgb(0 0 0 / 30%);
-  animation: slideUp 0.3s ease-out;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 30%);
+  border: 1px solid rgb(255 255 255 / 10%);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#xyModal .modal-content {
+  max-width: 95vw !important;
+  height: 90vh !important;
 }
 
 .modal-header {
-  padding: 2px 20px;
-  border-bottom: 1px solid #eee;
+  background: var(--sidebar-bg, #f8f9fa);
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color, #eaeaea);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #999;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+  padding: 0 5px;
+}
+
+.btn-close:hover {
+  color: var(--brand-red, #e31837);
+}
+
 .modal-body {
-  overflow-y: auto;
-  max-height: calc(85vh - 120px);
+  padding: 25px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  padding: 0;
+  gap: 15px;
+  overflow-y: auto;
+  max-height: calc(85vh - 120px);
+}
+
+.modal-content .control-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.template-select,
+input[type='text'],
+input[type='number'] {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  background-color: var(--input-bg, #fff);
+  color: var(--text-color, #333);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.template-select:focus,
+input:focus {
+  outline: none;
+  border-color: var(--brand-red, #e31837);
+  box-shadow: 0 0 0 3px rgb(227 24 55 / 15%);
+}
+
+.modal-footer {
+  padding: 15px 25px;
+  background: var(--sidebar-bg, #fff);
+  border-top: 1px solid var(--border-color, #eee);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-footer .btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--brand-red, #e31837) 0%,
+    #c0152e 100%
+  );
+  color: white;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgb(227 24 55 / 30%);
+  transition:
+    transform 0.1s,
+    box-shadow 0.2s;
+  width: auto;
+}
+
+.modal-footer .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgb(227 24 55 / 40%);
+}
+
+.modal-footer .btn-primary:active {
+  transform: translateY(1px);
+}
+
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .app-description {
@@ -904,7 +1016,6 @@ input[type='range']::-webkit-slider-thumb {
 .info-grid {
   display: grid;
   grid-template-columns: 1fr;
-  /* Stacked by default for mobile */
   gap: 12px;
   margin-bottom: 15px;
 }
@@ -1477,12 +1588,10 @@ body.analyzer-active .integrated-toolbar {
   display: none !important;
 }
 
-/* Force the chart cards and canvases to be visible */
 #chartContainer.has-data .chart-card-compact {
   display: flex;
   flex-direction: column;
   flex: 1;
-  /* Allow them to grow */
   min-height: 300px;
 }
 
@@ -1546,7 +1655,6 @@ a {
   font-weight: bold;
 }
 
-/* --- Docs/Landing Page Specific Styles --- */
 .docs-body {
   background-color: var(--dark-bg);
   color: var(--light-text);
@@ -1665,7 +1773,6 @@ a {
   color: var(--text-muted);
 }
 
-/* Modern Switch Toggle */
 .switch {
   position: relative;
   display: inline-block;
@@ -1843,7 +1950,6 @@ body.analyzer-active .nav-title {
   max-width: 280px;
 }
 
-/* SPA Navigation Logic */
 .analyzer-active .top-nav {
   position: static;
   background-color: var(--sidebar-bg);
@@ -1918,7 +2024,6 @@ body.analyzer-active {
   padding: 0;
 }
 
-/* Expand the scan results visibility */
 #driveList {
   max-height: 450px !important;
   overflow-y: auto;
@@ -2008,7 +2113,6 @@ body.analyzer-active {
   opacity: 0.7;
 }
 
-/* Sidebar Source Container Polish */
 .source-container {
   padding: 15px !important;
   background: #fff !important;
@@ -2016,7 +2120,6 @@ body.analyzer-active {
   box-shadow: 0 4px 20px rgb(0 0 0 / 5%) !important;
 }
 
-/* Modern Button Grid */
 .source-button-grid {
   display: flex;
   gap: 10px;
@@ -2049,7 +2152,6 @@ body.analyzer-active {
   font-size: 1.3em;
 }
 
-/* Primary Style (Red) */
 .source-btn.primary {
   background: #e31837;
   color: white;
@@ -2062,7 +2164,6 @@ body.analyzer-active {
   box-shadow: 0 6px 18px rgb(227 24 55 / 35%);
 }
 
-/* Secondary Style (Dark) */
 .source-btn.secondary {
   background: #2c3e50;
   color: white;
@@ -2181,40 +2282,6 @@ body.analyzer-active {
   background-color: #fff5f5;
 }
 
-#xyModal .modal-content {
-  width: 95vw !important;
-  max-width: none !important;
-  height: 90vh !important;
-  display: flex;
-  flex-direction: column;
-}
-
-#xyModal .modal-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding-bottom: 0;
-}
-
-#chartContainer::-webkit-scrollbar {
-  width: 8px;
-}
-
-#chartContainer::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-#chartContainer::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-#chartContainer::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-/* --- Export & Annotation Controls --- */
 .btn-xs {
   padding: 2px 6px;
   font-size: 0.7em;
@@ -2240,9 +2307,9 @@ body.analyzer-active {
 
 .xy-legend-strip {
   position: relative;
-  width: 90px; /* Increased width to fit values */
+  width: 90px;
   display: flex;
-  flex-direction: row; /* Side-by-side layout */
+  flex-direction: row;
   align-items: stretch;
   padding: 10px 0;
   margin-left: 5px;
@@ -2269,7 +2336,7 @@ body.analyzer-active {
 .legend-values {
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Evenly spaces the numbers */
+  justify-content: space-between;
   font-size: 0.75em;
   font-weight: bold;
   font-family: monospace;
@@ -2280,7 +2347,7 @@ body.analyzer-active {
 .xy-legend-strip .gradient-bar {
   flex: 1;
   width: 12px;
-  margin: 5px 0 5px 15px; /* Add left margin to make room for text */
+  margin: 5px 0 5px 15px;
   border-radius: 6px;
   border: 1px solid #ccc;
   background: linear-gradient(to top, blue, cyan, lime, yellow, red);
@@ -2301,7 +2368,7 @@ body.analyzer-active {
 }
 
 .xy-panel-toolbar select {
-  min-width: 0; /* Flexbox fix */
+  min-width: 0;
 }
 
 #analyzer-page {
