@@ -12,79 +12,6 @@ class MathChannels {
   #getDefinitions() {
     return [
       {
-        id: 'acceleration',
-        name: 'Acceleration (m/s²) [0-100 Logic]',
-        description:
-          'Calculates acceleration from Speed. Use window to smooth noise.',
-        inputs: [
-          { name: 'speed', label: 'Speed (km/h)' },
-          {
-            name: 'window',
-            label: 'Smoothing Window (Samples)',
-            isConstant: true,
-            defaultValue: 4,
-          },
-        ],
-        customProcess: (sourceData, constants) => {
-          const windowSize = Math.max(1, Math.round(constants[0]));
-          const result = [];
-
-          for (let i = windowSize; i < sourceData.length; i++) {
-            const p1 = sourceData[i - windowSize];
-            const p2 = sourceData[i];
-
-            const dt = (p2.x - p1.x) / 1000;
-            if (dt <= 0) continue;
-
-            const dv = (p2.y - p1.y) / 3.6;
-
-            const accel = dv / dt;
-
-            result.push({
-              x: p2.x,
-              y: accel,
-            });
-          }
-          return result;
-        },
-      },
-      {
-        id: 'smoothing',
-        name: 'Smooth Signal (Moving Average)',
-        description: 'Reduces noise by averaging the last N samples.',
-        inputs: [
-          { name: 'source', label: 'Signal to Smooth' },
-          {
-            name: 'window',
-            label: 'Window Size (Samples)',
-            isConstant: true,
-            defaultValue: 5,
-          },
-        ],
-        customProcess: (sourceData, constants) => {
-          const windowSize = Math.max(1, Math.round(constants[0]));
-          const smoothed = [];
-
-          for (let i = 0; i < sourceData.length; i++) {
-            let sum = 0;
-            let count = 0;
-
-            for (let j = 0; j < windowSize; j++) {
-              if (i - j >= 0) {
-                sum += sourceData[i - j].y;
-                count++;
-              }
-            }
-
-            smoothed.push({
-              x: sourceData[i].x,
-              y: sum / count,
-            });
-          }
-          return smoothed;
-        },
-      },
-      {
         id: 'est_power_kgh',
         name: 'Estimated Power (HP) [Source: kg/h]',
         description:
@@ -125,6 +52,72 @@ class MathChannels {
           { name: 'rpm', label: 'Engine RPM' },
         ],
         formula: (values) => (values[0] * values[1]) / 7127,
+      },
+      {
+        id: 'acceleration',
+        name: 'Acceleration (m/s²) [0-100 Logic]',
+        description:
+          'Calculates acceleration from Speed. Use window to smooth noise.',
+        inputs: [
+          { name: 'speed', label: 'Speed (km/h)' },
+          {
+            name: 'window',
+            label: 'Smoothing Window (Samples)',
+            isConstant: true,
+            defaultValue: 4,
+          },
+        ],
+        customProcess: (sourceData, constants) => {
+          const windowSize = Math.max(1, Math.round(constants[0]));
+          const result = [];
+
+          for (let i = windowSize; i < sourceData.length; i++) {
+            const p1 = sourceData[i - windowSize];
+            const p2 = sourceData[i];
+
+            const dt = (p2.x - p1.x) / 1000;
+            if (dt <= 0) continue;
+
+            const dv = (p2.y - p1.y) / 3.6;
+            const accel = dv / dt;
+
+            result.push({ x: p2.x, y: accel });
+          }
+          return result;
+        },
+      },
+      {
+        id: 'smoothing',
+        name: 'Smooth Signal (Moving Average)',
+        description: 'Reduces noise by averaging the last N samples.',
+        inputs: [
+          { name: 'source', label: 'Signal to Smooth' },
+          {
+            name: 'window',
+            label: 'Window Size (Samples)',
+            isConstant: true,
+            defaultValue: 5,
+          },
+        ],
+        customProcess: (sourceData, constants) => {
+          const windowSize = Math.max(1, Math.round(constants[0]));
+          const smoothed = [];
+
+          for (let i = 0; i < sourceData.length; i++) {
+            let sum = 0;
+            let count = 0;
+
+            for (let j = 0; j < windowSize; j++) {
+              if (i - j >= 0) {
+                sum += sourceData[i - j].y;
+                count++;
+              }
+            }
+
+            smoothed.push({ x: sourceData[i].x, y: sum / count });
+          }
+          return smoothed;
+        },
       },
       {
         id: 'boost',
@@ -214,7 +207,6 @@ class MathChannels {
           throw new Error(`Signal '${signalName}' not found in file.`);
 
         sourceSignals.push({ isConstant: false, data: signalData });
-
         if (!masterTimeBase) masterTimeBase = signalData;
       }
     });
@@ -223,9 +215,6 @@ class MathChannels {
       throw new Error('At least one input must be a signal.');
 
     const resultData = [];
-    let min = Infinity;
-    let max = -Infinity;
-
     for (let i = 0; i < masterTimeBase.length; i++) {
       const currentTime = masterTimeBase[i].x;
       const currentValues = [];
@@ -240,37 +229,17 @@ class MathChannels {
       });
 
       const calculatedY = definition.formula(currentValues);
-
-      if (calculatedY < min) min = calculatedY;
-      if (calculatedY > max) max = calculatedY;
-
-      resultData.push({
-        x: currentTime,
-        y: calculatedY,
-      });
+      resultData.push({ x: currentTime, y: calculatedY });
     }
 
-    const finalName = newChannelName || `Math: ${definition.name}`;
-
-    file.signals[finalName] = resultData;
-
-    if (!file.metadata) file.metadata = {};
-    file.metadata[finalName] = {
-      min: min,
-      max: max,
-      unit: 'Math',
-    };
-
-    if (!file.availableSignals.includes(finalName)) {
-      file.availableSignals.push(finalName);
-      file.availableSignals.sort();
-    }
-
-    return finalName;
+    return this.#finalizeChannel(
+      file,
+      resultData,
+      newChannelName || `Math: ${definition.name}`
+    );
   }
 
   #executeCustomProcess(file, definition, inputMapping, newChannelName) {
-    // Extract inputs strictly for custom processor
     const signals = [];
     const constants = [];
 
@@ -288,14 +257,9 @@ class MathChannels {
       }
     });
 
-    // For smoothing, we assume 1 signal input.
-    // Generalizing this would require more complex mapping, but for now:
     if (signals.length === 0)
       throw new Error('Custom process requires at least one signal.');
-
-    // Run the custom processor logic defined in #getDefinitions
     const resultData = definition.customProcess(signals[0], constants);
-
     return this.#finalizeChannel(
       file,
       resultData,
@@ -325,32 +289,25 @@ class MathChannels {
       file.availableSignals.push(finalName);
       file.availableSignals.sort();
     }
-
     return finalName;
   }
 
   #interpolate(data, targetTime) {
     if (!data || data.length === 0) return 0;
-
     if (targetTime <= data[0].x) return parseFloat(data[0].y);
     if (targetTime >= data[data.length - 1].x)
       return parseFloat(data[data.length - 1].y);
 
     let left = 0;
     let right = data.length - 1;
-
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
-      if (data[mid].x < targetTime) {
-        left = mid + 1;
-      } else {
-        right = mid - 1;
-      }
+      if (data[mid].x < targetTime) left = mid + 1;
+      else right = mid - 1;
     }
 
     const p1 = data[left - 1];
     const p2 = data[left];
-
     if (!p1) return parseFloat(p2.y);
     if (!p2) return parseFloat(p1.y);
 
@@ -358,11 +315,9 @@ class MathChannels {
     const t2 = p2.x;
     const y1 = parseFloat(p1.y);
     const y2 = parseFloat(p2.y);
-
     if (t2 === t1) return y1;
 
-    const fraction = (targetTime - t1) / (t2 - t1);
-    return y1 + (y2 - y1) * fraction;
+    return y1 + (y2 - y1) * ((targetTime - t1) / (t2 - t1));
   }
 
   #openModal() {
@@ -370,7 +325,6 @@ class MathChannels {
       alert('Please load a log file first.');
       return;
     }
-
     const modal = document.getElementById('mathModal');
     if (modal) modal.style.display = 'flex';
 
@@ -407,37 +361,97 @@ class MathChannels {
       return;
     }
     const file = AppState.files[0];
-    const signalOptions = file.availableSignals
-      .map((s) => `<option value="${s}">${s}</option>`)
-      .join('');
 
     definition.inputs.forEach((input, idx) => {
       const wrapper = document.createElement('div');
-      wrapper.style.marginBottom = '10px';
+      wrapper.style.marginBottom = '15px';
 
-      let inputHtml = '';
+      wrapper.innerHTML = `<label style="font-size:0.85em; font-weight:bold; display:block; margin-bottom:4px;">${input.label}</label>`;
+
       if (input.isConstant) {
-        inputHtml = `<input type="number" id="math-input-${idx}" value="${input.defaultValue}" class="template-select" style="width:100%">`;
+        const inputEl = document.createElement('input');
+        inputEl.type = 'number';
+        inputEl.id = `math-input-${idx}`;
+        inputEl.value = input.defaultValue;
+        inputEl.className = 'template-select';
+        inputEl.style.width = '100%';
+        wrapper.appendChild(inputEl);
       } else {
-        inputHtml = `<select id="math-input-${idx}" class="template-select" style="width:100%">${signalOptions}</select>`;
+        const searchableSelect = this.#createSearchableSelect(
+          idx,
+          file.availableSignals,
+          input.name
+        );
+        wrapper.appendChild(searchableSelect);
       }
-
-      wrapper.innerHTML = `
-          <label style="font-size:0.85em; font-weight:bold; display:block; margin-bottom:4px;">${input.label}</label>
-          ${inputHtml}
-      `;
       container.appendChild(wrapper);
+    });
+  }
 
-      if (!input.isConstant) {
-        const sel = wrapper.querySelector('select');
-        for (let opt of sel.options) {
-          if (opt.value.toLowerCase().includes(input.name.toLowerCase())) {
-            sel.value = opt.value;
-            break;
-          }
-        }
+  #createSearchableSelect(idx, signals, inputFilterName) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'searchable-select-wrapper';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `math-input-${idx}`;
+    input.className = 'searchable-input';
+    input.placeholder = 'Search or Select Signal...';
+    input.autocomplete = 'off';
+
+    const resultsList = document.createElement('div');
+    resultsList.className = 'search-results-list';
+
+    const defaultSignal = signals.find((s) =>
+      s.toLowerCase().includes(inputFilterName.toLowerCase())
+    );
+    if (defaultSignal) input.value = defaultSignal;
+
+    const renderOptions = (filterText = '') => {
+      resultsList.innerHTML = '';
+      const lowerFilter = filterText.toLowerCase();
+
+      const filtered = signals.filter((s) =>
+        s.toLowerCase().includes(lowerFilter)
+      );
+
+      if (filtered.length === 0) {
+        resultsList.innerHTML =
+          '<div class="search-option" style="color:#999; cursor:default;">No signals found</div>';
+      } else {
+        filtered.forEach((sig) => {
+          const opt = document.createElement('div');
+          opt.className = 'search-option';
+          opt.textContent = sig;
+          opt.onclick = () => {
+            input.value = sig;
+            resultsList.style.display = 'none';
+          };
+          resultsList.appendChild(opt);
+        });
+      }
+    };
+
+    input.addEventListener('focus', () => {
+      renderOptions(input.value);
+      resultsList.style.display = 'block';
+    });
+
+    input.addEventListener('input', (e) => {
+      renderOptions(e.target.value);
+      resultsList.style.display = 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) {
+        resultsList.style.display = 'none';
       }
     });
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(resultsList);
+
+    return wrapper;
   }
 
   #executeCreation() {
@@ -464,12 +478,9 @@ class MathChannels {
         inputMapping,
         newName
       );
-
       this.#closeModal();
-
       if (typeof UI.renderSignalList === 'function') {
         UI.renderSignalList();
-
         setTimeout(() => {
           const checkbox = document.querySelector(
             `input[data-key="${createdName}"]`

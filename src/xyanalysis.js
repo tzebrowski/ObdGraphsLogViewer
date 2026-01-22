@@ -45,7 +45,7 @@ export const XYAnalysis = {
 
   openXYModal() {
     const modal = document.getElementById('xyModal');
-    modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
 
     const splitView = document.getElementById('xySplitView');
     const timelineView = document.getElementById('xyTimelineView');
@@ -59,41 +59,68 @@ export const XYAnalysis = {
   },
 
   closeXYModal() {
-    document.getElementById('xyModal').style.display = 'none';
+    const modal = document.getElementById('xyModal');
+    if (modal) modal.style.display = 'none';
   },
 
   populateGlobalFileSelector() {
-    const fileSelect = document.getElementById('xyGlobalFile');
-    fileSelect.innerHTML = AppState.files
-      .map((f, i) => `<option value="${i}">${f.name}</option>`)
-      .join('');
-    this.onFileChange();
+    const fileNames = AppState.files.map((f) => f.name);
+
+    this.createSearchableSelect(
+      'xyGlobalFile',
+      fileNames,
+      fileNames[this.currentFileIndex || 0] || '',
+      (selectedName) => {
+        const idx = AppState.files.findIndex((f) => f.name === selectedName);
+        this.currentFileIndex = idx;
+        this.onFileChange();
+      }
+    );
+
+    if (AppState.files.length > 0 && this.currentFileIndex === undefined) {
+      this.currentFileIndex = 0;
+      this.onFileChange();
+    }
   },
 
   onFileChange() {
-    const fileIdx = document.getElementById('xyGlobalFile').value;
+    const fileIdx =
+      this.currentFileIndex !== undefined ? this.currentFileIndex : 0;
     const file = AppState.files[fileIdx];
     if (!file) return;
 
-    const options = file.availableSignals
-      .sort()
-      .map((s) => `<option value="${s}">${s}</option>`)
-      .join('');
+    const signals = file.availableSignals.sort();
 
     ['0', '1'].forEach((panelIdx) => {
-      document.getElementById(`xyX-${panelIdx}`).innerHTML = options;
-      document.getElementById(`xyY-${panelIdx}`).innerHTML = options;
-      document.getElementById(`xyZ-${panelIdx}`).innerHTML = options;
+      let defX = 'Engine Rpm';
+      let defY =
+        panelIdx === '0'
+          ? 'Intake Manifold Pressure'
+          : 'Air Mass Flow Measured';
+      let defZ = panelIdx === '0' ? 'Air Mass' : 'Intake Manifold Pressure';
 
-      if (panelIdx === '0') {
-        this.setSelectValue(`xyX-0`, 'Engine Rpm');
-        this.setSelectValue(`xyY-0`, 'Intake Manifold Pressure');
-        this.setSelectValue(`xyZ-0`, 'Air Mass');
-      } else {
-        this.setSelectValue(`xyX-1`, 'Engine Rpm');
-        this.setSelectValue(`xyY-1`, 'Air Mass Flow Measured');
-        this.setSelectValue(`xyZ-1`, 'Intake Manifold Pressure');
-      }
+      const matchSignal = (search) =>
+        signals.find((s) => s.toLowerCase().includes(search.toLowerCase())) ||
+        signals[0];
+
+      this.createSearchableSelect(
+        `xyX-${panelIdx}`,
+        signals,
+        matchSignal(defX),
+        () => this.plot(panelIdx)
+      );
+      this.createSearchableSelect(
+        `xyY-${panelIdx}`,
+        signals,
+        matchSignal(defY),
+        () => this.plot(panelIdx)
+      );
+      this.createSearchableSelect(
+        `xyZ-${panelIdx}`,
+        signals,
+        matchSignal(defZ),
+        () => this.plot(panelIdx)
+      );
     });
 
     this.plot('0');
@@ -101,24 +128,102 @@ export const XYAnalysis = {
     this.updateTimeline();
   },
 
-  setSelectValue(id, searchStr) {
-    const sel = document.getElementById(id);
-    for (let opt of sel.options) {
-      if (opt.value.includes(searchStr)) {
-        sel.value = opt.value;
-        break;
-      }
+  createSearchableSelect(elementId, options, defaultValue, onChangeCallback) {
+    let container = document.getElementById(elementId);
+    if (!container) return;
+
+    if (container.tagName === 'SELECT') {
+      const div = document.createElement('div');
+      div.id = elementId;
+      div.className = container.className;
+      div.style.cssText = container.style.cssText;
+      div.classList.add('searchable-select-wrapper');
+      container.parentNode.replaceChild(div, container);
+      container = div;
     }
+
+    container.innerHTML = '';
+    if (!container.classList.contains('searchable-select-wrapper')) {
+      container.classList.add('searchable-select-wrapper');
+    }
+    container.style.marginBottom = '5px';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'searchable-input';
+    input.value = defaultValue || '';
+    input.placeholder = 'Search...';
+    input.setAttribute('data-selected-value', defaultValue || '');
+
+    const list = document.createElement('div');
+    list.className = 'search-results-list';
+
+    const renderList = (filter = '') => {
+      list.innerHTML = '';
+      const lower = filter.toLowerCase();
+      const filtered = options.filter((o) => o.toLowerCase().includes(lower));
+
+      if (filtered.length === 0) {
+        const noRes = document.createElement('div');
+        noRes.className = 'search-option';
+        noRes.style.color = '#999';
+        noRes.innerText = 'No signals found';
+        list.appendChild(noRes);
+      } else {
+        filtered.forEach((opt) => {
+          const item = document.createElement('div');
+          item.className = 'search-option';
+          item.innerText = opt;
+          item.onclick = () => {
+            input.value = opt;
+            input.setAttribute('data-selected-value', opt);
+            list.style.display = 'none';
+            if (onChangeCallback) onChangeCallback(opt);
+          };
+          list.appendChild(item);
+        });
+      }
+    };
+
+    input.onfocus = () => {
+      renderList(input.value);
+      list.style.display = 'block';
+    };
+
+    input.oninput = (e) => {
+      renderList(e.target.value);
+      list.style.display = 'block';
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!container.contains(e.target)) {
+        list.style.display = 'none';
+      }
+    });
+
+    container.appendChild(input);
+    container.appendChild(list);
+  },
+
+  getInputValue(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return '';
+    if (container.tagName === 'SELECT') return container.value;
+    const input = container.querySelector('input');
+    return input ? input.value : '';
   },
 
   plot(panelIdx) {
-    const fileIdx = document.getElementById('xyGlobalFile').value;
-    const xSig = document.getElementById(`xyX-${panelIdx}`).value;
-    const ySig = document.getElementById(`xyY-${panelIdx}`).value;
-    const zSig = document.getElementById(`xyZ-${panelIdx}`).value;
+    const fileIdx =
+      this.currentFileIndex !== undefined ? this.currentFileIndex : 0;
+
+    const xSig = this.getInputValue(`xyX-${panelIdx}`);
+    const ySig = this.getInputValue(`xyY-${panelIdx}`);
+    const zSig = this.getInputValue(`xyZ-${panelIdx}`);
+
+    if (!xSig || !ySig || !zSig) return;
 
     this.renderChart(panelIdx, fileIdx, xSig, ySig, zSig);
-
     this.updateTimeline();
   },
 
@@ -128,20 +233,20 @@ export const XYAnalysis = {
   },
 
   updateTimeline() {
-    const fileIdx = document.getElementById('xyGlobalFile').value;
+    const fileIdx =
+      this.currentFileIndex !== undefined ? this.currentFileIndex : 0;
 
     const signals = new Set();
     ['0', '1'].forEach((idx) => {
-      const x = document.getElementById(`xyX-${idx}`).value;
-      const y = document.getElementById(`xyY-${idx}`).value;
-      const z = document.getElementById(`xyZ-${idx}`).value;
+      const x = this.getInputValue(`xyX-${idx}`);
+      const y = this.getInputValue(`xyY-${idx}`);
+      const z = this.getInputValue(`xyZ-${idx}`);
       if (x) signals.add(x);
       if (y) signals.add(y);
       if (z) signals.add(z);
     });
 
     const uniqueSignals = Array.from(signals).filter((s) => s);
-
     this.renderTimeline(fileIdx, uniqueSignals);
   },
 
@@ -171,18 +276,10 @@ export const XYAnalysis = {
           originalValue: parseFloat(p.y),
         }));
 
-        const defaultColors = [
-          '#e6194b',
-          '#3cb44b',
-          '#ffe119',
-          '#4363d8',
-          '#f58231',
-          '#911eb4',
-        ];
-        const color =
-          window.PaletteManager && PaletteManager.getColorForSignal
-            ? PaletteManager.getColorForSignal(0, idx)
-            : defaultColors[idx % defaultColors.length];
+        const color = PaletteManager.getColorForSignal(
+          fileIdx,
+          file.availableSignals.indexOf(sigName)
+        );
 
         return {
           label: sigName,
@@ -214,7 +311,7 @@ export const XYAnalysis = {
           ctx.moveTo(x, topY);
           ctx.lineTo(x, bottomY);
           ctx.lineWidth = 1;
-          const isDark = document.body.classList.contains('dark-theme');
+          const isDark = document.body.classList.contains('pref-theme-dark');
           ctx.strokeStyle = isDark
             ? 'rgba(255, 255, 255, 0.5)'
             : 'rgba(0, 0, 0, 0.5)';
@@ -224,8 +321,9 @@ export const XYAnalysis = {
       },
     };
 
-    const isDark = document.body.classList.contains('dark-theme');
+    const isDark = document.body.classList.contains('pref-theme-dark');
     const textColor = isDark ? '#eee' : '#333';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
     this.timelineChart = new Chart(ctx, {
       type: 'line',
@@ -245,9 +343,7 @@ export const XYAnalysis = {
               font: { size: 10 },
               color: textColor,
             },
-            grid: {
-              color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-            },
+            grid: { color: gridColor },
             ticks: { font: { size: 10 }, color: textColor },
           },
           y: { display: false, min: -0.05, max: 1.05 },
@@ -287,7 +383,9 @@ export const XYAnalysis = {
 
   renderChart(panelIdx, fileIdx, signalX, signalY, signalZ) {
     const canvasId = `xyCanvas-${panelIdx}`;
-    const ctx = document.getElementById(canvasId).getContext('2d');
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
     if (this.charts[panelIdx]) {
       this.charts[panelIdx].destroy();
@@ -303,7 +401,7 @@ export const XYAnalysis = {
 
     this.updateLegend(panelIdx, minZ, maxZ, signalZ);
 
-    const isDark = document.body.classList.contains('dark-theme');
+    const isDark = document.body.classList.contains('pref-theme-dark');
     const color = isDark ? '#eee' : '#333';
     const grid = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
@@ -343,10 +441,84 @@ export const XYAnalysis = {
           legend: { display: false },
           datalabels: { display: false },
           tooltip: {
-            position: 'xyFixed',
-            callbacks: {
-              label: (ctx) =>
-                `X: ${ctx.raw.x.toFixed(2)}, Y: ${ctx.raw.y.toFixed(2)}, Z: ${ctx.raw.z.toFixed(2)}`,
+            enabled: false,
+            position: 'nearest',
+            external: (context) => {
+              const { chart, tooltip } = context;
+              const tooltipEl = this.getOrCreateTooltip(chart);
+
+              if (tooltip.opacity === 0) {
+                tooltipEl.style.opacity = 0;
+                return;
+              }
+
+              if (tooltip.body) {
+                const file = AppState.files[fileIdx];
+                const idxX = file.availableSignals.indexOf(signalX);
+                const idxY = file.availableSignals.indexOf(signalY);
+                const idxZ = file.availableSignals.indexOf(signalZ);
+
+                const colorX = PaletteManager.getColorForSignal(fileIdx, idxX);
+                const colorY = PaletteManager.getColorForSignal(fileIdx, idxY);
+                const colorZ = PaletteManager.getColorForSignal(fileIdx, idxZ);
+
+                const rawPoint = tooltip.dataPoints[0].raw;
+
+                const tableHead = document.createElement('thead');
+                const tableBody = document.createElement('tbody');
+
+                const makeRow = (color, label, value) => {
+                  const tr = document.createElement('tr');
+                  tr.style.backgroundColor = 'inherit';
+                  tr.style.borderWidth = 0;
+
+                  const tdColor = document.createElement('td');
+                  tdColor.style.borderWidth = 0;
+
+                  const span = document.createElement('span');
+                  span.style.background = color;
+                  span.style.borderColor = color;
+                  span.style.borderWidth = '2px';
+                  span.style.marginRight = '10px';
+                  span.style.height = '10px';
+                  span.style.width = '10px';
+                  span.style.display = 'inline-block';
+                  span.style.borderRadius = '50%';
+
+                  tdColor.appendChild(span);
+
+                  const tdText = document.createElement('td');
+                  tdText.style.borderWidth = 0;
+                  tdText.style.color = '#fff';
+                  tdText.innerText = `${label}: ${value.toFixed(2)}`;
+
+                  tr.appendChild(tdColor);
+                  tr.appendChild(tdText);
+                  return tr;
+                };
+
+                tableBody.appendChild(makeRow(colorX, signalX, rawPoint.x));
+                tableBody.appendChild(makeRow(colorY, signalY, rawPoint.y));
+                tableBody.appendChild(makeRow(colorZ, signalZ, rawPoint.z));
+
+                const tableRoot = tooltipEl.querySelector('table');
+                tableRoot.innerHTML = '';
+                tableRoot.appendChild(tableHead);
+                tableRoot.appendChild(tableBody);
+              }
+
+              const { offsetLeft: positionX, offsetTop: positionY } =
+                chart.canvas;
+
+              tooltipEl.style.opacity = 1;
+              tooltipEl.style.left = positionX + tooltip.caretX + 'px';
+              tooltipEl.style.top = positionY + tooltip.caretY + 'px';
+              tooltipEl.style.font = tooltip.options.bodyFont.string;
+              tooltipEl.style.padding =
+                tooltip.options.padding +
+                'px ' +
+                tooltip.options.padding +
+                'px';
             },
           },
           zoom: {
@@ -356,6 +528,34 @@ export const XYAnalysis = {
         },
       },
     });
+  },
+
+  getOrCreateTooltip(chart) {
+    let tooltipEl = chart.canvas.parentNode.querySelector(
+      'div.chartjs-tooltip'
+    );
+
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'chartjs-tooltip';
+      tooltipEl.style.background = 'rgba(0, 0, 0, 0.8)';
+      tooltipEl.style.borderRadius = '3px';
+      tooltipEl.style.color = 'white';
+      tooltipEl.style.opacity = 1;
+      tooltipEl.style.pointerEvents = 'none';
+      tooltipEl.style.position = 'absolute';
+      tooltipEl.style.transform = 'translate(-50%, 0)';
+      tooltipEl.style.transition = 'all .1s ease';
+      tooltipEl.style.zIndex = 100;
+
+      const table = document.createElement('table');
+      table.style.margin = '0px';
+
+      tooltipEl.appendChild(table);
+      chart.canvas.parentNode.appendChild(tooltipEl);
+    }
+
+    return tooltipEl;
   },
 
   updateLegend(panelIdx, min, max, zLabel) {
