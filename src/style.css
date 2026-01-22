@@ -779,9 +779,12 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 .modal-body {
-  padding: 16px;
   overflow-y: auto;
   max-height: calc(85vh - 120px);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
 }
 
 .app-description {
@@ -2191,12 +2194,7 @@ body.analyzer-active {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-bottom: 20px;
-}
-
-#xyModal .modal-body > div:last-child {
-  height: 100%;
-  width: 100%;
+  padding-bottom: 0;
 }
 
 #chartContainer::-webkit-scrollbar {
