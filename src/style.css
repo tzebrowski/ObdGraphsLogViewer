@@ -329,6 +329,12 @@ input[type='number'] {
   border: none;
 }
 
+.btn-danger:hover:not(:disabled) {
+  background-color: #a01e2b;
+  color: white;
+  box-shadow: var(--btn-hover-shadow);
+}
+
 .btn-sm {
   padding: 4px 10px;
   font-size: 0.8rem;
@@ -2175,7 +2181,6 @@ body.analyzer-active {
   gap: 10px;
   margin-bottom: 15px;
 }
-
 
 .template-select,
 input[type='text'],
