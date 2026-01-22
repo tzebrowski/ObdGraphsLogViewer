@@ -24,6 +24,10 @@
   --nav-shadow: 0 4px 30px rgb(0 0 0 / 10%);
   --input-bg: #fff;
   --input-border: #ddd;
+  --btn-radius: 8px;
+  --btn-shadow: 0 2px 5px rgb(0 0 0 / 10%);
+  --btn-hover-shadow: 0 4px 10px rgb(0 0 0 / 15%);
+  --btn-font-weight: 600;
 }
 
 body.dark-theme {
@@ -255,15 +259,38 @@ input[type='number'] {
 }
 
 .btn {
-  background: white;
-  border: 1px solid #ccc;
-  padding: 6px 12px;
+  border-radius: var(--btn-radius);
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: var(--btn-font-weight);
   cursor: pointer;
-  border-radius: 4px;
-  font-weight: 600;
-  color: #333;
-  width: 100%;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #fff;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--btn-shadow);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--btn-hover-shadow);
+  background-color: #f8f9fa;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: grayscale(0.4);
+  pointer-events: none;
 }
 
 .btn:hover {
@@ -271,19 +298,41 @@ input[type='number'] {
 }
 
 .btn-primary {
-  background: var(--brand-green);
+  background-color: var(--brand-green);
   color: white;
   border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #016b42;
 }
 
 .btn-primary:hover {
   background: #01633d;
 }
 
+.btn-add,
+.btn-secondary {
+  background-color: var(--brand-blue);
+  color: white;
+  border: none;
+}
+
+.btn-add:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) {
+  background-color: #152e56;
+}
+
+.btn-danger {
+  background-color: var(--brand-red);
+  color: white;
+  border: none;
+}
+
 .btn-sm {
-  width: auto;
-  padding: 2px 8px;
-  font-size: 0.8em;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
 }
 
 .btn-add {
@@ -2127,15 +2176,13 @@ body.analyzer-active {
   margin-bottom: 15px;
 }
 
-.source-btn {
-  flex: 1;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 5px;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+
+.template-select,
+input[type='text'],
+input[type='number'] {
+  border-radius: var(--btn-radius) !important;
+  padding: 10px !important;
+  border: 1px solid var(--border-color);
 }
 
 .btn-content {
@@ -2239,18 +2286,23 @@ body.analyzer-active {
 .view-mode-btn {
   flex: 1;
   padding: 10px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  border-radius: var(--btn-radius);
   border: 1px solid var(--border-color);
-  background-color: white;
+  background: #fff;
   color: var(--text-muted);
-  border-radius: 6px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: all 0.2s ease;
+  box-shadow: var(--btn-shadow);
+}
+
+.view-mode-btn:hover:not(.active) {
+  background-color: #f1f3f5;
+  color: var(--text-main);
 }
 
 .view-mode-btn:not(.active):hover {
@@ -2264,7 +2316,7 @@ body.analyzer-active {
   color: white;
   border-color: var(--brand-blue);
   font-weight: 600;
-  box-shadow: 0 4px 6px rgb(28 61 114 / 20%);
+  box-shadow: 0 4px 8px rgb(28 61 114 / 30%);
 }
 
 .view-mode-btn.active i {

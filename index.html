@@ -210,30 +210,26 @@
             <div class="source-button-grid">
               <button
                 id="authBtn"
-                class="source-btn primary"
+                class="btn btn-danger"
                 onclick="handleAuth()"
+                style="flex: 1"
               >
-                <div class="btn-content">
-                  <i class="fab fa-google-drive"></i>
-                  <span>Drive Scan</span>
-                </div>
+                <i class="fab fa-google-drive" style="font-size: 1.5em"></i>
+                <span>Drive Scan</span>
               </button>
 
               <button
-                class="source-btn secondary"
+                class="btn btn-secondary"
                 onclick="document.getElementById('fileInput').click()"
+                style="flex: 1"
               >
-                <div class="btn-content">
-                  <i class="fas fa-file-upload"></i>
-                  <span>Local File</span>
-                </div>
+                <i class="fas fa-file-upload" style="font-size: 1.5em"></i>
+                <span>Local File</span>
               </button>
 
-              <button class="source-btn outline" onclick="resetZoom()">
-                <div class="btn-content">
-                  <i class="fas fa-sync-alt"></i>
-                  <span>Reset</span>
-                </div>
+              <button class="btn" onclick="resetZoom()" style="flex: 1">
+                <i class="fas fa-sync-alt" style="font-size: 1.5em"></i>
+                <span>Reset</span>
               </button>
             </div>
 
@@ -298,15 +294,13 @@
 
               <button
                 id="btn-create-math"
-                class="source-btn outline"
+                class="btn btn-secondary"
                 onclick="openMathModal()"
-                style="width: 100%; justify-content: center"
+                style="width: 100%"
                 disabled
               >
-                <div class="btn-content" style="flex-direction: row; gap: 10px">
-                  <i class="fas fa-calculator"></i>
-                  <span>Create New Channel</span>
-                </div>
+                <i class="fas fa-calculator"></i>
+                <span>Create New Channel</span>
               </button>
             </div>
           </div>
