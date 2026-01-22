@@ -7,6 +7,7 @@ import {
   afterEach,
 } from '@jest/globals';
 
+// 1. Define mock instances outside to be reused
 const mockChartInstance = {
   destroy: jest.fn(),
   update: jest.fn(),
@@ -17,15 +18,15 @@ const mockChartInstance = {
   data: { datasets: [] },
   options: {
     plugins: { datalabels: {}, zoom: {}, tooltip: { callbacks: {} } },
-    scales: { x: { min: 0, max: 0 } },
+    scales: { x: { min: 0, max: 0, title: {} }, y: { title: {} } },
   },
 };
 
+// 2. Mock Chart.js with specific Tooltip support to prevent init() crashes
 await jest.unstable_mockModule('chart.js', () => {
   const MockChart = jest.fn(() => mockChartInstance);
   MockChart.register = jest.fn();
 
-  // Fix 1: specific mock for Tooltip to allow setting positioners
   const MockTooltip = jest.fn();
   MockTooltip.positioners = {};
 
@@ -60,27 +61,18 @@ await jest.unstable_mockModule('../src/palettemanager.js', () => ({
   PaletteManager: { getColorForSignal: jest.fn(() => '#ff0000') },
 }));
 
-const { XYAnalysis } = await import('../src/xyanalysis.js');
-const { AppState } = await import('../src/config.js');
-const { Chart } = await import('chart.js');
+// Variables for fresh module instances per test
+let XYAnalysis;
+let AppState;
+let Chart;
 
 describe('XYAnalysis Controller', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 3. Reset modules to clear singleton state (Crucial for 'init' tests)
+    jest.resetModules();
     jest.clearAllMocks();
-    AppState.files = [];
-    XYAnalysis.charts = [null, null];
-    XYAnalysis.timelineChart = null;
 
-    Chart.mockImplementation(() => mockChartInstance);
-
-    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
-      canvas: document.createElement('canvas'),
-      save: jest.fn(),
-      restore: jest.fn(),
-      fillRect: jest.fn(),
-      measureText: jest.fn(() => ({ width: 0 })),
-    });
-
+    // 4. Setup DOM *before* importing modules so top-level lookups find elements
     document.body.innerHTML = `
       <div id="xyModal" style="display: none;">
         <div class="modal-body"></div>
@@ -102,6 +94,29 @@ describe('XYAnalysis Controller', () => {
       <canvas id="xyTimelineCanvas"></canvas>
     `;
 
+    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      canvas: document.createElement('canvas'),
+      save: jest.fn(),
+      restore: jest.fn(),
+      fillRect: jest.fn(),
+      measureText: jest.fn(() => ({ width: 0 })),
+    });
+
+    // 5. Dynamic imports to ensure a fresh XYAnalysis instance
+    const xyModule = await import('../src/xyanalysis.js');
+    XYAnalysis = xyModule.XYAnalysis;
+
+    const configModule = await import('../src/config.js');
+    AppState = configModule.AppState;
+    AppState.files = [];
+
+    const chartModule = await import('chart.js');
+    Chart = chartModule.Chart;
+
+    if (XYAnalysis.charts) XYAnalysis.charts = [null, null];
+    if (XYAnalysis.timelineChart) XYAnalysis.timelineChart = null;
+
+    Chart.mockImplementation(() => mockChartInstance);
     delete window.PaletteManager;
   });
 
@@ -135,7 +150,7 @@ describe('XYAnalysis Controller', () => {
     });
 
     test('populateGlobalFileSelector fills dropdown and triggers change', () => {
-      // Fix 2: Add 'signals' property to prevent crash in data generation
+      // Prevent crash by providing 'signals' object
       AppState.files = [
         { name: 'Trip A', availableSignals: [], signals: {} },
         { name: 'Trip B', availableSignals: [], signals: {} },
@@ -458,6 +473,60 @@ describe('XYAnalysis Controller', () => {
 
       expect(scatterSpy).toHaveBeenCalled();
       expect(timelineSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Extended Coverage', () => {
+    test('getHeatColor generates correct gradient range', () => {
+      expect(XYAnalysis.getHeatColor(0, 0, 100)).toContain('240'); // Blue
+      expect(XYAnalysis.getHeatColor(100, 0, 100)).toContain('0'); // Red
+      expect(XYAnalysis.getHeatColor(50, 0, 100)).toContain('120'); // Green
+    });
+
+    test('renderChart configures Axis Titles and Zoom options', () => {
+      AppState.files = [
+        {
+          signals: {
+            X: [{ x: 1, y: 1 }],
+            Y: [{ x: 1, y: 1 }],
+            Z: [{ x: 1, y: 1 }],
+          },
+        },
+      ];
+      jest
+        .spyOn(XYAnalysis, 'generateScatterData')
+        .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
+
+      XYAnalysis.renderChart('0', 0, 'X', 'Y', 'Z');
+
+      expect(Chart).toHaveBeenCalled();
+      const config = Chart.mock.calls[0][1];
+
+      expect(config.options.scales.x.title.text).toBe('X');
+      expect(config.options.scales.y.title.text).toBe('Y');
+      expect(config.options.plugins.zoom.zoom.wheel.enabled).toBe(true);
+    });
+
+    test('generateScatterData handles partial overlap', () => {
+      AppState.files = [
+        {
+          signals: {
+            X: [
+              { x: 100, y: 1 },
+              { x: 200, y: 2 },
+              { x: 300, y: 3 },
+            ],
+            Y: [{ x: 200, y: 20 }],
+            Z: [{ x: 200, y: 30 }],
+          },
+        },
+      ];
+
+      const data = XYAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
+
+      expect(data).toHaveLength(1);
+      expect(data[0].x).toBe(2);
+      expect(data[0].y).toBe(20);
     });
   });
 });
