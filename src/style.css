@@ -2445,3 +2445,30 @@ input[type='number'] {
 .empty-state-container {
   background: transparent !important;
 }
+
+.signal-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 10px 0 5px;
+  color: var(--text-muted);
+  font-size: 0.7em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.signal-separator::before,
+.signal-separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.signal-separator::before {
+  margin-right: 0.5em;
+}
+
+.signal-separator::after {
+  margin-left: 0.5em;
+}

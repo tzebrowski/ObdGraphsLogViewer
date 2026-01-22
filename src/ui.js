@@ -373,12 +373,19 @@ export const UI = {
           : 'fas fa-chevron-right';
       };
 
-      file.availableSignals.forEach((signal, sigIdx) => {
+      const mathSignals = file.availableSignals
+        .filter((s) => s.startsWith('Math:'))
+        .sort();
+      const regularSignals = file.availableSignals
+        .filter((s) => !s.startsWith('Math:'))
+        .sort();
+
+      const createSignalItem = (signal) => {
+        const sigIdx = file.availableSignals.indexOf(signal);
         const isMath = signal.startsWith('Math:');
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
 
         let isCurrentlyVisible = false;
-
         if (ChartManager.viewMode === 'overlay') {
           const chart = AppState.chartInstances[0];
           if (chart) {
@@ -396,9 +403,9 @@ export const UI = {
         }
 
         const isChecked = isCurrentlyVisible || isImportant;
-
         const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
         const signalKey = PaletteManager.getSignalKey(file.name, signal);
+        const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
 
         const signalItem = document.createElement('div');
         signalItem.className = 'signal-item';
@@ -406,7 +413,6 @@ export const UI = {
         signalItem.style.cssText =
           'display: flex; align-items: center; gap: 8px; padding: 2px 5px;';
 
-        const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
         const pickerStyle = `width: 18px; height: 18px; border: none; padding: 0; background: none; cursor: ${isCustomEnabled ? 'pointer' : 'default'}; opacity: ${isCustomEnabled ? '1' : '0.4'};`;
 
         const labelStyle = isMath
@@ -419,7 +425,7 @@ export const UI = {
                  data-signal-key="${signalKey}">
           <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isChecked ? 'checked' : ''}>
           <label for="${uniqueId}" style="${labelStyle}">${signal}</label>
-      `;
+        `;
 
         const picker = signalItem.querySelector('.signal-color-picker');
         picker.onchange = (e) => {
@@ -429,7 +435,31 @@ export const UI = {
           if (typeof ChartManager !== 'undefined') ChartManager.render();
         };
 
-        signalListContainer.appendChild(signalItem);
+        return signalItem;
+      };
+
+      if (mathSignals.length > 0) {
+        const mathSeparator = document.createElement('div');
+        mathSeparator.className = 'signal-separator';
+        mathSeparator.innerText = 'Math Channels';
+        mathSeparator.setAttribute('data-type', 'separator');
+        signalListContainer.appendChild(mathSeparator);
+
+        mathSignals.forEach((signal) => {
+          signalListContainer.appendChild(createSignalItem(signal));
+        });
+      }
+
+      if (mathSignals.length > 0 && regularSignals.length > 0) {
+        const separator = document.createElement('div');
+        separator.className = 'signal-separator';
+        separator.innerText = 'Log Data';
+        separator.setAttribute('data-type', 'separator');
+        signalListContainer.appendChild(separator);
+      }
+
+      regularSignals.forEach((signal) => {
+        signalListContainer.appendChild(createSignalItem(signal));
       });
 
       fileGroup.appendChild(fileHeader);
@@ -454,12 +484,17 @@ export const UI = {
         groups.forEach((group) => {
           let matchCount = 0;
           const items = group.querySelectorAll('.signal-item');
+          const separators = group.querySelectorAll('.signal-separator');
 
           items.forEach((item) => {
             const attr = item.getAttribute('data-signal-name');
             const isMatch = attr && attr.includes(term);
             item.style.display = isMatch ? 'flex' : 'none';
             if (isMatch) matchCount++;
+          });
+
+          separators.forEach((sep) => {
+            sep.style.display = term.length > 0 ? 'none' : 'flex';
           });
 
           group.style.display = matchCount > 0 ? 'block' : 'none';
