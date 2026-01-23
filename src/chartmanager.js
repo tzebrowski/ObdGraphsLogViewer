@@ -690,7 +690,7 @@ export const ChartManager = {
         },
         tooltip: {
           enabled: true,
-          events: [], 
+          events: [],
           mode: 'index',
           position: 'topRightCorner',
           yAlign: 'top',
