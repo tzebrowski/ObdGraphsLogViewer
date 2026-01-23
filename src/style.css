@@ -559,7 +559,6 @@ input[type='range']::-webkit-slider-thumb {
 
 .signal-list {
   flex: 1;
-  overflow: auto;
   border: 1px solid #e9ecef;
   background: white;
   padding: 10px;

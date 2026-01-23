@@ -146,7 +146,8 @@ describe('MathChannels', () => {
   });
 
   describe('Formula Specific Coverage', () => {
-    test('Calculated Power from Torque', () => {
+    test('Calculated Power from Torque (Standard Nm)', () => {
+      // Factor = 1.0
       const torqueData = [{ x: 100, y: 400 }];
       const rpmData = [{ x: 100, y: 5000 }];
       AppState.files = [
@@ -155,10 +156,39 @@ describe('MathChannels', () => {
           availableSignals: ['TQ', 'RPM'],
         },
       ];
-      mathChannels.createChannel(0, 'power_from_torque', ['TQ', 'RPM'], 'HP');
+      // FIX: Added 3rd argument '1.0' for Factor
+      mathChannels.createChannel(
+        0,
+        'power_from_torque',
+        ['TQ', 'RPM', '1.0'],
+        'HP'
+      );
       const result = AppState.files[0].signals['Math: HP'];
-      const expected = (400 * 5000) / 7127;
+      const expected = (400 * 1.0 * 5000) / 7127;
       expect(result[0].y).toBeCloseTo(expected, 4);
+    });
+
+    test('Calculated Power from Torque (daNm Correction)', () => {
+      // Factor = 10.0 (40 daNm -> 400 Nm)
+      const torqueData = [{ x: 100, y: 40 }];
+      const rpmData = [{ x: 100, y: 5000 }];
+      AppState.files = [
+        {
+          signals: { TQ: torqueData, RPM: rpmData },
+          availableSignals: ['TQ', 'RPM'],
+        },
+      ];
+      // FIX: Added 3rd argument '10.0' for Factor
+      mathChannels.createChannel(
+        0,
+        'power_from_torque',
+        ['TQ', 'RPM', '10.0'],
+        'HP_daNm'
+      );
+      const result = AppState.files[0].signals['Math: HP_daNm'];
+      // (40 * 10 * 5000) / 7127
+      const expected = 280.62;
+      expect(result[0].y).toBeCloseTo(expected, 1);
     });
 
     test('Estimated Power from kg/h', () => {
