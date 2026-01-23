@@ -16,9 +16,34 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
 
-export const XYAnalysis = {
-  charts: [null, null],
-  timelineChart: null,
+class XYAnalysisClass {
+  #charts = [null, null];
+  #timelineChart = null;
+  #currentFileIndex = 0;
+
+  get charts() {
+    return this.#charts;
+  }
+
+  set charts(value) {
+    this.#charts = value;
+  }
+
+  get timelineChart() {
+    return this.#timelineChart;
+  }
+
+  set timelineChart(value) {
+    this.#timelineChart = value;
+  }
+
+  get currentFileIndex() {
+    return this.#currentFileIndex;
+  }
+
+  set currentFileIndex(value) {
+    this.#currentFileIndex = value;
+  }
 
   init() {
     Tooltip.positioners.xyFixed = function (elements, eventPosition) {
@@ -41,7 +66,7 @@ export const XYAnalysis = {
       Legend,
       zoomPlugin
     );
-  },
+  }
 
   openXYModal() {
     const modal = document.getElementById('xyModal');
@@ -56,12 +81,12 @@ export const XYAnalysis = {
     }
 
     this.populateGlobalFileSelector();
-  },
+  }
 
   closeXYModal() {
     const modal = document.getElementById('xyModal');
     if (modal) modal.style.display = 'none';
-  },
+  }
 
   populateGlobalFileSelector() {
     const fileNames = AppState.files.map((f) => f.name);
@@ -69,27 +94,29 @@ export const XYAnalysis = {
     this.createSearchableSelect(
       'xyGlobalFile',
       fileNames,
-      fileNames[this.currentFileIndex || 0] || '',
+      fileNames[this.#currentFileIndex || 0] || '',
       (selectedName) => {
         const idx = AppState.files.findIndex((f) => f.name === selectedName);
-        this.currentFileIndex = idx;
+        this.#currentFileIndex = idx;
         this.onFileChange();
       }
     );
 
-    if (AppState.files.length > 0 && this.currentFileIndex === undefined) {
-      this.currentFileIndex = 0;
+    if (AppState.files.length > 0 && this.#currentFileIndex === undefined) {
+      this.#currentFileIndex = 0;
+      this.onFileChange();
+    } else if (AppState.files.length > 0) {
       this.onFileChange();
     }
-  },
+  }
 
   onFileChange() {
     const fileIdx =
-      this.currentFileIndex !== undefined ? this.currentFileIndex : 0;
+      this.#currentFileIndex !== undefined ? this.#currentFileIndex : 0;
     const file = AppState.files[fileIdx];
     if (!file) return;
 
-    const signals = file.availableSignals.sort();
+    const signals = [...(file.availableSignals || [])].sort();
 
     ['0', '1'].forEach((panelIdx) => {
       let defX = 'Engine Rpm';
@@ -126,7 +153,7 @@ export const XYAnalysis = {
     this.plot('0');
     this.plot('1');
     this.updateTimeline();
-  },
+  }
 
   createSearchableSelect(elementId, options, defaultValue, onChangeCallback) {
     let container = document.getElementById(elementId);
@@ -167,13 +194,13 @@ export const XYAnalysis = {
         const noRes = document.createElement('div');
         noRes.className = 'search-option';
         noRes.style.color = '#999';
-        noRes.innerText = 'No signals found';
+        noRes.textContent = 'No signals found';
         list.appendChild(noRes);
       } else {
         filtered.forEach((opt) => {
           const item = document.createElement('div');
           item.className = 'search-option';
-          item.innerText = opt;
+          item.textContent = opt;
           item.onclick = () => {
             input.value = opt;
             input.setAttribute('data-selected-value', opt);
@@ -186,7 +213,7 @@ export const XYAnalysis = {
     };
 
     input.onfocus = () => {
-      renderList(input.value);
+      renderList('');
       list.style.display = 'block';
     };
 
@@ -195,15 +222,20 @@ export const XYAnalysis = {
       list.style.display = 'block';
     };
 
-    document.addEventListener('click', (e) => {
+    const closeListener = (e) => {
+      if (!document.body.contains(container)) {
+        document.removeEventListener('click', closeListener);
+        return;
+      }
       if (!container.contains(e.target)) {
         list.style.display = 'none';
       }
-    });
+    };
+    document.addEventListener('click', closeListener);
 
     container.appendChild(input);
     container.appendChild(list);
-  },
+  }
 
   getInputValue(containerId) {
     const container = document.getElementById(containerId);
@@ -211,11 +243,11 @@ export const XYAnalysis = {
     if (container.tagName === 'SELECT') return container.value;
     const input = container.querySelector('input');
     return input ? input.value : '';
-  },
+  }
 
   plot(panelIdx) {
     const fileIdx =
-      this.currentFileIndex !== undefined ? this.currentFileIndex : 0;
+      this.#currentFileIndex !== undefined ? this.#currentFileIndex : 0;
 
     const xSig = this.getInputValue(`xyX-${panelIdx}`);
     const ySig = this.getInputValue(`xyY-${panelIdx}`);
@@ -225,16 +257,16 @@ export const XYAnalysis = {
 
     this.renderChart(panelIdx, fileIdx, xSig, ySig, zSig);
     this.updateTimeline();
-  },
+  }
 
   resetAllZooms() {
-    this.charts.forEach((c) => c?.resetZoom());
-    if (this.timelineChart) this.timelineChart.resetZoom();
-  },
+    this.#charts.forEach((c) => c?.resetZoom());
+    if (this.#timelineChart) this.#timelineChart.resetZoom();
+  }
 
   updateTimeline() {
     const fileIdx =
-      this.currentFileIndex !== undefined ? this.currentFileIndex : 0;
+      this.#currentFileIndex !== undefined ? this.#currentFileIndex : 0;
 
     const signals = new Set();
     ['0', '1'].forEach((idx) => {
@@ -248,7 +280,7 @@ export const XYAnalysis = {
 
     const uniqueSignals = Array.from(signals).filter((s) => s);
     this.renderTimeline(fileIdx, uniqueSignals);
-  },
+  }
 
   renderTimeline(fileIdx, signalNames) {
     const canvas = document.getElementById('xyTimelineCanvas');
@@ -257,7 +289,7 @@ export const XYAnalysis = {
     const ctx = canvas.getContext('2d');
     const file = AppState.files[fileIdx];
 
-    if (this.timelineChart) this.timelineChart.destroy();
+    if (this.#timelineChart) this.#timelineChart.destroy();
     if (!file || signalNames.length === 0) return;
 
     const datasets = signalNames
@@ -278,7 +310,7 @@ export const XYAnalysis = {
 
         const color = PaletteManager.getColorForSignal(
           fileIdx,
-          file.availableSignals.indexOf(sigName)
+          (file.availableSignals || []).indexOf(sigName)
         );
 
         return {
@@ -325,7 +357,7 @@ export const XYAnalysis = {
     const textColor = isDark ? '#eee' : '#333';
     const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
-    this.timelineChart = new Chart(ctx, {
+    this.#timelineChart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       plugins: [hoverLinePlugin],
@@ -379,7 +411,7 @@ export const XYAnalysis = {
         },
       },
     });
-  },
+  }
 
   renderChart(panelIdx, fileIdx, signalX, signalY, signalZ) {
     const canvasId = `xyCanvas-${panelIdx}`;
@@ -387,8 +419,8 @@ export const XYAnalysis = {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    if (this.charts[panelIdx]) {
-      this.charts[panelIdx].destroy();
+    if (this.#charts[panelIdx]) {
+      this.#charts[panelIdx].destroy();
     }
 
     const data = this.generateScatterData(fileIdx, signalX, signalY, signalZ);
@@ -405,7 +437,7 @@ export const XYAnalysis = {
     const color = isDark ? '#eee' : '#333';
     const grid = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
-    this.charts[panelIdx] = new Chart(ctx, {
+    this.#charts[panelIdx] = new Chart(ctx, {
       type: 'scatter',
       data: {
         datasets: [
@@ -490,7 +522,7 @@ export const XYAnalysis = {
                   const tdText = document.createElement('td');
                   tdText.style.borderWidth = 0;
                   tdText.style.color = '#fff';
-                  tdText.innerText = `${label}: ${value.toFixed(2)}`;
+                  tdText.textContent = `${label}: ${value.toFixed(2)}`;
 
                   tr.appendChild(tdColor);
                   tr.appendChild(tdText);
@@ -528,7 +560,7 @@ export const XYAnalysis = {
         },
       },
     });
-  },
+  }
 
   getOrCreateTooltip(chart) {
     let tooltipEl = chart.canvas.parentNode.querySelector(
@@ -556,7 +588,7 @@ export const XYAnalysis = {
     }
 
     return tooltipEl;
-  },
+  }
 
   updateLegend(panelIdx, min, max, zLabel) {
     const legend = document.getElementById(`xyLegend-${panelIdx}`);
@@ -568,7 +600,7 @@ export const XYAnalysis = {
     labelContainer.className = 'legend-label-container';
     const labelSpan = document.createElement('span');
     labelSpan.className = 'z-axis-label';
-    labelSpan.innerText = zLabel || 'Z-Axis';
+    labelSpan.textContent = zLabel || 'Z-Axis';
     labelContainer.appendChild(labelSpan);
     legend.appendChild(labelContainer);
 
@@ -583,11 +615,11 @@ export const XYAnalysis = {
       const pct = 1 - i / (steps - 1);
       const val = min + (max - min) * pct;
       const valSpan = document.createElement('span');
-      valSpan.innerText = val.toFixed(1);
+      valSpan.textContent = val.toFixed(1);
       valuesContainer.appendChild(valSpan);
     }
     legend.appendChild(valuesContainer);
-  },
+  }
 
   generateScatterData(fileIndex, signalXName, signalYName, signalZName) {
     const file = AppState.files[fileIndex];
@@ -635,7 +667,7 @@ export const XYAnalysis = {
       }
     });
     return scatterPoints;
-  },
+  }
 
   getHeatColor(value, min, max) {
     if (min === max) return 'hsla(240, 100%, 50%, 0.8)';
@@ -643,5 +675,7 @@ export const XYAnalysis = {
     ratio = Math.max(0, Math.min(1, ratio));
     const hue = (1 - ratio) * 240;
     return `hsla(${hue}, 100%, 50%, 0.8)`;
-  },
-};
+  }
+}
+
+export const XYAnalysis = new XYAnalysisClass();

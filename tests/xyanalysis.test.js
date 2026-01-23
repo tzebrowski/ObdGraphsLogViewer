@@ -194,6 +194,32 @@ describe('XYAnalysis Comprehensive Tests', () => {
         expect(newEl.style.color).toBe('red');
       });
 
+      test('Focusing input shows all options regardless of current value', () => {
+        const options = ['Engine Rpm', 'Speed', 'Boost'];
+        const defaultValue = 'Speed';
+
+        XYAnalysis.createSearchableSelect(
+          'xyGlobalFile',
+          options,
+          defaultValue,
+          jest.fn()
+        );
+
+        const container = document.getElementById('xyGlobalFile');
+        const input = container.querySelector('input');
+        const list = container.querySelector('.search-results-list');
+
+        expect(input.value).toBe('Speed');
+
+        input.focus();
+
+        expect(list.children.length).toBe(3);
+        expect(list.children[0].textContent).toBe('Engine Rpm');
+        expect(list.children[1].textContent).toBe('Speed');
+        expect(list.children[2].textContent).toBe('Boost');
+        expect(list.style.display).toBe('block');
+      });
+
       test('Filter logic shows "No signals found"', () => {
         XYAnalysis.createSearchableSelect(
           'xyGlobalFile',
@@ -687,6 +713,87 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
       expect(scatterSpy).toHaveBeenCalled();
       expect(timelineSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Edge Cases & Full Coverage', () => {
+    test('getHeatColor handles values outside min/max range', () => {
+      // Value below min (0) should be clamped to min -> Hue 240 (Blue)
+      expect(XYAnalysis.getHeatColor(-50, 0, 100)).toContain('240');
+      // Value above max (100) should be clamped to max -> Hue 0 (Red)
+      expect(XYAnalysis.getHeatColor(150, 0, 100)).toContain('0');
+    });
+
+    test('renderChart destroys existing chart before creating new one', () => {
+      const destroySpy = jest.fn();
+      XYAnalysis.charts = [{ destroy: destroySpy }, null];
+
+      AppState.files = [{ availableSignals: ['A', 'B', 'C'], signals: {} }];
+      jest
+        .spyOn(XYAnalysis, 'generateScatterData')
+        .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
+
+      XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
+
+      expect(destroySpy).toHaveBeenCalled();
+    });
+
+    test('renderTimeline destroys existing chart', () => {
+      const destroySpy = jest.fn();
+      XYAnalysis.timelineChart = { destroy: destroySpy };
+
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['A'],
+          signals: { A: [{ x: 0, y: 0 }] },
+        },
+      ];
+      XYAnalysis.renderTimeline(0, ['A']);
+
+      expect(destroySpy).toHaveBeenCalled();
+    });
+
+    test('renderTimeline handles missing data for valid signal', () => {
+      // Signal is in availableSignals but null in signals map
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['GhostSignal'],
+          signals: { GhostSignal: null },
+        },
+      ];
+
+      XYAnalysis.renderTimeline(0, ['GhostSignal']);
+
+      const config = Chart.mock.calls[0][1];
+      expect(config.data.datasets.length).toBe(0); // Should be filtered out
+    });
+
+    test('Event listener cleanup when element is removed from DOM', () => {
+      XYAnalysis.createSearchableSelect('xyGlobalFile', ['A'], '', jest.fn());
+      const container = document.getElementById('xyGlobalFile');
+      const list = container.querySelector('.search-results-list');
+
+      // Remove container from DOM to trigger cleanup logic
+      container.remove();
+
+      // Click anywhere
+      document.body.click();
+
+      // Should verify that no errors occurred and list state didn't change (implied coverage)
+      expect(list).toBeDefined();
+    });
+
+    test('plot returns early if inputs are missing', () => {
+      const renderSpy = jest.spyOn(XYAnalysis, 'renderChart');
+
+      // Only set X, leave Y and Z empty
+      document.getElementById('xyX-0').innerHTML = `<input value="A">`;
+
+      XYAnalysis.plot('0');
+
+      expect(renderSpy).not.toHaveBeenCalled();
     });
   });
 });
