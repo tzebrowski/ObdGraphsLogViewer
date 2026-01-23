@@ -386,23 +386,32 @@ export const UI = {
         const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
 
         let isCurrentlyVisible = false;
+        let datasetFound = false;
+
         if (ChartManager.viewMode === 'overlay') {
           const chart = AppState.chartInstances[0];
           if (chart) {
             const ds = chart.data.datasets.find(
               (d) => d._fileIdx === fileIdx && d._signalKey === signal
             );
-            if (ds && !ds.hidden) isCurrentlyVisible = true;
+            if (ds) {
+              datasetFound = true;
+              if (!ds.hidden) isCurrentlyVisible = true;
+            }
           }
         } else {
           const chart = AppState.chartInstances[fileIdx];
           if (chart) {
             const ds = chart.data.datasets.find((d) => d.label === signal);
-            if (ds && !ds.hidden) isCurrentlyVisible = true;
+            if (ds) {
+              datasetFound = true;
+              if (!ds.hidden) isCurrentlyVisible = true;
+            }
           }
         }
 
-        const isChecked = isCurrentlyVisible || isImportant;
+        const isChecked = datasetFound ? isCurrentlyVisible : isImportant;
+
         const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
         const signalKey = PaletteManager.getSignalKey(file.name, signal);
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
