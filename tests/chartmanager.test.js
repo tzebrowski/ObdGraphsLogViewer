@@ -298,37 +298,6 @@ describe('ChartManager Complete Suite', () => {
   // SECTION: Navigation & Sliders
   // ==========================================
   describe('Navigation & Sliders', () => {
-    test.skip('updates chart when local slider inputs change', () => {
-      const mockFile = {
-        name: 'f1',
-        duration: 100,
-        startTime: 1000,
-        availableSignals: [],
-        signals: {},
-      };
-
-      // FIX: Setup AppState BEFORE calling _renderChartCard
-      AppState.files = [mockFile];
-      AppState.chartInstances = [mockChartInstance];
-
-      // Use direct _renderChartCard to ensure DOM listeners are attached
-      ChartManager._renderChartCard(container, mockFile, 0);
-
-      const startInput = container.querySelector('.local-range-start');
-      expect(startInput).not.toBeNull();
-
-      // Reset mock min to start value
-      mockChartInstance.options.scales.x.min = 1000;
-
-      // Update input
-      startInput.value = '10';
-      startInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-      // 1000 (Start) + 10 (Input) * 1000 (ms) = 11000
-      expect(mockChartInstance.options.scales.x.min).toBe(11000);
-      expect(mockChartInstance.update).toHaveBeenCalledWith('none');
-    });
-
     test('Slider swaps values if start > end', () => {
       const mockFile = {
         name: 'f1',
@@ -717,6 +686,186 @@ describe('ChartManager Complete Suite', () => {
 
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
       expect(mockChartInstance.ctx.stroke).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================
+  // SECTION: Extended Coverage & Edge Cases
+  // ==========================================
+  describe('Extended Coverage & Edge Cases', () => {
+    // Test for zoomTo logic (used by anomalies list)
+    test('zoomTo sets highlight and updates chart scales with padding', () => {
+      const file = { startTime: 1000, duration: 100 };
+      AppState.files = [file];
+      AppState.chartInstances = [mockChartInstance];
+
+      // Target: Start 10s, End 20s (Duration 10s)
+      // Padding logic in source: duration * 4.0 = 40s
+      // Expected range: 10s - 40s = -30s (clamped to 0) to 20s + 40s = 60s
+
+      ChartManager.zoomTo(10, 20, 0);
+
+      expect(AppState.activeHighlight).toEqual({
+        start: 10,
+        end: 20,
+        targetIndex: 0,
+      });
+
+      // 1000 (startTime) + 0 (clamped min) * 1000
+      expect(mockChartInstance.options.scales.x.min).toBe(1000);
+      // 1000 (startTime) + 60 (padded max) * 1000
+      expect(mockChartInstance.options.scales.x.max).toBe(61000);
+      expect(mockChartInstance.update).toHaveBeenCalledWith('none');
+    });
+
+    // Test for Area Fills toggle
+    test('updateAreaFills toggles dataset fill properties', () => {
+      AppState.chartInstances = [mockChartInstance];
+      const dataset = {
+        borderColor: '#ff0000',
+        fill: false,
+        backgroundColor: 'transparent',
+      };
+      mockChartInstance.data.datasets = [dataset];
+
+      // Case 1: Enable Fills
+      Preferences.prefs.showAreaFills = true;
+      ChartManager.updateAreaFills();
+
+      expect(dataset.fill).toBe('origin');
+      expect(dataset.backgroundColor).toContain('rgba(255, 0, 0, 0.1)'); // Converted from #ff0000
+
+      // Case 2: Disable Fills
+      Preferences.prefs.showAreaFills = false;
+      ChartManager.updateAreaFills();
+
+      expect(dataset.fill).toBe(false);
+      expect(dataset.backgroundColor).toBe('transparent');
+      expect(mockChartInstance.update).toHaveBeenCalledWith('none');
+    });
+
+    // Test internal binary search logic explicitly
+    test('_findNearestIndex handles various array positions', () => {
+      const data = [
+        { x: 100, y: 1 },
+        { x: 200, y: 2 },
+        { x: 300, y: 3 },
+      ];
+
+      // 1. Empty data
+      expect(ChartManager._findNearestIndex([], 100)).toBe(-1);
+
+      // 2. Before start
+      expect(ChartManager._findNearestIndex(data, 50)).toBe(0);
+
+      // 3. After end
+      expect(ChartManager._findNearestIndex(data, 400)).toBe(2);
+
+      // 4. Exact match
+      expect(ChartManager._findNearestIndex(data, 200)).toBe(1);
+
+      // 5. Midpoint rounding (closer to 200)
+      expect(ChartManager._findNearestIndex(data, 240)).toBe(1);
+
+      // 6. Midpoint rounding (closer to 300)
+      expect(ChartManager._findNearestIndex(data, 260)).toBe(2);
+    });
+
+    // Test Keyboard Annotation edge cases
+    test('_addAnnotationViaKeyboard handles null hoverValue', () => {
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+      ChartManager.hoverValue = null; // No cursor active
+
+      ChartManager._addAnnotationViaKeyboard(0);
+      expect(alertSpy).toHaveBeenCalled();
+    });
+
+    test('_addAnnotationViaKeyboard adds note when cursor is active', () => {
+      const promptSpy = jest
+        .spyOn(window, 'prompt')
+        .mockReturnValue('Key Note');
+      const file = { startTime: 1000, annotations: [] };
+      AppState.files = [file];
+      AppState.chartInstances = [mockChartInstance];
+      ChartManager.hoverValue = 2000; // 1s into file
+      ChartManager.activeChartIndex = 0;
+
+      ChartManager._addAnnotationViaKeyboard(0);
+
+      expect(promptSpy).toHaveBeenCalled();
+      expect(file.annotations[0]).toEqual({ time: 1.0, text: 'Key Note' });
+      expect(mockChartInstance.draw).toHaveBeenCalled();
+    });
+
+    // Test Export validation
+    test('exportDataRange alerts if no signals are checked', () => {
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+      AppState.files = [
+        {
+          name: 'f1',
+          startTime: 1000,
+          availableSignals: ['A', 'B'],
+          signals: { A: [], B: [] },
+        },
+      ];
+      AppState.chartInstances = [mockChartInstance];
+
+      // Mock querySelector to always return null (unchecked)
+      jest.spyOn(document, 'querySelector').mockReturnValue(null);
+
+      ChartManager.exportDataRange(0);
+      expect(alertSpy).toHaveBeenCalledWith('No signals visible to export.');
+    });
+
+    // Test Mobile Responsiveness Logic
+    test('updateLabelVisibility hides labels on small screens', () => {
+      // Mock window.innerWidth
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 500, // Mobile width
+      });
+
+      mockChartInstance.options.plugins.datalabels.display = true;
+      ChartManager.updateLabelVisibility(mockChartInstance);
+
+      expect(mockChartInstance.options.plugins.datalabels.display).toBe(false);
+
+      // Restore width
+      window.innerWidth = 1024;
+    });
+
+    // Test Duration Formatting
+    test('formatDuration formats strings correctly', () => {
+      expect(ChartManager.formatDuration(NaN)).toBe('0s');
+      expect(ChartManager.formatDuration(45)).toBe('45s');
+      expect(ChartManager.formatDuration(125)).toBe('2m 5s');
+    });
+
+    // Test Tooltip Sync Logic when dataset is hidden
+    test('_syncTooltip ignores hidden datasets', () => {
+      AppState.chartInstances = [mockChartInstance];
+      mockChartInstance.data.datasets = [{}, {}]; // 2 datasets
+
+      // Mock isDatasetVisible: Index 0 is hidden, Index 1 is visible
+      mockChartInstance.isDatasetVisible.mockImplementation((i) => i === 1);
+
+      // Mock finding index
+      jest.spyOn(ChartManager, '_findNearestIndex').mockReturnValue(0);
+      mockChartInstance.scales.x.getPixelForValue.mockReturnValue(100);
+
+      // Setup data for dataset 1
+      mockChartInstance.data.datasets[1].data = [{ x: 1000 }];
+
+      ChartManager._syncTooltip(mockChartInstance, 1000);
+
+      // Only dataset 1 should be added to active elements
+      expect(mockChartInstance.setActiveElements).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ datasetIndex: 1 })])
+      );
+      // Ensure dataset 0 was skipped
+      const callArgs = mockChartInstance.setActiveElements.mock.calls[0][0];
+      expect(callArgs.find((x) => x.datasetIndex === 0)).toBeUndefined();
     });
   });
 });
