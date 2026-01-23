@@ -56,31 +56,18 @@ class MathChannels {
       {
         id: 'acceleration',
         name: 'Acceleration (m/s²) [0-100 Logic]',
-        description:
-          'Calculates acceleration from Speed. Use window to smooth noise.',
-        inputs: [
-          { name: 'speed', label: 'Speed (km/h)' },
-          {
-            name: 'window',
-            label: 'Smoothing Window (Samples)',
-            isConstant: true,
-            defaultValue: 4,
-          },
-        ],
-        customProcess: (sourceData, constants) => {
-          const windowSize = Math.max(1, Math.round(constants[0]));
+        description: 'Calculates acceleration from Speed.',
+        inputs: [{ name: 'speed', label: 'Speed (km/h)' }],
+        customProcess: (signals) => {
+          const sourceData = signals[0];
           const result = [];
-
-          for (let i = windowSize; i < sourceData.length; i++) {
-            const p1 = sourceData[i - windowSize];
+          for (let i = 1; i < sourceData.length; i++) {
+            const p1 = sourceData[i - 1];
             const p2 = sourceData[i];
-
             const dt = (p2.x - p1.x) / 1000;
             if (dt <= 0) continue;
-
             const dv = (p2.y - p1.y) / 3.6;
             const accel = dv / dt;
-
             result.push({ x: p2.x, y: accel });
           }
           return result;
@@ -99,7 +86,8 @@ class MathChannels {
             defaultValue: 5,
           },
         ],
-        customProcess: (sourceData, constants) => {
+        customProcess: (signals, constants) => {
+          const sourceData = signals[0];
           const windowSize = Math.max(1, Math.round(constants[0]));
           const smoothed = [];
 
@@ -125,8 +113,8 @@ class MathChannels {
         description:
           'Shows Source ONLY if Condition > Threshold. Else shows Fallback.',
         inputs: [
-          { name: 'source', label: 'Signal to Display (e.g. AFR)' },
-          { name: 'cond', label: 'Condition Signal (e.g. Throttle)' },
+          { name: 'source', label: 'Signal to Display' },
+          { name: 'cond', label: 'Condition Signal' },
           {
             name: 'thresh',
             label: 'Threshold',
@@ -135,7 +123,7 @@ class MathChannels {
           },
           {
             name: 'fallback',
-            label: 'Fallback Value (0 or NaN)',
+            label: 'Fallback Value',
             isConstant: true,
             defaultValue: 0,
           },
@@ -168,7 +156,7 @@ class MathChannels {
       {
         id: 'boost',
         name: 'Boost Pressure (Bar)',
-        description: 'MAP - Baro (Manifold - Atmospheric)',
+        description: 'MAP - Baro',
         inputs: [
           { name: 'map', label: 'Intake Manifold Pressure' },
           { name: 'baro', label: 'Atmospheric Pressure' },
@@ -178,7 +166,7 @@ class MathChannels {
       {
         id: 'afr_error',
         name: 'AFR Error',
-        description: 'Commanded AFR - Measured AFR',
+        description: 'Commanded - Measured',
         inputs: [
           { name: 'commanded', label: 'AFR Commanded' },
           { name: 'measured', label: 'AFR Measured' },
@@ -198,7 +186,7 @@ class MathChannels {
       {
         id: 'multiply_const',
         name: 'Multiply by Constant',
-        description: 'Signal * Factor (Generic helper)',
+        description: 'Signal * Factor',
         inputs: [
           { name: 'source', label: 'Source Signal' },
           {
@@ -220,22 +208,39 @@ class MathChannels {
     window.createMathChannel = () => this.#executeCreation();
   }
 
-  createChannel(fileIndex, formulaId, inputMapping, newChannelName) {
+  createChannel(
+    fileIndex,
+    formulaId,
+    inputMapping,
+    newChannelName,
+    options = {}
+  ) {
     const file = AppState.files[fileIndex];
     if (!file) throw new Error('No file selected or loaded.');
 
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) throw new Error('Invalid formula definition.');
 
+    let resultData = [];
+
     if (definition.customProcess) {
-      return this.#executeCustomProcess(
-        file,
-        definition,
-        inputMapping,
-        newChannelName
-      );
+      resultData = this.#executeCustomProcess(file, definition, inputMapping);
+    } else {
+      resultData = this.#executeStandardFormula(file, definition, inputMapping);
     }
 
+    if (options.smooth && options.smoothWindow > 1) {
+      resultData = this.#applySmoothing(resultData, options.smoothWindow);
+    }
+
+    return this.#finalizeChannel(
+      file,
+      resultData,
+      newChannelName || `${definition.name}`
+    );
+  }
+
+  #executeStandardFormula(file, definition, inputMapping) {
     const sourceSignals = [];
     let masterTimeBase = null;
 
@@ -248,10 +253,8 @@ class MathChannels {
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-
         if (!signalData)
           throw new Error(`Signal '${signalName}' not found in file.`);
-
         sourceSignals.push({ isConstant: false, data: signalData });
         if (!masterTimeBase) masterTimeBase = signalData;
       }
@@ -277,15 +280,10 @@ class MathChannels {
       const calculatedY = definition.formula(currentValues);
       resultData.push({ x: currentTime, y: calculatedY });
     }
-
-    return this.#finalizeChannel(
-      file,
-      resultData,
-      newChannelName || `Math: ${definition.name}`
-    );
+    return resultData;
   }
 
-  #executeCustomProcess(file, definition, inputMapping, newChannelName) {
+  #executeCustomProcess(file, definition, inputMapping) {
     const signals = [];
     const constants = [];
 
@@ -305,15 +303,30 @@ class MathChannels {
 
     if (signals.length === 0)
       throw new Error('Custom process requires at least one signal.');
-    const resultData = definition.customProcess(signals[0], constants);
-    return this.#finalizeChannel(
-      file,
-      resultData,
-      newChannelName || `Math: ${definition.name}`
-    );
+    return definition.customProcess(signals, constants);
+  }
+
+  #applySmoothing(data, windowSize) {
+    const smoothed = [];
+    for (let i = 0; i < data.length; i++) {
+      let sum = 0;
+      let count = 0;
+      for (let j = 0; j < windowSize; j++) {
+        if (i - j >= 0) {
+          sum += data[i - j].y;
+          count++;
+        }
+      }
+      smoothed.push({ x: data[i].x, y: sum / count });
+    }
+    return smoothed;
   }
 
   #finalizeChannel(file, resultData, finalName) {
+    if (!finalName.startsWith('Math: ')) {
+      finalName = `Math: ${finalName}`;
+    }
+
     let min = Infinity;
     let max = -Infinity;
 
@@ -325,11 +338,7 @@ class MathChannels {
     file.signals[finalName] = resultData;
 
     if (!file.metadata) file.metadata = {};
-    file.metadata[finalName] = {
-      min: min,
-      max: max,
-      unit: 'Math',
-    };
+    file.metadata[finalName] = { min: min, max: max, unit: 'Math' };
 
     if (!file.availableSignals.includes(finalName)) {
       file.availableSignals.push(finalName);
@@ -359,11 +368,12 @@ class MathChannels {
 
     const t1 = p1.x;
     const t2 = p2.x;
-    const y1 = parseFloat(p1.y);
-    const y2 = parseFloat(p2.y);
-    if (t2 === t1) return y1;
+    if (t2 === t1) return parseFloat(p1.y);
 
-    return y1 + (y2 - y1) * ((targetTime - t1) / (t2 - t1));
+    return (
+      parseFloat(p1.y) +
+      (parseFloat(p2.y) - parseFloat(p1.y)) * ((targetTime - t1) / (t2 - t1))
+    );
   }
 
   #openModal() {
@@ -399,8 +409,7 @@ class MathChannels {
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) return;
 
-    document.getElementById('mathChannelName').value =
-      `Math: ${definition.name}`;
+    document.getElementById('mathChannelName').value = `${definition.name}`;
 
     if (AppState.files.length === 0) {
       container.innerHTML = "<p style='color:red'>No log file loaded.</p>";
@@ -411,7 +420,6 @@ class MathChannels {
     definition.inputs.forEach((input, idx) => {
       const wrapper = document.createElement('div');
       wrapper.style.marginBottom = '15px';
-
       wrapper.innerHTML = `<label style="font-size:0.85em; font-weight:bold; display:block; margin-bottom:4px;">${input.label}</label>`;
 
       if (input.isConstant) {
@@ -432,6 +440,59 @@ class MathChannels {
       }
       container.appendChild(wrapper);
     });
+
+    this.#renderPostProcessingUI(container);
+  }
+
+  #renderPostProcessingUI(container) {
+    const wrapper = document.createElement('div');
+    wrapper.style.marginTop = '20px';
+    wrapper.style.borderTop = '1px solid #eee';
+    wrapper.style.paddingTop = '10px';
+
+    const label = document.createElement('label');
+    label.style.fontWeight = 'bold';
+    label.style.marginBottom = '10px';
+    label.style.display = 'block';
+    label.innerText = 'Post-Processing';
+    wrapper.appendChild(label);
+
+    const checkboxContainer = document.createElement('div');
+    checkboxContainer.style.display = 'flex';
+    checkboxContainer.style.alignItems = 'center';
+    checkboxContainer.style.gap = '10px';
+    checkboxContainer.style.marginBottom = '10px';
+
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.id = 'math-opt-smooth';
+
+    const checkLabel = document.createElement('span');
+    checkLabel.innerText = 'Apply Smoothing';
+
+    checkboxContainer.appendChild(check);
+    checkboxContainer.appendChild(checkLabel);
+    wrapper.appendChild(checkboxContainer);
+
+    const windowContainer = document.createElement('div');
+    windowContainer.style.marginBottom = '5px';
+    windowContainer.innerHTML = `<label style="font-size:0.85em; display:block; margin-bottom:4px;">Smoothing Window (Samples)</label>`;
+
+    const winInput = document.createElement('input');
+    winInput.type = 'number';
+    winInput.id = 'math-opt-window';
+    winInput.value = '5';
+    winInput.className = 'template-select';
+    winInput.style.width = '100%';
+    winInput.disabled = true;
+
+    check.onchange = () => {
+      winInput.disabled = !check.checked;
+    };
+
+    windowContainer.appendChild(winInput);
+    wrapper.appendChild(windowContainer);
+    container.appendChild(wrapper);
   }
 
   #createSearchableSelect(idx, signals, inputFilterName) {
@@ -517,12 +578,21 @@ class MathChannels {
       inputMapping.push(el.value);
     }
 
+    const smoothCheck = document.getElementById('math-opt-smooth');
+    const smoothWinInput = document.getElementById('math-opt-window');
+
+    const options = {
+      smooth: smoothCheck ? smoothCheck.checked : false,
+      smoothWindow: smoothWinInput ? parseInt(smoothWinInput.value, 10) : 0,
+    };
+
     try {
       const createdName = this.createChannel(
         0,
         formulaId,
         inputMapping,
-        newName
+        newName,
+        options
       );
       this.#closeModal();
       if (typeof UI.renderSignalList === 'function') {
@@ -532,7 +602,7 @@ class MathChannels {
             `input[data-key="${createdName}"]`
           );
           if (checkbox) {
-            checkbox.checked = true;
+            checkbox.checked = false;
             checkbox.dispatchEvent(new Event('change'));
           }
         }, 100);
