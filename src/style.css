@@ -2545,3 +2545,22 @@ body.pref-theme-dark .search-results-list {
 body.pref-theme-dark .search-option:hover {
   background-color: #3a3a3a;
 }
+
+.signal-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.signal-search-wrapper input {
+  padding-left: 35px !important;
+}
+
+.signal-search-wrapper i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  color: var(--text-muted);
+  pointer-events: none;
+}
