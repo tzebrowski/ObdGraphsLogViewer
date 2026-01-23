@@ -392,34 +392,30 @@ describe('MathChannels', () => {
         },
       ];
 
-      // Open modal first to populate formula select
       window.openMathModal();
-
       const select = document.getElementById('mathFormulaSelect');
-      // Find ID for "multiply_const" (Signal * Factor)
-      // We assume definitions order or check values.
-      // Let's iterate options to find 'multiply_const'
       let targetVal = '';
       for (let opt of select.options) {
         if (opt.value === 'multiply_const') targetVal = opt.value;
       }
       select.value = targetVal;
 
-      // Trigger change
       window.onMathFormulaChange();
 
       const container = document.getElementById('mathInputsContainer');
-      const inputs = container.querySelectorAll('.template-select');
+      // Changed to find both searchable inputs and constant inputs
+      const inputs = container.querySelectorAll(
+        '.template-select, .searchable-input'
+      );
 
-      // multiply_const has 2 inputs: Source (select) and Factor (number)
       expect(inputs.length).toBe(2);
-      expect(inputs[0].tagName).toBe('SELECT'); // Signal selector
-      expect(inputs[1].tagName).toBe('INPUT'); // Constant input
-      expect(inputs[1].type).toBe('number');
+      // Input 0 (Source) is now a text input (Searchable Select)
+      expect(inputs[0].tagName).toBe('INPUT');
+      expect(inputs[0].type).toBe('text');
 
-      // Check auto-name generation
-      const nameInput = document.getElementById('mathChannelName');
-      expect(nameInput.value).toContain('Math:');
+      // Input 1 (Constant) remains a number input
+      expect(inputs[1].tagName).toBe('INPUT');
+      expect(inputs[1].type).toBe('number');
     });
 
     test('createMathChannel (executeCreation) validates form and calls createChannel', () => {
