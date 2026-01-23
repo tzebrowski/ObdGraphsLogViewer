@@ -13,7 +13,8 @@ class MathChannels {
     return [
       {
         id: 'est_power_kgh',
-        name: 'Estimated Power (HP) [Source: kg/h]',
+        name: 'Est. Power (MAF kg/h)',
+        unit: 'HP',
         description:
           'Converts kg/h to g/s, then estimates HP. (MAF / 3.6 * Factor)',
         inputs: [
@@ -29,7 +30,8 @@ class MathChannels {
       },
       {
         id: 'est_power_gs',
-        name: 'Estimated Power (HP) [Source: g/s]',
+        name: 'Est. Power (MAF g/s)',
+        unit: 'HP',
         description: 'Direct g/s calculation. (MAF * Factor)',
         inputs: [
           { name: 'maf', label: 'Air Mass Flow (g/s)' },
@@ -44,18 +46,25 @@ class MathChannels {
       },
       {
         id: 'power_from_torque',
-        name: 'Calculated Power (HP) [Source: Torque]',
-        description:
-          'Calculates HP from Torque (Nm) and RPM. (Torque * RPM / 7127)',
+        name: 'Power (Torque)',
+        unit: 'HP',
+        description: 'Calculates HP. Use Factor=10 if Torque is in daNm!',
         inputs: [
-          { name: 'torque', label: 'Torque (Nm)' },
+          { name: 'torque', label: 'Torque (Nm or daNm)' },
           { name: 'rpm', label: 'Engine RPM' },
+          {
+            name: 'factor',
+            label: 'Correction Factor (1 for Nm, 10 for daNm)',
+            isConstant: true,
+            defaultValue: 1.0,
+          },
         ],
-        formula: (values) => (values[0] * values[1]) / 7127,
+        formula: (values) => (values[0] * values[2] * values[1]) / 7127,
       },
       {
         id: 'acceleration',
-        name: 'Acceleration (m/s²) [0-100 Logic]',
+        name: 'Acceleration',
+        unit: 'm/s²',
         description: 'Calculates acceleration from Speed.',
         inputs: [{ name: 'speed', label: 'Speed (km/h)' }],
         customProcess: (signals) => {
@@ -75,7 +84,8 @@ class MathChannels {
       },
       {
         id: 'smoothing',
-        name: 'Smooth Signal (Moving Average)',
+        name: 'Smoothed Signal',
+        unit: '',
         description: 'Reduces noise by averaging the last N samples.',
         inputs: [
           { name: 'source', label: 'Signal to Smooth' },
@@ -109,7 +119,8 @@ class MathChannels {
       },
       {
         id: 'filter_gt',
-        name: 'Filter (Keep if > Threshold)',
+        name: 'Filtered (> Threshold)',
+        unit: '',
         description:
           'Shows Source ONLY if Condition > Threshold. Else shows Fallback.',
         inputs: [
@@ -132,7 +143,8 @@ class MathChannels {
       },
       {
         id: 'filter_lt',
-        name: 'Filter (Keep if < Threshold)',
+        name: 'Filtered (< Threshold)',
+        unit: '',
         description:
           'Shows Source ONLY if Condition < Threshold. Else shows Fallback.',
         inputs: [
@@ -155,7 +167,8 @@ class MathChannels {
       },
       {
         id: 'boost',
-        name: 'Boost Pressure (Bar)',
+        name: 'Boost Pressure',
+        unit: 'Bar',
         description: 'MAP - Baro',
         inputs: [
           { name: 'map', label: 'Intake Manifold Pressure' },
@@ -166,6 +179,7 @@ class MathChannels {
       {
         id: 'afr_error',
         name: 'AFR Error',
+        unit: 'AFR',
         description: 'Commanded - Measured',
         inputs: [
           { name: 'commanded', label: 'AFR Commanded' },
@@ -176,6 +190,7 @@ class MathChannels {
       {
         id: 'pressure_ratio',
         name: 'Pressure Ratio',
+        unit: 'Ratio',
         description: 'MAP / Baro',
         inputs: [
           { name: 'map', label: 'Intake Manifold Pressure' },
@@ -185,7 +200,8 @@ class MathChannels {
       },
       {
         id: 'multiply_const',
-        name: 'Multiply by Constant',
+        name: 'Multiplied Signal',
+        unit: '',
         description: 'Signal * Factor',
         inputs: [
           { name: 'source', label: 'Source Signal' },
@@ -233,11 +249,10 @@ class MathChannels {
       resultData = this.#applySmoothing(resultData, options.smoothWindow);
     }
 
-    return this.#finalizeChannel(
-      file,
-      resultData,
-      newChannelName || `${definition.name}`
-    );
+    const finalName = newChannelName || definition.name;
+    const unit = definition.unit || '';
+
+    return this.#finalizeChannel(file, resultData, finalName, unit);
   }
 
   #executeStandardFormula(file, definition, inputMapping) {
@@ -322,7 +337,7 @@ class MathChannels {
     return smoothed;
   }
 
-  #finalizeChannel(file, resultData, finalName) {
+  #finalizeChannel(file, resultData, finalName, unit) {
     if (!finalName.startsWith('Math: ')) {
       finalName = `Math: ${finalName}`;
     }
@@ -338,7 +353,11 @@ class MathChannels {
     file.signals[finalName] = resultData;
 
     if (!file.metadata) file.metadata = {};
-    file.metadata[finalName] = { min: min, max: max, unit: 'Math' };
+    file.metadata[finalName] = {
+      min: min,
+      max: max,
+      unit: unit || 'Math',
+    };
 
     if (!file.availableSignals.includes(finalName)) {
       file.availableSignals.push(finalName);
@@ -409,7 +428,7 @@ class MathChannels {
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) return;
 
-    document.getElementById('mathChannelName').value = `${definition.name}`;
+    document.getElementById('mathChannelName').value = definition.name;
 
     if (AppState.files.length === 0) {
       container.innerHTML = "<p style='color:red'>No log file loaded.</p>";

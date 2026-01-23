@@ -33,13 +33,8 @@ export const ChartManager = {
 
     Tooltip.positioners.topRightCorner = function (_elements, _eventPosition) {
       if (!this.chart) return;
-
       const { chartArea } = this.chart;
-
-      return {
-        x: chartArea.right - 10,
-        y: chartArea.top,
-      };
+      return { x: chartArea.right - 10, y: chartArea.top };
     };
 
     Chart.register(
@@ -62,9 +57,65 @@ export const ChartManager = {
     });
   },
 
+  _syncTooltip(chart, timeValue) {
+    if (!chart || timeValue === null) return;
+
+    const activeElements = [];
+    const xTarget = chart.scales.x.getPixelForValue(timeValue);
+
+    chart.data.datasets.forEach((ds, dsIdx) => {
+      if (!chart.isDatasetVisible(dsIdx)) return;
+
+      const index = this._findNearestIndex(ds.data, timeValue);
+
+      if (index !== -1) {
+        const pointTime = ds.data[index].x;
+        if (Math.abs(pointTime - timeValue) < 5000) {
+          activeElements.push({ datasetIndex: dsIdx, index: index });
+        }
+      }
+    });
+
+    if (activeElements.length > 0) {
+      chart.setActiveElements(activeElements);
+      chart.tooltip.setActiveElements(activeElements, {
+        x: xTarget,
+        y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
+      });
+      chart.update();
+    }
+  },
+
+  _findNearestIndex(data, targetTime) {
+    if (!data || data.length === 0) return -1;
+
+    if (targetTime <= data[0].x) return 0;
+    if (targetTime >= data[data.length - 1].x) return data.length - 1;
+
+    let start = 0;
+    let end = data.length - 1;
+    let mid;
+
+    while (start <= end) {
+      mid = Math.floor((start + end) / 2);
+      if (data[mid].x === targetTime) return mid;
+      else if (data[mid].x < targetTime) start = mid + 1;
+      else end = mid - 1;
+    }
+
+    const p1 = data[end];
+    const p2 = data[start];
+
+    if (!p1) return start;
+    if (!p2) return end;
+
+    return Math.abs(targetTime - p1.x) < Math.abs(targetTime - p2.x)
+      ? end
+      : start;
+  },
+
   stepCursor(index, stepCount) {
     const chart = AppState.chartInstances[index];
-    // In overlay mode, we always use the first file as the time reference base
     const file =
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[index];
 
@@ -78,85 +129,36 @@ export const ChartManager = {
     const stepSize = 100; // 0.1s
     let newVal = currentVal + stepCount * stepSize;
 
-    // Clamp values to file boundaries
     const maxTime = file.startTime + file.duration * 1000;
     if (newVal < file.startTime) newVal = file.startTime;
     if (newVal > maxTime) newVal = maxTime;
 
-    // Update global state
     this.hoverValue = newVal;
     this.activeChartIndex = index;
 
-    // View Shift (Replaces Panning)
-    // If cursor hits the border, shift the view window so the cursor has context.
     let viewChanged = false;
     const currentMin = chart.scales.x.min;
     const currentMax = chart.scales.x.max;
     const viewDuration = currentMax - currentMin;
 
     if (newVal >= currentMax) {
-      // Hit right edge: Shift view so cursor is at 20% of the new window (Context on left)
       const newMin = newVal - viewDuration * 0.2;
       chart.options.scales.x.min = newMin;
       chart.options.scales.x.max = newMin + viewDuration;
       viewChanged = true;
     } else if (newVal <= currentMin) {
-      // Hit left edge: Shift view so cursor is at 80% of the new window (Context on right)
       const newMin = newVal - viewDuration * 0.8;
       chart.options.scales.x.min = newMin;
       chart.options.scales.x.max = newMin + viewDuration;
       viewChanged = true;
     }
 
-    // If view changed, update layout before searching for points
     if (viewChanged) {
       chart.update('none');
     }
 
-    // ROBUST TOOLTIP ACTIVATION (Overlay Compatible)
-    const xTarget = chart.scales.x.getPixelForValue(newVal);
-    const activeElements = [];
+    this._syncTooltip(chart, newVal);
 
-    chart.data.datasets.forEach((ds, dsIdx) => {
-      if (!chart.isDatasetVisible(dsIdx)) return;
-
-      const meta = chart.getDatasetMeta(dsIdx);
-      const data = meta.data || [];
-
-      let closestIndex = -1;
-      let minDiff = Infinity;
-
-      for (let i = 0; i < data.length; i++) {
-        const element = data[i];
-        if (!element || typeof element.x !== 'number' || isNaN(element.x))
-          continue;
-
-        const diff = Math.abs(element.x - xTarget);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestIndex = i;
-        } else if (diff > minDiff + 5) {
-          break;
-        }
-      }
-
-      if (closestIndex !== -1) {
-        activeElements.push({ datasetIndex: dsIdx, index: closestIndex });
-      }
-    });
-
-    if (activeElements.length > 0) {
-      chart.setActiveElements(activeElements);
-      chart.tooltip.setActiveElements(activeElements, {
-        x: xTarget,
-        y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
-      });
-      chart.update();
-    } else {
-      chart.update();
-    }
-
-    // Update Local Sliders
     if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
   },
 
@@ -193,7 +195,7 @@ export const ChartManager = {
 
         visibleSignals.forEach((sigKey) => {
           const sigData = file.signals[sigKey];
-          const valPoint = sigData.find((p) => Math.abs(p.x - point.x) < 100); // 100ms tolerancji
+          const valPoint = sigData.find((p) => Math.abs(p.x - point.x) < 100);
           row.push(valPoint ? parseFloat(valPoint.y).toFixed(3) : '');
         });
 
@@ -238,14 +240,12 @@ export const ChartManager = {
           </div>
           <div class="modal-body">
             <h4 style="margin-top:0; color:#c22636;">${file.name}</h4>
-            
             ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
             ${createRow('Duration', durationFormatted)}
             ${createRow('Signals Count', file.availableSignals.length)}
             ${createRow('Profile Name', meta.profileName || 'Unknown')}
             ${createRow('ECU ID', meta.ecuId || 'N/A')}
             ${createRow('App Version', meta.appVersion || 'N/A')}
-            
             <div style="margin-top: 20px; text-align: right;">
                <button class="btn btn-primary" onclick="document.getElementById('metadataModal').remove()">Close</button>
             </div>
@@ -324,7 +324,6 @@ export const ChartManager = {
 
     const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
     const baseStartTime = AppState.files[0].startTime;
-
     const shortcuts = this._getShortcutsText();
 
     wrapper.innerHTML = `
@@ -332,18 +331,13 @@ export const ChartManager = {
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
           <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
                <span style="font-size:0.8em; color:#666; margin-right:10px;">X-Axis: Relative Time (s)</span>
-               
                <div style="display: flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff;">
                   <button class="btn-icon" onclick="stepCursor(0, -10)" title="-1s" style="border:none;"><i class="fas fa-backward"></i></button>
                   <button class="btn-icon" onclick="stepCursor(0, -1)" title="-0.1s" style="border:none;"><i class="fas fa-caret-left" style="font-size: 1.2em;"></i></button>
                   <button class="btn-icon" onclick="stepCursor(0, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
                   <button class="btn-icon" onclick="stepCursor(0, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
               </div>
-
-               <button class="btn-icon" style="cursor: help;" title="${shortcuts}">
-                  <i class="fas fa-keyboard"></i>
-               </button>
-
+               <button class="btn-icon" style="cursor: help;" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
                <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
       </div>
@@ -355,31 +349,23 @@ export const ChartManager = {
 
     const canvas = document.getElementById('chart-overlay');
     const ctx = canvas.getContext('2d');
-
     const datasets = [];
 
     AppState.files.forEach((file, fileIdx) => {
       file.availableSignals.forEach((key, sigIdx) => {
         const ds = this._buildDataset(file, key, fileIdx, sigIdx);
-
         ds._fileIdx = fileIdx;
         ds._signalKey = key;
-
         const fileStart = file.startTime;
         ds.data = ds.data.map((p) => ({
           x: baseStartTime + (p.x - fileStart),
           y: p.y,
         }));
-
         ds.label = `${file.name.substring(0, 15)}... - ${key}`;
         if (fileIdx > 0) {
           ds.borderDash = [5, 5];
           ds.pointRadius = 0;
         }
-        if (fileIdx > 1) {
-          ds.borderDash = [2, 2];
-        }
-
         datasets.push(ds);
       });
     });
@@ -403,10 +389,7 @@ export const ChartManager = {
     if (typeof totalSeconds !== 'number' || isNaN(totalSeconds)) return '0s';
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = Math.floor(totalSeconds % 60);
-
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
   },
 
@@ -435,13 +418,8 @@ export const ChartManager = {
                   <button class="btn-icon" onclick="stepCursor(${idx}, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
                   <button class="btn-icon" onclick="stepCursor(${idx}, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
               </div>  
-          
               <button class="btn-icon" onclick="exportDataRange(${idx})" title="Export Visible CSV"><i class="fas fa-file-csv"></i></button>
-
-              <button class="btn-icon" style="cursor: help;" title="${shortcuts}">
-                  <i class="fas fa-keyboard"></i>
-              </button>
-
+              <button class="btn-icon" style="cursor: help;" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
               <button class="btn-icon" onclick="showChartInfo(${idx})" title="Log Details"><i class="fas fa-info-circle"></i></button>
               <div style="width: 1px; height: 16px; background: #ddd; margin: 0 4px;"></div>
               <button class="btn-icon" onclick="manualZoom(${idx}, 1.1)" title="Zoom In"><i class="fas fa-plus"></i></button>
@@ -508,7 +486,6 @@ export const ChartManager = {
     const file =
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
     if (!chart || !file) return;
-
     if (this.viewMode === 'overlay') return;
 
     const card = document
@@ -552,7 +529,6 @@ export const ChartManager = {
         (this.viewMode === 'overlay'
           ? Math.max(...AppState.files.map((f) => f.duration)) * 1000
           : file.duration * 1000);
-
       chart.resetZoom();
       chart.update('none');
       if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
@@ -637,10 +613,15 @@ export const ChartManager = {
     const max = Math.max(...yValues);
     const range = max - min;
 
-    const normalizedData = rawData.map((d) => ({
-      x: d.x,
-      y: range === 0 ? 0 : (parseFloat(d.y) - min) / range,
-    }));
+    const normalizedData = rawData.map((d) => {
+      let yVal = 0;
+      if (range === 0) {
+        yVal = max > 0 ? 0.8 : 0;
+      } else {
+        yVal = (parseFloat(d.y) - min) / range;
+      }
+      return { x: d.x, y: yVal };
+    });
 
     const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
     const { showAreaFills } = Preferences.prefs;
@@ -677,11 +658,13 @@ export const ChartManager = {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+
       interaction: {
-        mode: 'index',
+        mode: 'nearest',
         axis: 'x',
         intersect: false,
       },
+
       scales: {
         y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
         x: {
@@ -707,11 +690,11 @@ export const ChartManager = {
         },
         tooltip: {
           enabled: true,
+          events: [], 
           mode: 'index',
           position: 'topRightCorner',
           yAlign: 'top',
           xAlign: 'right',
-          axis: 'x',
           caretSize: 0,
           intersect: false,
           itemSort: (a, b) => b.parsed.y - a.parsed.y,
@@ -792,6 +775,7 @@ export const ChartManager = {
       }
       this._rafId = requestAnimationFrame(() => {
         chart.draw();
+        this._syncTooltip(chart, newValue);
         this._rafId = null;
       });
     });
@@ -889,9 +873,12 @@ export const ChartManager = {
       }
 
       if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+
       this.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
       this.activeChartIndex = index;
+
       chart.draw();
+      this._syncTooltip(chart, this.hoverValue);
     });
   },
 
@@ -926,13 +913,11 @@ export const ChartManager = {
         chartArea: { top, bottom, left, right },
         scales: { x },
       } = chart;
-
       const chartIdx = AppState.chartInstances.indexOf(chart);
       if (chartIdx === -1) return;
 
       const file = AppState.files[chartIdx];
 
-      // 1. ANOMALY HIGHLIGHT (Red Background)
       if (file && AppState.activeHighlight?.targetIndex === chartIdx) {
         const pxStart = x.getPixelForValue(
           file.startTime + AppState.activeHighlight.start * 1000
@@ -953,7 +938,6 @@ export const ChartManager = {
         }
       }
 
-      // 2. ANNOTATIONS (Orange Lines & Text)
       if (file && file.annotations && file.annotations.length > 0) {
         ctx.save();
         ctx.font = '11px Arial';
@@ -962,10 +946,8 @@ export const ChartManager = {
 
         file.annotations.forEach((note) => {
           const absTime = file.startTime + note.time * 1000;
-
           if (absTime >= x.min && absTime <= x.max) {
             const xPix = x.getPixelForValue(absTime);
-
             ctx.beginPath();
             ctx.strokeStyle = '#FFA500';
             ctx.lineWidth = 2;
@@ -976,7 +958,6 @@ export const ChartManager = {
             const textWidth = ctx.measureText(note.text).width;
             ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
             ctx.fillRect(xPix + 2, top + 25, textWidth + 6, 20);
-
             ctx.fillStyle = 'white';
             ctx.fillText(note.text, xPix + 5, top + 39);
           }
@@ -984,19 +965,14 @@ export const ChartManager = {
         ctx.restore();
       }
 
-      // 3. CURSOR LINE (Unified Logic)
-      // We check strict inequality (!== null) because hoverValue can be 0.0
       if (
         ChartManager.activeChartIndex === chartIdx &&
         ChartManager.hoverValue !== null
       ) {
         const xPixel = x.getPixelForValue(ChartManager.hoverValue);
-
-        // Only draw if within the visible chart area
         if (xPixel >= left && xPixel <= right) {
           ctx.save();
           ctx.beginPath();
-          // Consistent "Active" Red color
           ctx.strokeStyle = 'rgba(227, 24, 55, 0.6)';
           ctx.lineWidth = 2;
           ctx.setLineDash([5, 5]);
@@ -1025,17 +1001,12 @@ export const ChartManager = {
       );
       return;
     }
-
     const file = AppState.files[index];
     const relTime = (this.hoverValue - file.startTime) / 1000;
-
     const text = prompt(`Add annotation at ${relTime.toFixed(2)}s:`, '');
     if (text) {
       if (!file.annotations) file.annotations = [];
-      file.annotations.push({
-        time: relTime,
-        text: text,
-      });
+      file.annotations.push({ time: relTime, text: text });
       AppState.chartInstances[index].draw();
     }
   },
