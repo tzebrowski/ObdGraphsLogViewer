@@ -120,6 +120,52 @@ class MathChannels {
         },
       },
       {
+        id: 'filter_gt',
+        name: 'Filter (Keep if > Threshold)',
+        description:
+          'Shows Source ONLY if Condition > Threshold. Else shows Fallback.',
+        inputs: [
+          { name: 'source', label: 'Signal to Display (e.g. AFR)' },
+          { name: 'cond', label: 'Condition Signal (e.g. Throttle)' },
+          {
+            name: 'thresh',
+            label: 'Threshold',
+            isConstant: true,
+            defaultValue: 90,
+          },
+          {
+            name: 'fallback',
+            label: 'Fallback Value (0 or NaN)',
+            isConstant: true,
+            defaultValue: 0,
+          },
+        ],
+        formula: (values) => (values[1] > values[2] ? values[0] : values[3]),
+      },
+      {
+        id: 'filter_lt',
+        name: 'Filter (Keep if < Threshold)',
+        description:
+          'Shows Source ONLY if Condition < Threshold. Else shows Fallback.',
+        inputs: [
+          { name: 'source', label: 'Signal to Display' },
+          { name: 'cond', label: 'Condition Signal' },
+          {
+            name: 'thresh',
+            label: 'Threshold',
+            isConstant: true,
+            defaultValue: 10,
+          },
+          {
+            name: 'fallback',
+            label: 'Fallback Value',
+            isConstant: true,
+            defaultValue: 0,
+          },
+        ],
+        formula: (values) => (values[1] < values[2] ? values[0] : values[3]),
+      },
+      {
         id: 'boost',
         name: 'Boost Pressure (Bar)',
         description: 'MAP - Baro (Manifold - Atmospheric)',
