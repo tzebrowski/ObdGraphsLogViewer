@@ -66,7 +66,7 @@ let XYAnalysis;
 let AppState;
 let Chart;
 
-describe('XYAnalysis Controller', () => {
+describe('XYAnalysis Suite - 1', () => {
   beforeEach(async () => {
     jest.resetModules();
     jest.clearAllMocks();

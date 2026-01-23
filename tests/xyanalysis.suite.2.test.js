@@ -58,7 +58,7 @@ const { XYAnalysis } = await import('../src/xyanalysis.js');
 const { AppState } = await import('../src/config.js');
 const { Chart } = await import('chart.js');
 
-describe('XYAnalysis Comprehensive Coverage', () => {
+describe('XYAnalysis Suite - 2', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     AppState.files = [];

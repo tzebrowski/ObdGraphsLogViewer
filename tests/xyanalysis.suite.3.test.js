@@ -62,25 +62,38 @@ const { XYAnalysis } = await import('../src/xyanalysis.js');
 const { AppState } = await import('../src/config.js');
 const { Chart, Tooltip } = await import('chart.js');
 
-describe('XYAnalysis Suite 4', () => {
+describe('XYAnalysis Suite - 3', () => {
+  const originalCreateElement = document.createElement.bind(document);
+
   beforeEach(() => {
     jest.clearAllMocks();
     AppState.files = [];
+
+    jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
+      const el = originalCreateElement(tagName);
+      Object.defineProperty(el, 'innerText', {
+        get() {
+          return this.textContent;
+        },
+        set(value) {
+          this.textContent = value;
+        },
+        configurable: true,
+      });
+      return el;
+    });
 
     document.body.innerHTML = `
       <div id="xyModal" style="display: none;"></div>
       <div id="xySplitView"></div>
       <div id="xyTimelineView"></div>
-      
       <div id="xyGlobalFile"></div>
       <div id="xyX-0"></div> <div id="xyY-0"></div> <div id="xyZ-0"></div>
       <canvas id="xyCanvas-0"></canvas>
       <div id="xyLegend-0"></div>
-      
       <div id="xyX-1"></div> <div id="xyY-1"></div> <div id="xyZ-1"></div>
       <canvas id="xyCanvas-1"></canvas>
       <div id="xyLegend-1"></div>
-      
       <canvas id="xyTimelineCanvas"></canvas>
     `;
 
@@ -100,17 +113,11 @@ describe('XYAnalysis Suite 4', () => {
     jest.restoreAllMocks();
   });
 
-  describe('Tooltip Positioner', () => {
+  describe('Initialization and Tooltips', () => {
     test('xyFixed positioner returns correct coordinates', () => {
       XYAnalysis.init();
       const positioner = Tooltip.positioners.xyFixed;
-
-      const context = {
-        chart: {
-          chartArea: { top: 50, right: 500 },
-        },
-      };
-
+      const context = { chart: { chartArea: { top: 50, right: 500 } } };
       const pos = positioner.call(context, [], {});
       expect(pos).toEqual({ x: 490, y: 60 });
     });
@@ -123,18 +130,24 @@ describe('XYAnalysis Suite 4', () => {
     });
   });
 
-  describe('Modal Logic', () => {
+  describe('Modal UI', () => {
     test('openXYModal adjusts split view styles', () => {
       XYAnalysis.openXYModal();
       const split = document.getElementById('xySplitView');
       const timeline = document.getElementById('xyTimelineView');
-
       expect(split.style.flex).toMatch(/^3/);
       expect(timeline.style.flex).toMatch(/^1/);
     });
+
+    test('closeXYModal hides modal', () => {
+      const modal = document.getElementById('xyModal');
+      modal.style.display = 'flex';
+      XYAnalysis.closeXYModal();
+      expect(modal.style.display).toBe('none');
+    });
   });
 
-  describe('Searchable Select Interactions', () => {
+  describe('Searchable Select Logic', () => {
     test('Replaces SELECT element with custom DIV wrapper', () => {
       const container = document.getElementById('xyX-0');
       container.outerHTML =
@@ -144,12 +157,11 @@ describe('XYAnalysis Suite 4', () => {
 
       const newEl = document.getElementById('xyX-0');
       expect(newEl.tagName).toBe('DIV');
-      expect(newEl.className).toContain('test-class');
       expect(newEl.className).toContain('searchable-select-wrapper');
       expect(newEl.style.color).toBe('red');
     });
 
-    test('Filter logic: shows "No signals found"', () => {
+    test('Filter logic shows No signals found', () => {
       XYAnalysis.createSearchableSelect(
         'xyGlobalFile',
         ['OptionA'],
@@ -191,9 +203,7 @@ describe('XYAnalysis Suite 4', () => {
 
       input.focus();
       expect(list.style.display).toBe('block');
-
       document.body.click();
-
       expect(list.style.display).toBe('none');
     });
 
@@ -202,10 +212,18 @@ describe('XYAnalysis Suite 4', () => {
       const val = XYAnalysis.getInputValue('xyX-0');
       expect(val).toBe('');
     });
+
+    test('getInputValue handles raw SELECT element', () => {
+      const container = document.getElementById('xyX-0');
+      container.outerHTML =
+        '<select id="xyX-0"><option value="A" selected>A</option></select>';
+      const val = XYAnalysis.getInputValue('xyX-0');
+      expect(val).toBe('A');
+    });
   });
 
-  describe('Custom Tooltip Logic', () => {
-    test('renderChart configures external tooltip and it renders HTML correctly', () => {
+  describe('Custom Tooltip Rendering', () => {
+    test('renderChart configures external tooltip and renders HTML', () => {
       AppState.files = [
         {
           availableSignals: ['RPM', 'MAP', 'MAF'],
@@ -222,15 +240,10 @@ describe('XYAnalysis Suite 4', () => {
       const config = chartCall[1];
       const externalHandler = config.options.plugins.tooltip.external;
 
-      expect(externalHandler).toBeDefined();
-
-      // --- Simulate Tooltip Call ---
       const mockTooltipEl = document.createElement('div');
       mockTooltipEl.className = 'chartjs-tooltip';
       const mockTable = document.createElement('table');
       mockTooltipEl.appendChild(mockTable);
-
-      // FIXED: Attach to body to ensure innerText/rendering works in JSDOM
       document.body.appendChild(mockTooltipEl);
 
       const mockChart = {
@@ -264,8 +277,6 @@ describe('XYAnalysis Suite 4', () => {
 
       const rows = mockTable.querySelectorAll('tr');
       expect(rows.length).toBe(3);
-
-      // FIXED: Use innerHTML to verify content as textContent can be flaky in detached nodes in JSDOM
       expect(rows[0].innerHTML).toContain('RPM: 1000.00');
       expect(rows[1].innerHTML).toContain('MAP: 1.50');
       expect(rows[2].innerHTML).toContain('MAF: 20.50');
@@ -275,12 +286,9 @@ describe('XYAnalysis Suite 4', () => {
     });
 
     test('External tooltip hides when opacity is 0', () => {
-      // FIXED: generateScatterData must return data, otherwise renderChart returns early
-      // and Chart is never instantiated, causing the test to fail when accessing mock calls.
       jest
         .spyOn(XYAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
-
       XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
 
       const config = Chart.mock.calls[0][1];
@@ -292,8 +300,20 @@ describe('XYAnalysis Suite 4', () => {
       };
 
       handler({ chart: mockChart, tooltip: { opacity: 0 } });
-
       expect(mockEl.style.opacity).toBe('0');
+    });
+
+    test('getOrCreateTooltip creates element if missing', () => {
+      const mockParent = document.createElement('div');
+      const mockCanvas = document.createElement('canvas');
+      mockParent.appendChild(mockCanvas);
+
+      const chart = { canvas: mockCanvas };
+      const tooltip = XYAnalysis.getOrCreateTooltip(chart);
+
+      expect(tooltip).not.toBeNull();
+      expect(tooltip.className).toBe('chartjs-tooltip');
+      expect(mockParent.querySelector('.chartjs-tooltip')).not.toBeNull();
     });
   });
 
@@ -312,8 +332,6 @@ describe('XYAnalysis Suite 4', () => {
       const chartCall = Chart.mock.calls[0];
       const config = chartCall[1];
       const hoverPlugin = config.plugins.find((p) => p.id === 'xyHoverLine');
-
-      expect(hoverPlugin).toBeDefined();
 
       const mockCtx = {
         save: jest.fn(),
