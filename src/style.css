@@ -34,12 +34,12 @@ body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
   --text-main: #333;
   --text-muted: #666;
-  --card-bg: #1e1e1e;
-  --sidebar-bg: #252525;
-  --border-color: #333;
-  --input-bg: #2d2d2d;
-  --input-border: #444;
-  --text-color: #eee;
+  /* --card-bg: #1e1e1e; */
+  /* --sidebar-bg: #252525; */
+  /* --border-color: #333; */
+  /* --input-bg: #2d2d2d; */
+  /* --input-border: #444; */
+  /* --text-color: #eee; */
 }
 
 body.dark-theme .sidebar-left,
@@ -828,6 +828,18 @@ input[type='range']::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#xyModal {
+  --card-bg: #fff;
+  --text-main: #333;
+  --text-muted: #666;
+  --text-color: #333;
+  --input-bg: #fff;
+  --input-border: #ddd;
+  --border-color: #ddd;
+  --chart-canvas-bg: #fff;
+  --active-bg: #f0f0f0;
 }
 
 #xyModal .modal-content {
