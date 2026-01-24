@@ -944,6 +944,28 @@
             </div>
 
             <div
+              id="mathDescriptionContainer"
+              style="
+                margin-top: 10px;
+                padding: 10px;
+                background: #f1f3f5;
+                border-left: 4px solid #1c3d72;
+                border-radius: 4px;
+                display: none; /* Ukryte domyślnie */
+              "
+            >
+              <p
+                id="mathFormulaDescription"
+                style="
+                  margin: 0;
+                  font-size: 0.9em;
+                  line-height: 1.4;
+                  color: #495057;
+                "
+              ></p>
+            </div>
+
+            <div
               id="mathInputsContainer"
               style="
                 margin-top: 15px;
@@ -954,36 +976,28 @@
             ></div>
 
             <div
+              id="mathNameContainer"
               class="control-group"
               style="
                 margin-top: 15px;
-                padding: 12px;
-                background: #f8f9fa;
-                border: 1px solid #e9ecef;
-                border-radius: 6px;
+                border-top: 1px solid #eee;
+                padding-top: 15px;
+                display: none; /* <--- TO JEST KLUCZOWA ZMIANA */
               "
             >
-              <label
+              <label>New Channel Name:</label>
+              <input
+                type="text"
+                id="mathChannelName"
+                placeholder="e.g. My Boost Pressure"
                 style="
-                  font-size: 0.75em;
-                  font-weight: bold;
-                  color: #999;
-                  letter-spacing: 0.5px;
-                  text-transform: uppercase;
+                  width: 100%;
+                  padding: 8px;
+                  box-sizing: border-box;
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
                 "
-                >Formula Description</label
-              >
-              <p
-                id="mathFormulaDescription"
-                style="
-                  margin: 5px 0 0 0;
-                  font-size: 0.95em;
-                  line-height: 1.5;
-                  color: #444;
-                "
-              >
-                Select a formula to view details.
-              </p>
+              />
             </div>
           </div>
           <div
