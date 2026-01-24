@@ -942,6 +942,7 @@
                 onchange="onMathFormulaChange()"
               ></select>
             </div>
+
             <div
               id="mathInputsContainer"
               style="
@@ -951,20 +952,38 @@
                 gap: 10px;
               "
             ></div>
-            <div class="control-group" style="margin-top: 15px">
-              <label>New Channel Name:</label>
-              <input
-                type="text"
-                id="mathChannelName"
-                placeholder="e.g. My Boost Pressure"
+
+            <div
+              class="control-group"
+              style="
+                margin-top: 15px;
+                padding: 12px;
+                background: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+              "
+            >
+              <label
                 style="
-                  width: 100%;
-                  padding: 8px;
-                  box-sizing: border-box;
-                  border: 1px solid #ddd;
-                  border-radius: 4px;
+                  font-size: 0.75em;
+                  font-weight: bold;
+                  color: #999;
+                  letter-spacing: 0.5px;
+                  text-transform: uppercase;
                 "
-              />
+                >Formula Description</label
+              >
+              <p
+                id="mathFormulaDescription"
+                style="
+                  margin: 5px 0 0 0;
+                  font-size: 0.95em;
+                  line-height: 1.5;
+                  color: #444;
+                "
+              >
+                Select a formula to view details.
+              </p>
             </div>
           </div>
           <div

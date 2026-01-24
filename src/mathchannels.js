@@ -358,12 +358,33 @@ class MathChannels {
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) throw new Error('Invalid formula definition.');
 
+    const resolvedMapping = [...inputMapping];
+
+    definition.inputs.forEach((inputDef, idx) => {
+      if (!inputDef.isConstant) {
+        const requestedName = inputMapping[idx];
+        resolvedMapping[idx] = this.#resolveSignalName(
+          file,
+          inputDef,
+          requestedName
+        );
+      }
+    });
+
     let resultData = [];
 
     if (definition.customProcess) {
-      resultData = this.#executeCustomProcess(file, definition, inputMapping);
+      resultData = this.#executeCustomProcess(
+        file,
+        definition,
+        resolvedMapping
+      );
     } else {
-      resultData = this.#executeStandardFormula(file, definition, inputMapping);
+      resultData = this.#executeStandardFormula(
+        file,
+        definition,
+        resolvedMapping
+      );
     }
 
     if (options.smooth && options.smoothWindow > 1) {
@@ -374,6 +395,25 @@ class MathChannels {
     const unit = definition.unit || '';
 
     return this.#finalizeChannel(file, resultData, finalName, unit);
+  }
+
+  #resolveSignalName(file, inputDef, requestedName) {
+    if (file.signals[requestedName]) {
+      return requestedName;
+    }
+
+    if (Array.isArray(inputDef.name)) {
+      for (const alias of inputDef.name) {
+        const match = file.availableSignals.find((s) =>
+          s.toLowerCase().includes(alias.toLowerCase())
+        );
+        if (match && file.signals[match]) {
+          return match;
+        }
+      }
+    }
+
+    return requestedName;
   }
 
   #executeStandardFormula(file, definition, inputMapping) {
@@ -396,8 +436,11 @@ class MathChannels {
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-        if (!signalData)
-          throw new Error(`Signal '${signalName}' not found in file.`);
+        if (!signalData) {
+          throw new Error(
+            `Signal '${signalName}' not found in file '${file.name}'.`
+          );
+        }
         sourceSignals.push({ isConstant: false, data: signalData });
         if (!masterTimeBase) masterTimeBase = signalData;
       }
@@ -442,7 +485,10 @@ class MathChannels {
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-        if (!signalData) throw new Error(`Signal '${signalName}' not found.`);
+        if (!signalData)
+          throw new Error(
+            `Signal '${signalName}' not found in file '${file.name}'.`
+          );
         signals.push(signalData);
       }
     });
@@ -571,12 +617,50 @@ class MathChannels {
       container.innerHTML = "<p style='color:red'>No log file loaded.</p>";
       return;
     }
-    const file = AppState.files[0];
+
+    let targetFileIndex = 0;
+
+    const inputsWrapper = document.createElement('div');
+    inputsWrapper.id = 'mathFormulaInputs';
+
+    if (AppState.files.length > 1) {
+      const fileSelectWrapper = document.createElement('div');
+      fileSelectWrapper.style.marginBottom = '15px';
+      fileSelectWrapper.innerHTML = `<label class="math-label-small">Target File:</label>`;
+
+      const fileSelect = document.createElement('select');
+      fileSelect.id = 'mathTargetFile';
+      fileSelect.className = 'template-select';
+
+      AppState.files.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.text = `${i + 1}. ${f.name}`;
+        fileSelect.appendChild(opt);
+      });
+
+      fileSelect.onchange = (e) => {
+        targetFileIndex = parseInt(e.target.value, 10);
+        this.#renderFormulaInputs(inputsWrapper, definition, targetFileIndex);
+      };
+
+      fileSelectWrapper.appendChild(fileSelect);
+      container.appendChild(fileSelectWrapper);
+    }
+
+    container.appendChild(inputsWrapper);
+
+    this.#renderFormulaInputs(inputsWrapper, definition, targetFileIndex);
+    this.#renderPostProcessingUI(container);
+  }
+
+  #renderFormulaInputs(container, definition, fileIndex) {
+    container.innerHTML = '';
+    const file = AppState.files[fileIndex];
 
     definition.inputs.forEach((input, idx) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'math-input-wrapper';
-
       wrapper.innerHTML = `<label class="math-label-small">${input.label}</label>`;
 
       if (input.isConstant) {
@@ -595,7 +679,6 @@ class MathChannels {
           inputEl.type = 'text';
           inputEl.value = input.defaultValue;
         }
-
         inputEl.id = `math-input-${idx}`;
         inputEl.className = 'template-select';
         inputEl.style.width = '100%';
@@ -611,8 +694,6 @@ class MathChannels {
       }
       container.appendChild(wrapper);
     });
-
-    this.#renderPostProcessingUI(container);
   }
 
   #renderPostProcessingUI(container) {
@@ -819,6 +900,9 @@ class MathChannels {
   #executeCreation() {
     const formulaId = document.getElementById('mathFormulaSelect').value;
     const newNameInput = document.getElementById('mathChannelName').value;
+    const fileSelect = document.getElementById('mathTargetFile');
+
+    const targetFileIndex = fileSelect ? parseInt(fileSelect.value, 10) : 0;
 
     if (!formulaId) {
       alert('Please select a formula.');
@@ -842,7 +926,7 @@ class MathChannels {
     };
 
     try {
-      const createdNames = [];
+      let createdName = '';
 
       if (definition.isBatch) {
         const sourceString = inputMapping[0];
@@ -857,43 +941,39 @@ class MathChannels {
           const singleInputMapping = [sourceName, ...inputMapping.slice(1)];
           const generatedName = `Filtered: ${sourceName}`;
 
-          const finalName = this.createChannel(
-            0,
+          const name = this.createChannel(
+            targetFileIndex,
             'filtered_single',
             singleInputMapping,
             generatedName,
             options
           );
-          createdNames.push(finalName);
+          createdName = name;
         });
-
         this.#closeModal();
       } else {
-        const name = this.createChannel(
-          0,
+        createdName = this.createChannel(
+          targetFileIndex,
           formulaId,
           inputMapping,
           newNameInput,
           options
         );
-        createdNames.push(name);
         this.#closeModal();
       }
 
       if (typeof UI.renderSignalList === 'function') {
         UI.renderSignalList();
 
-        if (createdNames.length > 0) {
+        if (createdName) {
           setTimeout(() => {
-            createdNames.forEach((name) => {
-              const checkbox = document.querySelector(
-                `input[data-key="${name}"]`
-              );
-              if (checkbox) {
-                checkbox.checked = true;
-                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            });
+            const checkbox = document.querySelector(
+              `input[data-key="${createdName}"][data-file-idx="${targetFileIndex}"]`
+            );
+            if (checkbox) {
+              checkbox.checked = true;
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
           }, 100);
         }
       }
