@@ -383,6 +383,7 @@ export const ChartManager = {
 
     AppState.chartInstances.push(chart);
     this.initKeyboardControls(canvas, 0);
+    this._attachMouseListeners(canvas, 0);
   },
 
   formatDuration(totalSeconds) {
