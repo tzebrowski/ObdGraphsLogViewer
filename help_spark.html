@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spark Advance Guide</title>
+    <style>
+      :root {
+        --bg-color: #ffffff;
+        --text-color: #333333;
+        --card-bg: #f8f9fa;
+        --border-color: #e0e0e0;
+        --accent-color: #c22636; /* Alfa Red style */
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --danger-color: #dc3545;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-color: #1a1a1a;
+          --text-color: #e0e0e0;
+          --card-bg: #2d2d2d;
+          --border-color: #404040;
+          --warning-color: #ffc107; /* Keep it bright for visibility */
+        }
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--text-color);
+        background-color: var(--bg-color);
+        margin: 0;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      h1,
+      h2,
+      h3 {
+        color: var(--text-color);
+        margin-top: 1.5em;
+      }
+
+      h1 {
+        border-bottom: 2px solid var(--accent-color);
+        padding-bottom: 10px;
+        margin-top: 0;
+      }
+
+      h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .section-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      ul {
+        padding-left: 20px;
+      }
+
+      li {
+        margin-bottom: 8px;
+      }
+
+      strong {
+        font-weight: 600;
+      }
+
+      /* Table Styling */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        font-size: 0.95em;
+      }
+
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      th {
+        background-color: rgba(0, 0, 0, 0.05);
+        font-weight: bold;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        th {
+          background-color: rgba(255, 255, 255, 0.05);
+        }
+      }
+
+      /* Status Badges */
+      .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: bold;
+        color: #fff;
+      }
+
+      .status-success {
+        background-color: var(--success-color);
+      }
+      .status-warning {
+        background-color: var(--warning-color);
+        color: #333;
+      }
+      .status-danger {
+        background-color: var(--danger-color);
+      }
+
+      .icon-large {
+        font-size: 1.2em;
+      }
+
+      .note {
+        font-size: 0.9em;
+        color: #666;
+        font-style: italic;
+      }
+      @media (prefers-color-scheme: dark) {
+        .note {
+          color: #aaa;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>⚡ Understanding Spark Advance</h1>
+
+      <p>
+        Spark Advance (Ignition Timing) determines <em>when</em> the spark plug
+        fires relative to the piston's position. It is measured in degrees of
+        crankshaft rotation relative to <strong>Top Dead Center (TDC)</strong>.
+      </p>
+
+      <div class="section-card">
+        <h3>➕ Positive Values (Advanced Timing)</h3>
+        <p>
+          <strong>Definition:</strong> The spark occurs
+          <strong>BEFORE</strong> the piston reaches the very top (BTDC).
+        </p>
+        <ul>
+          <li>
+            <strong>Context:</strong> This is the normal operating state for
+            producing power.
+          </li>
+          <li>
+            <strong>Why?</strong> The air-fuel mixture takes time to burn.
+            Igniting it early ensures the maximum explosion pressure hits the
+            piston exactly as it starts its downward journey.
+          </li>
+          <li>
+            <strong>Typical Behavior:</strong>
+            <ul>
+              <li><strong>Idle:</strong> +5° to +15°</li>
+              <li><strong>Cruising:</strong> +30° to +45° (High efficiency)</li>
+              <li>
+                <strong>Full Throttle (WOT):</strong> +10° to +25° (Maximum
+                Power)
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section-card">
+        <h3>➖ Negative Values (Retarded Timing)</h3>
+        <p>
+          <strong>Definition:</strong> The spark occurs
+          <strong>AFTER</strong> the piston has passed the top point (ATDC).
+        </p>
+        <ul>
+          <li>
+            <strong>Context:</strong> Generally inefficient for power, but used
+            for specific ECU strategies.
+          </li>
+          <li>
+            <strong>Common Scenarios:</strong>
+            <ul>
+              <li>
+                <strong>Cold Start (Cat Heating):</strong> Modern engines delay
+                ignition (e.g., -15°) to burn fuel in the exhaust, heating the
+                catalytic converter rapidly.
+              </li>
+              <li>
+                <strong>Gear Shifts:</strong> The ECU momentarily pulls timing
+                (often to negative) during shifts to reduce torque and protect
+                the transmission (ZF 8HP).
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section-card">
+        <h3>🚀 Analyzing Full Throttle Data</h3>
+        <p>When analyzing a log with 100% accelerator pedal position:</p>
+        <ul>
+          <li>
+            <strong>Goal:</strong> You want to see a smooth,
+            <strong>positive (+) curve</strong> (e.g., +10° to +25°).
+          </li>
+          <li>
+            <strong>⚠️ Knock Detection:</strong> If you see a "sawtooth" pattern
+            where timing climbs and suddenly drops by 3° or more (without a gear
+            shift), the ECU is likely detecting knock.
+          </li>
+          <li>
+            <strong>❌ Danger Zone:</strong> If timing stays at
+            <strong>0° or negative</strong> during a pull (and no gear shift is
+            happening), it indicates severe knock, extreme intake temps, or
+            engine issues.
+          </li>
+        </ul>
+      </div>
+
+      <h3>📊 Quick Reference Table</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25%">Value Range</th>
+            <th style="width: 45%">Meaning</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>+10° to +25°</td>
+            <td>Full Throttle Acceleration</td>
+            <td>
+              <span class="status-badge status-success"
+                >✅ Healthy (Power)</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td>+30° to +45°</td>
+            <td>Light Load / Cruising</td>
+            <td>
+              <span class="status-badge status-success"
+                >✅ Healthy (Economy)</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td>-10° to -20°</td>
+            <td>Cold Start (First ~30s)</td>
+            <td>
+              <span class="status-badge status-success"
+                >✅ Normal (Warm-up)</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td>Sharp Drop (to -10°)</td>
+            <td>Gear Shift</td>
+            <td>
+              <span class="status-badge status-success"
+                >✅ Normal (Smoothness)</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td>Sudden Drop (-3°)</td>
+            <td>Knock Detected</td>
+            <td><span class="status-badge status-warning">⚠️ Caution</span></td>
+          </tr>
+          <tr>
+            <td>Zero / Negative</td>
+            <td>Full Throttle (No Shift)</td>
+            <td>
+              <span class="status-badge status-danger">❌ Critical Issue</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="note" style="margin-top: 20px">
+        * Note: Values may vary slightly depending on engine tuning, fuel
+        quality (95/98/100 RON), and ambient conditions.
+      </p>
+    </div>
+  </body>
+</html>

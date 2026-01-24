@@ -16,6 +16,7 @@ export const Preferences = {
     'pref-theme-dark': 'darkTheme',
     'pref-custom-palette': 'useCustomPalette',
     'pref-show-area-fills': 'showAreaFills',
+    'pref-smooth-lines': 'smoothLines',
   },
 
   defaultPrefs: {
@@ -24,6 +25,7 @@ export const Preferences = {
     darkTheme: false,
     useCustomPalette: false,
     showAreaFills: true,
+    smoothLines: false,
   },
 
   get prefs() {
@@ -100,6 +102,7 @@ export const Preferences = {
 
   _syncChart() {
     ChartManager.updateAreaFills();
+    ChartManager.updateSmoothing();
   },
 
   _safeJsonParse(str, fallback) {

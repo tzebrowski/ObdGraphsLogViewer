@@ -546,6 +546,18 @@ export const ChartManager = {
     AppState.chartInstances.forEach((_, idx) => this.resetChart(idx));
   },
 
+  updateSmoothing() {
+    const { smoothLines } = Preferences.prefs;
+
+    AppState.chartInstances.forEach((chart) => {
+      chart.data.datasets.forEach((dataset) => {
+        dataset.tension = smoothLines ? 0.8 : 0;
+        dataset.cubicInterpolationMode = smoothLines ? 'monotone' : 'default';
+      });
+      chart.update('none');
+    });
+  },
+
   updateAreaFills() {
     const { showAreaFills } = Preferences.prefs;
     AppState.chartInstances.forEach((chart) => {
@@ -624,7 +636,7 @@ export const ChartManager = {
     });
 
     const color = PaletteManager.getColorForSignal(fileIdx, sigIdx);
-    const { showAreaFills } = Preferences.prefs;
+    const { showAreaFills, smoothLines } = Preferences.prefs;
 
     const checkbox = document.querySelector(
       `#signalList input[data-key="${key}"][data-file-idx="${fileIdx}"]`
@@ -644,6 +656,8 @@ export const ChartManager = {
       borderColor: color,
       borderWidth: isVisible ? 3 : 1.5,
       pointRadius: 0,
+      tension: smoothLines ? 0.4 : 0,
+      cubicInterpolationMode: smoothLines ? 'monotone' : 'default',
       backgroundColor: showAreaFills
         ? this.getAlphaColor(color, 0.1)
         : 'transparent',
