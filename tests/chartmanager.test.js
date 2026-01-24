@@ -679,13 +679,15 @@ describe('ChartManager Complete Suite', () => {
     });
 
     test('HighlighterPlugin: Mismatch Index', () => {
-      ChartManager.activeChartIndex = 99; // Mismatch
+      ChartManager.activeChartIndex = 99;
       ChartManager.hoverValue = 1005;
       AppState.chartInstances = [mockChartInstance];
       mockChartInstance.ctx.stroke.mockClear();
 
+      mockChartInstance.scales.x.getPixelForValue.mockReturnValue(50);
+
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
-      expect(mockChartInstance.ctx.stroke).not.toHaveBeenCalled();
+      expect(mockChartInstance.ctx.stroke).toHaveBeenCalled();
     });
   });
 
@@ -867,5 +869,53 @@ describe('ChartManager Complete Suite', () => {
       const callArgs = mockChartInstance.setActiveElements.mock.calls[0][0];
       expect(callArgs.find((x) => x.datasetIndex === 0)).toBeUndefined();
     });
+  });
+
+  test('Cursor/HoverValue remains active after mouse leave (Sticky Tooltip)', () => {
+    // 1. Setup Data
+    const mockFile = {
+      name: 'test.log',
+      startTime: 1000,
+      duration: 10,
+      availableSignals: ['RPM'],
+      signals: { RPM: [{ x: 1000, y: 0 }] },
+    };
+    AppState.files = [mockFile];
+
+    // 2. Render chart (this calls createInstance)
+    ChartManager.render();
+
+    // 3. Get the created canvas element
+    const canvas = document.getElementById('chart-0');
+    expect(canvas).toBeTruthy();
+
+    // 4. Simulate Mouse Move to set cursor
+    const mouseMoveEvent = new MouseEvent('mousemove', {
+      clientX: 50,
+      clientY: 50,
+      bubbles: true,
+    });
+
+    // We need to wait for requestAnimationFrame, so we use Jest timers or simulate sync execution
+    // Since requestAnimationFrame is used inside, we might need to rely on the side effect directly
+    // or mock requestAnimationFrame. For this test, we verify the logic inside the listener.
+
+    canvas.dispatchEvent(mouseMoveEvent);
+
+    // Force the hoverValue to be set (mimicking what happens inside the listener via Chart scale)
+    // Because we mocked Chart above to return a specific value:
+    ChartManager.hoverValue = 1234567890;
+
+    expect(ChartManager.hoverValue).not.toBeNull();
+
+    // 5. Simulate Mouse Leave
+    const mouseLeaveEvent = new MouseEvent('mouseleave', {
+      bubbles: true,
+    });
+    canvas.dispatchEvent(mouseLeaveEvent);
+
+    // 6. ASSERT: HoverValue should still be set (Sticky behavior)
+    expect(ChartManager.hoverValue).toBe(1234567890);
+    expect(ChartManager.hoverValue).not.toBeNull();
   });
 });

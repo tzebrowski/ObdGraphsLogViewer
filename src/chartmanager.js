@@ -126,7 +126,7 @@ export const ChartManager = {
       currentVal = (chart.scales.x.min + chart.scales.x.max) / 2;
     }
 
-    const stepSize = 100; // 0.1s
+    const stepSize = 100;
     let newVal = currentVal + stepCount * stepSize;
 
     const maxTime = file.startTime + file.duration * 1000;
@@ -306,6 +306,10 @@ export const ChartManager = {
     }
 
     UI.updateDataLoadedState(true);
+
+    if (this.hoverValue === null && AppState.files[0]) {
+      this.hoverValue = AppState.files[0].startTime;
+    }
 
     if (this.viewMode === 'overlay') {
       this._renderOverlayMode(container);
@@ -798,9 +802,6 @@ export const ChartManager = {
     canvas.addEventListener('mouseleave', () => {
       const chart = AppState.chartInstances[index];
       if (!chart) return;
-      this.hoverValue = null;
-      this.activeChartIndex = null;
-      requestAnimationFrame(() => chart.draw());
     });
 
     canvas.addEventListener('dblclick', (e) => {
@@ -980,10 +981,7 @@ export const ChartManager = {
         ctx.restore();
       }
 
-      if (
-        ChartManager.activeChartIndex === chartIdx &&
-        ChartManager.hoverValue !== null
-      ) {
+      if (ChartManager.hoverValue !== null) {
         const xPixel = x.getPixelForValue(ChartManager.hoverValue);
         if (xPixel >= left && xPixel <= right) {
           ctx.save();
