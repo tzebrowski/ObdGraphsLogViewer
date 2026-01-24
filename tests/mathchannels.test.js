@@ -410,4 +410,66 @@ describe('MathChannels', () => {
       expect(document.getElementById('mathModal').style.display).toBe('none');
     });
   });
+
+  test('filtered_batch successfully creates multiple channels', () => {
+    AppState.files = [
+      {
+        name: 'batch.json',
+        signals: {
+          SigA: [{ x: 1, y: 10 }],
+          SigB: [{ x: 1, y: 20 }],
+          RPM: [{ x: 1, y: 3000 }],
+        },
+        availableSignals: ['SigA', 'SigB', 'RPM'],
+      },
+    ];
+
+    window.openMathModal();
+
+    const select = document.getElementById('mathFormulaSelect');
+    const opt = document.createElement('option');
+    opt.value = 'filtered_batch';
+    select.appendChild(opt);
+    select.value = 'filtered_batch';
+
+    const container = document.getElementById('mathInputsContainer');
+    container.innerHTML = '';
+
+    const createInput = (id, val) => {
+      const i = document.createElement('input');
+      i.id = id;
+      i.value = val;
+      container.appendChild(i);
+    };
+
+    createInput('math-input-0', 'SigA, SigB');
+    createInput('math-input-1', 'RPM');
+    createInput('math-input-2', '2500');
+    createInput('math-input-3', '1');
+    createInput('math-input-4', '0');
+
+    const createSpy = jest.spyOn(mathChannels, 'createChannel');
+
+    window.createMathChannel();
+
+    expect(createSpy).toHaveBeenCalledTimes(2);
+
+    expect(createSpy).toHaveBeenNthCalledWith(
+      1,
+      0,
+      'filtered_single',
+      ['SigA', 'RPM', '2500', '1', '0'],
+      'Filtered: SigA',
+      expect.anything()
+    );
+
+    expect(createSpy).toHaveBeenNthCalledWith(
+      2,
+      0,
+      'filtered_single',
+      ['SigB', 'RPM', '2500', '1', '0'],
+      'Filtered: SigB',
+      expect.anything()
+    );
+  });
 });
