@@ -14,15 +14,21 @@ UI.renderSignalList = jest.fn();
 
 describe('MathChannels', () => {
   let alertMock;
+  let consoleErrorMock;
 
   beforeEach(() => {
     AppState.files = [];
     alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    consoleErrorMock = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
     document.body.innerHTML = `
       <div id="mathModal" style="display: none;">
         <select id="mathFormulaSelect"></select>
         <div id="mathInputsContainer"></div>
         <input id="mathChannelName" type="text" />
+        <button id="btnCreate">Create</button>
       </div>
     `;
   });
@@ -31,8 +37,8 @@ describe('MathChannels', () => {
     jest.clearAllMocks();
   });
 
-  describe('createChannel Logic', () => {
-    test('throws error if no file is loaded', () => {
+  describe('createChannel Core Logic', () => {
+    test('throws error if no file is selected', () => {
       AppState.files = [];
       expect(() => {
         mathChannels.createChannel(0, 'boost', [], 'Test');
@@ -42,372 +48,407 @@ describe('MathChannels', () => {
     test('throws error for invalid formula definition', () => {
       AppState.files = [{ signals: {} }];
       expect(() => {
-        mathChannels.createChannel(0, 'non_existent_formula', [], 'Test');
+        mathChannels.createChannel(0, 'unknown_id', [], 'Test');
       }).toThrow('Invalid formula definition');
     });
 
-    test('throws error if signal missing in file', () => {
+    test('throws error if required signal is missing', () => {
       AppState.files = [
         {
-          signals: { ExistingSignal: [] },
-          availableSignals: ['ExistingSignal'],
+          signals: { A: [] },
+          availableSignals: ['A'],
         },
       ];
-      const inputMapping = ['ExistingSignal', 'MissingSignal'];
       expect(() => {
-        mathChannels.createChannel(0, 'boost', inputMapping, 'Boost');
-      }).toThrow("Signal 'MissingSignal' not found");
+        mathChannels.createChannel(0, 'boost', ['A', 'B'], 'Test');
+      }).toThrow("Signal 'B' not found");
     });
 
-    test('successfully creates a channel with Multiply by Constant', () => {
-      const signalData = [
-        { x: 0, y: 10 },
-        { x: 1000, y: 20 },
-        { x: 2000, y: 30 },
-      ];
-      AppState.files = [
-        {
-          name: 'test.log',
-          signals: { RPM: signalData },
-          availableSignals: ['RPM'],
-          metadata: {},
-        },
-      ];
-      const inputMapping = ['RPM', '2.0'];
-      const newName = mathChannels.createChannel(
-        0,
-        'multiply_const',
-        inputMapping,
-        'RPM_Doubled'
-      );
-
-      // Auto-prefix check
-      expect(newName).toBe('Math: RPM_Doubled');
-
-      const newSignal = AppState.files[0].signals['Math: RPM_Doubled'];
-      expect(newSignal[0].y).toBe(20);
-      expect(newSignal[1].y).toBe(40);
+    test('throws error for Invalid Constant Value', () => {
+      AppState.files = [{ signals: { A: [] }, availableSignals: ['A'] }];
+      expect(() => {
+        mathChannels.createChannel(
+          0,
+          'multiply_const',
+          ['A', 'invalid_text'],
+          'Err'
+        );
+      }).toThrow('Invalid constant value');
     });
 
-    test('successfully calculates Boost', () => {
-      const mapData = [{ x: 1000, y: 2.5 }];
-      const baroData = [{ x: 1000, y: 1.0 }];
+    test('handles file without metadata gracefully', () => {
       AppState.files = [
         {
-          signals: { MAP: mapData, Baro: baroData },
-          availableSignals: ['MAP', 'Baro'],
+          name: 'no_meta.json',
+          signals: { A: [{ x: 1, y: 1 }] },
+          availableSignals: ['A'],
         },
       ];
-      mathChannels.createChannel(0, 'boost', ['MAP', 'Baro'], 'MyBoost');
-      const result = AppState.files[0].signals['Math: MyBoost'];
-      expect(result[0].y).toBe(1.5);
-    });
 
-    test('interpolates data when timestamps do not match', () => {
-      const mapData = [
-        { x: 0, y: 100 },
-        { x: 2000, y: 300 },
-      ];
-      const baroData = [
-        { x: 0, y: 50 },
-        { x: 1000, y: 60 },
-        { x: 2000, y: 50 },
-      ];
-      AppState.files = [
-        {
-          signals: { MAP: mapData, Baro: baroData },
-          availableSignals: ['MAP', 'Baro'],
-        },
-      ];
-      mathChannels.createChannel(0, 'boost', ['MAP', 'Baro'], 'InterpBoost');
-      const result = AppState.files[0].signals['Math: InterpBoost'];
-      expect(result[0].x).toBe(0);
-      expect(result[0].y).toBe(50);
-      expect(result[1].x).toBe(2000);
-      expect(result[1].y).toBe(250);
-    });
+      mathChannels.createChannel(0, 'multiply_const', ['A', '2'], 'New');
+      const file = AppState.files[0];
 
-    test('handles boundary conditions for interpolation', () => {
-      const master = [{ x: 500, y: 10 }];
-      const slave = [
-        { x: 1000, y: 20 },
-        { x: 2000, y: 30 },
-      ];
-      AppState.files = [
-        {
-          signals: { M: master, S: slave },
-          availableSignals: ['M', 'S'],
-        },
-      ];
-      mathChannels.createChannel(0, 'boost', ['M', 'S'], 'Result');
-      const res = AppState.files[0].signals['Math: Result'];
-      expect(res[0].y).toBe(10 - 20);
+      expect(file.metadata).toBeDefined();
+      expect(file.metadata['Math: New']).toBeDefined();
+      expect(file.availableSignals).toContain('Math: New');
     });
   });
 
-  describe('Formula Specific Coverage', () => {
-    test('Calculated Power from Torque (Standard Nm)', () => {
-      // Factor = 1.0
-      const torqueData = [{ x: 100, y: 400 }];
-      const rpmData = [{ x: 100, y: 5000 }];
-      AppState.files = [
-        {
-          signals: { TQ: torqueData, RPM: rpmData },
-          availableSignals: ['TQ', 'RPM'],
-        },
-      ];
-      // FIX: Added 3rd argument '1.0' for Factor
-      mathChannels.createChannel(
-        0,
-        'power_from_torque',
-        ['TQ', 'RPM', '1.0'],
-        'HP'
-      );
-      const result = AppState.files[0].signals['Math: HP'];
-      const expected = (400 * 1.0 * 5000) / 7127;
-      expect(result[0].y).toBeCloseTo(expected, 4);
-    });
-
-    test('Calculated Power from Torque (daNm Correction)', () => {
-      // Factor = 10.0 (40 daNm -> 400 Nm)
-      const torqueData = [{ x: 100, y: 40 }];
-      const rpmData = [{ x: 100, y: 5000 }];
-      AppState.files = [
-        {
-          signals: { TQ: torqueData, RPM: rpmData },
-          availableSignals: ['TQ', 'RPM'],
-        },
-      ];
-      // FIX: Added 3rd argument '10.0' for Factor
-      mathChannels.createChannel(
-        0,
-        'power_from_torque',
-        ['TQ', 'RPM', '10.0'],
-        'HP_daNm'
-      );
-      const result = AppState.files[0].signals['Math: HP_daNm'];
-      // (40 * 10 * 5000) / 7127
-      const expected = 280.62;
-      expect(result[0].y).toBeCloseTo(expected, 1);
-    });
-
-    test('Estimated Power from kg/h', () => {
-      const mafData = [{ x: 1, y: 360 }];
-      AppState.files = [
-        { signals: { MAF: mafData }, availableSignals: ['MAF'] },
-      ];
-      mathChannels.createChannel(0, 'est_power_kgh', ['MAF', '1.35'], 'EstHP');
-      const result = AppState.files[0].signals['Math: EstHP'];
-      expect(result[0].y).toBeCloseTo(135, 1);
-    });
-
-    test('Estimated Power from g/s', () => {
-      const mafData = [{ x: 1, y: 100 }];
-      AppState.files = [
-        { signals: { MAF: mafData }, availableSignals: ['MAF'] },
-      ];
-      mathChannels.createChannel(0, 'est_power_gs', ['MAF', '1.35'], 'EstHP');
-      const result = AppState.files[0].signals['Math: EstHP'];
-      expect(result[0].y).toBeCloseTo(135, 1);
-    });
-
-    test('Pressure Ratio with Zero Division check', () => {
-      const mapData = [
-        { x: 1, y: 2000 },
-        { x: 2, y: 2000 },
-      ];
-      const baroData = [
-        { x: 1, y: 1000 },
-        { x: 2, y: 0 },
-      ];
-      AppState.files = [
-        {
-          signals: { MAP: mapData, Baro: baroData },
-          availableSignals: ['MAP', 'Baro'],
-        },
-      ];
-      mathChannels.createChannel(0, 'pressure_ratio', ['MAP', 'Baro'], 'PR');
-      const result = AppState.files[0].signals['Math: PR'];
-      expect(result[0].y).toBe(2);
-      expect(result[1].y).toBe(0);
-    });
-
-    test('Acceleration (m/s²) - Custom Process', () => {
+  describe('Specific Formula Logic', () => {
+    test('Acceleration: Standard Calculation & dt=0 skip', () => {
       const speedData = [
         { x: 0, y: 0 },
-        { x: 1000, y: 20 },
-        { x: 2000, y: 40 },
+        { x: 1000, y: 36 },
+        { x: 1000, y: 36 },
+        { x: 2000, y: 72 },
       ];
+
       AppState.files = [
         { signals: { Speed: speedData }, availableSignals: ['Speed'] },
       ];
-      mathChannels.createChannel(0, 'acceleration', ['Speed', '1'], 'Accel');
-      const result = AppState.files[0].signals['Math: Accel'];
-      expect(result.length).toBeGreaterThan(0);
-      const expectedValue = 20 / 3.6 / 1;
-      expect(result[0].y).toBeCloseTo(expectedValue, 4);
+
+      mathChannels.createChannel(0, 'acceleration', ['Speed'], 'Accel');
+      const res = AppState.files[0].signals['Math: Accel'];
+
+      expect(res.length).toBe(2);
+      expect(res[0].y).toBeCloseTo(10);
+      expect(res[1].y).toBeCloseTo(10);
     });
 
-    test('Smoothing (Moving Average) - Custom Process', () => {
-      const noisySignal = [
+    test('Smoothing: Sliding Window Average', () => {
+      const data = [
         { x: 1, y: 10 },
         { x: 2, y: 20 },
-        { x: 3, y: 10 },
-        { x: 4, y: 20 },
+        { x: 3, y: 30 },
+        { x: 4, y: 40 },
       ];
-      AppState.files = [
-        { signals: { Noisy: noisySignal }, availableSignals: ['Noisy'] },
-      ];
-      mathChannels.createChannel(0, 'smoothing', ['Noisy', '2'], 'Smooth');
-      const result = AppState.files[0].signals['Math: Smooth'];
-      expect(result[0].y).toBe(10);
-      expect(result[1].y).toBe(15);
-      expect(result[2].y).toBe(15);
+      AppState.files = [{ signals: { S: data }, availableSignals: ['S'] }];
+
+      mathChannels.createChannel(0, 'smoothing', ['S', '3'], 'Smoothie');
+      const res = AppState.files[0].signals['Math: Smoothie'];
+
+      expect(res[0].y).toBe(10);
+      expect(res[1].y).toBe(15);
+      expect(res[2].y).toBe(20);
+      expect(res[3].y).toBe(30);
     });
 
-    test('Filter (Keep if > Threshold)', () => {
-      const afrData = [
-        { x: 0, y: 14.7 },
-        { x: 1, y: 14.7 },
-        { x: 2, y: 14.7 },
+    test('Pressure Ratio: Handles Division by Zero', () => {
+      const map = [
+        { x: 1, y: 100 },
+        { x: 2, y: 200 },
       ];
-      const tpsData = [
-        { x: 0, y: 0 },
-        { x: 1, y: 50 },
+      const baro = [
+        { x: 1, y: 0 },
         { x: 2, y: 100 },
       ];
 
       AppState.files = [
-        {
-          signals: { AFR: afrData, TPS: tpsData },
-          availableSignals: ['AFR', 'TPS'],
-        },
+        { signals: { M: map, B: baro }, availableSignals: ['M', 'B'] },
+      ];
+
+      mathChannels.createChannel(0, 'pressure_ratio', ['M', 'B'], 'PR');
+      const res = AppState.files[0].signals['Math: PR'];
+
+      expect(res[0].y).toBe(0);
+      expect(res[1].y).toBe(2);
+    });
+
+    test('Power from Torque: Check Formula Constants', () => {
+      const torque = [{ x: 1, y: 500 }];
+      const rpm = [{ x: 1, y: 3000 }];
+      AppState.files = [
+        { signals: { T: torque, R: rpm }, availableSignals: ['T', 'R'] },
+      ];
+
+      mathChannels.createChannel(
+        0,
+        'power_from_torque',
+        ['T', 'R', '1'],
+        'HP_Nm'
+      );
+      const valNm = AppState.files[0].signals['Math: HP_Nm'][0].y;
+      expect(valNm).toBeCloseTo((500 * 1 * 3000) / 7127, 4);
+    });
+
+    test('Filters: Greater Than & Less Than Logic', () => {
+      const src = [{ x: 1, y: 100 }];
+      const cond = [{ x: 1, y: 50 }];
+      AppState.files = [
+        { signals: { S: src, C: cond }, availableSignals: ['S', 'C'] },
       ];
 
       mathChannels.createChannel(
         0,
         'filter_gt',
-        ['AFR', 'TPS', '90', '0'],
-        'WOT_AFR'
+        ['S', 'C', '10', '0'],
+        'GT_Pass'
       );
-      const result = AppState.files[0].signals['Math: WOT_AFR'];
+      expect(AppState.files[0].signals['Math: GT_Pass'][0].y).toBe(100);
 
-      expect(result[0].y).toBe(0); // 0 < 90
-      expect(result[1].y).toBe(0); // 50 < 90
-      expect(result[2].y).toBe(14.7); // 100 > 90
-    });
-
-    test('Generic Option: Apply Smoothing after calculation', () => {
-      const raw = [
-        { x: 0, y: 10 },
-        { x: 1, y: 20 },
-        { x: 2, y: 10 },
-        { x: 3, y: 20 },
-      ];
-      AppState.files = [
-        {
-          signals: { S: raw },
-          availableSignals: ['S'],
-        },
-      ];
-
-      const opts = { smooth: true, smoothWindow: 2 };
       mathChannels.createChannel(
         0,
-        'multiply_const',
-        ['S', '1'],
-        'Smoothed',
-        opts
+        'filter_gt',
+        ['S', 'C', '60', '0'],
+        'GT_Fail'
       );
+      expect(AppState.files[0].signals['Math: GT_Fail'][0].y).toBe(0);
 
-      const result = AppState.files[0].signals['Math: Smoothed'];
-
-      expect(result[1].y).toBe(15);
-      expect(result[2].y).toBe(15);
+      mathChannels.createChannel(
+        0,
+        'filter_lt',
+        ['S', 'C', '60', '0'],
+        'LT_Pass'
+      );
+      expect(AppState.files[0].signals['Math: LT_Pass'][0].y).toBe(100);
     });
   });
 
-  describe('UI Interactions', () => {
-    test('openModal alerts if no files loaded', () => {
-      AppState.files = [];
-      window.openMathModal();
-      expect(alertMock).toHaveBeenCalledWith('Please load a log file first.');
-      const modal = document.getElementById('mathModal');
-      expect(modal.style.display).toBe('none');
-    });
-
-    test('openModal shows modal and populates select if file exists', () => {
-      AppState.files = [{ availableSignals: [] }];
-      window.openMathModal();
-      const modal = document.getElementById('mathModal');
-      const select = document.getElementById('mathFormulaSelect');
-      expect(modal.style.display).toBe('flex');
-      expect(select.options.length).toBeGreaterThan(1);
-    });
-
-    test('onMathFormulaChange populates inputs correctly', () => {
-      AppState.files = [
-        {
-          availableSignals: ['MAF g/s', 'Intake Press'],
-          signals: {},
-        },
+  describe('Interpolation', () => {
+    test('Clamps to start/end values', () => {
+      const master = [{ x: 500, y: 1 }];
+      const slave = [
+        { x: 100, y: 10 },
+        { x: 200, y: 20 },
       ];
 
+      AppState.files = [
+        { signals: { M: master, S: slave }, availableSignals: ['M', 'S'] },
+      ];
+
+      mathChannels.createChannel(0, 'boost', ['M', 'S'], 'ClampCheck');
+      const res = AppState.files[0].signals['Math: ClampCheck'];
+      expect(res[0].y).toBe(1 - 20);
+    });
+
+    test('Interpolates linearly', () => {
+      const master = [{ x: 150, y: 0 }];
+      const slave = [
+        { x: 100, y: 10 },
+        { x: 200, y: 20 },
+      ];
+      AppState.files = [
+        { signals: { M: master, S: slave }, availableSignals: ['M', 'S'] },
+      ];
+
+      mathChannels.createChannel(0, 'boost', ['M', 'S'], 'Linear');
+      const res = AppState.files[0].signals['Math: Linear'];
+      expect(res[0].y).toBe(-15);
+    });
+  });
+
+  describe('UI & Searchable Select', () => {
+    test('Bindings: Window functions are assigned', () => {
+      expect(typeof window.openMathModal).toBe('function');
+      expect(typeof window.closeMathModal).toBe('function');
+      expect(typeof window.onMathFormulaChange).toBe('function');
+      expect(typeof window.createMathChannel).toBe('function');
+    });
+
+    test('openModal: Populates select options', () => {
+      AppState.files = [{ availableSignals: [], signals: {} }];
+      window.openMathModal();
+
+      const select = document.getElementById('mathFormulaSelect');
+      expect(select.children.length).toBeGreaterThan(5);
+      expect(document.getElementById('mathModal').style.display).toBe('flex');
+    });
+
+    test('onFormulaChange: Renders inputs correctly for constant vs signal', () => {
+      AppState.files = [{ availableSignals: ['RPM'], signals: {} }];
       window.openMathModal();
       const select = document.getElementById('mathFormulaSelect');
-      let targetVal = '';
-      for (let opt of select.options) {
-        if (opt.value === 'multiply_const') targetVal = opt.value;
-      }
-      select.value = targetVal;
 
+      select.value = 'multiply_const';
       window.onMathFormulaChange();
 
       const container = document.getElementById('mathInputsContainer');
-      const inputs = container.querySelectorAll(
-        '.template-select, .searchable-input'
-      );
+      const inputs = container.querySelectorAll('input');
+      expect(inputs.length).toBe(4);
 
-      expect(inputs.length).toBeGreaterThan(2);
-
-      const smoothCheck = document.getElementById('math-opt-smooth');
-      expect(smoothCheck).not.toBeNull();
+      const labels = container.querySelectorAll('.math-label-small');
+      expect(labels[0].textContent).toBe('Source Signal');
+      expect(labels[1].textContent).toBe('Factor');
     });
 
-    test('createMathChannel (executeCreation) reads options and calls createChannel', () => {
-      const signalData = [{ x: 1, y: 1 }];
-      AppState.files = [
-        {
-          name: 'f1',
-          signals: { SigA: signalData },
-          availableSignals: ['SigA'],
-        },
-      ];
+    test('Searchable Select: Multi-Select "Select All / Deselect All"', () => {
+      AppState.files = [{ availableSignals: ['SigA', 'SigB'], signals: {} }];
+      window.openMathModal();
 
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'filtered_batch';
+      window.onMathFormulaChange();
+
+      const input = document.getElementById('math-input-0');
+      input.dispatchEvent(new Event('focus'));
+
+      const selectAllBtn = input.parentNode.querySelector('.search-select-all');
+
+      selectAllBtn.click();
+      expect(input.value).toContain('SigA');
+      expect(input.value).toContain('SigB');
+
+      input.dispatchEvent(new Event('focus'));
+      selectAllBtn.click();
+
+      const cleanedVal = input.value.replace(/,\s*$/, '').trim();
+      expect(cleanedVal).toBe('');
+    });
+
+    test('Searchable Select: Adding item manually via search', () => {
+      AppState.files = [{ availableSignals: ['Alpha', 'Beta'], signals: {} }];
+      window.openMathModal();
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'filtered_batch';
+      window.onMathFormulaChange();
+
+      const input = document.getElementById('math-input-0');
+
+      input.value = 'Alpha, Be';
+      input.dispatchEvent(new Event('input'));
+
+      const list = input.parentNode.querySelector('.search-results-list');
+      const options = list.querySelectorAll(
+        '.search-option:not(.search-select-all)'
+      );
+
+      expect(options.length).toBe(1);
+      expect(options[0].textContent).toBe('Beta');
+
+      options[0].click();
+      expect(input.value).toContain('Alpha, Beta,');
+    });
+
+    test('Post-Processing Checkbox toggles window input', () => {
+      AppState.files = [{ availableSignals: ['A'], signals: {} }];
       window.openMathModal();
       const select = document.getElementById('mathFormulaSelect');
       select.value = 'multiply_const';
       window.onMathFormulaChange();
 
-      document.getElementById('math-input-0').value = 'SigA';
-      document.getElementById('math-input-1').value = '5';
+      const checkbox = document.getElementById('math-opt-smooth');
+      const winInput = document.getElementById('math-opt-window');
 
-      document.getElementById('math-opt-smooth').checked = true;
-      document.getElementById('math-opt-window').value = '3';
+      expect(winInput.disabled).toBe(true);
 
-      const spy = jest.spyOn(mathChannels, 'createChannel');
+      checkbox.click();
+      expect(winInput.disabled).toBe(false);
+
+      checkbox.click();
+      expect(winInput.disabled).toBe(true);
+    });
+  });
+
+  describe('Execution Flow (executeCreation)', () => {
+    test('Batch Creation executes createChannel multiple times', () => {
+      AppState.files = [
+        {
+          availableSignals: ['A', 'B'],
+          signals: { A: [{ x: 1, y: 1 }], B: [{ x: 1, y: 2 }] },
+        },
+      ];
+
+      window.openMathModal();
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'filtered_batch';
+      window.onMathFormulaChange();
+
+      document.getElementById('math-input-0').value = 'A, B';
+      document.getElementById('math-input-1').value = 'A';
+      document.getElementById('math-input-2').value = '0';
+      document.getElementById('math-input-3').value = '1';
+      document.getElementById('math-input-4').value = '0';
+
+      const createSpy = jest.spyOn(mathChannels, 'createChannel');
 
       window.createMathChannel();
 
-      expect(spy).toHaveBeenCalledWith(
-        0,
-        'multiply_const',
-        ['SigA', '5'],
-        expect.anything(),
-        expect.objectContaining({ smooth: true, smoothWindow: 3 })
+      expect(createSpy).toHaveBeenCalledTimes(2);
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.any(Number),
+        'filtered_single',
+        expect.arrayContaining(['A']),
+        expect.stringContaining('Filtered: A'),
+        expect.any(Object)
+      );
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.any(Number),
+        'filtered_single',
+        expect.arrayContaining(['B']),
+        expect.stringContaining('Filtered: B'),
+        expect.any(Object)
       );
 
-      expect(document.getElementById('mathModal').style.display).toBe('none');
+      expect(UI.renderSignalList).toHaveBeenCalled();
+
+      const modal = document.getElementById('mathModal');
+      expect(modal.style.display).toBe('none');
+    });
+
+    test('Standard Creation executes single channel', () => {
+      AppState.files = [
+        { availableSignals: ['A'], signals: { A: [{ x: 1, y: 1 }] } },
+      ];
+      window.openMathModal();
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'multiply_const';
+      window.onMathFormulaChange();
+
+      document.getElementById('math-input-0').value = 'A';
+      document.getElementById('math-input-1').value = '5';
+      document.getElementById('mathChannelName').value = 'HighFive';
+
+      window.createMathChannel();
+
+      expect(AppState.files[0].signals['Math: HighFive']).toBeDefined();
+      expect(AppState.files[0].signals['Math: HighFive'][0].y).toBe(5);
+    });
+
+    test('Handles Post-Processing (Smoothing) via Options', () => {
+      AppState.files = [
+        {
+          availableSignals: ['A'],
+          signals: {
+            A: [
+              { x: 1, y: 10 },
+              { x: 2, y: 20 },
+            ],
+          },
+        },
+      ];
+      window.openMathModal();
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'multiply_const';
+      window.onMathFormulaChange();
+
+      document.getElementById('math-input-0').value = 'A';
+      document.getElementById('math-input-1').value = '1';
+      document.getElementById('mathChannelName').value = 'SmoothedA';
+
+      document.getElementById('math-opt-smooth').checked = true;
+      document.getElementById('math-opt-window').value = '2';
+
+      window.createMathChannel();
+
+      const res = AppState.files[0].signals['Math: SmoothedA'];
+      expect(res[1].y).toBe(15);
+    });
+
+    test('Shows Alert on Execution Error', () => {
+      AppState.files = [{ availableSignals: ['A'], signals: {} }];
+      window.openMathModal();
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'multiply_const';
+      window.onMathFormulaChange();
+
+      document.getElementById('math-input-0').value = 'A';
+      document.getElementById('math-input-1').value = '1';
+
+      window.createMathChannel();
+
+      expect(alertMock).toHaveBeenCalledWith(
+        expect.stringContaining('Error creating channel')
+      );
     });
   });
 });

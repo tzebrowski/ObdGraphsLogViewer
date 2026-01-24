@@ -384,7 +384,19 @@
                   <span class="slider-round"></span>
                 </label>
               </div>
-
+              <hr />
+              <div class="pref-item">
+                <div class="pref-info">
+                  <span class="pref-title">Smooth Lines</span>
+                  <span class="pref-desc"
+                    >Interpolate points for smoother curves</span
+                  >
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pref-smooth-lines" />
+                  <span class="slider-round"></span>
+                </label>
+              </div>
               <hr />
               <div class="pref-item">
                 <div class="pref-info">
@@ -524,27 +536,6 @@
             </p>
 
             <div class="info-grid">
-              <div class="info-card">
-                <h4>⌨️ Keyboard Shortcuts</h4>
-                <ul
-                  style="
-                    list-style: none;
-                    padding-left: 0;
-                    font-size: 0.85em;
-                    color: #555;
-                  "
-                >
-                  <li><strong>A</strong> - Add Annotation at cursor</li>
-                  <li><strong>E</strong> - Export visible area to CSV</li>
-                  <li><strong>L</strong> - Toggle Floating Legend</li>
-                  <li>
-                    <strong>Arrows</strong> - Pan Left/Right (Shift for faster)
-                  </li>
-                  <li><strong>+ / -</strong> - Zoom In / Out</li>
-                  <li><strong>R</strong> - Reset View</li>
-                </ul>
-              </div>
-
               <div
                 class="info-card data-source-card"
                 style="grid-column: span 2"
@@ -607,18 +598,67 @@
               </div>
 
               <div class="info-card">
+                <h4>⌨️ Keyboard Shortcuts</h4>
+                <ul
+                  style="
+                    list-style: none;
+                    padding-left: 0;
+                    font-size: 0.85em;
+                    color: #555;
+                  "
+                >
+                  <li><strong>A</strong> - Add Annotation at cursor</li>
+                  <li><strong>E</strong> - Export visible area to CSV</li>
+                  <li><strong>L</strong> - Toggle Floating Legend</li>
+                  <li>
+                    <strong>Arrows</strong> - Pan Left/Right (Shift for faster)
+                  </li>
+                  <li><strong>+ / -</strong> - Zoom In / Out</li>
+                  <li><strong>R</strong> - Reset View</li>
+                </ul>
+              </div>
+
+              <div class="info-card">
                 <h4>🔍 Anomaly Scanning</h4>
                 <p>
                   Uses logic templates to pinpoint events like boost leaks with
                   contextual zoom.
                 </p>
               </div>
+
               <div class="info-card">
                 <h4>🔄 Multi-Sync</h4>
                 <p>
                   Pan or zoom on any chart to automatically align all loaded
                   logs.
                 </p>
+              </div>
+
+              <div class="info-card">
+                <h4>📚 Technical Guides</h4>
+                <p style="margin-bottom: 10px; font-size: 0.9em; color: #666">
+                  Deep dive into engine parameters.
+                </p>
+                <a
+                  href="help_spark.html"
+                  target="_blank"
+                  class="btn-secondary"
+                  style="
+                    display: inline-block;
+                    text-decoration: none;
+                    padding: 6px 12px;
+                    font-size: 0.9em;
+                    border-radius: 4px;
+                    width: 100%;
+                    text-align: center;
+                  "
+                >
+                  <i
+                    class="fas fa-bolt"
+                    style="color: #ffc107; margin-right: 5px"
+                  ></i>
+                  Spark Advance Guide
+                </a>
               </div>
             </div>
 

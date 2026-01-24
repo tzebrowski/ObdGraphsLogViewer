@@ -12,6 +12,49 @@ class MathChannels {
   #getDefinitions() {
     return [
       {
+        id: 'filtered_single',
+        name: 'Filtered (Single)',
+        unit: '',
+        description: 'Internal Logic for Batch Filter',
+        isHidden: true,
+        inputs: [
+          { name: 'source', label: 'Source' },
+          { name: 'cond', label: 'Condition' },
+          {
+            name: 'thresh',
+            label: 'Threshold',
+            isConstant: true,
+            defaultValue: 0,
+          },
+          {
+            name: 'mode',
+            label: 'Mode',
+            isConstant: true,
+            defaultValue: '1',
+            options: [
+              { value: '1', label: 'Greater Than (>)' },
+              { value: '0', label: 'Less Than (<)' },
+            ],
+          },
+          {
+            name: 'fallback',
+            label: 'Fallback',
+            isConstant: true,
+            defaultValue: 0,
+          },
+        ],
+        formula: (values) => {
+          const source = values[0];
+          const cond = values[1];
+          const thresh = values[2];
+          const mode = values[3];
+          const fallback = values[4];
+
+          const conditionMet = mode === 1 ? cond > thresh : cond < thresh;
+          return conditionMet ? source : fallback;
+        },
+      },
+      {
         id: 'est_power_kgh',
         name: 'Est. Power (MAF kg/h)',
         unit: 'HP',
@@ -117,6 +160,50 @@ class MathChannels {
           return smoothed;
         },
       },
+
+      {
+        id: 'filtered_batch',
+        name: 'Filtered (Multi-Signal)',
+        unit: 'Match Source',
+        description:
+          'Creates multiple channels at once. Filters selected Source signals based on the Condition.',
+        isBatch: true,
+        inputs: [
+          {
+            name: 'sources',
+            label: 'Signals to Filter (Click to add multiple)',
+            isMulti: true,
+          },
+          { name: 'cond', label: 'Condition Signal' },
+          {
+            name: 'thresh',
+            label: 'Threshold',
+            isConstant: true,
+            defaultValue: 100,
+          },
+          {
+            name: 'mode',
+            label: 'Filter Logic',
+            isConstant: true,
+            defaultValue: '1',
+            options: [
+              {
+                value: '1',
+                label: 'Pass if Condition > Threshold (High Pass)',
+              },
+              { value: '0', label: 'Pass if Condition < Threshold (Low Pass)' },
+            ],
+          },
+          {
+            name: 'fallback',
+            label: 'Fallback Value (Default: 0)',
+            isConstant: true,
+            defaultValue: 0,
+          },
+        ],
+        formula: () => 0,
+      },
+
       {
         id: 'filter_gt',
         name: 'Filtered (> Threshold)',
@@ -261,9 +348,16 @@ class MathChannels {
 
     definition.inputs.forEach((input, idx) => {
       if (input.isConstant) {
-        const val = parseFloat(inputMapping[idx]);
-        if (isNaN(val))
+        const rawVal = inputMapping[idx];
+        let val = parseFloat(rawVal);
+
+        if (typeof rawVal === 'string' && rawVal.toLowerCase() === 'nan') {
+          val = NaN;
+        }
+
+        if (isNaN(val) && input.name !== 'fallback')
           throw new Error(`Invalid constant value for ${input.label}`);
+
         sourceSignals.push({ isConstant: true, value: val });
       } else {
         const signalName = inputMapping[idx];
@@ -293,7 +387,10 @@ class MathChannels {
       });
 
       const calculatedY = definition.formula(currentValues);
-      resultData.push({ x: currentTime, y: calculatedY });
+
+      if (!isNaN(calculatedY)) {
+        resultData.push({ x: currentTime, y: calculatedY });
+      }
     }
     return resultData;
   }
@@ -408,7 +505,9 @@ class MathChannels {
 
     select.innerHTML = '<option value="">-- Select Formula --</option>';
     this.#definitions.forEach((def) => {
-      select.innerHTML += `<option value="${def.id}">${def.name}</option>`;
+      if (!def.isHidden) {
+        select.innerHTML += `<option value="${def.id}">${def.name}</option>`;
+      }
     });
 
     document.getElementById('mathInputsContainer').innerHTML = '';
@@ -429,6 +528,10 @@ class MathChannels {
     if (!definition) return;
 
     document.getElementById('mathChannelName').value = definition.name;
+    document.getElementById('mathChannelName').disabled = !!definition.isBatch;
+    if (definition.isBatch) {
+      document.getElementById('mathChannelName').value = '[Auto Generated]';
+    }
 
     if (AppState.files.length === 0) {
       container.innerHTML = "<p style='color:red'>No log file loaded.</p>";
@@ -437,15 +540,30 @@ class MathChannels {
     const file = AppState.files[0];
 
     definition.inputs.forEach((input, idx) => {
+      // Używamy nowej klasy CSS zamiast inline styles
       const wrapper = document.createElement('div');
-      wrapper.style.marginBottom = '15px';
-      wrapper.innerHTML = `<label style="font-size:0.85em; font-weight:bold; display:block; margin-bottom:4px;">${input.label}</label>`;
+      wrapper.className = 'math-input-wrapper';
+
+      wrapper.innerHTML = `<label class="math-label-small">${input.label}</label>`;
 
       if (input.isConstant) {
-        const inputEl = document.createElement('input');
-        inputEl.type = 'number';
+        let inputEl;
+        if (input.options && Array.isArray(input.options)) {
+          inputEl = document.createElement('select');
+          input.options.forEach((opt) => {
+            const optionEl = document.createElement('option');
+            optionEl.value = opt.value;
+            optionEl.innerText = opt.label;
+            inputEl.appendChild(optionEl);
+          });
+          inputEl.value = input.defaultValue;
+        } else {
+          inputEl = document.createElement('input');
+          inputEl.type = 'text';
+          inputEl.value = input.defaultValue;
+        }
+
         inputEl.id = `math-input-${idx}`;
-        inputEl.value = input.defaultValue;
         inputEl.className = 'template-select';
         inputEl.style.width = '100%';
         wrapper.appendChild(inputEl);
@@ -453,7 +571,8 @@ class MathChannels {
         const searchableSelect = this.#createSearchableSelect(
           idx,
           file.availableSignals,
-          input.name
+          input.name,
+          input.isMulti
         );
         wrapper.appendChild(searchableSelect);
       }
@@ -465,22 +584,15 @@ class MathChannels {
 
   #renderPostProcessingUI(container) {
     const wrapper = document.createElement('div');
-    wrapper.style.marginTop = '20px';
-    wrapper.style.borderTop = '1px solid #eee';
-    wrapper.style.paddingTop = '10px';
+    wrapper.className = 'math-post-processing';
 
     const label = document.createElement('label');
-    label.style.fontWeight = 'bold';
-    label.style.marginBottom = '10px';
-    label.style.display = 'block';
+    label.className = 'math-section-label';
     label.innerText = 'Post-Processing';
     wrapper.appendChild(label);
 
     const checkboxContainer = document.createElement('div');
-    checkboxContainer.style.display = 'flex';
-    checkboxContainer.style.alignItems = 'center';
-    checkboxContainer.style.gap = '10px';
-    checkboxContainer.style.marginBottom = '10px';
+    checkboxContainer.className = 'math-checkbox-container';
 
     const check = document.createElement('input');
     check.type = 'checkbox';
@@ -495,7 +607,7 @@ class MathChannels {
 
     const windowContainer = document.createElement('div');
     windowContainer.style.marginBottom = '5px';
-    windowContainer.innerHTML = `<label style="font-size:0.85em; display:block; margin-bottom:4px;">Smoothing Window (Samples)</label>`;
+    windowContainer.innerHTML = `<label class="math-label-small">Smoothing Window (Samples)</label>`;
 
     const winInput = document.createElement('input');
     winInput.type = 'number';
@@ -514,52 +626,134 @@ class MathChannels {
     container.appendChild(wrapper);
   }
 
-  #createSearchableSelect(idx, signals, inputFilterName) {
+  #createSearchableSelect(idx, signals, inputFilterName, isMulti = false) {
     const wrapper = document.createElement('div');
     wrapper.className = 'searchable-select-wrapper';
 
     const input = document.createElement('input');
     input.type = 'text';
     input.id = `math-input-${idx}`;
-    input.className = 'searchable-input';
-    input.placeholder = 'Search or Select Signal...';
+    input.className = 'searchable-input template-select';
+    input.placeholder = isMulti
+      ? 'Click signals to add...'
+      : 'Search or Select Signal...';
     input.autocomplete = 'off';
 
     const resultsList = document.createElement('div');
     resultsList.className = 'search-results-list';
 
-    const defaultSignal = signals.find((s) =>
-      s.toLowerCase().includes(inputFilterName.toLowerCase())
-    );
-    if (defaultSignal) input.value = defaultSignal;
+    if (!isMulti) {
+      const defaultSignal = signals.find((s) =>
+        s.toLowerCase().includes(inputFilterName.toLowerCase())
+      );
+      if (defaultSignal) input.value = defaultSignal;
+    }
 
     const renderOptions = (filterText = '') => {
       resultsList.innerHTML = '';
-      const lowerFilter = filterText.toLowerCase();
+
+      let lowerFilter = filterText.toLowerCase();
+
+      if (isMulti) {
+        const parts = filterText.split(',');
+        const lastPart = parts[parts.length - 1];
+        lowerFilter = lastPart ? lastPart.trim().toLowerCase() : '';
+      }
 
       const filtered = signals.filter((s) =>
         s.toLowerCase().includes(lowerFilter)
       );
 
+      if (isMulti && filtered.length > 0) {
+        const selectAllDiv = document.createElement('div');
+        selectAllDiv.className = 'search-option search-select-all';
+        selectAllDiv.textContent = '(Select All / Deselect All matches)';
+
+        selectAllDiv.onclick = (e) => {
+          e.stopPropagation();
+
+          const parts = input.value.split(',');
+          const rawLast = parts[parts.length - 1].trim();
+
+          let currentSelected = parts
+            .map((s) => s.trim())
+            .filter((s) => s && signals.includes(s));
+
+          const allVisibleSelected = filtered.every((sig) =>
+            currentSelected.includes(sig)
+          );
+
+          if (allVisibleSelected) {
+            const newSelection = currentSelected.filter(
+              (sel) => !filtered.includes(sel)
+            );
+            input.value =
+              newSelection.join(', ') + (newSelection.length > 0 ? ', ' : '');
+          } else {
+            const toAdd = filtered.filter(
+              (sig) => !currentSelected.includes(sig)
+            );
+            const combined = [...currentSelected, ...toAdd];
+            input.value = combined.join(', ') + ', ';
+          }
+          renderOptions();
+          input.focus();
+        };
+        resultsList.appendChild(selectAllDiv);
+      }
+
       if (filtered.length === 0) {
-        resultsList.innerHTML =
-          '<div class="search-option" style="color:#999; cursor:default;">No signals found</div>';
+        const noResDiv = document.createElement('div');
+        noResDiv.className = 'search-option search-no-results';
+        noResDiv.textContent = 'No signals found';
+        resultsList.appendChild(noResDiv);
       } else {
         filtered.forEach((sig) => {
           const opt = document.createElement('div');
           opt.className = 'search-option';
           opt.textContent = sig;
+
+          if (isMulti && input.value.includes(sig)) {
+            opt.classList.add('selected');
+          }
+
           opt.onclick = () => {
-            input.value = sig;
-            resultsList.style.display = 'none';
+            if (isMulti) {
+              const cleanList = input.value
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s);
+
+              if (cleanList.includes(sig)) {
+                const newList = cleanList.filter((s) => s !== sig);
+                input.value =
+                  newList.join(', ') + (newList.length > 0 ? ', ' : '');
+              } else {
+                const parts = input.value.split(',');
+                parts.pop();
+                parts.push(' ' + sig);
+
+                input.value =
+                  parts
+                    .map((s) => s.trim())
+                    .filter((s) => s)
+                    .join(', ') + ', ';
+              }
+              renderOptions();
+              input.focus();
+            } else {
+              input.value = sig;
+              resultsList.style.display = 'none';
+            }
           };
+
           resultsList.appendChild(opt);
         });
       }
     };
 
     input.addEventListener('focus', () => {
-      renderOptions(input.value);
+      renderOptions(isMulti ? input.value : input.value);
       resultsList.style.display = 'block';
     });
 
@@ -582,7 +776,7 @@ class MathChannels {
 
   #executeCreation() {
     const formulaId = document.getElementById('mathFormulaSelect').value;
-    const newName = document.getElementById('mathChannelName').value;
+    const newNameInput = document.getElementById('mathChannelName').value;
 
     if (!formulaId) {
       alert('Please select a formula.');
@@ -590,8 +784,8 @@ class MathChannels {
     }
 
     const definition = this.#definitions.find((d) => d.id === formulaId);
-    const inputMapping = [];
 
+    const inputMapping = [];
     for (let i = 0; i < definition.inputs.length; i++) {
       const el = document.getElementById(`math-input-${i}`);
       inputMapping.push(el.value);
@@ -606,25 +800,60 @@ class MathChannels {
     };
 
     try {
-      const createdName = this.createChannel(
-        0,
-        formulaId,
-        inputMapping,
-        newName,
-        options
-      );
-      this.#closeModal();
+      const createdNames = [];
+
+      if (definition.isBatch) {
+        const sourceString = inputMapping[0];
+        const sources = sourceString
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s);
+
+        if (sources.length === 0) throw new Error('No signals selected.');
+
+        sources.forEach((sourceName) => {
+          const singleInputMapping = [sourceName, ...inputMapping.slice(1)];
+          const generatedName = `Filtered: ${sourceName}`;
+
+          const finalName = this.createChannel(
+            0,
+            'filtered_single',
+            singleInputMapping,
+            generatedName,
+            options
+          );
+          createdNames.push(finalName);
+        });
+
+        this.#closeModal();
+      } else {
+        const name = this.createChannel(
+          0,
+          formulaId,
+          inputMapping,
+          newNameInput,
+          options
+        );
+        createdNames.push(name);
+        this.#closeModal();
+      }
+
       if (typeof UI.renderSignalList === 'function') {
         UI.renderSignalList();
-        setTimeout(() => {
-          const checkbox = document.querySelector(
-            `input[data-key="${createdName}"]`
-          );
-          if (checkbox) {
-            checkbox.checked = false;
-            checkbox.dispatchEvent(new Event('change'));
-          }
-        }, 100);
+
+        if (createdNames.length > 0) {
+          setTimeout(() => {
+            createdNames.forEach((name) => {
+              const checkbox = document.querySelector(
+                `input[data-key="${name}"]`
+              );
+              if (checkbox) {
+                checkbox.checked = true;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            });
+          }, 100);
+        }
       }
     } catch (e) {
       console.error(e);

@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         policy: resolve(__dirname, 'policy.html'),
+        help_spark: resolve(__dirname, 'help_spark.html'),
       },
     },
   },
