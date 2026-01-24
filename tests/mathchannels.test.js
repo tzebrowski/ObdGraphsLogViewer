@@ -26,8 +26,17 @@ describe('MathChannels', () => {
     document.body.innerHTML = `
       <div id="mathModal" style="display: none;">
         <select id="mathFormulaSelect"></select>
+        
+        <div id="mathDescriptionContainer" style="display: none;">
+            <p id="mathFormulaDescription"></p>
+        </div>
+
         <div id="mathInputsContainer"></div>
-        <input id="mathChannelName" type="text" />
+        
+        <div id="mathNameContainer" style="display: none;">
+            <input id="mathChannelName" type="text" />
+        </div>
+
         <button id="btnCreate">Create</button>
       </div>
     `;
@@ -449,6 +458,88 @@ describe('MathChannels', () => {
       expect(alertMock).toHaveBeenCalledWith(
         expect.stringContaining('Error creating channel')
       );
+    });
+  });
+
+  describe('Multi-File & UI Enhancements', () => {
+    test('Target File Selection: Creates channel ONLY in selected file', () => {
+      const data1 = [{ x: 1, y: 100 }];
+      const data2 = [{ x: 1, y: 200 }];
+
+      AppState.files = [
+        {
+          name: 'File_A.json',
+          signals: { RPM: data1 },
+          availableSignals: ['RPM'],
+          metadata: {},
+        },
+        {
+          name: 'File_B.json',
+          signals: { RPM: data2 },
+          availableSignals: ['RPM'],
+          metadata: {},
+        },
+      ];
+
+      window.openMathModal();
+
+      const select = document.getElementById('mathFormulaSelect');
+      select.value = 'multiply_const';
+      window.onMathFormulaChange();
+
+      const fileSelect = document.getElementById('mathTargetFile');
+      expect(fileSelect).not.toBeNull();
+      expect(fileSelect.options.length).toBe(2);
+
+      fileSelect.value = '1';
+      fileSelect.dispatchEvent(new Event('change'));
+
+      const input0 = document.getElementById('math-input-0');
+      const input1 = document.getElementById('math-input-1');
+
+      input0.value = 'RPM';
+      input1.value = '2';
+
+      const nameInput = document.getElementById('mathChannelName');
+      nameInput.value = 'TargetedBoost';
+
+      window.createMathChannel();
+
+      const file1 = AppState.files[0];
+      const file2 = AppState.files[1];
+
+      expect(file1.signals['Math: TargetedBoost']).toBeUndefined();
+
+      expect(file2.signals['Math: TargetedBoost']).toBeDefined();
+      expect(file2.signals['Math: TargetedBoost'][0].y).toBe(400);
+    });
+
+    test('UI Logic: Toggles Description and Name fields correctly', () => {
+      AppState.files = [{ signals: {}, availableSignals: [] }];
+
+      window.openMathModal();
+
+      const descContainer = document.getElementById('mathDescriptionContainer');
+      const nameContainer = document.getElementById('mathNameContainer');
+      const descText = document.getElementById('mathFormulaDescription');
+      const select = document.getElementById('mathFormulaSelect');
+
+      expect(descContainer.style.display).toBe('none');
+      expect(nameContainer.style.display).toBe('none');
+
+      select.value = 'boost';
+      window.onMathFormulaChange();
+
+      expect(descContainer.style.display).toBe('block');
+      expect(nameContainer.style.display).toBe('block');
+      expect(descText.innerText).not.toBe('');
+      expect(descText.innerText).not.toBe('No description available.');
+
+      select.value = '';
+      window.onMathFormulaChange();
+
+      expect(descContainer.style.display).toBe('none');
+      expect(nameContainer.style.display).toBe('none');
     });
   });
 });

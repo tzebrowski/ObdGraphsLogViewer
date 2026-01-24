@@ -16,7 +16,7 @@ class MathChannels {
         name: 'Filtered (Multi-Signal)',
         unit: 'Match Source',
         description:
-          'Creates multiple channels at once. Filters selected Source signals based on the Condition.',
+          'Creates multiple channels at once. Filters selected Source signals based on the Condition. Useful for creating "clean" versions of many sensors simultaneously.',
         isBatch: true,
         inputs: [
           {
@@ -101,7 +101,7 @@ class MathChannels {
         name: 'Est. Power (MAF kg/h)',
         unit: 'HP',
         description:
-          'Converts kg/h to g/s, then estimates HP. (MAF / 3.6 * Factor)',
+          'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
         inputs: [
           {
             name: ['Air Mass', 'MAF', 'Flow'],
@@ -120,7 +120,8 @@ class MathChannels {
         id: 'est_power_gs',
         name: 'Est. Power (MAF g/s)',
         unit: 'HP',
-        description: 'Direct g/s calculation. (MAF * Factor)',
+        description:
+          'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
         inputs: [
           {
             name: ['Air Mass', 'MAF', 'Flow'],
@@ -139,7 +140,8 @@ class MathChannels {
         id: 'power_from_torque',
         name: 'Power (Torque)',
         unit: 'HP',
-        description: 'Calculates HP. Use Factor=10 if Torque is in daNm!',
+        description:
+          'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
         inputs: [
           {
             name: ['Torque', 'Engine Torque', 'Nm'],
@@ -162,7 +164,8 @@ class MathChannels {
         id: 'acceleration',
         name: 'Acceleration',
         unit: 'm/s²',
-        description: 'Calculates acceleration from Speed.',
+        description:
+          'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
         inputs: [
           {
             name: ['Vehicle Speed', 'Speed', 'Velocity'],
@@ -188,7 +191,8 @@ class MathChannels {
         id: 'smoothing',
         name: 'Smoothed Signal',
         unit: '',
-        description: 'Reduces noise by averaging the last N samples.',
+        description:
+          'Reduces noise in a signal using a Moving Average filter over N samples.',
         inputs: [
           { name: 'source', label: 'Signal to Smooth' },
           {
@@ -219,13 +223,12 @@ class MathChannels {
           return smoothed;
         },
       },
-
       {
         id: 'filter_gt',
         name: 'Filtered (> Threshold)',
         unit: '',
         description:
-          'Shows Source ONLY if Condition > Threshold. Else shows Fallback.',
+          'Passes the Source signal ONLY if the Condition signal > Threshold. Otherwise returns Fallback value.',
         inputs: [
           { name: 'source', label: 'Signal to Display' },
           { name: 'cond', label: 'Condition Signal' },
@@ -249,7 +252,7 @@ class MathChannels {
         name: 'Filtered (< Threshold)',
         unit: '',
         description:
-          'Shows Source ONLY if Condition < Threshold. Else shows Fallback.',
+          'Passes the Source signal ONLY if the Condition signal < Threshold. Otherwise returns Fallback value.',
         inputs: [
           { name: 'source', label: 'Signal to Display' },
           { name: 'cond', label: 'Condition Signal' },
@@ -272,7 +275,8 @@ class MathChannels {
         id: 'boost',
         name: 'Boost Pressure',
         unit: 'Bar',
-        description: 'MAP - Baro',
+        description:
+          'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
         inputs: [
           {
             name: ['Manifold Pressure', 'MAP', 'Boost'],
@@ -289,7 +293,7 @@ class MathChannels {
         id: 'afr_error',
         name: 'AFR Error',
         unit: 'AFR',
-        description: 'Commanded - Measured',
+        description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
         inputs: [
           {
             name: ['Commanded', 'Target'],
@@ -306,7 +310,8 @@ class MathChannels {
         id: 'pressure_ratio',
         name: 'Pressure Ratio',
         unit: 'Ratio',
-        description: 'MAP / Baro',
+        description:
+          'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
         inputs: [
           {
             name: ['Manifold Pressure', 'MAP'],
@@ -323,7 +328,8 @@ class MathChannels {
         id: 'multiply_const',
         name: 'Multiplied Signal',
         unit: '',
-        description: 'Signal * Factor',
+        description:
+          'Multiplies a signal by a constant factor. Useful for unit matched conversion.',
         inputs: [
           { name: 'source', label: 'Source Signal' },
           {
@@ -358,12 +364,33 @@ class MathChannels {
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) throw new Error('Invalid formula definition.');
 
+    const resolvedMapping = [...inputMapping];
+
+    definition.inputs.forEach((inputDef, idx) => {
+      if (!inputDef.isConstant) {
+        const requestedName = inputMapping[idx];
+        resolvedMapping[idx] = this.#resolveSignalName(
+          file,
+          inputDef,
+          requestedName
+        );
+      }
+    });
+
     let resultData = [];
 
     if (definition.customProcess) {
-      resultData = this.#executeCustomProcess(file, definition, inputMapping);
+      resultData = this.#executeCustomProcess(
+        file,
+        definition,
+        resolvedMapping
+      );
     } else {
-      resultData = this.#executeStandardFormula(file, definition, inputMapping);
+      resultData = this.#executeStandardFormula(
+        file,
+        definition,
+        resolvedMapping
+      );
     }
 
     if (options.smooth && options.smoothWindow > 1) {
@@ -374,6 +401,25 @@ class MathChannels {
     const unit = definition.unit || '';
 
     return this.#finalizeChannel(file, resultData, finalName, unit);
+  }
+
+  #resolveSignalName(file, inputDef, requestedName) {
+    if (file.signals[requestedName]) {
+      return requestedName;
+    }
+
+    if (Array.isArray(inputDef.name)) {
+      for (const alias of inputDef.name) {
+        const match = file.availableSignals.find((s) =>
+          s.toLowerCase().includes(alias.toLowerCase())
+        );
+        if (match && file.signals[match]) {
+          return match;
+        }
+      }
+    }
+
+    return requestedName;
   }
 
   #executeStandardFormula(file, definition, inputMapping) {
@@ -396,8 +442,11 @@ class MathChannels {
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-        if (!signalData)
-          throw new Error(`Signal '${signalName}' not found in file.`);
+        if (!signalData) {
+          throw new Error(
+            `Signal '${signalName}' not found in file '${file.name}'.`
+          );
+        }
         sourceSignals.push({ isConstant: false, data: signalData });
         if (!masterTimeBase) masterTimeBase = signalData;
       }
@@ -442,7 +491,10 @@ class MathChannels {
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-        if (!signalData) throw new Error(`Signal '${signalName}' not found.`);
+        if (!signalData)
+          throw new Error(
+            `Signal '${signalName}' not found in file '${file.name}'.`
+          );
         signals.push(signalData);
       }
     });
@@ -545,7 +597,15 @@ class MathChannels {
     });
 
     document.getElementById('mathInputsContainer').innerHTML = '';
-    document.getElementById('mathChannelName').value = '';
+
+    const descContainer = document.getElementById('mathDescriptionContainer');
+    if (descContainer) descContainer.style.display = 'none';
+
+    const nameContainer = document.getElementById('mathNameContainer');
+    if (nameContainer) nameContainer.style.display = 'none';
+
+    const nameInput = document.getElementById('mathChannelName');
+    if (nameInput) nameInput.value = '';
   }
 
   #closeModal() {
@@ -559,24 +619,81 @@ class MathChannels {
     container.innerHTML = '';
 
     const definition = this.#definitions.find((d) => d.id === formulaId);
-    if (!definition) return;
 
-    document.getElementById('mathChannelName').value = definition.name;
-    document.getElementById('mathChannelName').disabled = !!definition.isBatch;
-    if (definition.isBatch) {
-      document.getElementById('mathChannelName').value = '[Auto Generated]';
+    const descContainer = document.getElementById('mathDescriptionContainer');
+    const nameContainer = document.getElementById('mathNameContainer');
+    const nameInput = document.getElementById('mathChannelName');
+
+    if (!definition) {
+      if (descContainer) descContainer.style.display = 'none';
+      if (nameContainer) nameContainer.style.display = 'none';
+      return;
+    }
+
+    const descText = document.getElementById('mathFormulaDescription');
+    if (descContainer && descText) {
+      descText.innerText =
+        definition.description || 'No description available.';
+      descContainer.style.display = 'block';
+    }
+
+    if (nameContainer && nameInput) {
+      nameContainer.style.display = 'block';
+      nameInput.value = definition.name;
+      nameInput.disabled = !!definition.isBatch;
+      if (definition.isBatch) {
+        nameInput.value = '[Auto Generated: Multiple Channels]';
+      }
     }
 
     if (AppState.files.length === 0) {
       container.innerHTML = "<p style='color:red'>No log file loaded.</p>";
       return;
     }
-    const file = AppState.files[0];
+
+    let targetFileIndex = 0;
+
+    const inputsWrapper = document.createElement('div');
+    inputsWrapper.id = 'mathFormulaInputs';
+
+    if (AppState.files.length > 1) {
+      const fileSelectWrapper = document.createElement('div');
+      fileSelectWrapper.style.marginBottom = '15px';
+      fileSelectWrapper.innerHTML = `<label class="math-label-small">Target File:</label>`;
+
+      const fileSelect = document.createElement('select');
+      fileSelect.id = 'mathTargetFile';
+      fileSelect.className = 'template-select';
+
+      AppState.files.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.text = `${i + 1}. ${f.name}`;
+        fileSelect.appendChild(opt);
+      });
+
+      fileSelect.onchange = (e) => {
+        targetFileIndex = parseInt(e.target.value, 10);
+        this.#renderFormulaInputs(inputsWrapper, definition, targetFileIndex);
+      };
+
+      fileSelectWrapper.appendChild(fileSelect);
+      container.appendChild(fileSelectWrapper);
+    }
+
+    container.appendChild(inputsWrapper);
+
+    this.#renderFormulaInputs(inputsWrapper, definition, targetFileIndex);
+    this.#renderPostProcessingUI(container);
+  }
+
+  #renderFormulaInputs(container, definition, fileIndex) {
+    container.innerHTML = '';
+    const file = AppState.files[fileIndex];
 
     definition.inputs.forEach((input, idx) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'math-input-wrapper';
-
       wrapper.innerHTML = `<label class="math-label-small">${input.label}</label>`;
 
       if (input.isConstant) {
@@ -595,7 +712,6 @@ class MathChannels {
           inputEl.type = 'text';
           inputEl.value = input.defaultValue;
         }
-
         inputEl.id = `math-input-${idx}`;
         inputEl.className = 'template-select';
         inputEl.style.width = '100%';
@@ -611,8 +727,6 @@ class MathChannels {
       }
       container.appendChild(wrapper);
     });
-
-    this.#renderPostProcessingUI(container);
   }
 
   #renderPostProcessingUI(container) {
@@ -818,7 +932,10 @@ class MathChannels {
 
   #executeCreation() {
     const formulaId = document.getElementById('mathFormulaSelect').value;
+    const fileSelect = document.getElementById('mathTargetFile');
     const newNameInput = document.getElementById('mathChannelName').value;
+
+    const targetFileIndex = fileSelect ? parseInt(fileSelect.value, 10) : 0;
 
     if (!formulaId) {
       alert('Please select a formula.');
@@ -842,7 +959,7 @@ class MathChannels {
     };
 
     try {
-      const createdNames = [];
+      let createdName = '';
 
       if (definition.isBatch) {
         const sourceString = inputMapping[0];
@@ -857,43 +974,39 @@ class MathChannels {
           const singleInputMapping = [sourceName, ...inputMapping.slice(1)];
           const generatedName = `Filtered: ${sourceName}`;
 
-          const finalName = this.createChannel(
-            0,
+          const name = this.createChannel(
+            targetFileIndex,
             'filtered_single',
             singleInputMapping,
             generatedName,
             options
           );
-          createdNames.push(finalName);
+          createdName = name;
         });
-
         this.#closeModal();
       } else {
-        const name = this.createChannel(
-          0,
+        createdName = this.createChannel(
+          targetFileIndex,
           formulaId,
           inputMapping,
           newNameInput,
           options
         );
-        createdNames.push(name);
         this.#closeModal();
       }
 
       if (typeof UI.renderSignalList === 'function') {
         UI.renderSignalList();
 
-        if (createdNames.length > 0) {
+        if (createdName) {
           setTimeout(() => {
-            createdNames.forEach((name) => {
-              const checkbox = document.querySelector(
-                `input[data-key="${name}"]`
-              );
-              if (checkbox) {
-                checkbox.checked = true;
-                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            });
+            const checkbox = document.querySelector(
+              `input[data-key="${createdName}"][data-file-idx="${targetFileIndex}"]`
+            );
+            if (checkbox) {
+              checkbox.checked = true;
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
           }, 100);
         }
       }
