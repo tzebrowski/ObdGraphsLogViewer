@@ -313,6 +313,44 @@
           </div>
 
           <div class="control-group gray-box">
+            <h3>Project History</h3>
+            <p class="section-description">
+              Timeline of analysis steps. Replay them on re-loaded files.
+            </p>
+
+            <div
+              id="projectHistoryList"
+              class="history-list"
+              style="
+                max-height: 150px;
+                overflow-y: auto;
+                margin-bottom: 10px;
+                font-size: 0.85em;
+                border: 1px solid #eee;
+                background: #fff;
+              "
+            ></div>
+
+            <div style="display: flex; gap: 5px">
+              <button
+                id="btnReplayProject"
+                class="btn btn-sm btn-primary"
+                onclick="window.replayProjectHistory()"
+                style="flex: 1"
+              >
+                <i class="fas fa-play"></i> Replay All
+              </button>
+              <button
+                class="btn btn-sm"
+                onclick="window.resetProject()"
+                title="Clear History"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-group gray-box">
             <h3>Anomaly Scanner</h3>
             <p class="section-description">
               Define rules (e.g., Temp > 100) to quickly locate specific events.

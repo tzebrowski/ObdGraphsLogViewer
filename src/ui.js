@@ -5,6 +5,8 @@ import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
+import { projectManager } from './projectmanager.js';
+
 import './mathchannels.js';
 
 export const UI = {
@@ -36,6 +38,11 @@ export const UI = {
         fileInfo.innerText = `${AppState.files.length} logs loaded`;
       }
     });
+
+    window.replayProjectHistory = () => projectManager.replayHistory();
+    window.resetProject = () => projectManager.resetProject();
+
+    this.renderProjectHistory();
   },
 
   get elements() {
@@ -91,6 +98,93 @@ export const UI = {
 
     fileSel.onchange = updateSignals;
     updateSignals();
+  },
+
+  renderProjectHistory() {
+    const list = document.getElementById('projectHistoryList');
+    const replayBtn = document.getElementById('btnReplayProject');
+
+    // Ukryj przycisk Replay, jeśli nie ma załadowanych plików
+    if (replayBtn) {
+      if (AppState.files.length === 0) {
+        replayBtn.style.display = 'none';
+      } else {
+        replayBtn.style.display = 'block';
+      }
+    }
+
+    if (!list) return;
+
+    const history = projectManager.getHistory();
+    const resources = projectManager.getResources();
+
+    if (history.length === 0) {
+      list.innerHTML =
+        '<div style="padding:10px; color:#999; text-align:center;">No actions recorded yet.</div>';
+      // Ukryj przycisk również jeśli historia jest pusta
+      if (replayBtn) replayBtn.style.display = 'none';
+      return;
+    }
+
+    const grouped = {};
+
+    history.forEach((action) => {
+      const key = action.resourceId || 'unknown';
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(action);
+    });
+
+    let html = '';
+
+    for (const [resId, actions] of Object.entries(grouped)) {
+      const resource = resources.find((r) => r.fileId === resId);
+
+      if (!resource || !resource.isActive) {
+        continue;
+      }
+
+      actions.sort((a, b) => b.timestamp - a.timestamp);
+
+      const fileName = resource ? resource.fileName : 'Unknown File';
+      const currentIndex = actions[0].targetFileIndex;
+      const fileIndexLabel =
+        currentIndex !== -1 ? `Index: ${currentIndex + 1}` : 'Closed';
+
+      html += `
+        <div class="history-group">
+            <div class="history-group-header">
+                <i class="fas fa-file-alt"></i> 
+                <span class="history-filename">${fileName}</span>
+                <span class="history-fileindex">${fileIndexLabel}</span>
+            </div>
+            <div class="history-group-content">
+                ${actions
+                  .map((item) => {
+                    const cleanDesc = item.description.replace(
+                      '(Archived) ',
+                      ''
+                    );
+                    return `
+                    <div class="history-item">
+                        <span class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</span>
+                        <span class="history-desc">${cleanDesc}</span>
+                    </div>
+                    `;
+                  })
+                  .join('')}
+            </div>
+        </div>
+        `;
+    }
+
+    if (html === '') {
+      html =
+        '<div style="padding:10px; color:#999; text-align:center; font-style:italic;">History hidden (files not loaded).</div>';
+    }
+
+    list.innerHTML = html;
   },
 
   updateDataLoadedState: (hasData) => {

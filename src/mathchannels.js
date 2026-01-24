@@ -1,5 +1,6 @@
 import { AppState } from './config.js';
 import { UI } from './ui.js';
+import { projectManager } from './projectmanager.js';
 
 class MathChannels {
   #definitions;
@@ -992,6 +993,20 @@ class MathChannels {
           newNameInput,
           options
         );
+
+        if (!definition.isBatch && !options.isReplay) {
+          projectManager.logAction(
+            'CREATE_MATH_CHANNEL',
+            `Created Channel: ${createdName}`,
+            {
+              formulaId: formulaId,
+              inputs: inputMapping,
+              channelName: newNameInput,
+              options: options,
+            },
+            targetFileIndex
+          );
+        }
         this.#closeModal();
       }
 
