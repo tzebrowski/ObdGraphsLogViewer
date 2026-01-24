@@ -12,6 +12,48 @@ class MathChannels {
   #getDefinitions() {
     return [
       {
+        id: 'filtered_batch',
+        name: 'Filtered (Multi-Signal)',
+        unit: 'Match Source',
+        description:
+          'Creates multiple channels at once. Filters selected Source signals based on the Condition.',
+        isBatch: true,
+        inputs: [
+          {
+            name: 'sources',
+            label: 'Signals to Filter (Click to add multiple)',
+            isMulti: true,
+          },
+          { name: 'cond', label: 'Condition Signal' },
+          {
+            name: 'thresh',
+            label: 'Threshold',
+            isConstant: true,
+            defaultValue: 100,
+          },
+          {
+            name: 'mode',
+            label: 'Filter Logic',
+            isConstant: true,
+            defaultValue: '1',
+            options: [
+              {
+                value: '1',
+                label: 'Pass if Condition > Threshold (High Pass)',
+              },
+              { value: '0', label: 'Pass if Condition < Threshold (Low Pass)' },
+            ],
+          },
+          {
+            name: 'fallback',
+            label: 'Fallback Value (Default: 0)',
+            isConstant: true,
+            defaultValue: 0,
+          },
+        ],
+        formula: () => 0,
+      },
+      {
         id: 'filtered_single',
         name: 'Filtered (Single)',
         unit: '',
@@ -61,7 +103,10 @@ class MathChannels {
         description:
           'Converts kg/h to g/s, then estimates HP. (MAF / 3.6 * Factor)',
         inputs: [
-          { name: 'maf', label: 'Air Mass Flow (kg/h)' },
+          {
+            name: ['Air Mass', 'MAF', 'Flow'],
+            label: 'Air Mass Flow (kg/h)',
+          },
           {
             name: 'factor',
             label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
@@ -77,7 +122,10 @@ class MathChannels {
         unit: 'HP',
         description: 'Direct g/s calculation. (MAF * Factor)',
         inputs: [
-          { name: 'maf', label: 'Air Mass Flow (g/s)' },
+          {
+            name: ['Air Mass', 'MAF', 'Flow'],
+            label: 'Air Mass Flow (g/s)',
+          },
           {
             name: 'factor',
             label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
@@ -93,8 +141,14 @@ class MathChannels {
         unit: 'HP',
         description: 'Calculates HP. Use Factor=10 if Torque is in daNm!',
         inputs: [
-          { name: 'torque', label: 'Torque (Nm or daNm)' },
-          { name: 'rpm', label: 'Engine RPM' },
+          {
+            name: ['Torque', 'Engine Torque', 'Nm'],
+            label: 'Torque (Nm or daNm)',
+          },
+          {
+            name: ['Engine RPM', 'Engine Speed', 'RPM'],
+            label: 'Engine RPM',
+          },
           {
             name: 'factor',
             label: 'Correction Factor (1 for Nm, 10 for daNm)',
@@ -109,7 +163,12 @@ class MathChannels {
         name: 'Acceleration',
         unit: 'm/s²',
         description: 'Calculates acceleration from Speed.',
-        inputs: [{ name: 'speed', label: 'Speed (km/h)' }],
+        inputs: [
+          {
+            name: ['Vehicle Speed', 'Speed', 'Velocity'],
+            label: 'Speed (km/h)',
+          },
+        ],
         customProcess: (signals) => {
           const sourceData = signals[0];
           const result = [];
@@ -159,49 +218,6 @@ class MathChannels {
           }
           return smoothed;
         },
-      },
-
-      {
-        id: 'filtered_batch',
-        name: 'Filtered (Multi-Signal)',
-        unit: 'Match Source',
-        description:
-          'Creates multiple channels at once. Filters selected Source signals based on the Condition.',
-        isBatch: true,
-        inputs: [
-          {
-            name: 'sources',
-            label: 'Signals to Filter (Click to add multiple)',
-            isMulti: true,
-          },
-          { name: 'cond', label: 'Condition Signal' },
-          {
-            name: 'thresh',
-            label: 'Threshold',
-            isConstant: true,
-            defaultValue: 100,
-          },
-          {
-            name: 'mode',
-            label: 'Filter Logic',
-            isConstant: true,
-            defaultValue: '1',
-            options: [
-              {
-                value: '1',
-                label: 'Pass if Condition > Threshold (High Pass)',
-              },
-              { value: '0', label: 'Pass if Condition < Threshold (Low Pass)' },
-            ],
-          },
-          {
-            name: 'fallback',
-            label: 'Fallback Value (Default: 0)',
-            isConstant: true,
-            defaultValue: 0,
-          },
-        ],
-        formula: () => 0,
       },
 
       {
@@ -258,8 +274,14 @@ class MathChannels {
         unit: 'Bar',
         description: 'MAP - Baro',
         inputs: [
-          { name: 'map', label: 'Intake Manifold Pressure' },
-          { name: 'baro', label: 'Atmospheric Pressure' },
+          {
+            name: ['Manifold Pressure', 'MAP', 'Boost'],
+            label: 'Intake Manifold Pressure',
+          },
+          {
+            name: ['Atmospheric', 'Baro'],
+            label: 'Atmospheric Pressure',
+          },
         ],
         formula: (values) => values[0] - values[1],
       },
@@ -269,8 +291,14 @@ class MathChannels {
         unit: 'AFR',
         description: 'Commanded - Measured',
         inputs: [
-          { name: 'commanded', label: 'AFR Commanded' },
-          { name: 'measured', label: 'AFR Measured' },
+          {
+            name: ['Commanded', 'Target'],
+            label: 'AFR Commanded',
+          },
+          {
+            name: ['Measured', 'Current'],
+            label: 'AFR Measured',
+          },
         ],
         formula: (values) => values[0] - values[1],
       },
@@ -280,8 +308,14 @@ class MathChannels {
         unit: 'Ratio',
         description: 'MAP / Baro',
         inputs: [
-          { name: 'map', label: 'Intake Manifold Pressure' },
-          { name: 'baro', label: 'Atmospheric Pressure' },
+          {
+            name: ['Manifold Pressure', 'MAP'],
+            label: 'Intake Manifold Pressure',
+          },
+          {
+            name: ['Atmospheric', 'Baro'],
+            label: 'Atmospheric Pressure',
+          },
         ],
         formula: (values) => (values[1] !== 0 ? values[0] / values[1] : 0),
       },
@@ -540,7 +574,6 @@ class MathChannels {
     const file = AppState.files[0];
 
     definition.inputs.forEach((input, idx) => {
-      // Używamy nowej klasy CSS zamiast inline styles
       const wrapper = document.createElement('div');
       wrapper.className = 'math-input-wrapper';
 
@@ -643,9 +676,18 @@ class MathChannels {
     resultsList.className = 'search-results-list';
 
     if (!isMulti) {
-      const defaultSignal = signals.find((s) =>
-        s.toLowerCase().includes(inputFilterName.toLowerCase())
-      );
+      let defaultSignal = null;
+      const searchTerms = Array.isArray(inputFilterName)
+        ? inputFilterName
+        : [inputFilterName];
+
+      for (const term of searchTerms) {
+        defaultSignal = signals.find((s) =>
+          s.toLowerCase().includes(term.toLowerCase())
+        );
+        if (defaultSignal) break;
+      }
+
       if (defaultSignal) input.value = defaultSignal;
     }
 
