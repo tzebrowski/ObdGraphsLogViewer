@@ -315,45 +315,10 @@
           <div
             id="projectHistoryContainer"
             class="control-group gray-box"
-            style="padding: 0; overflow: hidden; display: none"
+            style="display: none"
           >
-            <div
-              class="history-header"
-              onclick="window.toggleProjectHistory()"
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                cursor: pointer;
-                padding: 10px 15px;
-                background-color: #f8f9fa;
-                border-bottom: 1px solid #eee;
-                user-select: none;
-              "
-            >
-              <div style="display: flex; align-items: center; gap: 10px">
-                <i
-                  id="projectChevron"
-                  class="fas fa-chevron-down"
-                  style="
-                    font-size: 0.9em;
-                    color: #666;
-                    transition: transform 0.2s;
-                  "
-                ></i>
-                <h3
-                  id="projectNameDisplay"
-                  style="
-                    margin: 0;
-                    font-size: 1em;
-                    color: #1c3d72;
-                    font-weight: bold;
-                  "
-                >
-                  Project History
-                </h3>
-              </div>
-
+            <div class="group-header-row">
+              <h3 id="projectNameDisplay">Project History</h3>
               <button
                 class="btn-icon"
                 onclick="
@@ -373,47 +338,37 @@
               </button>
             </div>
 
+            <p class="section-description">Timeline of analysis steps.</p>
+
             <div
-              id="projectHistoryContent"
-              style="display: block; padding: 10px 15px"
-            >
-              <p
-                class="section-description"
-                style="margin-top: 0; margin-bottom: 10px"
+              id="projectHistoryList"
+              class="history-list"
+              style="
+                max-height: 150px;
+                overflow-y: auto;
+                margin-bottom: 10px;
+                font-size: 0.85em;
+                border: 1px solid #eee;
+                background: #fff;
+              "
+            ></div>
+
+            <div style="display: flex; gap: 5px">
+              <button
+                id="btnReplayProject"
+                class="btn btn-sm btn-primary"
+                onclick="window.replayProjectHistory()"
+                style="flex: 1"
               >
-                Timeline of analysis steps.
-              </p>
-
-              <div
-                id="projectHistoryList"
-                class="history-list"
-                style="
-                  max-height: 150px;
-                  overflow-y: auto;
-                  margin-bottom: 10px;
-                  font-size: 0.85em;
-                  border: 1px solid #eee;
-                  background: #fff;
-                "
-              ></div>
-
-              <div style="display: flex; gap: 5px">
-                <button
-                  id="btnReplayProject"
-                  class="btn btn-sm btn-primary"
-                  onclick="window.replayProjectHistory()"
-                  style="flex: 1"
-                >
-                  <i class="fas fa-play"></i> Replay All
-                </button>
-                <button
-                  class="btn btn-sm"
-                  onclick="window.resetProject()"
-                  title="Clear History"
-                >
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
+                <i class="fas fa-play"></i> Replay All
+              </button>
+              <button
+                class="btn btn-sm"
+                onclick="window.resetProject()"
+                title="Clear History"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
           </div>
 

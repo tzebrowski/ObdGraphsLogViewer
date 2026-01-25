@@ -50,24 +50,6 @@ export const UI = {
       }
     };
 
-    window.toggleProjectHistory = () => {
-      const content = document.getElementById('projectHistoryContent');
-      const chevron = document.getElementById('projectChevron');
-
-      if (!content) {
-        console.error('Element projectHistoryContent not found!');
-        return;
-      }
-      const isHidden = content.style.display === 'none';
-      if (isHidden) {
-        content.style.display = 'block';
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
-      } else {
-        content.style.display = 'none';
-        if (chevron) chevron.style.transform = 'rotate(-90deg)';
-      }
-    };
-
     this.renderProjectHistory();
   },
 
@@ -176,13 +158,17 @@ export const UI = {
     resources.forEach((resource) => {
       if (!resource.isActive) return;
 
+      const isLoaded = AppState.files.some(
+        (f) => f.name === resource.fileName && f.size === resource.fileSize
+      );
+      if (!isLoaded) return;
+
       const resId = resource.fileId;
       const actions = grouped[resId] || [];
 
       actions.sort((a, b) => b.timestamp - a.timestamp);
 
       const fileName = resource.fileName;
-
       let fileIndexLabel = '';
       if (actions.length > 0) {
         const idx = actions[0].targetFileIndex;

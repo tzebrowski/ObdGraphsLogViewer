@@ -116,11 +116,14 @@ class DataProcessor {
         .filter((point) => point !== null);
 
       const result = this.#transformRawData(processedPoints, fileName);
+
+      result.size = data.length;
+
       AppState.files.push(result);
 
       projectManager.registerFile({
         name: fileName,
-        size: 0,
+        size: data.length,
       });
 
       return result;
