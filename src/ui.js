@@ -7,8 +7,6 @@ import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 
-// REMOVED: import { mathChannels } from './mathchannels.js'; - Not used here, loaded via projectmanager.js
-
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
 
@@ -146,8 +144,7 @@ export const UI = {
     const resources = projectManager.getResources();
 
     if (!resources || resources.length === 0) {
-      list.innerHTML =
-        '<div style="padding:10px; color:#999; text-align:center;">No active files.</div>';
+      list.innerHTML = '<div class="history-empty-msg">No active files.</div>';
       if (replayBtn) replayBtn.style.display = 'none';
       return;
     }
@@ -195,19 +192,19 @@ export const UI = {
       }
 
       html += `
-        <div class="history-group" style="margin-bottom: 8px; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;">
-            <div class="history-group-header" onclick="toggleHistoryGroup(this)" style="padding: 8px 10px; background: #f8f9fa; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none;">
-                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-                    <i class="fas fa-chevron-down toggle-icon" style="font-size: 0.8em; color: #666; transition: transform 0.2s;"></i>
-                    <i class="fas fa-file-alt" style="color: #666;"></i> 
-                    <span class="history-filename" style="font-weight: 600; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fileName}</span>
+        <div class="history-group">
+            <div class="history-group-header" onclick="toggleHistoryGroup(this)">
+                <div class="history-header-title">
+                    <i class="fas fa-chevron-down toggle-icon history-toggle-icon"></i>
+                    <i class="fas fa-file-alt history-file-icon"></i> 
+                    <span class="history-filename">${fileName}</span>
                 </div>
-                <span class="history-fileindex" style="font-size: 0.75em; color: #888; background: #eee; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">${fileIndexLabel}</span>
+                <span class="history-fileindex">${fileIndexLabel}</span>
             </div>
-            <div class="history-group-content" style="display: block; padding: 5px 0;">
+            <div class="history-group-content">
                 ${
                   actions.length === 0
-                    ? `<div class="history-item" style="color:#999; font-style:italic; padding: 5px 15px; font-size: 0.85em;">
+                    ? `<div class="history-item empty">
                        <span class="history-desc">File loaded (no actions yet)</span>
                      </div>`
                     : actions
@@ -217,11 +214,11 @@ export const UI = {
                             ''
                           );
                           return `
-                    <div class="history-item" style="padding: 4px 15px; display: flex; gap: 10px; font-size: 0.85em; border-bottom: 1px solid #f0f0f0;">
-                        <span class="history-time" style="color: #999; min-width: 65px;">${new Date(
+                    <div class="history-item">
+                        <span class="history-time">${new Date(
                           item.timestamp
                         ).toLocaleTimeString()}</span>
-                        <span class="history-desc" style="color: #333;">${cleanDesc}</span>
+                        <span class="history-desc">${cleanDesc}</span>
                     </div>
                     `;
                         })
@@ -233,8 +230,7 @@ export const UI = {
     });
 
     if (html === '') {
-      html =
-        '<div style="padding:10px; color:#999; text-align:center;">No active files.</div>';
+      html = '<div class="history-empty-msg">No active files.</div>';
     }
 
     if (replayBtn) {
