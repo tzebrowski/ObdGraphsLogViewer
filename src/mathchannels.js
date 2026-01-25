@@ -1,6 +1,6 @@
 import { AppState } from './config.js';
 import { UI } from './ui.js';
-import { projectManager } from './projectmanager.js';
+import { messenger } from './bus.js';
 
 class MathChannels {
   #definitions;
@@ -985,17 +985,17 @@ class MathChannels {
           createdName = name;
 
           if (!options.isReplay) {
-            projectManager.logAction(
-              'CREATE_MATH_CHANNEL',
-              `Created Channel (Batch): ${name}`,
-              {
+            messenger.emit('action:log', {
+              type: 'CREATE_MATH_CHANNEL',
+              description: `Created Channel: ${createdName}`,
+              payload: {
                 formulaId: 'filtered_single',
                 inputs: singleInputMapping,
                 channelName: generatedName,
                 options: options,
               },
-              targetFileIndex
-            );
+              fileIndex: targetFileIndex,
+            });
           }
         });
         this.#closeModal();
@@ -1009,17 +1009,17 @@ class MathChannels {
         );
 
         if (!options.isReplay) {
-          projectManager.logAction(
-            'CREATE_MATH_CHANNEL',
-            `Created Channel: ${createdName}`,
-            {
+          messenger.emit('action:log', {
+            type: 'CREATE_MATH_CHANNEL',
+            description: `Created Channel: ${createdName}`,
+            payload: {
               formulaId: formulaId,
               inputs: inputMapping,
               channelName: newNameInput,
               options: options,
             },
-            targetFileIndex
-          );
+            fileIndex: targetFileIndex,
+          });
         }
         this.#closeModal();
       }

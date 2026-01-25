@@ -1,4 +1,5 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { messenger } from '../src/bus.js';
 
 // ------------------------------------------------------------------
 // 1. SETUP GLOBALS
@@ -20,6 +21,9 @@ const localStorageMock = (() => {
     }),
   };
 })();
+
+messenger.emit = jest.fn();
+messenger.on = jest.fn();
 
 Object.defineProperty(global, 'localStorage', {
   value: localStorageMock,
@@ -117,7 +121,19 @@ describe('ProjectManager', () => {
       expect(resources).toHaveLength(1);
       expect(resources[0].fileName).toBe('run1.json');
       expect(resources[0].isActive).toBe(true);
-      expect(UI.renderProjectHistory).toHaveBeenCalled();
+
+      expect(messenger.emit).toHaveBeenCalledWith(
+        'project:updated',
+        expect.objectContaining({
+          resources: expect.arrayContaining([
+            expect.objectContaining({
+              fileName: 'run1.json',
+              fileSize: 1024,
+              isActive: true,
+            }),
+          ]),
+        })
+      );
     });
 
     test('should update existing file when registered again', () => {
@@ -222,8 +238,10 @@ describe('ProjectManager', () => {
         expect.objectContaining({ color: 'red', isReplay: true })
       );
 
-      // Now this should pass because we defined the mock function
-      expect(UI.renderSignalList).toHaveBeenCalled();
+      expect(messenger.emit).toHaveBeenCalledWith(
+        expect.stringContaining('project:replayHistory'),
+        {}
+      );
     });
 
     test('should skip replay if file index is -1 (Archived)', async () => {
@@ -236,8 +254,11 @@ describe('ProjectManager', () => {
       await projectManager.replayHistory();
 
       expect(mathChannels.createChannel).not.toHaveBeenCalled();
-      // Even if nothing happened, the method calls renderSignalList at the end
-      expect(UI.renderSignalList).toHaveBeenCalled();
+
+      expect(messenger.emit).toHaveBeenCalledWith(
+        expect.stringContaining('project:replayHistory'),
+        {}
+      );
     });
   });
 
