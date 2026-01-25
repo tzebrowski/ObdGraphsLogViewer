@@ -48,13 +48,6 @@ jest.unstable_mockModule('../src/config.js', () => ({
   },
 }));
 
-// FIX: Added renderSignalList to the UI mock
-jest.unstable_mockModule('../src/ui.js', () => ({
-  UI: {
-    renderProjectHistory: jest.fn(),
-    renderSignalList: jest.fn(),
-  },
-}));
 
 jest.unstable_mockModule('../src/mathchannels.js', () => ({
   mathChannels: {
@@ -69,7 +62,6 @@ jest.unstable_mockModule('../src/mathchannels.js', () => ({
 
 const { projectManager } = await import('../src/projectmanager.js');
 const { AppState } = await import('../src/config.js');
-const { UI } = await import('../src/ui.js');
 const { mathChannels } = await import('../src/mathchannels.js');
 
 // ------------------------------------------------------------------
