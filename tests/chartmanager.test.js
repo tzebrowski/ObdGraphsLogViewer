@@ -145,7 +145,11 @@ await jest.unstable_mockModule('../src/config.js', () => ({
 }));
 
 await jest.unstable_mockModule('../src/ui.js', () => ({
-  UI: { updateDataLoadedState: jest.fn(), renderSignalList: jest.fn() },
+  UI: {
+    updateDataLoadedState: jest.fn(),
+    renderSignalList: jest.fn(),
+    renderProjectHistory: jest.fn(),
+  },
 }));
 
 await jest.unstable_mockModule('../src/palettemanager.js', () => ({
