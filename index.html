@@ -323,7 +323,7 @@
                 class="btn-icon"
                 onclick="
                   event.stopPropagation();
-                  window.editProjectName();
+                  editProjectName();
                 "
                 title="Rename Project"
                 style="
@@ -357,14 +357,14 @@
               <button
                 id="btnReplayProject"
                 class="btn btn-sm btn-primary"
-                onclick="window.replayProjectHistory()"
+                onclick="replayProjectHistory()"
                 style="flex: 1"
               >
                 <i class="fas fa-play"></i> Replay All
               </button>
               <button
                 class="btn btn-sm"
-                onclick="window.resetProject()"
+                onclick="resetProject()"
                 title="Clear History"
               >
                 <i class="fas fa-trash"></i>

@@ -7,6 +7,8 @@ import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 
+// REMOVED: import { mathChannels } from './mathchannels.js'; - Not used here, loaded via projectmanager.js
+
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
 
@@ -37,31 +39,36 @@ export const UI = {
       }
     });
 
-    window.replayProjectHistory = () => projectManager.replayHistory();
-    window.resetProject = () => projectManager.resetProject();
-
-    window.editProjectName = () => {
-      const currentName = projectManager.getProjectName();
-      const newName = prompt('Enter new project name:', currentName);
-      if (newName) {
-        projectManager.renameProject(newName);
-      }
-    };
-
-    window.toggleHistoryGroup = (header) => {
-      const content = header.nextElementSibling;
-      const icon = header.querySelector('.toggle-icon');
-
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        if (icon) icon.style.transform = 'rotate(0deg)';
-      } else {
-        content.style.display = 'none';
-        if (icon) icon.style.transform = 'rotate(-90deg)';
-      }
-    };
-
     this.renderProjectHistory();
+  },
+
+  replayProjectHistory() {
+    projectManager.replayHistory();
+  },
+
+  resetProject() {
+    projectManager.resetProject();
+  },
+
+  editProjectName() {
+    const currentName = projectManager.getProjectName();
+    const newName = prompt('Enter new project name:', currentName);
+    if (newName) {
+      projectManager.renameProject(newName);
+    }
+  },
+
+  toggleHistoryGroup(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+
+    if (content.style.display === 'none') {
+      content.style.display = 'block';
+      if (icon) icon.style.transform = 'rotate(0deg)';
+    } else {
+      content.style.display = 'none';
+      if (icon) icon.style.transform = 'rotate(-90deg)';
+    }
   },
 
   get elements() {
@@ -189,7 +196,7 @@ export const UI = {
 
       html += `
         <div class="history-group" style="margin-bottom: 8px; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;">
-            <div class="history-group-header" onclick="window.toggleHistoryGroup(this)" style="padding: 8px 10px; background: #f8f9fa; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+            <div class="history-group-header" onclick="toggleHistoryGroup(this)" style="padding: 8px 10px; background: #f8f9fa; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none;">
                 <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
                     <i class="fas fa-chevron-down toggle-icon" style="font-size: 0.8em; color: #666; transition: transform 0.2s;"></i>
                     <i class="fas fa-file-alt" style="color: #666;"></i> 
@@ -211,7 +218,9 @@ export const UI = {
                           );
                           return `
                     <div class="history-item" style="padding: 4px 15px; display: flex; gap: 10px; font-size: 0.85em; border-bottom: 1px solid #f0f0f0;">
-                        <span class="history-time" style="color: #999; min-width: 65px;">${new Date(item.timestamp).toLocaleTimeString()}</span>
+                        <span class="history-time" style="color: #999; min-width: 65px;">${new Date(
+                          item.timestamp
+                        ).toLocaleTimeString()}</span>
                         <span class="history-desc" style="color: #333;">${cleanDesc}</span>
                     </div>
                     `;
