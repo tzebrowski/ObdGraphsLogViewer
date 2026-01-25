@@ -106,24 +106,52 @@ class DataProcessor {
     return result;
   }
 
+  /**
+   * Processes raw telemetry array into a structured log entry.
+   * @private
+   */
   #process(data, fileName) {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
-      const schema = this.#detectSchema(data[0]);
-      const processedPoints = data
+      let telemetryPoints = data;
+      let fileMetadata = {};
+
+      // OPTIONAL: Check if the first element is a metadata block
+      // Example format: [{ "metadata": { ... } }, { "t": 1, "s": "sig", "v": 10 }, ...]
+      if (data.length > 0 && data[0].metadata) {
+        fileMetadata = data[0].metadata;
+        // The rest of the array is the actual telemetry data
+        telemetryPoints = data.slice(1);
+      }
+
+      // If there are no data points after removing metadata, handle gracefully
+      if (telemetryPoints.length === 0) {
+        console.warn(
+          'Preprocessing: File contains metadata but no telemetry points.'
+        );
+        // Create an empty result structure or handle as needed
+      }
+
+      // Detect schema based on the first actual data point
+      const schema = this.#detectSchema(telemetryPoints[0]);
+
+      const processedPoints = telemetryPoints
         .map((item) => this.#applyMappingAndCleaning(item, schema))
         .filter((point) => point !== null);
 
       const result = this.#transformRawData(processedPoints, fileName);
 
-      result.size = data.length;
+      // Attach the extracted metadata to the result object
+      result.metadata = fileMetadata;
+      result.size = telemetryPoints.length; // Update size to reflect actual data count
 
       AppState.files.push(result);
 
       projectManager.registerFile({
         name: fileName,
-        size: data.length,
+        size: result.size,
+        metadata: result.metadata, // Register metadata with project manager if supported
       });
 
       return result;

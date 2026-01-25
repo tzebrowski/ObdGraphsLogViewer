@@ -534,4 +534,68 @@ invalid,2000
       }
     }, 50);
   });
+
+  test('should extract metadata object from the first array element', () => {
+    const rawData = [
+      {
+        metadata: {
+          'trip.duration': '30',
+          'trip.profileId': 'profile_8',
+          'trip.startTime': '1769352769988',
+        },
+      },
+      { s: 'RPM', t: 1000, v: 2500 },
+      { s: 'Speed', t: 1000, v: 45 },
+    ];
+
+    const result = dataProcessor.process(rawData, 'meta_test.json');
+
+    // Verify metadata was extracted and attached to the file object
+    expect(result.metadata).toBeDefined();
+    expect(result.metadata['trip.duration']).toBe('30');
+    expect(result.metadata['trip.profileId']).toBe('profile_8');
+  });
+
+  test('should process remaining elements as telemetry data when metadata is present', () => {
+    const rawData = [
+      { metadata: { car: 'GME 2.0' } }, // Index 0: Metadata
+      { s: 'RPM', t: 1000, v: 800 }, // Index 1: Telemetry
+      { s: 'RPM', t: 2000, v: 1500 }, // Index 2: Telemetry
+    ];
+
+    const result = dataProcessor.process(rawData, 'meta_telemetry.json');
+
+    // Should ignore index 0 for signals
+    expect(result.size).toBe(2); // Only 2 actual data points
+    expect(result.signals['RPM']).toHaveLength(2);
+    expect(result.signals['RPM'][0].y).toBe(800);
+    expect(result.signals['RPM'][1].y).toBe(1500);
+  });
+
+  test('should handle standard files (no metadata) correctly (Backward Compatibility)', () => {
+    // A standard file starts immediately with a telemetry point
+    const rawData = [
+      { s: 'RPM', t: 1000, v: 800 },
+      { s: 'RPM', t: 2000, v: 1200 },
+    ];
+
+    const result = dataProcessor.process(rawData, 'standard.json');
+
+    // FIX: Expect an empty object instead of undefined
+    expect(result.metadata).toEqual({});
+
+    expect(result.size).toBe(2);
+    expect(result.signals['RPM']).toHaveLength(2);
+    expect(result.signals['RPM'][0].y).toBe(800);
+  });
+
+  test('should handle edge case where file only contains metadata', () => {
+    const rawData = [{ metadata: { note: 'Empty trip' } }];
+
+    const result = dataProcessor.process(rawData, 'empty_trip.json');
+
+    expect(result.metadata).toEqual({ note: 'Empty trip' });
+    expect(result.size).toBe(0);
+    expect(result.availableSignals).toHaveLength(0);
+  });
 });
