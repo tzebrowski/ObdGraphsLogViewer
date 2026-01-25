@@ -20,6 +20,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { messenger } from './bus.js';
+import { projectManager } from './projectmanager.js';
 
 export const ChartManager = {
   hoverValue: null,
@@ -594,11 +595,16 @@ export const ChartManager = {
 
   removeChart(index) {
     if (this.viewMode === 'overlay') return;
+
+    projectManager.onFileRemoved(index);
+
     this.hoverValue = null;
     this.activeChartIndex = null;
     AppState.files.splice(index, 1);
+
     this.render();
     UI.renderSignalList();
+    UI.renderProjectHistory();
   },
 
   createInstance(canvas, file, index) {

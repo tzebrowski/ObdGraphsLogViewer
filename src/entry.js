@@ -75,3 +75,8 @@ window.resetAllZooms = () => XYAnalysis.resetAllZooms();
 window.onFileChange = () => XYAnalysis.onFileChange();
 window.histogram_openModal = () => Histogram.openModal();
 window.histogram_generate = () => Histogram.generate();
+
+window.replayProjectHistory = () => UI.replayProjectHistory();
+window.resetProject = () => UI.resetProject();
+window.editProjectName = () => UI.editProjectName();
+window.toggleHistoryGroup = (header) => UI.toggleHistoryGroup(header);

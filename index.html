@@ -312,6 +312,66 @@
             </div>
           </div>
 
+          <div
+            id="projectHistoryContainer"
+            class="control-group gray-box"
+            style="display: none"
+          >
+            <div class="group-header-row">
+              <h3 id="projectNameDisplay">Project History</h3>
+              <button
+                class="btn-icon"
+                onclick="
+                  event.stopPropagation();
+                  editProjectName();
+                "
+                title="Rename Project"
+                style="
+                  border: none;
+                  background: transparent;
+                  cursor: pointer;
+                  color: #888;
+                  padding: 5px;
+                "
+              >
+                <i class="fas fa-pen"></i>
+              </button>
+            </div>
+
+            <p class="section-description">Timeline of analysis steps.</p>
+
+            <div
+              id="projectHistoryList"
+              class="history-list"
+              style="
+                max-height: 150px;
+                overflow-y: auto;
+                margin-bottom: 10px;
+                font-size: 0.85em;
+                border: 1px solid #eee;
+                background: #fff;
+              "
+            ></div>
+
+            <div style="display: flex; gap: 5px">
+              <button
+                id="btnReplayProject"
+                class="btn btn-sm btn-primary"
+                onclick="replayProjectHistory()"
+                style="flex: 1"
+              >
+                <i class="fas fa-play"></i> Replay All
+              </button>
+              <button
+                class="btn btn-sm"
+                onclick="resetProject()"
+                title="Clear History"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
           <div class="control-group gray-box">
             <h3>Anomaly Scanner</h3>
             <p class="section-description">
@@ -982,7 +1042,7 @@
                 margin-top: 15px;
                 border-top: 1px solid #eee;
                 padding-top: 15px;
-                display: none; /* <--- TO JEST KLUCZOWA ZMIANA */
+                display: none;
               "
             >
               <label>New Channel Name:</label>
@@ -1050,5 +1110,6 @@
     <script type="module" src="./src/bus.js"></script>
     <script type="module" src="./src/navigation.js"></script>
     <script type="module" src="./src/mathchannels.js"></script>
+    <script type="module" src="./src/projectmanager.js"></script>
   </body>
 </html>

@@ -2,6 +2,7 @@ import templates from './templates.json';
 import { Config, AppState, DOM } from './config.js';
 import { Alert } from './alert.js';
 import { messenger } from './bus.js';
+import { projectManager } from './projectmanager.js';
 
 /**
  * DataProcessor Module
@@ -105,8 +106,6 @@ class DataProcessor {
     return result;
   }
 
-  // --- Internal Helper Methods (_) ---
-
   #process(data, fileName) {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
@@ -117,7 +116,15 @@ class DataProcessor {
         .filter((point) => point !== null);
 
       const result = this.#transformRawData(processedPoints, fileName);
+
+      result.size = data.length;
+
       AppState.files.push(result);
+
+      projectManager.registerFile({
+        name: fileName,
+        size: data.length,
+      });
 
       return result;
     } catch (error) {

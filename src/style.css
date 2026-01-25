@@ -2700,3 +2700,131 @@ body.pref-theme-dark .search-option:hover {
   height: 100%;
   border: 0;
 }
+
+.history-list {
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.history-desc {
+  font-weight: 600;
+  color: #444;
+}
+
+.history-details {
+  font-size: 0.75em;
+  color: #666;
+  font-family: monospace;
+}
+
+.history-group {
+  margin-bottom: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #fff;
+  overflow: hidden;
+}
+
+.history-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-desc {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9em;
+}
+
+.history-empty-msg {
+  padding: 10px;
+  color: #999;
+  text-align: center;
+}
+
+.history-group {
+  margin-bottom: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.history-group-header {
+  padding: 8px 10px;
+  background: #f8f9fa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.history-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.history-toggle-icon {
+  font-size: 0.8em;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.history-file-icon {
+  color: #666;
+}
+
+.history-filename {
+  font-weight: 600;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-fileindex {
+  font-size: 0.75em;
+  color: #888;
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.history-group-content {
+  display: block;
+  padding: 5px 0;
+}
+
+.history-item {
+  padding: 4px 15px;
+  display: flex;
+  gap: 10px;
+  font-size: 0.85em;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-item.empty {
+  color: #999;
+  font-style: italic;
+  padding: 5px 15px;
+  display: block;
+}
+
+.history-time {
+  font-size: 0.7em;
+  color: #999;
+}
+
+.history-desc {
+  color: #333;
+}

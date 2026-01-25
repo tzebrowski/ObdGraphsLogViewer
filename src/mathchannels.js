@@ -1,5 +1,6 @@
 import { AppState } from './config.js';
 import { UI } from './ui.js';
+import { projectManager } from './projectmanager.js';
 
 class MathChannels {
   #definitions;
@@ -982,6 +983,20 @@ class MathChannels {
             options
           );
           createdName = name;
+
+          if (!options.isReplay) {
+            projectManager.logAction(
+              'CREATE_MATH_CHANNEL',
+              `Created Channel (Batch): ${name}`,
+              {
+                formulaId: 'filtered_single',
+                inputs: singleInputMapping,
+                channelName: generatedName,
+                options: options,
+              },
+              targetFileIndex
+            );
+          }
         });
         this.#closeModal();
       } else {
@@ -992,6 +1007,20 @@ class MathChannels {
           newNameInput,
           options
         );
+
+        if (!options.isReplay) {
+          projectManager.logAction(
+            'CREATE_MATH_CHANNEL',
+            `Created Channel: ${createdName}`,
+            {
+              formulaId: formulaId,
+              inputs: inputMapping,
+              channelName: newNameInput,
+              options: options,
+            },
+            targetFileIndex
+          );
+        }
         this.#closeModal();
       }
 

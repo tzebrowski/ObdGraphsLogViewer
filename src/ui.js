@@ -5,7 +5,7 @@ import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
-import './mathchannels.js';
+import { projectManager } from './projectmanager.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -36,6 +36,37 @@ export const UI = {
         fileInfo.innerText = `${AppState.files.length} logs loaded`;
       }
     });
+
+    this.renderProjectHistory();
+  },
+
+  replayProjectHistory() {
+    projectManager.replayHistory();
+  },
+
+  resetProject() {
+    projectManager.resetProject();
+  },
+
+  editProjectName() {
+    const currentName = projectManager.getProjectName();
+    const newName = prompt('Enter new project name:', currentName);
+    if (newName) {
+      projectManager.renameProject(newName);
+    }
+  },
+
+  toggleHistoryGroup(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+
+    if (content.style.display === 'none') {
+      content.style.display = 'block';
+      if (icon) icon.style.transform = 'rotate(0deg)';
+    } else {
+      content.style.display = 'none';
+      if (icon) icon.style.transform = 'rotate(-90deg)';
+    }
   },
 
   get elements() {
@@ -91,6 +122,135 @@ export const UI = {
 
     fileSel.onchange = updateSignals;
     updateSignals();
+  },
+
+  renderProjectHistory() {
+    const list = document.getElementById('projectHistoryList');
+    const replayBtn = document.getElementById('btnReplayProject');
+
+    const historyContainer = document.getElementById('projectHistoryContainer');
+    if (historyContainer) {
+      historyContainer.style.display = 'block';
+    }
+
+    const nameDisplay = document.getElementById('projectNameDisplay');
+    if (nameDisplay) {
+      nameDisplay.innerText = projectManager.getProjectName();
+    }
+
+    if (!list) return;
+
+    const history = projectManager.getHistory();
+    const resources = projectManager.getResources();
+
+    if (!resources || resources.length === 0) {
+      list.innerHTML = '<div class="history-empty-msg">No active files.</div>';
+      if (replayBtn) replayBtn.style.display = 'none';
+      return;
+    }
+
+    const grouped = {};
+    history.forEach((action) => {
+      const key = action.resourceId || 'unknown';
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(action);
+    });
+
+    let html = '';
+    let totalActionsCount = 0;
+
+    resources.forEach((resource) => {
+      if (!resource.isActive) return;
+
+      const isLoaded = AppState.files.some(
+        (f) =>
+          f.name === resource.fileName && (f.size || 0) === resource.fileSize
+      );
+      if (!isLoaded) return;
+
+      const resId = resource.fileId;
+      const actions = grouped[resId] || [];
+
+      totalActionsCount += actions.length;
+
+      actions.sort((a, b) => b.timestamp - a.timestamp);
+
+      const fileName = resource.fileName;
+
+      let fileIndexLabel = '';
+      if (actions.length > 0) {
+        const idx = actions[0].targetFileIndex;
+        fileIndexLabel = idx !== -1 ? `Index: ${idx + 1}` : 'Closed';
+      } else {
+        const currentIdx = AppState.files.findIndex(
+          (f) =>
+            f.name === resource.fileName && (f.size || 0) === resource.fileSize
+        );
+        fileIndexLabel = currentIdx !== -1 ? `Index: ${currentIdx + 1}` : '-';
+      }
+
+      html += `
+        <div class="history-group">
+            <div class="history-group-header" onclick="toggleHistoryGroup(this)">
+                <div class="history-header-title">
+                    <i class="fas fa-chevron-down toggle-icon history-toggle-icon"></i>
+                    <i class="fas fa-file-alt history-file-icon"></i> 
+                    <span class="history-filename">${fileName}</span>
+                </div>
+                <span class="history-fileindex">${fileIndexLabel}</span>
+            </div>
+            <div class="history-group-content">
+                ${
+                  actions.length === 0
+                    ? `<div class="history-item empty">
+                       <span class="history-desc">File loaded (no actions yet)</span>
+                     </div>`
+                    : actions
+                        .map((item) => {
+                          const cleanDesc = item.description.replace(
+                            '(Archived) ',
+                            ''
+                          );
+                          return `
+                    <div class="history-item">
+                        <span class="history-time">${new Date(
+                          item.timestamp
+                        ).toLocaleTimeString()}</span>
+                        <span class="history-desc">${cleanDesc}</span>
+                    </div>
+                    `;
+                        })
+                        .join('')
+                }
+            </div>
+        </div>
+        `;
+    });
+
+    if (html === '') {
+      html = '<div class="history-empty-msg">No active files.</div>';
+    }
+
+    if (replayBtn) {
+      if (AppState.files.length === 0) {
+        replayBtn.style.display = 'none';
+      } else {
+        replayBtn.style.display = 'block';
+        if (totalActionsCount === 0) {
+          replayBtn.disabled = true;
+          replayBtn.style.opacity = '0.5';
+          replayBtn.style.cursor = 'not-allowed';
+        } else {
+          replayBtn.disabled = false;
+          replayBtn.style.opacity = '1';
+          replayBtn.style.cursor = 'pointer';
+        }
+      }
+    }
+
+    list.innerHTML = html;
   },
 
   updateDataLoadedState: (hasData) => {
