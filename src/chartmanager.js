@@ -226,11 +226,37 @@ export const ChartManager = {
     const createRow = (label, value) => `
         <div style="display:flex; justify-content:space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
             <strong style="color: #555;">${label}</strong>
-            <span style="font-family: monospace; color: #333;">${value || 'N/A'}</span>
+            <span style="font-family: monospace; color: #333; text-align: right;">${value || 'N/A'}</span>
         </div>`;
 
     const meta = file.metadata || {};
     const durationFormatted = this.formatDuration(file.duration);
+
+    // Generate rows for all metadata keys found in the file
+    let dynamicMetaRows = '';
+    if (Object.keys(meta).length > 0) {
+      dynamicMetaRows += `<h5 style="margin: 15px 0 5px; color:#c22636; border-bottom: 2px solid #eee; padding-bottom:5px;">Extended Metadata</h5>`;
+
+      Object.entries(meta).forEach(([key, value]) => {
+        // Formatting: "trip.profileLabel" -> "Profile Label"
+        const label = key
+          .replace('trip.', '')
+          .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+          .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
+
+        // Format Timestamps if detected
+        let displayValue = value;
+        if (
+          key.toLowerCase().includes('time') &&
+          !isNaN(value) &&
+          value > 1000000000
+        ) {
+          displayValue = new Date(parseInt(value)).toLocaleString();
+        }
+
+        dynamicMetaRows += createRow(label, displayValue);
+      });
+    }
 
     const modalHtml = `
       <div id="metadataModal" class="modal-overlay" style="display: flex;">
@@ -240,13 +266,14 @@ export const ChartManager = {
             <button class="btn-close" onclick="document.getElementById('metadataModal').remove()">×</button>
           </div>
           <div class="modal-body">
-            <h4 style="margin-top:0; color:#c22636;">${file.name}</h4>
+            <h4 style="margin-top:0; color:#1c3d72;">${file.name}</h4>
+            
             ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
             ${createRow('Duration', durationFormatted)}
             ${createRow('Signals Count', file.availableSignals.length)}
-            ${createRow('Profile Name', meta.profileName || 'Unknown')}
-            ${createRow('ECU ID', meta.ecuId || 'N/A')}
-            ${createRow('App Version', meta.appVersion || 'N/A')}
+            
+            ${dynamicMetaRows}
+
             <div style="margin-top: 20px; text-align: right;">
                <button class="btn btn-primary" onclick="document.getElementById('metadataModal').remove()">Close</button>
             </div>
