@@ -177,7 +177,7 @@ export const UI = {
       if (!resource.isActive) return;
 
       const resId = resource.fileId;
-      const actions = grouped[resId] || []; 
+      const actions = grouped[resId] || [];
 
       actions.sort((a, b) => b.timestamp - a.timestamp);
 
