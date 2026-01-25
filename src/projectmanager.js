@@ -46,6 +46,16 @@ class ProjectManager {
     });
   }
 
+  getProjectName() {
+    return this.#currentProject.name;
+  }
+
+  renameProject(newName) {
+    if (!newName || newName.trim() === '') return;
+    this.#currentProject.name = newName.trim();
+    this.#saveToStorage();
+  }
+
   getResources() {
     return this.#currentProject.resources;
   }
@@ -183,8 +193,12 @@ class ProjectManager {
 
   resetProject() {
     this.#currentProject = this.#createEmptyProject();
+    if (AppState.files.length > 0) {
+        AppState.files.forEach(file => {
+            this.registerFile(file);
+        });
+    }
     this.#saveToStorage();
-    location.reload();
   }
 
   getHistory() {

@@ -42,6 +42,34 @@ export const UI = {
     window.replayProjectHistory = () => projectManager.replayHistory();
     window.resetProject = () => projectManager.resetProject();
 
+    window.editProjectName = () => {
+      const currentName = projectManager.getProjectName();
+      const newName = prompt('Enter new project name:', currentName);
+      if (newName) {
+        projectManager.renameProject(newName);
+      }
+    };
+
+    window.toggleProjectHistory = () => {
+        
+        const content = document.getElementById('projectHistoryContent');
+        const chevron = document.getElementById('projectChevron');
+        
+        if (!content) {
+            console.error("Element projectHistoryContent not found!");
+            return;
+        }
+        const isHidden = content.style.display === 'none';
+        if (isHidden) {
+            content.style.display = 'block';
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        } else {
+            content.style.display = 'none';
+            if (chevron) chevron.style.transform = 'rotate(-90deg)';
+        }
+    };
+
+
     this.renderProjectHistory();
   },
 
@@ -104,7 +132,11 @@ export const UI = {
     const list = document.getElementById('projectHistoryList');
     const replayBtn = document.getElementById('btnReplayProject');
 
-    // Ukryj przycisk Replay, jeśli nie ma załadowanych plików
+    const nameDisplay = document.getElementById('projectNameDisplay');
+    if (nameDisplay) {
+      nameDisplay.innerText = projectManager.getProjectName();
+    }
+    
     if (replayBtn) {
       if (AppState.files.length === 0) {
         replayBtn.style.display = 'none';
@@ -121,7 +153,6 @@ export const UI = {
     if (history.length === 0) {
       list.innerHTML =
         '<div style="padding:10px; color:#999; text-align:center;">No actions recorded yet.</div>';
-      // Ukryj przycisk również jeśli historia jest pusta
       if (replayBtn) replayBtn.style.display = 'none';
       return;
     }

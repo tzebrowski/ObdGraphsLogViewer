@@ -601,8 +601,10 @@ export const ChartManager = {
     this.hoverValue = null;
     this.activeChartIndex = null;
     AppState.files.splice(index, 1);
+
     this.render();
     UI.renderSignalList();
+    UI.renderProjectHistory();
   },
 
   createInstance(canvas, file, index) {

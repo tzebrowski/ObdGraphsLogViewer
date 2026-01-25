@@ -983,6 +983,20 @@ class MathChannels {
             options
           );
           createdName = name;
+
+          if (!options.isReplay) {
+            projectManager.logAction(
+              'CREATE_MATH_CHANNEL',
+              `Created Channel (Batch): ${name}`,
+              {
+                formulaId: 'filtered_single',
+                inputs: singleInputMapping,
+                channelName: generatedName,
+                options: options,
+              },
+              targetFileIndex
+            );
+          }
         });
         this.#closeModal();
       } else {
@@ -994,7 +1008,7 @@ class MathChannels {
           options
         );
 
-        if (!definition.isBatch && !options.isReplay) {
+        if (!options.isReplay) {
           projectManager.logAction(
             'CREATE_MATH_CHANNEL',
             `Created Channel: ${createdName}`,
