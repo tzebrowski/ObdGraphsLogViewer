@@ -18,6 +18,14 @@ export const UI = {
 
     UI.updateDataLoadedState(false);
 
+    messenger.on('project:updated', () => {
+      this.renderProjectHistory();
+    });
+
+    messenger.on('project:replayHistory', () => {
+      this.renderSignalList();
+    });
+
     messenger.on('ui:updateDataLoadedState', (event) => {
       UI.updateDataLoadedState(event.status);
     });

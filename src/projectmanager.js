@@ -1,6 +1,6 @@
 import { AppState } from './config.js';
-import { UI } from './ui.js';
 import { mathChannels } from './mathchannels.js';
+import { messenger } from './bus.js';
 
 class ProjectManager {
   #currentProject;
@@ -10,6 +10,11 @@ class ProjectManager {
     this.#currentProject =
       this.#loadFromStorage() || this.#createEmptyProject();
     this.#isReplaying = false;
+
+    messenger.on('action:log', (data) => {
+      console.error('action:log ${data}');
+      this.logAction(data.type, data.description, data.payload, data.fileIndex);
+    });
   }
 
   #createEmptyProject() {
@@ -32,9 +37,8 @@ class ProjectManager {
       'current_project',
       JSON.stringify(this.#currentProject)
     );
-    if (typeof UI.renderProjectHistory === 'function') {
-      UI.renderProjectHistory();
-    }
+
+    messenger.emit('project:updated', this.#currentProject);
   }
 
   #findResource(name, size) {
@@ -188,7 +192,7 @@ class ProjectManager {
     }
 
     this.#isReplaying = false;
-    UI.renderSignalList();
+    messenger.emit('project:replayHistory', {});
   }
 
   resetProject() {
