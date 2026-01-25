@@ -135,14 +135,6 @@ export const UI = {
       nameDisplay.innerText = projectManager.getProjectName();
     }
 
-    if (replayBtn) {
-      if (AppState.files.length === 0) {
-        replayBtn.style.display = 'none';
-      } else {
-        replayBtn.style.display = 'block';
-      }
-    }
-
     if (!list) return;
 
     const history = projectManager.getHistory();
@@ -151,6 +143,7 @@ export const UI = {
     if (!resources || resources.length === 0) {
       list.innerHTML =
         '<div style="padding:10px; color:#999; text-align:center;">No active files.</div>';
+      if (replayBtn) replayBtn.style.display = 'none';
       return;
     }
 
@@ -164,6 +157,7 @@ export const UI = {
     });
 
     let html = '';
+    let totalActionsCount = 0;
 
     resources.forEach((resource) => {
       if (!resource.isActive) return;
@@ -176,6 +170,8 @@ export const UI = {
 
       const resId = resource.fileId;
       const actions = grouped[resId] || [];
+
+      totalActionsCount += actions.length;
 
       actions.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -232,6 +228,23 @@ export const UI = {
     if (html === '') {
       html =
         '<div style="padding:10px; color:#999; text-align:center;">No active files.</div>';
+    }
+
+    if (replayBtn) {
+      if (AppState.files.length === 0) {
+        replayBtn.style.display = 'none';
+      } else {
+        replayBtn.style.display = 'block';
+        if (totalActionsCount === 0) {
+          replayBtn.disabled = true;
+          replayBtn.style.opacity = '0.5';
+          replayBtn.style.cursor = 'not-allowed';
+        } else {
+          replayBtn.disabled = false;
+          replayBtn.style.opacity = '1';
+          replayBtn.style.cursor = 'pointer';
+        }
+      }
     }
 
     list.innerHTML = html;
