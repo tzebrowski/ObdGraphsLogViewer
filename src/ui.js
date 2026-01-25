@@ -51,24 +51,22 @@ export const UI = {
     };
 
     window.toggleProjectHistory = () => {
-        
-        const content = document.getElementById('projectHistoryContent');
-        const chevron = document.getElementById('projectChevron');
-        
-        if (!content) {
-            console.error("Element projectHistoryContent not found!");
-            return;
-        }
-        const isHidden = content.style.display === 'none';
-        if (isHidden) {
-            content.style.display = 'block';
-            if (chevron) chevron.style.transform = 'rotate(0deg)';
-        } else {
-            content.style.display = 'none';
-            if (chevron) chevron.style.transform = 'rotate(-90deg)';
-        }
-    };
+      const content = document.getElementById('projectHistoryContent');
+      const chevron = document.getElementById('projectChevron');
 
+      if (!content) {
+        console.error('Element projectHistoryContent not found!');
+        return;
+      }
+      const isHidden = content.style.display === 'none';
+      if (isHidden) {
+        content.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+      } else {
+        content.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(-90deg)';
+      }
+    };
 
     this.renderProjectHistory();
   },
@@ -132,11 +130,19 @@ export const UI = {
     const list = document.getElementById('projectHistoryList');
     const replayBtn = document.getElementById('btnReplayProject');
 
+    const historyContainer = document.getElementById('projectHistoryContainer');
+    if (AppState.files.length === 0) {
+      if (historyContainer) historyContainer.style.display = 'none';
+      return;
+    } else {
+      if (historyContainer) historyContainer.style.display = 'block';
+    }
+
     const nameDisplay = document.getElementById('projectNameDisplay');
     if (nameDisplay) {
       nameDisplay.innerText = projectManager.getProjectName();
     }
-    
+
     if (replayBtn) {
       if (AppState.files.length === 0) {
         replayBtn.style.display = 'none';
@@ -150,15 +156,13 @@ export const UI = {
     const history = projectManager.getHistory();
     const resources = projectManager.getResources();
 
-    if (history.length === 0) {
+    if (!resources || resources.length === 0) {
       list.innerHTML =
-        '<div style="padding:10px; color:#999; text-align:center;">No actions recorded yet.</div>';
-      if (replayBtn) replayBtn.style.display = 'none';
+        '<div style="padding:10px; color:#999; text-align:center;">No files loaded.</div>';
       return;
     }
 
     const grouped = {};
-
     history.forEach((action) => {
       const key = action.resourceId || 'unknown';
       if (!grouped[key]) {
@@ -169,19 +173,26 @@ export const UI = {
 
     let html = '';
 
-    for (const [resId, actions] of Object.entries(grouped)) {
-      const resource = resources.find((r) => r.fileId === resId);
+    resources.forEach((resource) => {
+      if (!resource.isActive) return;
 
-      if (!resource || !resource.isActive) {
-        continue;
-      }
+      const resId = resource.fileId;
+      const actions = grouped[resId] || []; 
 
       actions.sort((a, b) => b.timestamp - a.timestamp);
 
-      const fileName = resource ? resource.fileName : 'Unknown File';
-      const currentIndex = actions[0].targetFileIndex;
-      const fileIndexLabel =
-        currentIndex !== -1 ? `Index: ${currentIndex + 1}` : 'Closed';
+      const fileName = resource.fileName;
+
+      let fileIndexLabel = '';
+      if (actions.length > 0) {
+        const idx = actions[0].targetFileIndex;
+        fileIndexLabel = idx !== -1 ? `Index: ${idx + 1}` : 'Closed';
+      } else {
+        const currentIdx = AppState.files.findIndex(
+          (f) => f.name === resource.fileName && f.size === resource.fileSize
+        );
+        fileIndexLabel = currentIdx !== -1 ? `Index: ${currentIdx + 1}` : '-';
+      }
 
       html += `
         <div class="history-group">
@@ -191,28 +202,34 @@ export const UI = {
                 <span class="history-fileindex">${fileIndexLabel}</span>
             </div>
             <div class="history-group-content">
-                ${actions
-                  .map((item) => {
-                    const cleanDesc = item.description.replace(
-                      '(Archived) ',
-                      ''
-                    );
-                    return `
+                ${
+                  actions.length === 0
+                    ? `<div class="history-item" style="color:#999; font-style:italic; padding:5px 0;">
+                       <span class="history-desc">File loaded (no actions yet)</span>
+                     </div>`
+                    : actions
+                        .map((item) => {
+                          const cleanDesc = item.description.replace(
+                            '(Archived) ',
+                            ''
+                          );
+                          return `
                     <div class="history-item">
                         <span class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</span>
                         <span class="history-desc">${cleanDesc}</span>
                     </div>
                     `;
-                  })
-                  .join('')}
+                        })
+                        .join('')
+                }
             </div>
         </div>
         `;
-    }
+    });
 
     if (html === '') {
       html =
-        '<div style="padding:10px; color:#999; text-align:center; font-style:italic;">History hidden (files not loaded).</div>';
+        '<div style="padding:10px; color:#999; text-align:center;">No active files.</div>';
     }
 
     list.innerHTML = html;

@@ -194,9 +194,9 @@ class ProjectManager {
   resetProject() {
     this.#currentProject = this.#createEmptyProject();
     if (AppState.files.length > 0) {
-        AppState.files.forEach(file => {
-            this.registerFile(file);
-        });
+      AppState.files.forEach((file) => {
+        this.registerFile(file);
+      });
     }
     this.#saveToStorage();
   }
