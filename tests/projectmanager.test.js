@@ -48,7 +48,6 @@ jest.unstable_mockModule('../src/config.js', () => ({
   },
 }));
 
-
 jest.unstable_mockModule('../src/mathchannels.js', () => ({
   mathChannels: {
     createChannel: jest.fn(),
