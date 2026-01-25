@@ -50,6 +50,19 @@ export const UI = {
       }
     };
 
+    window.toggleHistoryGroup = (header) => {
+      const content = header.nextElementSibling;
+      const icon = header.querySelector('.toggle-icon');
+
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      } else {
+        content.style.display = 'none';
+        if (icon) icon.style.transform = 'rotate(-90deg)';
+      }
+    };
+
     this.renderProjectHistory();
   },
 
@@ -113,11 +126,8 @@ export const UI = {
     const replayBtn = document.getElementById('btnReplayProject');
 
     const historyContainer = document.getElementById('projectHistoryContainer');
-    if (AppState.files.length === 0) {
-      if (historyContainer) historyContainer.style.display = 'none';
-      return;
-    } else {
-      if (historyContainer) historyContainer.style.display = 'block';
+    if (historyContainer) {
+      historyContainer.style.display = 'block';
     }
 
     const nameDisplay = document.getElementById('projectNameDisplay');
@@ -140,7 +150,7 @@ export const UI = {
 
     if (!resources || resources.length === 0) {
       list.innerHTML =
-        '<div style="padding:10px; color:#999; text-align:center;">No files loaded.</div>';
+        '<div style="padding:10px; color:#999; text-align:center;">No active files.</div>';
       return;
     }
 
@@ -159,7 +169,8 @@ export const UI = {
       if (!resource.isActive) return;
 
       const isLoaded = AppState.files.some(
-        (f) => f.name === resource.fileName && f.size === resource.fileSize
+        (f) =>
+          f.name === resource.fileName && (f.size || 0) === resource.fileSize
       );
       if (!isLoaded) return;
 
@@ -169,28 +180,33 @@ export const UI = {
       actions.sort((a, b) => b.timestamp - a.timestamp);
 
       const fileName = resource.fileName;
+
       let fileIndexLabel = '';
       if (actions.length > 0) {
         const idx = actions[0].targetFileIndex;
         fileIndexLabel = idx !== -1 ? `Index: ${idx + 1}` : 'Closed';
       } else {
         const currentIdx = AppState.files.findIndex(
-          (f) => f.name === resource.fileName && f.size === resource.fileSize
+          (f) =>
+            f.name === resource.fileName && (f.size || 0) === resource.fileSize
         );
         fileIndexLabel = currentIdx !== -1 ? `Index: ${currentIdx + 1}` : '-';
       }
 
       html += `
-        <div class="history-group">
-            <div class="history-group-header">
-                <i class="fas fa-file-alt"></i> 
-                <span class="history-filename">${fileName}</span>
-                <span class="history-fileindex">${fileIndexLabel}</span>
+        <div class="history-group" style="margin-bottom: 8px; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;">
+            <div class="history-group-header" onclick="window.toggleHistoryGroup(this)" style="padding: 8px 10px; background: #f8f9fa; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                    <i class="fas fa-chevron-down toggle-icon" style="font-size: 0.8em; color: #666; transition: transform 0.2s;"></i>
+                    <i class="fas fa-file-alt" style="color: #666;"></i> 
+                    <span class="history-filename" style="font-weight: 600; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fileName}</span>
+                </div>
+                <span class="history-fileindex" style="font-size: 0.75em; color: #888; background: #eee; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">${fileIndexLabel}</span>
             </div>
-            <div class="history-group-content">
+            <div class="history-group-content" style="display: block; padding: 5px 0;">
                 ${
                   actions.length === 0
-                    ? `<div class="history-item" style="color:#999; font-style:italic; padding:5px 0;">
+                    ? `<div class="history-item" style="color:#999; font-style:italic; padding: 5px 15px; font-size: 0.85em;">
                        <span class="history-desc">File loaded (no actions yet)</span>
                      </div>`
                     : actions
@@ -200,9 +216,9 @@ export const UI = {
                             ''
                           );
                           return `
-                    <div class="history-item">
-                        <span class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</span>
-                        <span class="history-desc">${cleanDesc}</span>
+                    <div class="history-item" style="padding: 4px 15px; display: flex; gap: 10px; font-size: 0.85em; border-bottom: 1px solid #f0f0f0;">
+                        <span class="history-time" style="color: #999; min-width: 65px;">${new Date(item.timestamp).toLocaleTimeString()}</span>
+                        <span class="history-desc" style="color: #333;">${cleanDesc}</span>
                     </div>
                     `;
                         })
