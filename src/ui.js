@@ -7,8 +7,6 @@ import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 
-import './mathchannels.js';
-
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
 
