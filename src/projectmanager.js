@@ -12,7 +12,6 @@ class ProjectManager {
     this.#isReplaying = false;
 
     messenger.on('action:log', (data) => {
-      console.error('action:log ${data}');
       this.logAction(data.type, data.description, data.payload, data.fileIndex);
     });
   }

@@ -1,355 +1,74 @@
 import { AppState } from './config.js';
 import { UI } from './ui.js';
 import { messenger } from './bus.js';
+import { MATH_DEFINITIONS } from './mathdefinitions.js';
+import { Alert } from './alert.js';
+
+class LinearInterpolator {
+  constructor(data) {
+    this.data = data;
+    this.lastIndex = 0;
+    this.length = data.length;
+  }
+
+  getValueAt(targetTime) {
+    if (this.length === 0) return 0;
+    if (targetTime <= this.data[0].x) return this.data[0].y;
+    if (targetTime >= this.data[this.length - 1].x)
+      return this.data[this.length - 1].y;
+
+    let i = this.lastIndex;
+    if (this.data[i].x > targetTime) i = 0;
+
+    while (i < this.length - 1 && this.data[i + 1].x < targetTime) {
+      i++;
+    }
+    this.lastIndex = i;
+
+    const p1 = this.data[i];
+    const p2 = this.data[i + 1];
+
+    if (!p1) return 0;
+    if (!p2) return p1.y;
+
+    const t1 = p1.x;
+    const t2 = p2.x;
+    const range = t2 - t1;
+
+    if (range === 0) return p1.y;
+
+    const factor = (targetTime - t1) / range;
+    return p1.y + (p2.y - p1.y) * factor;
+  }
+}
 
 class MathChannels {
   #definitions;
 
   constructor() {
-    this.#definitions = this.#getDefinitions();
-    this.#initWindowBindings();
+    this.#definitions = MATH_DEFINITIONS;
   }
 
-  #getDefinitions() {
-    return [
-      {
-        id: 'filtered_batch',
-        name: 'Filtered (Multi-Signal)',
-        unit: 'Match Source',
-        description:
-          'Creates multiple channels at once. Filters selected Source signals based on the Condition. Useful for creating "clean" versions of many sensors simultaneously.',
-        isBatch: true,
-        inputs: [
-          {
-            name: 'sources',
-            label: 'Signals to Filter (Click to add multiple)',
-            isMulti: true,
-          },
-          { name: 'cond', label: 'Condition Signal' },
-          {
-            name: 'thresh',
-            label: 'Threshold',
-            isConstant: true,
-            defaultValue: 100,
-          },
-          {
-            name: 'mode',
-            label: 'Filter Logic',
-            isConstant: true,
-            defaultValue: '1',
-            options: [
-              {
-                value: '1',
-                label: 'Pass if Condition > Threshold (High Pass)',
-              },
-              { value: '0', label: 'Pass if Condition < Threshold (Low Pass)' },
-            ],
-          },
-          {
-            name: 'fallback',
-            label: 'Fallback Value (Default: 0)',
-            isConstant: true,
-            defaultValue: 0,
-          },
-        ],
-        formula: () => 0,
-      },
-      {
-        id: 'filtered_single',
-        name: 'Filtered (Single)',
-        unit: '',
-        description: 'Internal Logic for Batch Filter',
-        isHidden: true,
-        inputs: [
-          { name: 'source', label: 'Source' },
-          { name: 'cond', label: 'Condition' },
-          {
-            name: 'thresh',
-            label: 'Threshold',
-            isConstant: true,
-            defaultValue: 0,
-          },
-          {
-            name: 'mode',
-            label: 'Mode',
-            isConstant: true,
-            defaultValue: '1',
-            options: [
-              { value: '1', label: 'Greater Than (>)' },
-              { value: '0', label: 'Less Than (<)' },
-            ],
-          },
-          {
-            name: 'fallback',
-            label: 'Fallback',
-            isConstant: true,
-            defaultValue: 0,
-          },
-        ],
-        formula: (values) => {
-          const source = values[0];
-          const cond = values[1];
-          const thresh = values[2];
-          const mode = values[3];
-          const fallback = values[4];
-
-          const conditionMet = mode === 1 ? cond > thresh : cond < thresh;
-          return conditionMet ? source : fallback;
-        },
-      },
-      {
-        id: 'est_power_kgh',
-        name: 'Est. Power (MAF kg/h)',
-        unit: 'HP',
-        description:
-          'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
-        inputs: [
-          {
-            name: ['Air Mass', 'MAF', 'Flow'],
-            label: 'Air Mass Flow (kg/h)',
-          },
-          {
-            name: 'factor',
-            label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
-            isConstant: true,
-            defaultValue: 1.35,
-          },
-        ],
-        formula: (values) => (values[0] / 3.6) * values[1],
-      },
-      {
-        id: 'est_power_gs',
-        name: 'Est. Power (MAF g/s)',
-        unit: 'HP',
-        description:
-          'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
-        inputs: [
-          {
-            name: ['Air Mass', 'MAF', 'Flow'],
-            label: 'Air Mass Flow (g/s)',
-          },
-          {
-            name: 'factor',
-            label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
-            isConstant: true,
-            defaultValue: 1.35,
-          },
-        ],
-        formula: (values) => values[0] * values[1],
-      },
-      {
-        id: 'power_from_torque',
-        name: 'Power (Torque)',
-        unit: 'HP',
-        description:
-          'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
-        inputs: [
-          {
-            name: ['Torque', 'Engine Torque', 'Nm'],
-            label: 'Torque (Nm or daNm)',
-          },
-          {
-            name: ['Engine RPM', 'Engine Speed', 'RPM'],
-            label: 'Engine RPM',
-          },
-          {
-            name: 'factor',
-            label: 'Correction Factor (1 for Nm, 10 for daNm)',
-            isConstant: true,
-            defaultValue: 1.0,
-          },
-        ],
-        formula: (values) => (values[0] * values[2] * values[1]) / 7127,
-      },
-      {
-        id: 'acceleration',
-        name: 'Acceleration',
-        unit: 'm/s²',
-        description:
-          'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
-        inputs: [
-          {
-            name: ['Vehicle Speed', 'Speed', 'Velocity'],
-            label: 'Speed (km/h)',
-          },
-        ],
-        customProcess: (signals) => {
-          const sourceData = signals[0];
-          const result = [];
-          for (let i = 1; i < sourceData.length; i++) {
-            const p1 = sourceData[i - 1];
-            const p2 = sourceData[i];
-            const dt = (p2.x - p1.x) / 1000;
-            if (dt <= 0) continue;
-            const dv = (p2.y - p1.y) / 3.6;
-            const accel = dv / dt;
-            result.push({ x: p2.x, y: accel });
-          }
-          return result;
-        },
-      },
-      {
-        id: 'smoothing',
-        name: 'Smoothed Signal',
-        unit: '',
-        description:
-          'Reduces noise in a signal using a Moving Average filter over N samples.',
-        inputs: [
-          { name: 'source', label: 'Signal to Smooth' },
-          {
-            name: 'window',
-            label: 'Window Size (Samples)',
-            isConstant: true,
-            defaultValue: 5,
-          },
-        ],
-        customProcess: (signals, constants) => {
-          const sourceData = signals[0];
-          const windowSize = Math.max(1, Math.round(constants[0]));
-          const smoothed = [];
-
-          for (let i = 0; i < sourceData.length; i++) {
-            let sum = 0;
-            let count = 0;
-
-            for (let j = 0; j < windowSize; j++) {
-              if (i - j >= 0) {
-                sum += sourceData[i - j].y;
-                count++;
-              }
-            }
-
-            smoothed.push({ x: sourceData[i].x, y: sum / count });
-          }
-          return smoothed;
-        },
-      },
-      {
-        id: 'filter_gt',
-        name: 'Filtered (> Threshold)',
-        unit: '',
-        description:
-          'Passes the Source signal ONLY if the Condition signal > Threshold. Otherwise returns Fallback value.',
-        inputs: [
-          { name: 'source', label: 'Signal to Display' },
-          { name: 'cond', label: 'Condition Signal' },
-          {
-            name: 'thresh',
-            label: 'Threshold',
-            isConstant: true,
-            defaultValue: 90,
-          },
-          {
-            name: 'fallback',
-            label: 'Fallback Value',
-            isConstant: true,
-            defaultValue: 0,
-          },
-        ],
-        formula: (values) => (values[1] > values[2] ? values[0] : values[3]),
-      },
-      {
-        id: 'filter_lt',
-        name: 'Filtered (< Threshold)',
-        unit: '',
-        description:
-          'Passes the Source signal ONLY if the Condition signal < Threshold. Otherwise returns Fallback value.',
-        inputs: [
-          { name: 'source', label: 'Signal to Display' },
-          { name: 'cond', label: 'Condition Signal' },
-          {
-            name: 'thresh',
-            label: 'Threshold',
-            isConstant: true,
-            defaultValue: 10,
-          },
-          {
-            name: 'fallback',
-            label: 'Fallback Value',
-            isConstant: true,
-            defaultValue: 0,
-          },
-        ],
-        formula: (values) => (values[1] < values[2] ? values[0] : values[3]),
-      },
-      {
-        id: 'boost',
-        name: 'Boost Pressure',
-        unit: 'Bar',
-        description:
-          'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
-        inputs: [
-          {
-            name: ['Manifold Pressure', 'MAP', 'Boost'],
-            label: 'Intake Manifold Pressure',
-          },
-          {
-            name: ['Atmospheric', 'Baro'],
-            label: 'Atmospheric Pressure',
-          },
-        ],
-        formula: (values) => values[0] - values[1],
-      },
-      {
-        id: 'afr_error',
-        name: 'AFR Error',
-        unit: 'AFR',
-        description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
-        inputs: [
-          {
-            name: ['Commanded', 'Target'],
-            label: 'AFR Commanded',
-          },
-          {
-            name: ['Measured', 'Current'],
-            label: 'AFR Measured',
-          },
-        ],
-        formula: (values) => values[0] - values[1],
-      },
-      {
-        id: 'pressure_ratio',
-        name: 'Pressure Ratio',
-        unit: 'Ratio',
-        description:
-          'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
-        inputs: [
-          {
-            name: ['Manifold Pressure', 'MAP'],
-            label: 'Intake Manifold Pressure',
-          },
-          {
-            name: ['Atmospheric', 'Baro'],
-            label: 'Atmospheric Pressure',
-          },
-        ],
-        formula: (values) => (values[1] !== 0 ? values[0] / values[1] : 0),
-      },
-      {
-        id: 'multiply_const',
-        name: 'Multiplied Signal',
-        unit: '',
-        description:
-          'Multiplies a signal by a constant factor. Useful for unit matched conversion.',
-        inputs: [
-          { name: 'source', label: 'Source Signal' },
-          {
-            name: 'factor',
-            label: 'Factor',
-            isConstant: true,
-            defaultValue: 1.0,
-          },
-        ],
-        formula: (values) => values[0] * values[1],
-      },
-    ];
+  openModal() {
+    if (AppState.files.length === 0) {
+      Alert.showAlert('Please load a log file first.');
+      return;
+    }
+    this.#renderModal();
   }
 
-  #initWindowBindings() {
-    window.openMathModal = () => this.#openModal();
-    window.closeMathModal = () => this.#closeModal();
-    window.onMathFormulaChange = () => this.#onFormulaChange();
-    window.createMathChannel = () => this.#executeCreation();
+  closeModal() {
+    const modal = document.getElementById('mathModal');
+    if (modal) modal.style.display = 'none';
+    this.#clearError(); // Reset error state on close
+  }
+
+  onFormulaChange() {
+    this.#renderFormulaUI();
+  }
+
+  createMathChannel() {
+    this.#executeCreation();
   }
 
   createChannel(
@@ -365,17 +84,9 @@ class MathChannels {
     const definition = this.#definitions.find((d) => d.id === formulaId);
     if (!definition) throw new Error('Invalid formula definition.');
 
-    const resolvedMapping = [...inputMapping];
-
-    definition.inputs.forEach((inputDef, idx) => {
-      if (!inputDef.isConstant) {
-        const requestedName = inputMapping[idx];
-        resolvedMapping[idx] = this.#resolveSignalName(
-          file,
-          inputDef,
-          requestedName
-        );
-      }
+    const resolvedMapping = definition.inputs.map((inputDef, idx) => {
+      if (inputDef.isConstant) return inputMapping[idx];
+      return this.#resolveSignalName(file, inputDef, inputMapping[idx]);
     });
 
     let resultData = [];
@@ -405,50 +116,45 @@ class MathChannels {
   }
 
   #resolveSignalName(file, inputDef, requestedName) {
-    if (file.signals[requestedName]) {
-      return requestedName;
-    }
+    if (file.signals[requestedName]) return requestedName;
 
     if (Array.isArray(inputDef.name)) {
       for (const alias of inputDef.name) {
         const match = file.availableSignals.find((s) =>
           s.toLowerCase().includes(alias.toLowerCase())
         );
-        if (match && file.signals[match]) {
-          return match;
-        }
+        if (match && file.signals[match]) return match;
       }
     }
-
     return requestedName;
   }
 
   #executeStandardFormula(file, definition, inputMapping) {
-    const sourceSignals = [];
+    const iterators = [];
     let masterTimeBase = null;
 
     definition.inputs.forEach((input, idx) => {
       if (input.isConstant) {
-        const rawVal = inputMapping[idx];
-        let val = parseFloat(rawVal);
-
-        if (typeof rawVal === 'string' && rawVal.toLowerCase() === 'nan') {
+        let val = parseFloat(inputMapping[idx]);
+        if (
+          typeof inputMapping[idx] === 'string' &&
+          inputMapping[idx].toLowerCase() === 'nan'
+        ) {
           val = NaN;
         }
-
-        if (isNaN(val) && input.name !== 'fallback')
-          throw new Error(`Invalid constant value for ${input.label}`);
-
-        sourceSignals.push({ isConstant: true, value: val });
+        if (isNaN(val) && input.name !== 'fallback') {
+          throw new Error(`Invalid constant for ${input.label}`);
+        }
+        iterators.push({ isConstant: true, value: val });
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-        if (!signalData) {
-          throw new Error(
-            `Signal '${signalName}' not found in file '${file.name}'.`
-          );
-        }
-        sourceSignals.push({ isConstant: false, data: signalData });
+        if (!signalData) throw new Error(`Signal '${signalName}' not found.`);
+
+        iterators.push({
+          isConstant: false,
+          interpolator: new LinearInterpolator(signalData),
+        });
         if (!masterTimeBase) masterTimeBase = signalData;
       }
     });
@@ -457,22 +163,24 @@ class MathChannels {
       throw new Error('At least one input must be a signal.');
 
     const resultData = [];
-    for (let i = 0; i < masterTimeBase.length; i++) {
-      const currentTime = masterTimeBase[i].x;
-      const currentValues = [];
+    const len = masterTimeBase.length;
 
-      sourceSignals.forEach((source) => {
-        if (source.isConstant) {
-          currentValues.push(source.value);
+    for (let i = 0; i < len; i++) {
+      const currentTime = masterTimeBase[i].x;
+      const currentValues = new Array(iterators.length);
+
+      for (let j = 0; j < iterators.length; j++) {
+        const it = iterators[j];
+        if (it.isConstant) {
+          currentValues[j] = it.value;
         } else {
-          const val = this.#interpolate(source.data, currentTime);
-          currentValues.push(val);
+          currentValues[j] = it.interpolator.getValueAt(currentTime);
         }
-      });
+      }
 
       const calculatedY = definition.formula(currentValues);
 
-      if (!isNaN(calculatedY)) {
+      if (typeof calculatedY === 'number' && !isNaN(calculatedY)) {
         resultData.push({ x: currentTime, y: calculatedY });
       }
     }
@@ -485,36 +193,29 @@ class MathChannels {
 
     definition.inputs.forEach((input, idx) => {
       if (input.isConstant) {
-        const val = parseFloat(inputMapping[idx]);
-        if (isNaN(val))
-          throw new Error(`Invalid constant value for ${input.label}`);
-        constants.push(val);
+        constants.push(parseFloat(inputMapping[idx]));
       } else {
         const signalName = inputMapping[idx];
         const signalData = file.signals[signalName];
-        if (!signalData)
-          throw new Error(
-            `Signal '${signalName}' not found in file '${file.name}'.`
-          );
+        if (!signalData) throw new Error(`Signal '${signalName}' not found.`);
         signals.push(signalData);
       }
     });
 
-    if (signals.length === 0)
-      throw new Error('Custom process requires at least one signal.');
     return definition.customProcess(signals, constants);
   }
 
   #applySmoothing(data, windowSize) {
+    if (data.length === 0) return [];
     const smoothed = [];
     for (let i = 0; i < data.length; i++) {
       let sum = 0;
       let count = 0;
-      for (let j = 0; j < windowSize; j++) {
-        if (i - j >= 0) {
-          sum += data[i - j].y;
-          count++;
-        }
+      const start = Math.max(0, i - windowSize + 1);
+
+      for (let j = start; j <= i; j++) {
+        sum += data[j].y;
+        count++;
       }
       smoothed.push({ x: data[i].x, y: sum / count });
     }
@@ -522,26 +223,18 @@ class MathChannels {
   }
 
   #finalizeChannel(file, resultData, finalName, unit) {
-    if (!finalName.startsWith('Math: ')) {
-      finalName = `Math: ${finalName}`;
-    }
+    if (!finalName.startsWith('Math: ')) finalName = `Math: ${finalName}`;
 
     let min = Infinity;
     let max = -Infinity;
-
     for (const point of resultData) {
       if (point.y < min) min = point.y;
       if (point.y > max) max = point.y;
     }
 
     file.signals[finalName] = resultData;
-
-    if (!file.metadata) file.metadata = {};
-    file.metadata[finalName] = {
-      min: min,
-      max: max,
-      unit: unit || 'Math',
-    };
+    file.metadata = file.metadata || {};
+    file.metadata[finalName] = { min, max, unit: unit || 'Math' };
 
     if (!file.availableSignals.includes(finalName)) {
       file.availableSignals.push(finalName);
@@ -550,42 +243,60 @@ class MathChannels {
     return finalName;
   }
 
-  #interpolate(data, targetTime) {
-    if (!data || data.length === 0) return 0;
-    if (targetTime <= data[0].x) return parseFloat(data[0].y);
-    if (targetTime >= data[data.length - 1].x)
-      return parseFloat(data[data.length - 1].y);
+  // --- UI Logic & Error Handling ---
 
-    let left = 0;
-    let right = data.length - 1;
-    while (left <= right) {
-      const mid = Math.floor((left + right) / 2);
-      if (data[mid].x < targetTime) left = mid + 1;
-      else right = mid - 1;
-    }
-
-    const p1 = data[left - 1];
-    const p2 = data[left];
-    if (!p1) return parseFloat(p2.y);
-    if (!p2) return parseFloat(p1.y);
-
-    const t1 = p1.x;
-    const t2 = p2.x;
-    if (t2 === t1) return parseFloat(p1.y);
-
+  #getCreateBtn() {
     return (
-      parseFloat(p1.y) +
-      (parseFloat(p2.y) - parseFloat(p1.y)) * ((targetTime - t1) / (t2 - t1))
+      document.getElementById('btnCreate') ||
+      document.querySelector('#mathModal button.btn-primary') ||
+      document.querySelector('#mathModal button[onclick*="createMathChannel"]')
     );
   }
 
-  #openModal() {
-    if (AppState.files.length === 0) {
-      alert('Please load a log file first.');
-      return;
+  #showError(message) {
+    let errorBox = document.getElementById('mathErrorBox');
+
+    if (!errorBox) {
+      // Use the helper to find the button
+      const btn = this.#getCreateBtn();
+      if (btn && btn.parentNode) {
+        errorBox = document.createElement('div');
+        errorBox.id = 'mathErrorBox';
+        // Insert before the button (or its container if needed)
+        btn.parentNode.insertBefore(errorBox, btn);
+      }
     }
+
+    if (errorBox) {
+      errorBox.innerText = message;
+      errorBox.style.display = 'block';
+    }
+  }
+
+  #clearError() {
+    const errorBox = document.getElementById('mathErrorBox');
+    if (errorBox) {
+      errorBox.style.display = 'none';
+      errorBox.innerText = '';
+    }
+  }
+
+  #renderModal() {
     const modal = document.getElementById('mathModal');
-    if (modal) modal.style.display = 'flex';
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    this.#clearError();
+
+    const btn = this.#getCreateBtn();
+    if (btn) {
+      btn.disabled = true;
+      // Ensure we don't double-bind if onclick is already in HTML
+      btn.onclick = (e) => {
+        e.preventDefault();
+        this.createMathChannel();
+      };
+    }
 
     const select = document.getElementById('mathFormulaSelect');
     if (!select) return;
@@ -598,97 +309,89 @@ class MathChannels {
     });
 
     document.getElementById('mathInputsContainer').innerHTML = '';
-
-    const descContainer = document.getElementById('mathDescriptionContainer');
-    if (descContainer) descContainer.style.display = 'none';
-
-    const nameContainer = document.getElementById('mathNameContainer');
-    if (nameContainer) nameContainer.style.display = 'none';
+    this.#toggleDisplay('mathDescriptionContainer', false);
+    this.#toggleDisplay('mathNameContainer', false);
 
     const nameInput = document.getElementById('mathChannelName');
-    if (nameInput) nameInput.value = '';
+    if (nameInput) {
+      nameInput.value = '';
+      nameInput.oninput = () => this.#validateForm();
+    }
+
+    select.onchange = () => {
+      this.onFormulaChange();
+      this.#validateForm();
+    };
   }
 
-  #closeModal() {
-    const modal = document.getElementById('mathModal');
-    if (modal) modal.style.display = 'none';
-  }
-
-  #onFormulaChange() {
+  #renderFormulaUI() {
+    this.#clearError();
     const formulaId = document.getElementById('mathFormulaSelect').value;
     const container = document.getElementById('mathInputsContainer');
     container.innerHTML = '';
 
     const definition = this.#definitions.find((d) => d.id === formulaId);
-
-    const descContainer = document.getElementById('mathDescriptionContainer');
-    const nameContainer = document.getElementById('mathNameContainer');
-    const nameInput = document.getElementById('mathChannelName');
-
     if (!definition) {
-      if (descContainer) descContainer.style.display = 'none';
-      if (nameContainer) nameContainer.style.display = 'none';
+      this.#toggleDisplay('mathDescriptionContainer', false);
+      this.#toggleDisplay('mathNameContainer', false);
+      this.#validateForm();
       return;
     }
 
     const descText = document.getElementById('mathFormulaDescription');
-    if (descContainer && descText) {
-      descText.innerText =
-        definition.description || 'No description available.';
-      descContainer.style.display = 'block';
-    }
+    if (descText) descText.innerText = definition.description || '';
+    this.#toggleDisplay('mathDescriptionContainer', true);
 
-    if (nameContainer && nameInput) {
-      nameContainer.style.display = 'block';
+    const nameInput = document.getElementById('mathChannelName');
+    if (nameInput) {
+      this.#toggleDisplay('mathNameContainer', true);
       nameInput.value = definition.name;
       nameInput.disabled = !!definition.isBatch;
-      if (definition.isBatch) {
-        nameInput.value = '[Auto Generated: Multiple Channels]';
-      }
+      if (definition.isBatch) nameInput.value = '[Auto Generated]';
     }
 
-    if (AppState.files.length === 0) {
-      container.innerHTML = "<p style='color:red'>No log file loaded.</p>";
-      return;
-    }
+    if (AppState.files.length === 0) return;
 
     let targetFileIndex = 0;
-
     const inputsWrapper = document.createElement('div');
     inputsWrapper.id = 'mathFormulaInputs';
 
     if (AppState.files.length > 1) {
-      const fileSelectWrapper = document.createElement('div');
-      fileSelectWrapper.style.marginBottom = '15px';
-      fileSelectWrapper.innerHTML = `<label class="math-label-small">Target File:</label>`;
-
-      const fileSelect = document.createElement('select');
-      fileSelect.id = 'mathTargetFile';
-      fileSelect.className = 'template-select';
-
-      AppState.files.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.text = `${i + 1}. ${f.name}`;
-        fileSelect.appendChild(opt);
+      this.#renderFileSelector(container, (idx) => {
+        targetFileIndex = idx;
+        this.#renderInputs(inputsWrapper, definition, targetFileIndex);
+        this.#validateForm();
       });
-
-      fileSelect.onchange = (e) => {
-        targetFileIndex = parseInt(e.target.value, 10);
-        this.#renderFormulaInputs(inputsWrapper, definition, targetFileIndex);
-      };
-
-      fileSelectWrapper.appendChild(fileSelect);
-      container.appendChild(fileSelectWrapper);
     }
-
     container.appendChild(inputsWrapper);
-
-    this.#renderFormulaInputs(inputsWrapper, definition, targetFileIndex);
+    this.#renderInputs(inputsWrapper, definition, targetFileIndex);
     this.#renderPostProcessingUI(container);
+
+    this.#validateForm();
   }
 
-  #renderFormulaInputs(container, definition, fileIndex) {
+  #renderFileSelector(container, onSelect) {
+    const wrapper = document.createElement('div');
+    wrapper.style.marginBottom = '15px';
+    wrapper.innerHTML = `<label class="math-label-small">Target File:</label>`;
+
+    const select = document.createElement('select');
+    select.id = 'mathTargetFile';
+    select.className = 'template-select';
+
+    AppState.files.forEach((f, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.text = `${i + 1}. ${f.name}`;
+      select.appendChild(opt);
+    });
+
+    select.onchange = (e) => onSelect(parseInt(e.target.value, 10));
+    wrapper.appendChild(select);
+    container.appendChild(wrapper);
+  }
+
+  #renderInputs(container, definition, fileIndex) {
     container.innerHTML = '';
     const file = AppState.files[fileIndex];
 
@@ -697,80 +400,76 @@ class MathChannels {
       wrapper.className = 'math-input-wrapper';
       wrapper.innerHTML = `<label class="math-label-small">${input.label}</label>`;
 
+      let inputEl;
       if (input.isConstant) {
-        let inputEl;
-        if (input.options && Array.isArray(input.options)) {
-          inputEl = document.createElement('select');
-          input.options.forEach((opt) => {
-            const optionEl = document.createElement('option');
-            optionEl.value = opt.value;
-            optionEl.innerText = opt.label;
-            inputEl.appendChild(optionEl);
-          });
-          inputEl.value = input.defaultValue;
-        } else {
-          inputEl = document.createElement('input');
-          inputEl.type = 'text';
-          inputEl.value = input.defaultValue;
-        }
-        inputEl.id = `math-input-${idx}`;
-        inputEl.className = 'template-select';
-        inputEl.style.width = '100%';
-        wrapper.appendChild(inputEl);
+        inputEl = this.#createConstantInput(input, idx);
       } else {
-        const searchableSelect = this.#createSearchableSelect(
+        inputEl = this.#createSearchableSelect(
           idx,
           file.availableSignals,
           input.name,
           input.isMulti
         );
-        wrapper.appendChild(searchableSelect);
       }
+
+      const tag = inputEl.tagName;
+      const handler = () => this.#validateForm();
+
+      if (tag === 'INPUT' || tag === 'SELECT') {
+        inputEl.addEventListener('input', handler);
+        inputEl.addEventListener('change', handler);
+      } else {
+        const innerInput = inputEl.querySelector('input');
+        if (innerInput) innerInput.addEventListener('input', handler);
+      }
+
+      wrapper.appendChild(inputEl);
       container.appendChild(wrapper);
     });
+  }
+
+  #createConstantInput(input, idx) {
+    let el;
+    if (input.options) {
+      el = document.createElement('select');
+      input.options.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.innerText = opt.label;
+        el.appendChild(o);
+      });
+      el.value = input.defaultValue;
+    } else {
+      el = document.createElement('input');
+      el.type = 'text';
+      el.value = input.defaultValue;
+    }
+    el.id = `math-input-${idx}`;
+    el.className = 'template-select';
+    el.style.width = '100%';
+    return el;
   }
 
   #renderPostProcessingUI(container) {
     const wrapper = document.createElement('div');
     wrapper.className = 'math-post-processing';
+    wrapper.innerHTML = `
+        <label class="math-section-label">Post-Processing</label>
+        <div class="math-checkbox-container">
+            <input type="checkbox" id="math-opt-smooth"> <span>Apply Smoothing</span>
+        </div>
+        <div style="margin-bottom:5px">
+            <label class="math-label-small">Window (Samples)</label>
+            <input type="number" id="math-opt-window" value="5" class="template-select" style="width:100%" disabled>
+        </div>
+    `;
 
-    const label = document.createElement('label');
-    label.className = 'math-section-label';
-    label.innerText = 'Post-Processing';
-    wrapper.appendChild(label);
-
-    const checkboxContainer = document.createElement('div');
-    checkboxContainer.className = 'math-checkbox-container';
-
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    check.id = 'math-opt-smooth';
-
-    const checkLabel = document.createElement('span');
-    checkLabel.innerText = 'Apply Smoothing';
-
-    checkboxContainer.appendChild(check);
-    checkboxContainer.appendChild(checkLabel);
-    wrapper.appendChild(checkboxContainer);
-
-    const windowContainer = document.createElement('div');
-    windowContainer.style.marginBottom = '5px';
-    windowContainer.innerHTML = `<label class="math-label-small">Smoothing Window (Samples)</label>`;
-
-    const winInput = document.createElement('input');
-    winInput.type = 'number';
-    winInput.id = 'math-opt-window';
-    winInput.value = '5';
-    winInput.className = 'template-select';
-    winInput.style.width = '100%';
-    winInput.disabled = true;
-
+    const check = wrapper.querySelector('#math-opt-smooth');
+    const input = wrapper.querySelector('#math-opt-window');
     check.onchange = () => {
-      winInput.disabled = !check.checked;
+      input.disabled = !check.checked;
     };
 
-    windowContainer.appendChild(winInput);
-    wrapper.appendChild(windowContainer);
     container.appendChild(wrapper);
   }
 
@@ -782,267 +481,268 @@ class MathChannels {
     input.type = 'text';
     input.id = `math-input-${idx}`;
     input.className = 'searchable-input template-select';
-    input.placeholder = isMulti
-      ? 'Click signals to add...'
-      : 'Search or Select Signal...';
+    input.placeholder = isMulti ? 'Click to add...' : 'Search Signal...';
     input.autocomplete = 'off';
 
     const resultsList = document.createElement('div');
     resultsList.className = 'search-results-list';
 
-    if (!isMulti) {
-      let defaultSignal = null;
-      const searchTerms = Array.isArray(inputFilterName)
+    if (!isMulti && inputFilterName) {
+      const terms = Array.isArray(inputFilterName)
         ? inputFilterName
         : [inputFilterName];
-
-      for (const term of searchTerms) {
-        defaultSignal = signals.find((s) =>
-          s.toLowerCase().includes(term.toLowerCase())
-        );
-        if (defaultSignal) break;
-      }
-
-      if (defaultSignal) input.value = defaultSignal;
+      const match = terms.reduce(
+        (found, term) =>
+          found ||
+          signals.find((s) => s.toLowerCase().includes(term.toLowerCase())),
+        null
+      );
+      if (match) input.value = match;
     }
 
     const renderOptions = (filterText = '') => {
       resultsList.innerHTML = '';
-
-      let lowerFilter = filterText.toLowerCase();
+      let filter = filterText.toLowerCase();
 
       if (isMulti) {
         const parts = filterText.split(',');
-        const lastPart = parts[parts.length - 1];
-        lowerFilter = lastPart ? lastPart.trim().toLowerCase() : '';
+        filter = parts[parts.length - 1].trim().toLowerCase();
       }
 
-      const filtered = signals.filter((s) =>
-        s.toLowerCase().includes(lowerFilter)
-      );
+      const matches = signals.filter((s) => s.toLowerCase().includes(filter));
 
-      if (isMulti && filtered.length > 0) {
-        const selectAllDiv = document.createElement('div');
-        selectAllDiv.className = 'search-option search-select-all';
-        selectAllDiv.textContent = '(Select All / Deselect All matches)';
-
-        selectAllDiv.onclick = (e) => {
+      if (isMulti && matches.length > 0) {
+        const allBtn = document.createElement('div');
+        allBtn.className = 'search-option search-select-all';
+        allBtn.textContent = '(Select/Deselect All Visible)';
+        allBtn.onclick = (e) => {
           e.stopPropagation();
-
-          const parts = input.value.split(',');
-          const rawLast = parts[parts.length - 1].trim();
-
-          let currentSelected = parts
-            .map((s) => s.trim())
-            .filter((s) => s && signals.includes(s));
-
-          const allVisibleSelected = filtered.every((sig) =>
-            currentSelected.includes(sig)
-          );
-
-          if (allVisibleSelected) {
-            const newSelection = currentSelected.filter(
-              (sel) => !filtered.includes(sel)
-            );
-            input.value =
-              newSelection.join(', ') + (newSelection.length > 0 ? ', ' : '');
-          } else {
-            const toAdd = filtered.filter(
-              (sig) => !currentSelected.includes(sig)
-            );
-            const combined = [...currentSelected, ...toAdd];
-            input.value = combined.join(', ') + ', ';
-          }
-          renderOptions();
+          this.#handleMultiSelectAll(input, signals, matches);
           input.focus();
+          input.dispatchEvent(new Event('input')); // Trigger Validation
         };
-        resultsList.appendChild(selectAllDiv);
+        resultsList.appendChild(allBtn);
       }
 
-      if (filtered.length === 0) {
-        const noResDiv = document.createElement('div');
-        noResDiv.className = 'search-option search-no-results';
-        noResDiv.textContent = 'No signals found';
-        resultsList.appendChild(noResDiv);
+      if (matches.length === 0) {
+        resultsList.innerHTML +=
+          '<div class="search-option search-no-results">No signals found</div>';
       } else {
-        filtered.forEach((sig) => {
-          const opt = document.createElement('div');
-          opt.className = 'search-option';
-          opt.textContent = sig;
+        matches.forEach((sig) => {
+          const div = document.createElement('div');
+          div.className = 'search-option';
+          div.textContent = sig;
+          if (isMulti && input.value.includes(sig))
+            div.classList.add('selected');
 
-          if (isMulti && input.value.includes(sig)) {
-            opt.classList.add('selected');
-          }
-
-          opt.onclick = () => {
-            if (isMulti) {
-              const cleanList = input.value
-                .split(',')
-                .map((s) => s.trim())
-                .filter((s) => s);
-
-              if (cleanList.includes(sig)) {
-                const newList = cleanList.filter((s) => s !== sig);
-                input.value =
-                  newList.join(', ') + (newList.length > 0 ? ', ' : '');
-              } else {
-                const parts = input.value.split(',');
-                parts.pop();
-                parts.push(' ' + sig);
-
-                input.value =
-                  parts
-                    .map((s) => s.trim())
-                    .filter((s) => s)
-                    .join(', ') + ', ';
-              }
-              renderOptions();
-              input.focus();
-            } else {
+          div.onclick = () => {
+            if (isMulti) this.#handleMultiSelect(input, sig);
+            else {
               input.value = sig;
               resultsList.style.display = 'none';
             }
+            input.dispatchEvent(new Event('input')); // Trigger Validation
           };
-
-          resultsList.appendChild(opt);
+          resultsList.appendChild(div);
         });
       }
     };
 
     input.addEventListener('focus', () => {
-      renderOptions(isMulti ? input.value : input.value);
+      renderOptions(input.value);
       resultsList.style.display = 'block';
     });
-
     input.addEventListener('input', (e) => {
       renderOptions(e.target.value);
       resultsList.style.display = 'block';
     });
 
     document.addEventListener('click', (e) => {
-      if (!wrapper.contains(e.target)) {
-        resultsList.style.display = 'none';
-      }
+      if (!wrapper.contains(e.target)) resultsList.style.display = 'none';
     });
 
     wrapper.appendChild(input);
     wrapper.appendChild(resultsList);
-
     return wrapper;
+  }
+
+  #handleMultiSelect(input, sig) {
+    const current = input.value
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s);
+    if (current.includes(sig)) {
+      input.value =
+        current.filter((s) => s !== sig).join(', ') +
+        (current.length > 1 ? ', ' : '');
+    } else {
+      current.pop();
+      current.push(sig);
+      input.value = current.join(', ') + ', ';
+    }
+  }
+
+  #handleMultiSelectAll(input, allSignals, visibleMatches) {
+    const current = input.value
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s && allSignals.includes(s));
+    const allVisibleSelected = visibleMatches.every((m) => current.includes(m));
+
+    let newVal = [];
+    if (allVisibleSelected) {
+      newVal = current.filter((s) => !visibleMatches.includes(s));
+    } else {
+      const toAdd = visibleMatches.filter((s) => !current.includes(s));
+      newVal = [...current, ...toAdd];
+    }
+    input.value = newVal.join(', ') + (newVal.length > 0 ? ', ' : '');
+  }
+
+  #toggleDisplay(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? 'block' : 'none';
+  }
+
+  #validateForm() {
+    this.#clearError();
+
+    const btn = document.getElementById('btnCreate');
+    if (!btn) return;
+
+    const formulaId = document.getElementById('mathFormulaSelect').value;
+    if (!formulaId) {
+      btn.disabled = true;
+      return;
+    }
+
+    const definition = this.#definitions.find((d) => d.id === formulaId);
+    if (!definition) {
+      btn.disabled = true;
+      return;
+    }
+
+    if (!definition.isBatch) {
+      const nameVal = document.getElementById('mathChannelName').value.trim();
+      if (!nameVal) {
+        btn.disabled = true;
+        return;
+      }
+    }
+
+    let allInputsValid = true;
+    for (let i = 0; i < definition.inputs.length; i++) {
+      const el = document.getElementById(`math-input-${i}`);
+      if (!el || el.value === '') {
+        allInputsValid = false;
+        break;
+      }
+    }
+
+    btn.disabled = !allInputsValid;
   }
 
   #executeCreation() {
     const formulaId = document.getElementById('mathFormulaSelect').value;
-    const fileSelect = document.getElementById('mathTargetFile');
-    const newNameInput = document.getElementById('mathChannelName').value;
-
-    const targetFileIndex = fileSelect ? parseInt(fileSelect.value, 10) : 0;
-
     if (!formulaId) {
-      alert('Please select a formula.');
+      this.#showError('Please select a formula.');
       return;
     }
 
     const definition = this.#definitions.find((d) => d.id === formulaId);
 
-    const inputMapping = [];
-    for (let i = 0; i < definition.inputs.length; i++) {
-      const el = document.getElementById(`math-input-${i}`);
-      inputMapping.push(el.value);
-    }
+    const inputMapping = definition.inputs.map(
+      (_, i) => document.getElementById(`math-input-${i}`).value
+    );
 
-    const smoothCheck = document.getElementById('math-opt-smooth');
-    const smoothWinInput = document.getElementById('math-opt-window');
-
+    const targetFileIndex = parseInt(
+      document.getElementById('mathTargetFile')?.value || '0',
+      10
+    );
     const options = {
-      smooth: smoothCheck ? smoothCheck.checked : false,
-      smoothWindow: smoothWinInput ? parseInt(smoothWinInput.value, 10) : 0,
+      smooth: document.getElementById('math-opt-smooth').checked,
+      smoothWindow: parseInt(
+        document.getElementById('math-opt-window').value,
+        10
+      ),
     };
 
     try {
-      let createdName = '';
-
       if (definition.isBatch) {
-        const sourceString = inputMapping[0];
-        const sources = sourceString
-          .split(',')
-          .map((s) => s.trim())
-          .filter((s) => s);
-
-        if (sources.length === 0) throw new Error('No signals selected.');
-
-        sources.forEach((sourceName) => {
-          const singleInputMapping = [sourceName, ...inputMapping.slice(1)];
-          const generatedName = `Filtered: ${sourceName}`;
-
-          const name = this.createChannel(
-            targetFileIndex,
-            'filtered_single',
-            singleInputMapping,
-            generatedName,
-            options
-          );
-          createdName = name;
-
-          if (!options.isReplay) {
-            messenger.emit('action:log', {
-              type: 'CREATE_MATH_CHANNEL',
-              description: `Created Channel: ${createdName}`,
-              payload: {
-                formulaId: 'filtered_single',
-                inputs: singleInputMapping,
-                channelName: generatedName,
-                options: options,
-              },
-              fileIndex: targetFileIndex,
-            });
-          }
-        });
-        this.#closeModal();
+        this.#executeBatch(definition, inputMapping, targetFileIndex, options);
       } else {
-        createdName = this.createChannel(
-          targetFileIndex,
-          formulaId,
+        const name = document.getElementById('mathChannelName').value;
+        this.#executeSingle(
+          definition,
           inputMapping,
-          newNameInput,
+          name,
+          targetFileIndex,
           options
         );
-
-        if (!options.isReplay) {
-          messenger.emit('action:log', {
-            type: 'CREATE_MATH_CHANNEL',
-            description: `Created Channel: ${createdName}`,
-            payload: {
-              formulaId: formulaId,
-              inputs: inputMapping,
-              channelName: newNameInput,
-              options: options,
-            },
-            fileIndex: targetFileIndex,
-          });
-        }
-        this.#closeModal();
       }
 
-      if (typeof UI.renderSignalList === 'function') {
-        UI.renderSignalList();
-
-        if (createdName) {
-          setTimeout(() => {
-            const checkbox = document.querySelector(
-              `input[data-key="${createdName}"][data-file-idx="${targetFileIndex}"]`
-            );
-            if (checkbox) {
-              checkbox.checked = true;
-              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          }, 100);
-        }
-      }
+      if (typeof UI.renderSignalList === 'function') UI.renderSignalList();
     } catch (e) {
       console.error(e);
-      alert('Error creating channel: ' + e.message);
+      // Logic failure? Show it in the box.
+      this.#showError(e.message);
     }
+  }
+
+  #executeSingle(def, inputs, name, fileIdx, options) {
+    const createdName = this.createChannel(
+      fileIdx,
+      def.id,
+      inputs,
+      name,
+      options
+    );
+    this.#logAction(def.id, inputs, name, fileIdx, options);
+    this.closeModal();
+    this.#autoSelectSignal(createdName, fileIdx);
+  }
+
+  #executeBatch(def, inputs, fileIdx, options) {
+    const sourceString = inputs[0];
+    const sources = sourceString
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s);
+
+    if (sources.length === 0) throw new Error('No signals selected.');
+
+    const targetId = def.singleVariantId;
+
+    sources.forEach((src) => {
+      const singleInputs = [src, ...inputs.slice(1)];
+      const name = `Filtered: ${src}`;
+      this.createChannel(fileIdx, targetId, singleInputs, name, options);
+      this.#logAction(targetId, singleInputs, name, fileIdx, options);
+    });
+
+    this.closeModal();
+  }
+
+  #logAction(formulaId, inputs, name, fileIdx, options) {
+    if (options.isReplay) return;
+    messenger.emit('action:log', {
+      type: 'CREATE_MATH_CHANNEL',
+      description: `Created Channel: ${name}`,
+      payload: { formulaId, inputs, channelName: name, options },
+      fileIndex: fileIdx,
+    });
+  }
+
+  #autoSelectSignal(name, fileIdx) {
+    setTimeout(() => {
+      const cb = document.querySelector(
+        `input[data-key="${name}"][data-file-idx="${fileIdx}"]`
+      );
+      if (cb) {
+        cb.checked = true;
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }, 100);
   }
 }
 
