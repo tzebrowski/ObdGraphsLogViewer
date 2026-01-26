@@ -16,6 +16,11 @@ export const Analysis = {
     messenger.on('dataprocessor:batch-load-completed', (event) => {
       Analysis.refreshFilterOptions();
     });
+
+    messenger.on('file:removed', () => {
+      UI.resetScannerUI();
+      Analysis.refreshFilterOptions();
+    });
   },
 
   initTemplates() {

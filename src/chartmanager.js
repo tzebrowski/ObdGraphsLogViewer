@@ -629,6 +629,8 @@ export const ChartManager = {
     this.activeChartIndex = null;
     AppState.files.splice(index, 1);
 
+    messenger.emit('file:removed', { index });
+
     this.render();
     UI.renderSignalList();
     UI.renderProjectHistory();
