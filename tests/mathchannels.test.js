@@ -662,4 +662,68 @@ describe('Event Logging', () => {
       })
     );
   });
+
+  describe('Form Validation', () => {
+    test('Disables Create button when required fields are empty', () => {
+      // 1. Setup AppState
+      AppState.files = [{ availableSignals: ['RPM'], signals: {} }];
+
+      // 2. Define persistent mock objects
+      const mockBtn = { disabled: false };
+      const mockSelect = { value: 'multiply_const', onchange: null };
+      const mockName = { value: '', oninput: null };
+      const mockInputSource = { value: '', addEventListener: jest.fn() };
+      const mockInputFactor = { value: '1.0', addEventListener: jest.fn() };
+
+      // 3. Spy on getElementById
+      jest.spyOn(document, 'getElementById').mockImplementation((id) => {
+        if (id === 'btnCreate') return mockBtn;
+        if (id === 'mathFormulaSelect') return mockSelect;
+        if (id === 'mathChannelName') return mockName;
+        if (id === 'math-input-0') return mockInputSource;
+        if (id === 'math-input-1') return mockInputFactor;
+        return {
+          value: '',
+          style: {},
+          appendChild: jest.fn(),
+          innerHTML: '',
+          children: [],
+          addEventListener: jest.fn(),
+        };
+      });
+
+      // 4. Initialize Modal
+      mathChannels.openModal();
+      // 5. Render inputs
+      mathChannels.onFormulaChange();
+
+      // ASSERT 1: Name & Source empty -> Disabled
+      expect(mockBtn.disabled).toBe(true);
+
+      // 6. Fill Name
+      mockName.value = 'ValidName';
+      // Trigger validation via Name input handler
+      if (mockName.oninput) mockName.oninput();
+
+      // ASSERT 2: Source still empty -> Disabled
+      expect(mockBtn.disabled).toBe(true);
+
+      // 7. Fill Source Signal
+      mockInputSource.value = 'RPM';
+
+      // FIX: Trigger validation again using the known handler on mockName
+      // This forces #validateForm() to run, which checks all getElementById mocks
+      if (mockName.oninput) mockName.oninput();
+
+      // ASSERT 3: All fields valid -> Enabled
+      expect(mockBtn.disabled).toBe(false);
+
+      // 8. Simulate User Error: Clear Name
+      mockName.value = '';
+      if (mockName.oninput) mockName.oninput();
+
+      // ASSERT 4: Name missing -> Disabled
+      expect(mockBtn.disabled).toBe(true);
+    });
+  });
 });
