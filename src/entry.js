@@ -12,6 +12,7 @@ import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
 import { XYAnalysis } from './xyanalysis.js';
 import { Histogram } from './histogram.js';
+import { mathChannels } from './mathchannels.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
@@ -31,7 +32,7 @@ window.onload = async function () {
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {
-    fileInput.setAttribute('multiple', 'multiple'); // Enable multiple selection
+    fileInput.setAttribute('multiple', 'multiple');
     fileInput.addEventListener('change', dataProcessor.handleLocalFile);
   }
 };
@@ -80,3 +81,8 @@ window.replayProjectHistory = () => UI.replayProjectHistory();
 window.resetProject = () => UI.resetProject();
 window.editProjectName = () => UI.editProjectName();
 window.toggleHistoryGroup = (header) => UI.toggleHistoryGroup(header);
+
+window.openMathModal = () => mathChannels.openModal();
+window.closeMathModal = () => mathChannels.closeModal();
+window.onMathFormulaChange = () => mathChannels.onFormulaChange();
+window.createMathChannel = () => mathChannels.createMathChannel();
