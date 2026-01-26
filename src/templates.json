@@ -2,8 +2,7 @@
   "high_load_retard": {
     "name": "High Load / Spark Retard",
     "rules": [
-      { "sig": "Accelerator Pedal Position", "op": ">", "val": 50 },
-      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2200 },
+      { "sig": "Intake Manifold Pressure Measured", "op": ">", "val": 2300 },
       { "sig": "Spark Advance", "op": "<", "val": 0 }
     ]
   },

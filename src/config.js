@@ -10,13 +10,27 @@ export const DEFAULT_SIGNALS = [
 ];
 
 export const SIGNAL_MAPPINGS = {
+  'Engine Speed': ['RPM', 'Engine Speed', 'Engine RPM'],
   'Intake Manifold Pressure Measured': [
     'Manifold Abs',
     'MAP',
     'Intake Press',
     'Boost Pressure',
   ],
-  'Accelerator Pedal Position': ['Pedal Pos', 'APP', 'Throttle Pos', 'TPS'],
+
+  MAF: ['Air Mass', 'MAF', 'Flow'],
+
+  Torque: ['Torque', 'Engine Torque', 'Nm'],
+
+  'Vehicle Speed': ['Vehicle Speed', 'Speed', 'Velocity'],
+
+  'Gas Pedal Position': [
+    'Accelerator Pedal Position',
+    'Pedal Pos',
+    'Gas Pedal Position',
+    'Throttle Pos',
+    'TPS',
+  ],
   'Spark Advance': ['Ignition Timing', 'Timing Adv', 'Spark Angle'],
   'Lambda Sensor 1': ['O2 Sensor', 'Equivalence Ratio', 'AFR', 'Lambda'],
   'Short Fuel Trim': ['SFT', 'STFT', 'Short Term'],
