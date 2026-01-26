@@ -749,7 +749,7 @@ export const ChartManager = {
           xAlign: 'right',
           caretSize: 0,
           intersect: false,
-          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
           callbacks: {
             title: (items) => {
               if (!items.length) return '';
