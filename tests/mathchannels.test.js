@@ -386,27 +386,40 @@ describe('MathChannels', () => {
   });
 
   describe('Execution Flow (executeCreation)', () => {
-    test('Shows Alert on Execution Error', () => {
-      // Mocks
+    test('Shows Inline Error on Execution Error', () => {
+      // 1. Create a persistent mock object for the error box
+      // This ensures the app and the test modify/read the exact same object
+      const mockErrorBox = {
+        style: { display: 'none' },
+        innerText: '',
+      };
+
+      // 2. Configure Mocks with the persistent error box
       mockDomElements({
         mathFormulaSelect: { value: 'multiply_const' },
-        // Dummy values for inputs to allow logic to proceed until creation
-        'math-input-0': { value: '1' },
+        'math-input-0': { value: 'A' },
         'math-input-1': { value: '1' },
+        mathChannelName: { value: 'ErrorTest' },
         'math-opt-smooth': { checked: false },
         'math-opt-window': { value: '1' },
+        mathErrorBox: mockErrorBox, // <--- Key Fix: Pass the specific object
       });
 
-      // Force failure at the core logic level
+      // 3. Mock createChannel to throw an error
       jest.spyOn(mathChannels, 'createChannel').mockImplementation(() => {
         throw new Error('Simulated Creation Failure');
       });
 
+      // 4. Execute
       mathChannels.createMathChannel();
 
-      expect(Alert.showAlert).toHaveBeenCalledWith(
-        expect.stringContaining('Error: Simulated Creation Failure')
-      );
+      // 5. Assert
+      // Check the specific object reference we created
+      expect(mockErrorBox.style.display).toBe('block');
+      expect(mockErrorBox.innerText).toContain('Simulated Creation Failure');
+
+      // Confirm Alert was NOT called
+      expect(Alert.showAlert).not.toHaveBeenCalled();
     });
 
     test('Batch Creation executes createChannel multiple times', () => {

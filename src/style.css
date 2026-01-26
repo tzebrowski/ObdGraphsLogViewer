@@ -2828,3 +2828,16 @@ body.pref-theme-dark .search-option:hover {
 .history-desc {
   color: #333;
 }
+
+#mathErrorBox {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  width: 100%;
+  box-sizing: border-box;
+  display: none;
+}

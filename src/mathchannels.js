@@ -4,10 +4,6 @@ import { messenger } from './bus.js';
 import { MATH_DEFINITIONS } from './mathdefinitions.js';
 import { Alert } from './alert.js';
 
-/**
- * Helper class for O(N) linear time alignment instead of O(N log N) binary search.
- * Significantly speeds up math channel generation on large logs.
- */
 class LinearInterpolator {
   constructor(data) {
     this.data = data;
@@ -17,19 +13,16 @@ class LinearInterpolator {
 
   getValueAt(targetTime) {
     if (this.length === 0) return 0;
-
     if (targetTime <= this.data[0].x) return this.data[0].y;
     if (targetTime >= this.data[this.length - 1].x)
       return this.data[this.length - 1].y;
 
     let i = this.lastIndex;
-
     if (this.data[i].x > targetTime) i = 0;
 
     while (i < this.length - 1 && this.data[i + 1].x < targetTime) {
       i++;
     }
-
     this.lastIndex = i;
 
     const p1 = this.data[i];
@@ -67,6 +60,7 @@ class MathChannels {
   closeModal() {
     const modal = document.getElementById('mathModal');
     if (modal) modal.style.display = 'none';
+    this.#clearError(); // Reset error state on close
   }
 
   onFormulaChange() {
@@ -121,8 +115,6 @@ class MathChannels {
     return this.#finalizeChannel(file, resultData, finalName, unit);
   }
 
-  // --- LOGIC HELPERS ---
-
   #resolveSignalName(file, inputDef, requestedName) {
     if (file.signals[requestedName]) return requestedName;
 
@@ -163,7 +155,6 @@ class MathChannels {
           isConstant: false,
           interpolator: new LinearInterpolator(signalData),
         });
-
         if (!masterTimeBase) masterTimeBase = signalData;
       }
     });
@@ -176,7 +167,7 @@ class MathChannels {
 
     for (let i = 0; i < len; i++) {
       const currentTime = masterTimeBase[i].x;
-      const currentValues = new Array(iterators.length); // Pre-allocate
+      const currentValues = new Array(iterators.length);
 
       for (let j = 0; j < iterators.length; j++) {
         const it = iterators[j];
@@ -217,7 +208,6 @@ class MathChannels {
   #applySmoothing(data, windowSize) {
     if (data.length === 0) return [];
     const smoothed = [];
-
     for (let i = 0; i < data.length; i++) {
       let sum = 0;
       let count = 0;
@@ -253,10 +243,60 @@ class MathChannels {
     return finalName;
   }
 
+  // --- UI Logic & Error Handling ---
+
+  #getCreateBtn() {
+    return (
+      document.getElementById('btnCreate') ||
+      document.querySelector('#mathModal button.btn-primary') ||
+      document.querySelector('#mathModal button[onclick*="createMathChannel"]')
+    );
+  }
+
+  #showError(message) {
+    let errorBox = document.getElementById('mathErrorBox');
+
+    if (!errorBox) {
+      // Use the helper to find the button
+      const btn = this.#getCreateBtn();
+      if (btn && btn.parentNode) {
+        errorBox = document.createElement('div');
+        errorBox.id = 'mathErrorBox';
+        // Insert before the button (or its container if needed)
+        btn.parentNode.insertBefore(errorBox, btn);
+      }
+    }
+
+    if (errorBox) {
+      errorBox.innerText = message;
+      errorBox.style.display = 'block';
+    }
+  }
+
+  #clearError() {
+    const errorBox = document.getElementById('mathErrorBox');
+    if (errorBox) {
+      errorBox.style.display = 'none';
+      errorBox.innerText = '';
+    }
+  }
+
   #renderModal() {
     const modal = document.getElementById('mathModal');
     if (!modal) return;
     modal.style.display = 'flex';
+
+    this.#clearError();
+
+    const btn = this.#getCreateBtn();
+    if (btn) {
+      btn.disabled = true;
+      // Ensure we don't double-bind if onclick is already in HTML
+      btn.onclick = (e) => {
+        e.preventDefault();
+        this.createMathChannel();
+      };
+    }
 
     const select = document.getElementById('mathFormulaSelect');
     if (!select) return;
@@ -271,11 +311,21 @@ class MathChannels {
     document.getElementById('mathInputsContainer').innerHTML = '';
     this.#toggleDisplay('mathDescriptionContainer', false);
     this.#toggleDisplay('mathNameContainer', false);
+
     const nameInput = document.getElementById('mathChannelName');
-    if (nameInput) nameInput.value = '';
+    if (nameInput) {
+      nameInput.value = '';
+      nameInput.oninput = () => this.#validateForm();
+    }
+
+    select.onchange = () => {
+      this.onFormulaChange();
+      this.#validateForm();
+    };
   }
 
   #renderFormulaUI() {
+    this.#clearError();
     const formulaId = document.getElementById('mathFormulaSelect').value;
     const container = document.getElementById('mathInputsContainer');
     container.innerHTML = '';
@@ -284,6 +334,7 @@ class MathChannels {
     if (!definition) {
       this.#toggleDisplay('mathDescriptionContainer', false);
       this.#toggleDisplay('mathNameContainer', false);
+      this.#validateForm();
       return;
     }
 
@@ -309,13 +360,14 @@ class MathChannels {
       this.#renderFileSelector(container, (idx) => {
         targetFileIndex = idx;
         this.#renderInputs(inputsWrapper, definition, targetFileIndex);
+        this.#validateForm();
       });
     }
     container.appendChild(inputsWrapper);
-
     this.#renderInputs(inputsWrapper, definition, targetFileIndex);
-
     this.#renderPostProcessingUI(container);
+
+    this.#validateForm();
   }
 
   #renderFileSelector(container, onSelect) {
@@ -348,18 +400,30 @@ class MathChannels {
       wrapper.className = 'math-input-wrapper';
       wrapper.innerHTML = `<label class="math-label-small">${input.label}</label>`;
 
+      let inputEl;
       if (input.isConstant) {
-        wrapper.appendChild(this.#createConstantInput(input, idx));
+        inputEl = this.#createConstantInput(input, idx);
       } else {
-        wrapper.appendChild(
-          this.#createSearchableSelect(
-            idx,
-            file.availableSignals,
-            input.name,
-            input.isMulti
-          )
+        inputEl = this.#createSearchableSelect(
+          idx,
+          file.availableSignals,
+          input.name,
+          input.isMulti
         );
       }
+
+      const tag = inputEl.tagName;
+      const handler = () => this.#validateForm();
+
+      if (tag === 'INPUT' || tag === 'SELECT') {
+        inputEl.addEventListener('input', handler);
+        inputEl.addEventListener('change', handler);
+      } else {
+        const innerInput = inputEl.querySelector('input');
+        if (innerInput) innerInput.addEventListener('input', handler);
+      }
+
+      wrapper.appendChild(inputEl);
       container.appendChild(wrapper);
     });
   }
@@ -410,8 +474,6 @@ class MathChannels {
   }
 
   #createSearchableSelect(idx, signals, inputFilterName, isMulti = false) {
-    // ... (Keep existing implementation, logic is fine, just messy to refactor right now)
-    // Ideally this whole method moves to a UI helper class
     const wrapper = document.createElement('div');
     wrapper.className = 'searchable-select-wrapper';
 
@@ -452,11 +514,12 @@ class MathChannels {
       if (isMulti && matches.length > 0) {
         const allBtn = document.createElement('div');
         allBtn.className = 'search-option search-select-all';
-        allBtn.innerText = '(Select/Deselect All Visible)';
+        allBtn.textContent = '(Select/Deselect All Visible)';
         allBtn.onclick = (e) => {
           e.stopPropagation();
           this.#handleMultiSelectAll(input, signals, matches);
           input.focus();
+          input.dispatchEvent(new Event('input')); // Trigger Validation
         };
         resultsList.appendChild(allBtn);
       }
@@ -468,7 +531,7 @@ class MathChannels {
         matches.forEach((sig) => {
           const div = document.createElement('div');
           div.className = 'search-option';
-          div.innerText = sig;
+          div.textContent = sig;
           if (isMulti && input.value.includes(sig))
             div.classList.add('selected');
 
@@ -478,6 +541,7 @@ class MathChannels {
               input.value = sig;
               resultsList.style.display = 'none';
             }
+            input.dispatchEvent(new Event('input')); // Trigger Validation
           };
           resultsList.appendChild(div);
         });
@@ -540,10 +604,48 @@ class MathChannels {
     if (el) el.style.display = show ? 'block' : 'none';
   }
 
+  #validateForm() {
+    this.#clearError();
+
+    const btn = document.getElementById('btnCreate');
+    if (!btn) return;
+
+    const formulaId = document.getElementById('mathFormulaSelect').value;
+    if (!formulaId) {
+      btn.disabled = true;
+      return;
+    }
+
+    const definition = this.#definitions.find((d) => d.id === formulaId);
+    if (!definition) {
+      btn.disabled = true;
+      return;
+    }
+
+    if (!definition.isBatch) {
+      const nameVal = document.getElementById('mathChannelName').value.trim();
+      if (!nameVal) {
+        btn.disabled = true;
+        return;
+      }
+    }
+
+    let allInputsValid = true;
+    for (let i = 0; i < definition.inputs.length; i++) {
+      const el = document.getElementById(`math-input-${i}`);
+      if (!el || el.value === '') {
+        allInputsValid = false;
+        break;
+      }
+    }
+
+    btn.disabled = !allInputsValid;
+  }
+
   #executeCreation() {
     const formulaId = document.getElementById('mathFormulaSelect').value;
     if (!formulaId) {
-      Alert.showAlert('Please select a formula.');
+      this.#showError('Please select a formula.');
       return;
     }
 
@@ -582,7 +684,8 @@ class MathChannels {
       if (typeof UI.renderSignalList === 'function') UI.renderSignalList();
     } catch (e) {
       console.error(e);
-      Alert.showAlert('Error: ' + e.message);
+      // Logic failure? Show it in the box.
+      this.#showError(e.message);
     }
   }
 
