@@ -1,4 +1,4 @@
-import { AppState } from './config.js';
+import { AppState, SIGNAL_MAPPINGS } from './config.js';
 
 class LinearInterpolator {
   constructor(data) {
@@ -27,7 +27,7 @@ class MapManager {
   #positionMarker = null;
   #latInterpolator = null;
   #lonInterpolator = null;
-  #infoControl = null; // New: Reference to the info box
+  #infoControl = null;
   #isReady = false;
 
   constructor() {}
@@ -48,7 +48,6 @@ class MapManager {
   }
 
   loadRoute(fileIndex) {
-    // 1. Initialize & Show Container
     const mapDiv = document.getElementById('mapContainer');
     if (mapDiv) {
       mapDiv.style.display = 'block';
@@ -68,7 +67,6 @@ class MapManager {
       return;
     }
 
-    // 2. Process Data
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
@@ -78,26 +76,21 @@ class MapManager {
     const routePoints = [];
     const step = Math.max(1, Math.ceil(latData.length / 2000));
 
-    // We keep 'full resolution' arrays for stats calculation
-    // but use 'routePoints' for visual drawing
-
     for (let i = 0; i < latData.length; i += step) {
       const p = latData[i];
       const lat = p.y;
       const lon = this.#lonInterpolator.getValueAt(p.x);
 
-      if (lat && lon && Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1) {
+      if (this.#isValidGps(lat, lon)) {
         routePoints.push([lat, lon]);
       }
     }
 
-    // Clear old layers
     if (this.#routeLayer) this.#map.removeLayer(this.#routeLayer);
     if (this.#positionMarker) this.#map.removeLayer(this.#positionMarker);
 
     if (routePoints.length === 0) return;
 
-    // 3. Add Visual Layers
     this.#routeLayer = L.polyline(routePoints, {
       color: '#3388ff',
       weight: 4,
@@ -118,11 +111,9 @@ class MapManager {
       this.#map
     );
 
-    // 4. Calculate & Show Stats
     const stats = this.#calculateStats(latData, this.#lonInterpolator);
     this.#updateInfoControl(stats);
 
-    // 5. Zoom Logic
     const mapInstance = this.#map;
     const layerInstance = this.#routeLayer;
     mapInstance.invalidateSize();
@@ -154,17 +145,12 @@ class MapManager {
     const nextLat = this.#latInterpolator.getValueAt(time + 1000);
     const nextLon = this.#lonInterpolator.getValueAt(time + 1000);
 
-    if (
-      lat != null &&
-      lon != null &&
-      Math.abs(lat) > 0.1 &&
-      Math.abs(lon) > 0.1
-    ) {
+    if (this.#isValidGps(lat, lon)) {
       if (this.#positionMarker) {
         this.#positionMarker.setLatLng([lat, lon]);
       }
 
-      if (nextLat != null && nextLon != null) {
+      if (this.#isValidGps(nextLat, nextLon)) {
         if (
           Math.abs(nextLat - lat) > 0.00005 ||
           Math.abs(nextLon - lon) > 0.00005
@@ -177,56 +163,108 @@ class MapManager {
   }
 
   // --- Private Helper Methods ---
-
   #detectGpsSignals(file) {
     const signals = file.availableSignals;
-    const latKey = signals.find(
-      (s) => /GPS Latitude/i.test(s) && !/lateral/i.test(s)
-    );
-    const lonKey = signals.find(
-      (s) => /GPS Longitude/i.test(s) || /lng/i.test(s)
-    );
+
+    const findMappedSignal = (mappingKey) => {
+      const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
+
+      for (const alias of aliases) {
+        const match = signals.find(
+          (s) => s.toLowerCase() === alias.toLowerCase()
+        );
+        if (match) return match;
+      }
+
+      for (const alias of aliases) {
+        const match = signals.find((s) =>
+          s.toLowerCase().includes(alias.toLowerCase())
+        );
+        if (match) return match;
+      }
+      return null;
+    };
+
+    let latKey = findMappedSignal('Latitude');
+    let lonKey = findMappedSignal('Longitude');
+
+    if (!latKey) {
+      latKey = signals.find((s) => /lat/i.test(s) && !/lateral/i.test(s));
+    }
+    if (!lonKey) {
+      lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
+    }
+
     return { latKey, lonKey };
+  }
+
+  #isValidGps(lat, lon) {
+    return (
+      lat != null && lon != null && Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1
+    );
   }
 
   #calculateStats(latData, lonInterpolator) {
     let totalDistKm = 0;
     let maxSpeedKmh = 0;
 
-    // We iterate through all points (not just the sampled ones) for accuracy
-    // Skip points to reduce CPU load if too many
-    const skip = Math.max(1, Math.floor(latData.length / 5000));
+    const validPoints = [];
+    for (let i = 0; i < latData.length; i++) {
+      const p = latData[i];
+      const lon = lonInterpolator.getValueAt(p.x);
+      if (this.#isValidGps(p.y, lon)) {
+        validPoints.push({ x: p.x, y: p.y, lon: lon });
+      }
+    }
 
-    for (let i = 0; i < latData.length - skip; i += skip) {
-      const p1 = latData[i];
-      const p2 = latData[i + skip];
+    if (validPoints.length < 2) return { dist: '0.00', avg: '0.0', max: '0.0' };
 
-      const lat1 = p1.y;
-      const lon1 = lonInterpolator.getValueAt(p1.x);
+    let lastP = validPoints[0];
+    for (let i = 1; i < validPoints.length; i++) {
+      const p = validPoints[i];
+      const d = this.#getDistanceFromLatLonInKm(lastP.y, lastP.lon, p.y, p.lon);
 
-      const lat2 = p2.y;
-      const lon2 = lonInterpolator.getValueAt(p2.x);
+      if (d > 0.002) {
+        totalDistKm += d;
+        lastP = p;
+      }
+    }
 
-      if (!lat1 || !lon1 || !lat2 || !lon2) continue;
+    const timeWindow = 1000;
+    const speedSampleStep = Math.max(1, Math.floor(validPoints.length / 500));
 
-      // Haversine Distance (km)
-      const d = this.#getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2);
-      totalDistKm += d;
+    for (
+      let i = 0;
+      i < validPoints.length - speedSampleStep;
+      i += speedSampleStep
+    ) {
+      const startP = validPoints[i];
+      const endP = validPoints.find(
+        (p, idx) => idx > i && p.x >= startP.x + timeWindow
+      );
 
-      // Speed Calculation (dist / time)
-      const dt_hours = (p2.x - p1.x) / 3600000; // ms to hours
-      if (dt_hours > 0) {
-        const speed = d / dt_hours;
-        if (speed < 400) {
-          // Filter unrealistic spikes > 400km/h
-          if (speed > maxSpeedKmh) maxSpeedKmh = speed;
+      if (endP) {
+        const distSegment = this.#getDistanceFromLatLonInKm(
+          startP.y,
+          startP.lon,
+          endP.y,
+          endP.lon
+        );
+        const timeHours = (endP.x - startP.x) / 3600000;
+
+        if (timeHours > 0) {
+          const speed = distSegment / timeHours;
+          if (speed > maxSpeedKmh && speed < 1000) {
+            maxSpeedKmh = speed;
+          }
         }
       }
     }
 
     const totalTimeHours =
-      (latData[latData.length - 1].x - latData[0].x) / 3600000;
-    const avgSpeedKmh = totalTimeHours > 0 ? totalDistKm / totalTimeHours : 0;
+      (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
+    const avgSpeedKmh =
+      totalTimeHours > 0.001 ? totalDistKm / totalTimeHours : 0;
 
     return {
       dist: totalDistKm.toFixed(2),
@@ -236,7 +274,6 @@ class MapManager {
   }
 
   #updateInfoControl(stats) {
-    // Remove existing control if it exists
     if (this.#infoControl) {
       this.#map.removeControl(this.#infoControl);
     }
@@ -251,9 +288,10 @@ class MapManager {
         div.style.fontSize = '12px';
         div.style.lineHeight = '1.4';
         div.style.color = '#333';
+        L.DomEvent.disableClickPropagation(div);
 
         div.innerHTML = `
-                  <div style="font-weight:bold; margin-bottom:4px; color:#01804f; border-bottom:1px solid #eee;">Trip Stats</div>
+                  <div style="font-weight:bold; margin-bottom:4px; color:#01804f; border-bottom:1px solid #eee;">GPS Stats</div>
                   <div><b>Dist:</b> ${stats.dist} km</div>
                   <div><b>Avg:</b> ${stats.avg} km/h</div>
                   <div><b>Max:</b> ${stats.max} km/h</div>
@@ -267,7 +305,7 @@ class MapManager {
   }
 
   #getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371;
     const dLat = this.#deg2rad(lat2 - lat1);
     const dLon = this.#deg2rad(lon2 - lon1);
     const a =

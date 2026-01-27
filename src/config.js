@@ -19,11 +19,11 @@ export const SIGNAL_MAPPINGS = {
   ],
 
   MAF: ['Air Mass', 'MAF', 'Flow'],
+  Latitude: ['lat', 'Lat', 'lateral', 'GPS Latitude', 'Latitude'],
+  Longitude: ['lng', 'Lng', 'lon', 'GPS Longitude', 'Longitude'],
 
   Torque: ['Torque', 'Engine Torque', 'Nm'],
-
   'Vehicle Speed': ['Vehicle Speed', 'Speed', 'Velocity'],
-
   'Gas Pedal Position': [
     'Accelerator Pedal Position',
     'Pedal Pos',
