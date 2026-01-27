@@ -27,6 +27,7 @@ class MapManager {
   #positionMarker = null;
   #latInterpolator = null;
   #lonInterpolator = null;
+  #infoControl = null; // New: Reference to the info box
   #isReady = false;
 
   constructor() {}
@@ -47,11 +48,11 @@ class MapManager {
   }
 
   loadRoute(fileIndex) {
+    // 1. Initialize & Show Container
     const mapDiv = document.getElementById('mapContainer');
     if (mapDiv) {
       mapDiv.style.display = 'block';
       mapDiv.style.height = '350px';
-
       void mapDiv.offsetHeight;
     }
 
@@ -67,6 +68,7 @@ class MapManager {
       return;
     }
 
+    // 2. Process Data
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
@@ -75,6 +77,9 @@ class MapManager {
 
     const routePoints = [];
     const step = Math.max(1, Math.ceil(latData.length / 2000));
+
+    // We keep 'full resolution' arrays for stats calculation
+    // but use 'routePoints' for visual drawing
 
     for (let i = 0; i < latData.length; i += step) {
       const p = latData[i];
@@ -86,11 +91,13 @@ class MapManager {
       }
     }
 
+    // Clear old layers
     if (this.#routeLayer) this.#map.removeLayer(this.#routeLayer);
     if (this.#positionMarker) this.#map.removeLayer(this.#positionMarker);
 
     if (routePoints.length === 0) return;
 
+    // 3. Add Visual Layers
     this.#routeLayer = L.polyline(routePoints, {
       color: '#3388ff',
       weight: 4,
@@ -111,16 +118,19 @@ class MapManager {
       this.#map
     );
 
+    // 4. Calculate & Show Stats
+    const stats = this.#calculateStats(latData, this.#lonInterpolator);
+    this.#updateInfoControl(stats);
+
+    // 5. Zoom Logic
     const mapInstance = this.#map;
     const layerInstance = this.#routeLayer;
-
     mapInstance.invalidateSize();
 
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (mapInstance && layerInstance) {
           mapInstance.invalidateSize();
-
           const bounds = layerInstance.getBounds();
           if (bounds.isValid()) {
             mapInstance.fitBounds(bounds, {
@@ -130,7 +140,7 @@ class MapManager {
             });
           }
         }
-      }, 300); // 300ms delay is imperceptible to user but eternity for browser layout
+      }, 300);
     });
   }
 
@@ -166,6 +176,8 @@ class MapManager {
     }
   }
 
+  // --- Private Helper Methods ---
+
   #detectGpsSignals(file) {
     const signals = file.availableSignals;
     const latKey = signals.find(
@@ -175,6 +187,101 @@ class MapManager {
       (s) => /GPS Longitude/i.test(s) || /lng/i.test(s)
     );
     return { latKey, lonKey };
+  }
+
+  #calculateStats(latData, lonInterpolator) {
+    let totalDistKm = 0;
+    let maxSpeedKmh = 0;
+
+    // We iterate through all points (not just the sampled ones) for accuracy
+    // Skip points to reduce CPU load if too many
+    const skip = Math.max(1, Math.floor(latData.length / 5000));
+
+    for (let i = 0; i < latData.length - skip; i += skip) {
+      const p1 = latData[i];
+      const p2 = latData[i + skip];
+
+      const lat1 = p1.y;
+      const lon1 = lonInterpolator.getValueAt(p1.x);
+
+      const lat2 = p2.y;
+      const lon2 = lonInterpolator.getValueAt(p2.x);
+
+      if (!lat1 || !lon1 || !lat2 || !lon2) continue;
+
+      // Haversine Distance (km)
+      const d = this.#getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2);
+      totalDistKm += d;
+
+      // Speed Calculation (dist / time)
+      const dt_hours = (p2.x - p1.x) / 3600000; // ms to hours
+      if (dt_hours > 0) {
+        const speed = d / dt_hours;
+        if (speed < 400) {
+          // Filter unrealistic spikes > 400km/h
+          if (speed > maxSpeedKmh) maxSpeedKmh = speed;
+        }
+      }
+    }
+
+    const totalTimeHours =
+      (latData[latData.length - 1].x - latData[0].x) / 3600000;
+    const avgSpeedKmh = totalTimeHours > 0 ? totalDistKm / totalTimeHours : 0;
+
+    return {
+      dist: totalDistKm.toFixed(2),
+      avg: avgSpeedKmh.toFixed(1),
+      max: maxSpeedKmh.toFixed(1),
+    };
+  }
+
+  #updateInfoControl(stats) {
+    // Remove existing control if it exists
+    if (this.#infoControl) {
+      this.#map.removeControl(this.#infoControl);
+    }
+
+    const InfoControl = L.Control.extend({
+      onAdd: function () {
+        const div = L.DomUtil.create('div', 'info-legend');
+        div.style.backgroundColor = 'white';
+        div.style.padding = '8px 12px';
+        div.style.borderRadius = '5px';
+        div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+        div.style.fontSize = '12px';
+        div.style.lineHeight = '1.4';
+        div.style.color = '#333';
+
+        div.innerHTML = `
+                  <div style="font-weight:bold; margin-bottom:4px; color:#01804f; border-bottom:1px solid #eee;">Trip Stats</div>
+                  <div><b>Dist:</b> ${stats.dist} km</div>
+                  <div><b>Avg:</b> ${stats.avg} km/h</div>
+                  <div><b>Max:</b> ${stats.max} km/h</div>
+              `;
+        return div;
+      },
+    });
+
+    this.#infoControl = new InfoControl({ position: 'topright' });
+    this.#infoControl.addTo(this.#map);
+  }
+
+  #getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the earth in km
+    const dLat = this.#deg2rad(lat2 - lat1);
+    const dLon = this.#deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.#deg2rad(lat1)) *
+        Math.cos(this.#deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  #deg2rad(deg) {
+    return deg * (Math.PI / 180);
   }
 
   #rotateMarker(angle) {
