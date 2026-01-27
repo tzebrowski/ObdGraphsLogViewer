@@ -30,43 +30,68 @@ class MapManager {
   #lonInterpolator = null;
   #infoControl = null;
   #isReady = false;
+  #loadedFileIndex = -1;
 
   constructor() {}
+
+  // --- 1. Private Getter for Container ---
+  get #container() {
+    return document.getElementById('mapContainer');
+  }
 
   init() {
     if (this.#isReady) return;
 
-    const container = document.getElementById('mapContainer');
+    // Use the getter
+    const container = this.#container;
     if (!container) return;
 
-    this.#map = L.map('mapContainer').setView([0, 0], 2);
+    this.#map = L.map(container).setView([0, 0], 2);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.#map);
 
-    messenger.on('file:removed', () => {
-      const mapDiv = document.getElementById('mapContainer');
-      if (mapDiv) {
-        mapDiv.style.display = 'none';
+    this.#isReady = true;
+
+    // Listen for file removal to clean up map
+    messenger.on('file:removed', (data) => {
+      if (this.#loadedFileIndex === data.index) {
+        this.clearMap();
+        this.#loadedFileIndex = -1;
+
+        // Use the getter
+        const mapDiv = this.#container;
+        if (mapDiv) mapDiv.style.display = 'none';
+      } else if (this.#loadedFileIndex > data.index) {
+        this.#loadedFileIndex--;
       }
     });
 
-    this.#isReady = true;
+    // Handle Project Reset (if implemented in ProjectManager)
+    messenger.on('project:reset', () => {
+      this.clearMap();
+      this.#loadedFileIndex = -1;
+      const mapDiv = this.#container;
+      if (mapDiv) mapDiv.style.display = 'none';
+    });
   }
 
   loadRoute(fileIndex) {
-    const mapDiv = document.getElementById('mapContainer');
+    // Use the getter
+    const mapDiv = this.#container;
     if (mapDiv) {
       mapDiv.style.display = 'block';
       mapDiv.style.height = '350px';
-      void mapDiv.offsetHeight;
+      void mapDiv.offsetHeight; // Reflow hack
     }
 
     if (!this.#isReady) this.init();
 
     const file = AppState.files[fileIndex];
     if (!file) return;
+
+    this.#loadedFileIndex = fileIndex;
 
     const { latKey, lonKey } = this.#detectGpsSignals(file);
 
@@ -86,16 +111,16 @@ class MapManager {
 
     for (let i = 0; i < latData.length; i += step) {
       const p = latData[i];
-      const lat = p.y;
-      const lon = this.#lonInterpolator.getValueAt(p.x);
+      const lat = parseFloat(p.y);
+      const lon = parseFloat(this.#lonInterpolator.getValueAt(p.x));
 
       if (this.#isValidGps(lat, lon)) {
         routePoints.push([lat, lon]);
       }
     }
 
-    if (this.#routeLayer) this.#map.removeLayer(this.#routeLayer);
-    if (this.#positionMarker) this.#map.removeLayer(this.#positionMarker);
+    // Clear old layers before drawing new ones
+    this.#clearLayers();
 
     if (routePoints.length === 0) return;
 
@@ -170,20 +195,40 @@ class MapManager {
     }
   }
 
+  clearMap() {
+    this.#clearLayers();
+    if (this.#infoControl) {
+      this.#map.removeControl(this.#infoControl);
+      this.#infoControl = null;
+    }
+    this.#latInterpolator = null;
+    this.#lonInterpolator = null;
+  }
+
   // --- Private Helper Methods ---
+
+  #clearLayers() {
+    if (this.#routeLayer) {
+      this.#map.removeLayer(this.#routeLayer);
+      this.#routeLayer = null;
+    }
+    if (this.#positionMarker) {
+      this.#map.removeLayer(this.#positionMarker);
+      this.#positionMarker = null;
+    }
+  }
+
   #detectGpsSignals(file) {
     const signals = file.availableSignals;
 
     const findMappedSignal = (mappingKey) => {
       const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
-
       for (const alias of aliases) {
         const match = signals.find(
           (s) => s.toLowerCase() === alias.toLowerCase()
         );
         if (match) return match;
       }
-
       for (const alias of aliases) {
         const match = signals.find((s) =>
           s.toLowerCase().includes(alias.toLowerCase())
@@ -219,9 +264,12 @@ class MapManager {
     const validPoints = [];
     for (let i = 0; i < latData.length; i++) {
       const p = latData[i];
-      const lon = lonInterpolator.getValueAt(p.x);
-      if (this.#isValidGps(p.y, lon)) {
-        validPoints.push({ x: p.x, y: p.y, lon: lon });
+      const lat = parseFloat(p.y);
+      const lon = parseFloat(lonInterpolator.getValueAt(p.x));
+      const time = parseFloat(p.x);
+
+      if (this.#isValidGps(lat, lon) && !isNaN(time)) {
+        validPoints.push({ x: time, y: lat, lon: lon });
       }
     }
 
@@ -239,32 +287,34 @@ class MapManager {
     }
 
     const timeWindow = 1000;
-    const speedSampleStep = Math.max(1, Math.floor(validPoints.length / 500));
+    let rightIndex = 0;
 
-    for (
-      let i = 0;
-      i < validPoints.length - speedSampleStep;
-      i += speedSampleStep
-    ) {
+    for (let i = 0; i < validPoints.length; i++) {
       const startP = validPoints[i];
-      const endP = validPoints.find(
-        (p, idx) => idx > i && p.x >= startP.x + timeWindow
+
+      while (
+        rightIndex < validPoints.length &&
+        validPoints[rightIndex].x < startP.x + timeWindow
+      ) {
+        rightIndex++;
+      }
+
+      if (rightIndex >= validPoints.length) break;
+
+      const endP = validPoints[rightIndex];
+
+      const distSegment = this.#getDistanceFromLatLonInKm(
+        startP.y,
+        startP.lon,
+        endP.y,
+        endP.lon
       );
+      const timeHours = (endP.x - startP.x) / 3600000;
 
-      if (endP) {
-        const distSegment = this.#getDistanceFromLatLonInKm(
-          startP.y,
-          startP.lon,
-          endP.y,
-          endP.lon
-        );
-        const timeHours = (endP.x - startP.x) / 3600000;
-
-        if (timeHours > 0) {
-          const speed = distSegment / timeHours;
-          if (speed > maxSpeedKmh && speed < 1000) {
-            maxSpeedKmh = speed;
-          }
+      if (timeHours > 0) {
+        const speed = distSegment / timeHours;
+        if (speed > maxSpeedKmh && speed < 1000) {
+          maxSpeedKmh = speed;
         }
       }
     }
