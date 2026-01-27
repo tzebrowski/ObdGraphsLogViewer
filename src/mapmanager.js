@@ -34,7 +34,6 @@ class MapManager {
 
   constructor() {}
 
-  // --- 1. Private Getter for Container ---
   get #container() {
     return document.getElementById('mapContainer');
   }
@@ -42,11 +41,33 @@ class MapManager {
   init() {
     if (this.#isReady) return;
 
-    // Use the getter
     const container = this.#container;
     if (!container) return;
 
-    this.#map = L.map(container).setView([0, 0], 2);
+    container.className = 'chart-card-compact';
+    container.style.display = 'none'; // Start hidden
+    container.style.flexDirection = 'column';
+    container.innerHTML = `
+      <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+             <span class="chart-name" style="font-weight: bold; font-size: 0.85em; color: #333;">
+                <i class="fas fa-map-marked-alt"></i> GPS Track
+             </span>
+          </div>
+          <div class="chart-actions">
+             <button class="btn-remove" onclick="document.getElementById('mapContainer').style.display='none'" title="Hide Map">×</button>
+          </div>
+      </div>
+      <div class="canvas-wrapper" style="flex: 1; position: relative; padding: 0;">
+          <div id="gps-map-view" style="width: 100%; height: 100%;"></div>
+      </div>
+    `;
+
+    this.#map = L.map('gps-map-view', {
+      zoomControl: false, // Move zoom control if needed, or keep default
+    }).setView([0, 0], 2);
+
+    L.control.zoom({ position: 'topleft' }).addTo(this.#map);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
@@ -54,36 +75,30 @@ class MapManager {
 
     this.#isReady = true;
 
-    // Listen for file removal to clean up map
     messenger.on('file:removed', (data) => {
       if (this.#loadedFileIndex === data.index) {
         this.clearMap();
         this.#loadedFileIndex = -1;
-
-        // Use the getter
-        const mapDiv = this.#container;
-        if (mapDiv) mapDiv.style.display = 'none';
+        if (this.#container) this.#container.style.display = 'none';
       } else if (this.#loadedFileIndex > data.index) {
         this.#loadedFileIndex--;
       }
     });
 
-    // Handle Project Reset (if implemented in ProjectManager)
     messenger.on('project:reset', () => {
       this.clearMap();
       this.#loadedFileIndex = -1;
-      const mapDiv = this.#container;
-      if (mapDiv) mapDiv.style.display = 'none';
+      if (this.#container) this.#container.style.display = 'none';
     });
   }
 
   loadRoute(fileIndex) {
-    // Use the getter
-    const mapDiv = this.#container;
-    if (mapDiv) {
-      mapDiv.style.display = 'block';
-      mapDiv.style.height = '350px';
-      void mapDiv.offsetHeight; // Reflow hack
+    const mapWrapper = this.#container;
+
+    if (mapWrapper) {
+      mapWrapper.style.display = 'flex'; 
+      mapWrapper.style.height = '350px'; 
+      void mapWrapper.offsetHeight;
     }
 
     if (!this.#isReady) this.init();
@@ -92,11 +107,10 @@ class MapManager {
     if (!file) return;
 
     this.#loadedFileIndex = fileIndex;
-
     const { latKey, lonKey } = this.#detectGpsSignals(file);
 
     if (!latKey || !lonKey) {
-      if (mapDiv) mapDiv.style.display = 'none';
+      if (mapWrapper) mapWrapper.style.display = 'none';
       return;
     }
 
@@ -119,7 +133,6 @@ class MapManager {
       }
     }
 
-    // Clear old layers before drawing new ones
     this.#clearLayers();
 
     if (routePoints.length === 0) return;
@@ -149,8 +162,9 @@ class MapManager {
 
     const mapInstance = this.#map;
     const layerInstance = this.#routeLayer;
-    mapInstance.invalidateSize();
 
+  
+    mapInstance.invalidateSize();
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (mapInstance && layerInstance) {
@@ -174,7 +188,6 @@ class MapManager {
 
     const lat = this.#latInterpolator.getValueAt(time);
     const lon = this.#lonInterpolator.getValueAt(time);
-
     const nextLat = this.#latInterpolator.getValueAt(time + 1000);
     const nextLon = this.#lonInterpolator.getValueAt(time + 1000);
 
@@ -182,7 +195,6 @@ class MapManager {
       if (this.#positionMarker) {
         this.#positionMarker.setLatLng([lat, lon]);
       }
-
       if (this.#isValidGps(nextLat, nextLon)) {
         if (
           Math.abs(nextLat - lat) > 0.00005 ||
@@ -205,8 +217,6 @@ class MapManager {
     this.#lonInterpolator = null;
   }
 
-  // --- Private Helper Methods ---
-
   #clearLayers() {
     if (this.#routeLayer) {
       this.#map.removeLayer(this.#routeLayer);
@@ -220,14 +230,11 @@ class MapManager {
 
   #detectGpsSignals(file) {
     const signals = file.availableSignals;
-
     const findMappedSignal = (mappingKey) => {
       const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
       for (const alias of aliases) {
-        const match = signals.find(
-          (s) => s.toLowerCase() === alias.toLowerCase()
-        );
-        if (match) return match;
+        if (signals.find((s) => s.toLowerCase() === alias.toLowerCase()))
+          return alias;
       }
       for (const alias of aliases) {
         const match = signals.find((s) =>
@@ -241,12 +248,9 @@ class MapManager {
     let latKey = findMappedSignal('Latitude');
     let lonKey = findMappedSignal('Longitude');
 
-    if (!latKey) {
+    if (!latKey)
       latKey = signals.find((s) => /lat/i.test(s) && !/lateral/i.test(s));
-    }
-    if (!lonKey) {
-      lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
-    }
+    if (!lonKey) lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
 
     return { latKey, lonKey };
   }
@@ -260,14 +264,13 @@ class MapManager {
   #calculateStats(latData, lonInterpolator) {
     let totalDistKm = 0;
     let maxSpeedKmh = 0;
-
     const validPoints = [];
+
     for (let i = 0; i < latData.length; i++) {
       const p = latData[i];
       const lat = parseFloat(p.y);
       const lon = parseFloat(lonInterpolator.getValueAt(p.x));
       const time = parseFloat(p.x);
-
       if (this.#isValidGps(lat, lon) && !isNaN(time)) {
         validPoints.push({ x: time, y: lat, lon: lon });
       }
@@ -279,7 +282,6 @@ class MapManager {
     for (let i = 1; i < validPoints.length; i++) {
       const p = validPoints[i];
       const d = this.#getDistanceFromLatLonInKm(lastP.y, lastP.lon, p.y, p.lon);
-
       if (d > 0.002) {
         totalDistKm += d;
         lastP = p;
@@ -288,21 +290,16 @@ class MapManager {
 
     const timeWindow = 1000;
     let rightIndex = 0;
-
     for (let i = 0; i < validPoints.length; i++) {
       const startP = validPoints[i];
-
       while (
         rightIndex < validPoints.length &&
         validPoints[rightIndex].x < startP.x + timeWindow
       ) {
         rightIndex++;
       }
-
       if (rightIndex >= validPoints.length) break;
-
       const endP = validPoints[rightIndex];
-
       const distSegment = this.#getDistanceFromLatLonInKm(
         startP.y,
         startP.lon,
@@ -310,12 +307,9 @@ class MapManager {
         endP.lon
       );
       const timeHours = (endP.x - startP.x) / 3600000;
-
       if (timeHours > 0) {
         const speed = distSegment / timeHours;
-        if (speed > maxSpeedKmh && speed < 1000) {
-          maxSpeedKmh = speed;
-        }
+        if (speed > maxSpeedKmh && speed < 1000) maxSpeedKmh = speed;
       }
     }
 
@@ -339,21 +333,27 @@ class MapManager {
     const InfoControl = L.Control.extend({
       onAdd: function () {
         const div = L.DomUtil.create('div', 'info-legend');
-        div.style.backgroundColor = 'white';
+
+        div.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        div.style.color = '#fff';
         div.style.padding = '8px 12px';
-        div.style.borderRadius = '5px';
+        div.style.borderRadius = '6px';
         div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+        div.style.fontFamily =
+          "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
         div.style.fontSize = '12px';
         div.style.lineHeight = '1.4';
-        div.style.color = '#333';
+        div.style.backdropFilter = 'blur(2px)'; // Optional nice touch
+        div.style.border = '1px solid rgba(255,255,255,0.1)';
+
         L.DomEvent.disableClickPropagation(div);
 
         div.innerHTML = `
-                  <div style="font-weight:bold; margin-bottom:4px; color:#01804f; border-bottom:1px solid #eee;">GPS Stats</div>
-                  <div><b>Dist:</b> ${stats.dist} km</div>
-                  <div><b>Avg:</b> ${stats.avg} km/h</div>
-                  <div><b>Max:</b> ${stats.max} km/h</div>
-              `;
+           <div style="font-weight:bold; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:2px;">GPS Stats</div>
+           <div><b>Dist:</b> ${stats.dist} km</div>
+           <div><b>Avg:</b> ${stats.avg} km/h</div>
+           <div><b>Max:</b> ${stats.max} km/h</div>
+        `;
         return div;
       },
     });
@@ -385,9 +385,7 @@ class MapManager {
     const markerEl = this.#positionMarker.getElement();
     if (markerEl) {
       const svg = markerEl.querySelector('svg');
-      if (svg) {
-        svg.style.transform = `rotate(${angle}deg)`;
-      }
+      if (svg) svg.style.transform = `rotate(${angle}deg)`;
     }
   }
 
