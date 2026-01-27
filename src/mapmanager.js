@@ -1,4 +1,5 @@
 import { AppState, SIGNAL_MAPPINGS } from './config.js';
+import { messenger } from './bus.js';
 
 class LinearInterpolator {
   constructor(data) {
@@ -43,6 +44,13 @@ class MapManager {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.#map);
+
+    messenger.on('file:removed', () => {
+      const mapDiv = document.getElementById('mapContainer');
+      if (mapDiv) {
+        mapDiv.style.display = 'none';
+      }
+    });
 
     this.#isReady = true;
   }
