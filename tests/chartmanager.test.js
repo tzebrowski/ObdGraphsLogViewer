@@ -7,6 +7,8 @@ import {
   afterEach,
 } from '@jest/globals';
 
+import { messenger } from '../src/bus.js';
+
 // --- 1. GLOBAL MOCKS SETUP ---
 
 // Spies for Context Properties
@@ -134,10 +136,6 @@ await jest.unstable_mockModule('chartjs-plugin-datalabels', () => ({
 await jest.unstable_mockModule('chartjs-adapter-date-fns', () => ({}));
 await jest.unstable_mockModule('chartjs-plugin-zoom', () => ({ default: {} }));
 
-// Internal Modules
-const mockBus = { on: jest.fn() };
-await jest.unstable_mockModule('../src/bus.js', () => ({ messenger: mockBus }));
-
 await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [], chartInstances: [], activeHighlight: null },
   DOM: { get: jest.fn() },
@@ -165,8 +163,10 @@ const { ChartManager } = await import('../src/chartmanager.js');
 const { AppState, DOM } = await import('../src/config.js');
 const { Chart, Tooltip } = await import('chart.js');
 const { UI } = await import('../src/ui.js');
-const { PaletteManager } = await import('../src/palettemanager.js');
 const { Preferences } = await import('../src/preferences.js');
+
+messenger.emit = jest.fn();
+messenger.on = jest.fn();
 
 // --- 3. TEST SUITE ---
 
@@ -219,7 +219,7 @@ describe('ChartManager Complete Suite', () => {
     test('init registers chart plugins and listeners', () => {
       ChartManager.init();
       expect(Chart.register).toHaveBeenCalled();
-      expect(mockBus.on).toHaveBeenCalledWith(
+      expect(messenger.on).toHaveBeenCalledWith(
         'dataprocessor:batch-load-completed',
         expect.any(Function)
       );
@@ -244,6 +244,8 @@ describe('ChartManager Complete Suite', () => {
       ChartManager.removeChart(0);
       expect(AppState.files).toHaveLength(0);
       expect(UI.renderSignalList).toHaveBeenCalled();
+
+      expect(messenger.emit).toHaveBeenCalledWith('file:removed', { index: 0 });
     });
 
     test('removeChart() does nothing in overlay mode', () => {
