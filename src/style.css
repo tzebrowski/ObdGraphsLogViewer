@@ -2844,8 +2844,10 @@ body.pref-theme-dark .search-option:hover {
 
 #mapContainer,
 .map-section {
-  min-height: 300px !important; /* Forces it open */
-  height: 300px; /* Sets a specific height */
+  min-height: 300px !important;
+  height: 300px;
   width: 100%;
   display: block;
+  margin-top: 0px !important;
+  padding-top: 0px !important;
 }

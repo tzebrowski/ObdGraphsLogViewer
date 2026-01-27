@@ -1,3 +1,4 @@
+import L from 'leaflet';
 import { AppState, SIGNAL_MAPPINGS } from './config.js';
 import { messenger } from './bus.js';
 
@@ -84,20 +85,14 @@ class MapManager {
         this.#loadedFileIndex--;
       }
     });
-
-    messenger.on('project:reset', () => {
-      this.clearMap();
-      this.#loadedFileIndex = -1;
-      if (this.#container) this.#container.style.display = 'none';
-    });
   }
 
   loadRoute(fileIndex) {
     const mapWrapper = this.#container;
 
     if (mapWrapper) {
-      mapWrapper.style.display = 'flex'; 
-      mapWrapper.style.height = '350px'; 
+      mapWrapper.style.display = 'flex';
+      mapWrapper.style.height = '350px';
       void mapWrapper.offsetHeight;
     }
 
@@ -163,7 +158,6 @@ class MapManager {
     const mapInstance = this.#map;
     const layerInstance = this.#routeLayer;
 
-  
     mapInstance.invalidateSize();
     requestAnimationFrame(() => {
       setTimeout(() => {
