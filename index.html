@@ -9,6 +9,13 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <link rel="stylesheet" href="./src/style.css" />
   </head>
 
@@ -567,6 +574,17 @@
             </div>
           </div>
 
+          <div
+            id="mapContainer"
+            style="
+              height: 300px;
+              width: 100%;
+              display: none;
+              margin-top: 20px;
+              border: 1px solid #ccc;
+            "
+          ></div>
+
           <div id="dropZone" class="drop-zone">
             <div class="drop-zone-content">
               <i class="fas fa-file-upload"></i>
@@ -1060,6 +1078,7 @@
               />
             </div>
           </div>
+
           <div
             class="modal-footer"
             style="padding: 15px; text-align: right; border-top: 1px solid #eee"
