@@ -2,16 +2,19 @@ import L from 'leaflet';
 import { AppState, SIGNAL_MAPPINGS } from './config.js';
 import { messenger } from './bus.js';
 
-class LinearInterpolator {
+export class LinearInterpolator {
   constructor(data) {
     this.data = data;
   }
 
   getValueAt(time) {
     if (!this.data || this.data.length === 0) return null;
+    if (time <= this.data[0].x) return this.data[0].y;
+    if (time >= this.data[this.data.length - 1].x)
+      return this.data[this.data.length - 1].y;
+
     const idx = this.data.findIndex((p) => p.x >= time);
-    if (idx <= 0) return this.data[0]?.y || 0;
-    if (idx >= this.data.length) return this.data[this.data.length - 1].y;
+    if (idx <= 0) return this.data[0].y;
 
     const p1 = this.data[idx - 1];
     const p2 = this.data[idx];
@@ -39,14 +42,29 @@ class MapManager {
     return document.getElementById('mapContainer');
   }
 
+  // --- ADDED FOR TESTING ---
+  reset() {
+    this.clearMap();
+    if (this.#map) {
+      this.#map.remove();
+      this.#map = null;
+    }
+    this.#isReady = false;
+    this.#loadedFileIndex = -1;
+  }
+  // -------------------------
+
   init() {
-    if (this.#isReady) return;
+    if (this.#isReady && this.#map) return;
 
     const container = this.#container;
-    if (!container) return;
+    if (!container) {
+      console.warn('MapManager: #mapContainer not found in DOM.');
+      return;
+    }
 
     container.className = 'chart-card-compact';
-    container.style.display = 'none'; // Start hidden
+    container.style.display = 'none';
     container.style.flexDirection = 'column';
     container.innerHTML = `
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
@@ -56,7 +74,7 @@ class MapManager {
              </span>
           </div>
           <div class="chart-actions">
-             <button class="btn-remove" onclick="document.getElementById('mapContainer').style.display='none'" title="Hide Map">×</button>
+             <button class="btn-remove" id="btn-hide-map" title="Hide Map">×</button>
           </div>
       </div>
       <div class="canvas-wrapper" style="flex: 1; position: relative; padding: 0;">
@@ -64,9 +82,17 @@ class MapManager {
       </div>
     `;
 
-    this.#map = L.map('gps-map-view', {
-      zoomControl: false, // Move zoom control if needed, or keep default
-    }).setView([0, 0], 2);
+    const closeBtn = container.querySelector('#btn-hide-map');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        container.style.display = 'none';
+      };
+    }
+
+    this.#map = L.map('gps-map-view', { zoomControl: false }).setView(
+      [0, 0],
+      2
+    );
 
     L.control.zoom({ position: 'topleft' }).addTo(this.#map);
 
@@ -76,27 +102,30 @@ class MapManager {
 
     this.#isReady = true;
 
-    messenger.on('file:removed', (data) => {
-      if (this.#loadedFileIndex === data.index) {
-        this.clearMap();
-        this.#loadedFileIndex = -1;
-        if (this.#container) this.#container.style.display = 'none';
-      } else if (this.#loadedFileIndex > data.index) {
-        this.#loadedFileIndex--;
-      }
-    });
+    // Use a named handler or arrow function.
+    // In a real singleton, this might accumulate listeners if init is called multiple times,
+    // but the #isReady guard prevents that.
+    messenger.on('file:removed', (data) => this.#handleFileRemoved(data));
+  }
+
+  #handleFileRemoved(data) {
+    if (this.#loadedFileIndex === data.index) {
+      this.clearMap();
+      this.#loadedFileIndex = -1;
+      if (this.#container) this.#container.style.display = 'none';
+    } else if (this.#loadedFileIndex > data.index) {
+      this.#loadedFileIndex--;
+    }
   }
 
   loadRoute(fileIndex) {
-    const mapWrapper = this.#container;
-
-    if (mapWrapper) {
-      mapWrapper.style.display = 'flex';
-      mapWrapper.style.height = '350px';
-      void mapWrapper.offsetHeight;
-    }
-
     if (!this.#isReady) this.init();
+
+    const mapWrapper = this.#container;
+    if (!this.#map || !mapWrapper) return;
+
+    mapWrapper.style.display = 'flex';
+    mapWrapper.style.height = '350px';
 
     const file = AppState.files[fileIndex];
     if (!file) return;
@@ -105,7 +134,7 @@ class MapManager {
     const { latKey, lonKey } = this.#detectGpsSignals(file);
 
     if (!latKey || !lonKey) {
-      if (mapWrapper) mapWrapper.style.display = 'none';
+      mapWrapper.style.display = 'none';
       return;
     }
 
@@ -155,8 +184,13 @@ class MapManager {
     const stats = this.#calculateStats(latData, this.#lonInterpolator);
     this.#updateInfoControl(stats);
 
+    this.#fitBoundsSafely();
+  }
+
+  #fitBoundsSafely() {
     const mapInstance = this.#map;
     const layerInstance = this.#routeLayer;
+    if (!mapInstance || !layerInstance) return;
 
     mapInstance.invalidateSize();
     requestAnimationFrame(() => {
@@ -164,7 +198,11 @@ class MapManager {
         if (mapInstance && layerInstance) {
           mapInstance.invalidateSize();
           const bounds = layerInstance.getBounds();
-          if (bounds.isValid()) {
+          if (
+            bounds &&
+            typeof bounds.isValid === 'function' &&
+            bounds.isValid()
+          ) {
             mapInstance.fitBounds(bounds, {
               padding: [30, 30],
               maxZoom: 18,
@@ -177,7 +215,12 @@ class MapManager {
   }
 
   syncPosition(time) {
-    if (!this.#isReady || !this.#latInterpolator || !this.#lonInterpolator)
+    if (
+      !this.#isReady ||
+      !this.#map ||
+      !this.#latInterpolator ||
+      !this.#lonInterpolator
+    )
       return;
 
     const lat = this.#latInterpolator.getValueAt(time);
@@ -203,7 +246,7 @@ class MapManager {
 
   clearMap() {
     this.#clearLayers();
-    if (this.#infoControl) {
+    if (this.#infoControl && this.#map) {
       this.#map.removeControl(this.#infoControl);
       this.#infoControl = null;
     }
@@ -212,6 +255,7 @@ class MapManager {
   }
 
   #clearLayers() {
+    if (!this.#map) return;
     if (this.#routeLayer) {
       this.#map.removeLayer(this.#routeLayer);
       this.#routeLayer = null;
@@ -223,11 +267,11 @@ class MapManager {
   }
 
   #detectGpsSignals(file) {
-    const signals = file.availableSignals;
+    const signals = file.availableSignals || [];
     const findMappedSignal = (mappingKey) => {
       const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
       for (const alias of aliases) {
-        if (signals.find((s) => s.toLowerCase() === alias.toLowerCase()))
+        if (signals.some((s) => s.toLowerCase() === alias.toLowerCase()))
           return alias;
       }
       for (const alias of aliases) {
@@ -251,7 +295,12 @@ class MapManager {
 
   #isValidGps(lat, lon) {
     return (
-      lat != null && lon != null && Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1
+      lat != null &&
+      lon != null &&
+      !isNaN(lat) &&
+      !isNaN(lon) &&
+      Math.abs(lat) > 0.1 &&
+      Math.abs(lon) > 0.1
     );
   }
 
@@ -303,7 +352,7 @@ class MapManager {
       const timeHours = (endP.x - startP.x) / 3600000;
       if (timeHours > 0) {
         const speed = distSegment / timeHours;
-        if (speed > maxSpeedKmh && speed < 1000) maxSpeedKmh = speed;
+        if (speed > maxSpeedKmh && speed < 1200) maxSpeedKmh = speed;
       }
     }
 
@@ -320,30 +369,16 @@ class MapManager {
   }
 
   #updateInfoControl(stats) {
-    if (this.#infoControl) {
-      this.#map.removeControl(this.#infoControl);
-    }
+    if (!this.#map) return;
+    if (this.#infoControl) this.#map.removeControl(this.#infoControl);
 
     const InfoControl = L.Control.extend({
       onAdd: function () {
         const div = L.DomUtil.create('div', 'info-legend');
-
-        div.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        div.style.color = '#fff';
-        div.style.padding = '8px 12px';
-        div.style.borderRadius = '6px';
-        div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
-        div.style.fontFamily =
-          "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
-        div.style.fontSize = '12px';
-        div.style.lineHeight = '1.4';
-        div.style.backdropFilter = 'blur(2px)'; // Optional nice touch
-        div.style.border = '1px solid rgba(255,255,255,0.1)';
-
-        L.DomEvent.disableClickPropagation(div);
-
+        div.style.cssText =
+          'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px;';
         div.innerHTML = `
-           <div style="font-weight:bold; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:2px;">GPS Stats</div>
+           <div style="font-weight:bold; border-bottom:1px solid #aaa; margin-bottom:4px;">GPS Stats</div>
            <div><b>Dist:</b> ${stats.dist} km</div>
            <div><b>Avg:</b> ${stats.avg} km/h</div>
            <div><b>Max:</b> ${stats.max} km/h</div>
