@@ -22,6 +22,7 @@ jest.unstable_mockModule('../../src/config.js', () => ({
     get: (id) => document.getElementById(id),
   },
   DEFAULT_SIGNALS: [],
+  SIGNAL_MAPPINGS: [],
 }));
 
 jest.unstable_mockModule('../../src/projectmanager.js', () => ({

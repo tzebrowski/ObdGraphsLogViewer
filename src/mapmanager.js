@@ -69,6 +69,10 @@ class MapManager {
     }
     this.#isReady = false;
     this.#loadedFileIndex = -1;
+
+    if (this.#container) {
+      this.#container.style.display = 'none';
+    }
   }
   // -------------------------
 
@@ -145,6 +149,11 @@ class MapManager {
   }
 
   loadRoute(fileIndex) {
+    if (!Preferences.prefs.loadMap) {
+      if (this.#container) this.#container.style.display = 'none';
+      return;
+    }
+
     if (!this.#isReady) this.init();
 
     const mapWrapper = this.#container;
