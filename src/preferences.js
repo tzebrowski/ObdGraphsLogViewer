@@ -1,6 +1,6 @@
 import { UI } from './ui.js';
 import { ChartManager } from './chartmanager.js';
-import { mapManager } from './mapmanager.js';
+import { messenger } from './bus.js';
 
 /**
  * Preferences Module
@@ -85,8 +85,9 @@ export const Preferences = {
     });
 
     this.prefs = newPrefs;
+
+    messenger.emit('preferences:updated', newPrefs);
     this._syncTheme(newPrefs.darkTheme);
-    this._syncMap(newPrefs.loadMap);
     this._syncChart();
   },
 
@@ -98,12 +99,6 @@ export const Preferences = {
       const el = document.getElementById(id);
       el?.addEventListener('change', () => this.savePreferences());
     });
-  },
-
-  _syncMap(isEnabled) {
-    if (!isEnabled) {
-      mapManager.reset();
-    }
   },
 
   _syncTheme(isDark) {
