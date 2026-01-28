@@ -130,6 +130,16 @@ class MapManager {
     this.#isReady = true;
 
     messenger.on('file:removed', (data) => this.#handleFileRemoved(data));
+
+    messenger.on('preferences:updated', (prefs) => {
+      if (prefs.loadMap) {
+        if (AppState.files.length > 0) {
+          mapManager.loadRoute(0);
+        }
+      } else {
+        mapManager.reset();
+      }
+    });
   }
 
   updateTheme(theme) {
