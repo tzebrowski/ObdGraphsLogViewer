@@ -1,6 +1,11 @@
 import L from 'leaflet';
 import { AppState, SIGNAL_MAPPINGS } from './config.js';
 import { messenger } from './bus.js';
+import { Preferences } from './preferences.js';
+
+const TILES_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILES_DARK =
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 export class LinearInterpolator {
   constructor(data) {
@@ -9,20 +14,21 @@ export class LinearInterpolator {
 
   getValueAt(time) {
     if (!this.data || this.data.length === 0) return null;
-    
+
     // Safety: ensure time is number
     const t = parseFloat(time);
 
     // Boundary checks
     if (t <= this.data[0].x) return parseFloat(this.data[0].y);
-    if (t >= this.data[this.data.length - 1].x) return parseFloat(this.data[this.data.length - 1].y);
+    if (t >= this.data[this.data.length - 1].x)
+      return parseFloat(this.data[this.data.length - 1].y);
 
     const idx = this.data.findIndex((p) => p.x >= t);
     if (idx <= 0) return parseFloat(this.data[0].y);
 
     const p1 = this.data[idx - 1];
     const p2 = this.data[idx];
-    
+
     // Explicitly parse values to prevent string concatenation
     const y1 = parseFloat(p1.y);
     const y2 = parseFloat(p2.y);
@@ -39,6 +45,7 @@ export class LinearInterpolator {
 
 class MapManager {
   #map = null;
+  #tileLayer = null;
   #routeLayer = null;
   #positionMarker = null;
   #latInterpolator = null;
@@ -77,6 +84,8 @@ class MapManager {
     container.className = 'chart-card-compact';
     container.style.display = 'none';
     container.style.flexDirection = 'column';
+
+    // NOTE: Changed width: 100% to width: auto to allow CSS margins to work
     container.innerHTML = `
       <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
           <div style="display: flex; flex-direction: column; min-width: 0;">
@@ -89,7 +98,7 @@ class MapManager {
           </div>
       </div>
       <div class="canvas-wrapper" style="flex: 1; position: relative; padding: 0;">
-          <div id="gps-map-view" style="width: 100%; height: 100%;"></div>
+          <div id="gps-map-view" style="width: auto; height: 100%;"></div>
       </div>
     `;
 
@@ -107,16 +116,22 @@ class MapManager {
 
     L.control.zoom({ position: 'topleft' }).addTo(this.#map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const isDark = Preferences.prefs.darkTheme;
+    const initialUrl = isDark ? TILES_DARK : TILES_LIGHT;
+
+    this.#tileLayer = L.tileLayer(initialUrl, {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.#map);
 
     this.#isReady = true;
 
-    // Use a named handler or arrow function.
-    // In a real singleton, this might accumulate listeners if init is called multiple times,
-    // but the #isReady guard prevents that.
     messenger.on('file:removed', (data) => this.#handleFileRemoved(data));
+  }
+
+  updateTheme(theme) {
+    if (!this.#tileLayer) return;
+    const newUrl = theme === 'dark' ? TILES_DARK : TILES_LIGHT;
+    this.#tileLayer.setUrl(newUrl);
   }
 
   #handleFileRemoved(data) {
@@ -316,22 +331,20 @@ class MapManager {
   }
 
   #calculateStats(latData, lonInterpolator) {
-    if (!latData || latData.length < 2) return { dist: '0.00', avg: '0.0', max: '0.0' };
+    if (!latData || latData.length < 2)
+      return { dist: '0.00', avg: '0.0', max: '0.0' };
 
     const firstTime = parseFloat(latData[0].x);
     const lastTime = parseFloat(latData[latData.length - 1].x);
     // Auto-detect unit: if average step is small (<10), it's likely Seconds -> convert to MS
     const avgStep = (lastTime - firstTime) / latData.length;
-    const isSeconds = avgStep < 10; 
+    const isSeconds = avgStep < 10;
     const timeMult = isSeconds ? 1000 : 1;
 
     let totalDistKm = 0;
     let maxSpeedKmh = 0;
-    
-    // Smoothing factor for max speed (0.0 - 1.0). 
-    // Higher = more smoothing, less sensitive to spikes.
-    // 0.8 means "retain 80% of previous speed, take 20% of new speed"
-    const SMOOTHING_FACTOR = 0.5; 
+
+    const SMOOTHING_FACTOR = 0.5;
     let currentSmoothedSpeed = 0;
 
     const validPoints = [];
@@ -342,7 +355,7 @@ class MapManager {
       const lat = parseFloat(p.y);
       const rawTime = parseFloat(p.x);
       const lon = parseFloat(lonInterpolator.getValueAt(rawTime));
-      
+
       if (this.#isValidGps(lat, lon) && !isNaN(rawTime)) {
         validPoints.push({ x: rawTime * timeMult, y: lat, lon: lon });
       }
@@ -351,10 +364,15 @@ class MapManager {
     if (validPoints.length < 2) return { dist: '0.00', avg: '0.0', max: '0.0' };
 
     let lastP = validPoints[0];
-    
+
     for (let i = 1; i < validPoints.length; i++) {
       const p = validPoints[i];
-      const dist = this.#getDistanceFromLatLonInKm(lastP.y, lastP.lon, p.y, p.lon);
+      const dist = this.#getDistanceFromLatLonInKm(
+        lastP.y,
+        lastP.lon,
+        p.y,
+        p.lon
+      );
       const timeDiffHours = (p.x - lastP.x) / 3600000;
 
       if (dist > 0.0005) {
@@ -362,26 +380,31 @@ class MapManager {
         lastP = p;
       }
 
-      if (timeDiffHours > 0.00005) { // Avoid divide by zero or tiny deltas
+      if (timeDiffHours > 0.00005) {
+        // Avoid divide by zero or tiny deltas
         const instantSpeed = dist / timeDiffHours;
 
         if (instantSpeed < 300) {
-           // If it's the first point, initialize
-            if (currentSmoothedSpeed === 0) currentSmoothedSpeed = instantSpeed;
-            else {
-                currentSmoothedSpeed = (currentSmoothedSpeed * SMOOTHING_FACTOR) + (instantSpeed * (1 - SMOOTHING_FACTOR));
-            }
+          // If it's the first point, initialize
+          if (currentSmoothedSpeed === 0) currentSmoothedSpeed = instantSpeed;
+          else {
+            currentSmoothedSpeed =
+              currentSmoothedSpeed * SMOOTHING_FACTOR +
+              instantSpeed * (1 - SMOOTHING_FACTOR);
+          }
 
-            if (currentSmoothedSpeed > maxSpeedKmh) {
-                maxSpeedKmh = currentSmoothedSpeed;
-            }
+          if (currentSmoothedSpeed > maxSpeedKmh) {
+            maxSpeedKmh = currentSmoothedSpeed;
+          }
         }
       }
     }
 
     // Average Speed (Total Distance / Total Time)
-    const totalTimeHours = (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
-    const avgSpeedKmh = totalTimeHours > 0.001 ? totalDistKm / totalTimeHours : 0;
+    const totalTimeHours =
+      (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
+    const avgSpeedKmh =
+      totalTimeHours > 0.001 ? totalDistKm / totalTimeHours : 0;
 
     return {
       dist: totalDistKm.toFixed(2),
