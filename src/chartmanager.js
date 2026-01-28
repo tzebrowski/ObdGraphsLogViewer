@@ -334,8 +334,6 @@ export const ChartManager = {
     if (AppState.files.length === 0) {
       this._handleEmptyState();
       return;
-    } else {
-      mapManager.loadRoute(0);
     }
 
     UI.updateDataLoadedState(true);
@@ -347,9 +345,10 @@ export const ChartManager = {
     if (this.viewMode === 'overlay') {
       this._renderOverlayMode(container);
     } else {
-      AppState.files.forEach((file, idx) =>
-        this._renderChartCard(container, file, idx)
-      );
+      AppState.files.forEach((file, idx) => {
+        this._renderChartCard(container, file, idx);
+        mapManager.loadRoute(idx);
+      });
     }
   },
 
