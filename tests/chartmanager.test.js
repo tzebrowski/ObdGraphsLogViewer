@@ -140,6 +140,7 @@ await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [], chartInstances: [], activeHighlight: null },
   DOM: { get: jest.fn() },
   DEFAULT_SIGNALS: [],
+  SIGNAL_MAPPINGS: [],
 }));
 
 await jest.unstable_mockModule('../src/ui.js', () => ({

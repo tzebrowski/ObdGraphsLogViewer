@@ -21,6 +21,7 @@ import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
+import { mapManager } from './mapmanager.js';
 
 export const ChartManager = {
   hoverValue: null,
@@ -63,6 +64,8 @@ export const ChartManager = {
 
     const activeElements = [];
     const xTarget = chart.scales.x.getPixelForValue(timeValue);
+
+    mapManager.syncPosition(timeValue);
 
     chart.data.datasets.forEach((ds, dsIdx) => {
       if (!chart.isDatasetVisible(dsIdx)) return;
@@ -331,6 +334,8 @@ export const ChartManager = {
     if (AppState.files.length === 0) {
       this._handleEmptyState();
       return;
+    } else {
+      mapManager.loadRoute(0);
     }
 
     UI.updateDataLoadedState(true);

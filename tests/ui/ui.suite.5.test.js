@@ -38,6 +38,7 @@ await jest.unstable_mockModule('../../src/config.js', () => ({
     get: jest.fn((id) => document.getElementById(id)),
   },
   DEFAULT_SIGNALS: ['Rpm'],
+  SIGNAL_MAPPINGS: [],
 }));
 
 await jest.unstable_mockModule('../../src/preferences.js', () => ({

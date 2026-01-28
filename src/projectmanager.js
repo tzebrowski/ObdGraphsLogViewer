@@ -202,6 +202,8 @@ class ProjectManager {
       });
     }
     this.#saveToStorage();
+
+    messenger.emit('project:reset');
   }
 
   getHistory() {

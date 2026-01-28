@@ -6,6 +6,7 @@ import { PaletteManager } from './palettemanager.js';
 import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
+import { mapManager } from './mapmanager.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -801,6 +802,10 @@ export const UI = {
     document
       .getElementById('btn-theme-dark')
       ?.classList.toggle('active', isDark);
+
+    if (mapManager) {
+      mapManager.updateTheme(theme);
+    }
 
     AppState.chartInstances.forEach((chart) => {
       chart.options.scales.x.ticks.color = textColor;

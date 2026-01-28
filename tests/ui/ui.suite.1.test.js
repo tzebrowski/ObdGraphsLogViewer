@@ -70,6 +70,7 @@ await jest.unstable_mockModule('../../src/config.js', () => ({
   AppState: mockAppState,
   DOM: { get: (id) => document.getElementById(id) },
   DEFAULT_SIGNALS: ['RPM'],
+  SIGNAL_MAPPINGS: [],
 }));
 
 // --- 2. Imports ---

@@ -2841,3 +2841,17 @@ body.pref-theme-dark .search-option:hover {
   box-sizing: border-box;
   display: none;
 }
+
+#mapContainer,
+.map-section {
+  margin-left: 5px !important;
+  margin-right: 5px !important;
+  width: auto !important;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  border: 1px solid #ddd;
+  min-height: 300px !important;
+  display: block;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}

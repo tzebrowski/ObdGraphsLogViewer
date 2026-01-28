@@ -1,5 +1,6 @@
 import { UI } from './ui.js';
 import { ChartManager } from './chartmanager.js';
+import { mapManager } from './mapmanager.js';
 
 /**
  * Preferences Module
@@ -17,6 +18,7 @@ export const Preferences = {
     'pref-custom-palette': 'useCustomPalette',
     'pref-show-area-fills': 'showAreaFills',
     'pref-smooth-lines': 'smoothLines',
+    'pref-load-map': 'loadMap',
   },
 
   defaultPrefs: {
@@ -26,6 +28,7 @@ export const Preferences = {
     useCustomPalette: false,
     showAreaFills: true,
     smoothLines: false,
+    loadMap: false,
   },
 
   get prefs() {
@@ -81,8 +84,9 @@ export const Preferences = {
       newPrefs[key] = el ? el.checked : this.defaultPrefs[key];
     });
 
-    this.prefs = newPrefs; // Triggers the setter and persistence logic
+    this.prefs = newPrefs;
     this._syncTheme(newPrefs.darkTheme);
+    this._syncMap(newPrefs.loadMap);
     this._syncChart();
   },
 
@@ -94,6 +98,12 @@ export const Preferences = {
       const el = document.getElementById(id);
       el?.addEventListener('change', () => this.savePreferences());
     });
+  },
+
+  _syncMap(isEnabled) {
+    if (!isEnabled) {
+      mapManager.reset();
+    }
   },
 
   _syncTheme(isDark) {
