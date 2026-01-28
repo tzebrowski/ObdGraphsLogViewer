@@ -11,7 +11,7 @@ import {
 const mockMap = {
   setView: jest.fn().mockReturnThis(),
   addTo: jest.fn().mockReturnThis(),
-  remove: jest.fn(),
+  remove: jest.fn(), // This is critical for the file:removed test
   invalidateSize: jest.fn(),
   fitBounds: jest.fn(),
   hasLayer: jest.fn().mockReturnValue(false),
@@ -103,13 +103,12 @@ await jest.unstable_mockModule('../src/bus.js', () => ({
   messenger: mockMessenger,
 }));
 
-// --- 3. MOCK PREFERENCES (CRITICAL FIX) ---
-// This ensures mapManager sees 'loadMap: true' without loading the real Preferences module
+// --- 3. MOCK PREFERENCES ---
 await jest.unstable_mockModule('../src/preferences.js', () => ({
   Preferences: {
     prefs: {
       darkTheme: false,
-      loadMap: true, // <--- Required for loadRoute to proceed
+      loadMap: true,
     },
   },
 }));
@@ -166,11 +165,14 @@ describe('MapManager System', () => {
 
   // --- INTEGRATION TESTS: MAPMANAGER ---
   describe('MapManager Logic', () => {
-    test('should initialize Leaflet correctly when container exists', () => {
+    test('should initialize container listeners but NOT map immediately', () => {
+      // In the new multi-map architecture, init() prepares the container
+      // but does NOT call L.map() until a route is actually loaded.
       mapManager.init();
-      expect(mockLeafletObj.map).toHaveBeenCalledWith('gps-map-view', {
-        zoomControl: false,
-      });
+
+      // Expect map NOT to be called yet
+      expect(mockLeafletObj.map).not.toHaveBeenCalled();
+
       // Verify messenger listener was attached
       expect(mockMessenger.on).toHaveBeenCalledWith(
         'file:removed',
@@ -185,7 +187,7 @@ describe('MapManager System', () => {
       expect(mockLeafletObj.map).not.toHaveBeenCalled();
     });
 
-    test('should load route logic correctly', () => {
+    test('should load route logic and create map instance', () => {
       const mockFile = {
         name: 'Trip.json',
         availableSignals: ['GPS Latitude', 'GPS Longitude'],
@@ -203,7 +205,13 @@ describe('MapManager System', () => {
 
       AppState.files = [mockFile];
       mapManager.init();
-      mapManager.loadRoute(0);
+      mapManager.loadRoute(0); // This should trigger L.map creation
+
+      // Check if map was created with the specific dynamic ID for file index 0
+      expect(mockLeafletObj.map).toHaveBeenCalledWith(
+        'gps-map-view-0',
+        expect.objectContaining({ zoomControl: false })
+      );
 
       expect(mockLeafletObj.polyline).toHaveBeenCalled();
       expect(mockPolyline.addTo).toHaveBeenCalledWith(mockMap);
@@ -259,26 +267,33 @@ describe('MapManager System', () => {
       expect(mockMarker.setLatLng).toHaveBeenCalledWith([10, 10]);
     });
 
-    test('should handle file:removed event', () => {
+    test('should handle file:removed event by destroying map instance', () => {
       const mockFile = {
         name: 'Trip.json',
         availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: { 'GPS Latitude': [], 'GPS Longitude': [] },
+        signals: {
+          'GPS Latitude': [{ x: 0, y: 0 }],
+          'GPS Longitude': [{ x: 0, y: 0 }],
+        },
       };
       AppState.files = [mockFile];
 
       mapManager.init();
       mapManager.loadRoute(0);
 
+      // Verify map exists before removal (L.map was called)
+      expect(mockLeafletObj.map).toHaveBeenCalledTimes(1);
+
       // Simulate event via the mock callback
-      // We look for the specific call that registered 'file:removed'
       const call = mockMessenger.on.mock.calls.find(
         (c) => c[0] === 'file:removed'
       );
       if (call) {
         const eventCallback = call[1];
         eventCallback({ index: 0 });
-        expect(mockMap.removeLayer).toHaveBeenCalled();
+
+        // In multi-map mode, we destroy the entire map instance
+        expect(mockMap.remove).toHaveBeenCalled();
       } else {
         throw new Error('file:removed listener was not registered in init()');
       }
