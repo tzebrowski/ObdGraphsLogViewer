@@ -9,20 +9,31 @@ export class LinearInterpolator {
 
   getValueAt(time) {
     if (!this.data || this.data.length === 0) return null;
-    if (time <= this.data[0].x) return this.data[0].y;
-    if (time >= this.data[this.data.length - 1].x)
-      return this.data[this.data.length - 1].y;
+    
+    // Safety: ensure time is number
+    const t = parseFloat(time);
 
-    const idx = this.data.findIndex((p) => p.x >= time);
-    if (idx <= 0) return this.data[0].y;
+    // Boundary checks
+    if (t <= this.data[0].x) return parseFloat(this.data[0].y);
+    if (t >= this.data[this.data.length - 1].x) return parseFloat(this.data[this.data.length - 1].y);
+
+    const idx = this.data.findIndex((p) => p.x >= t);
+    if (idx <= 0) return parseFloat(this.data[0].y);
 
     const p1 = this.data[idx - 1];
     const p2 = this.data[idx];
-    const range = p2.x - p1.x;
-    if (range === 0) return p1.y;
+    
+    // Explicitly parse values to prevent string concatenation
+    const y1 = parseFloat(p1.y);
+    const y2 = parseFloat(p2.y);
+    const x1 = parseFloat(p1.x);
+    const x2 = parseFloat(p2.x);
 
-    const factor = (time - p1.x) / range;
-    return p1.y + (p2.y - p1.y) * factor;
+    const range = x2 - x1;
+    if (range === 0) return y1;
+
+    const factor = (t - x1) / range;
+    return y1 + (y2 - y1) * factor;
   }
 }
 
@@ -305,61 +316,72 @@ class MapManager {
   }
 
   #calculateStats(latData, lonInterpolator) {
+    if (!latData || latData.length < 2) return { dist: '0.00', avg: '0.0', max: '0.0' };
+
+    const firstTime = parseFloat(latData[0].x);
+    const lastTime = parseFloat(latData[latData.length - 1].x);
+    // Auto-detect unit: if average step is small (<10), it's likely Seconds -> convert to MS
+    const avgStep = (lastTime - firstTime) / latData.length;
+    const isSeconds = avgStep < 10; 
+    const timeMult = isSeconds ? 1000 : 1;
+
     let totalDistKm = 0;
     let maxSpeedKmh = 0;
+    
+    // Smoothing factor for max speed (0.0 - 1.0). 
+    // Higher = more smoothing, less sensitive to spikes.
+    // 0.8 means "retain 80% of previous speed, take 20% of new speed"
+    const SMOOTHING_FACTOR = 0.5; 
+    let currentSmoothedSpeed = 0;
+
     const validPoints = [];
 
+    // --- 1. Normalize Data ---
     for (let i = 0; i < latData.length; i++) {
       const p = latData[i];
       const lat = parseFloat(p.y);
-      const lon = parseFloat(lonInterpolator.getValueAt(p.x));
-      const time = parseFloat(p.x);
-      if (this.#isValidGps(lat, lon) && !isNaN(time)) {
-        validPoints.push({ x: time, y: lat, lon: lon });
+      const rawTime = parseFloat(p.x);
+      const lon = parseFloat(lonInterpolator.getValueAt(rawTime));
+      
+      if (this.#isValidGps(lat, lon) && !isNaN(rawTime)) {
+        validPoints.push({ x: rawTime * timeMult, y: lat, lon: lon });
       }
     }
 
     if (validPoints.length < 2) return { dist: '0.00', avg: '0.0', max: '0.0' };
 
     let lastP = validPoints[0];
+    
     for (let i = 1; i < validPoints.length; i++) {
       const p = validPoints[i];
-      const d = this.#getDistanceFromLatLonInKm(lastP.y, lastP.lon, p.y, p.lon);
-      if (d > 0.002) {
-        totalDistKm += d;
+      const dist = this.#getDistanceFromLatLonInKm(lastP.y, lastP.lon, p.y, p.lon);
+      const timeDiffHours = (p.x - lastP.x) / 3600000;
+
+      if (dist > 0.0005) {
+        totalDistKm += dist;
         lastP = p;
       }
-    }
 
-    const timeWindow = 1000;
-    let rightIndex = 0;
-    for (let i = 0; i < validPoints.length; i++) {
-      const startP = validPoints[i];
-      while (
-        rightIndex < validPoints.length &&
-        validPoints[rightIndex].x < startP.x + timeWindow
-      ) {
-        rightIndex++;
-      }
-      if (rightIndex >= validPoints.length) break;
-      const endP = validPoints[rightIndex];
-      const distSegment = this.#getDistanceFromLatLonInKm(
-        startP.y,
-        startP.lon,
-        endP.y,
-        endP.lon
-      );
-      const timeHours = (endP.x - startP.x) / 3600000;
-      if (timeHours > 0) {
-        const speed = distSegment / timeHours;
-        if (speed > maxSpeedKmh && speed < 1200) maxSpeedKmh = speed;
+      if (timeDiffHours > 0.00005) { // Avoid divide by zero or tiny deltas
+        const instantSpeed = dist / timeDiffHours;
+
+        if (instantSpeed < 300) {
+           // If it's the first point, initialize
+            if (currentSmoothedSpeed === 0) currentSmoothedSpeed = instantSpeed;
+            else {
+                currentSmoothedSpeed = (currentSmoothedSpeed * SMOOTHING_FACTOR) + (instantSpeed * (1 - SMOOTHING_FACTOR));
+            }
+
+            if (currentSmoothedSpeed > maxSpeedKmh) {
+                maxSpeedKmh = currentSmoothedSpeed;
+            }
+        }
       }
     }
 
-    const totalTimeHours =
-      (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
-    const avgSpeedKmh =
-      totalTimeHours > 0.001 ? totalDistKm / totalTimeHours : 0;
+    // Average Speed (Total Distance / Total Time)
+    const totalTimeHours = (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
+    const avgSpeedKmh = totalTimeHours > 0.001 ? totalDistKm / totalTimeHours : 0;
 
     return {
       dist: totalDistKm.toFixed(2),
