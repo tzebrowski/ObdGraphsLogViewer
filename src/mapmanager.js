@@ -15,10 +15,8 @@ export class LinearInterpolator {
   getValueAt(time) {
     if (!this.data || this.data.length === 0) return null;
 
-    // Safety: ensure time is number
     const t = parseFloat(time);
 
-    // Boundary checks
     if (t <= this.data[0].x) return parseFloat(this.data[0].y);
     if (t >= this.data[this.data.length - 1].x)
       return parseFloat(this.data[this.data.length - 1].y);
@@ -29,7 +27,6 @@ export class LinearInterpolator {
     const p1 = this.data[idx - 1];
     const p2 = this.data[idx];
 
-    // Explicitly parse values to prevent string concatenation
     const y1 = parseFloat(p1.y);
     const y2 = parseFloat(p2.y);
     const x1 = parseFloat(p1.x);
@@ -44,15 +41,8 @@ export class LinearInterpolator {
 }
 
 class MapManager {
-  #map = null;
-  #tileLayer = null;
-  #routeLayer = null;
-  #positionMarker = null;
-  #latInterpolator = null;
-  #lonInterpolator = null;
-  #infoControl = null;
+  #contexts = new Map();
   #isReady = false;
-  #loadedFileIndex = -1;
 
   constructor() {}
 
@@ -60,24 +50,18 @@ class MapManager {
     return document.getElementById('mapContainer');
   }
 
-  // --- ADDED FOR TESTING ---
   reset() {
-    this.clearMap();
-    if (this.#map) {
-      this.#map.remove();
-      this.#map = null;
-    }
+    this.clearAllMaps();
     this.#isReady = false;
-    this.#loadedFileIndex = -1;
 
     if (this.#container) {
       this.#container.style.display = 'none';
+      this.#container.innerHTML = ''; // Clear DOM
     }
   }
-  // -------------------------
 
   init() {
-    if (this.#isReady && this.#map) return;
+    if (this.#isReady) return;
 
     const container = this.#container;
     if (!container) {
@@ -85,47 +69,11 @@ class MapManager {
       return;
     }
 
-    container.className = 'chart-card-compact';
     container.style.display = 'none';
     container.style.flexDirection = 'column';
-
-    // NOTE: Changed width: 100% to width: auto to allow CSS margins to work
-    container.innerHTML = `
-      <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
-          <div style="display: flex; flex-direction: column; min-width: 0;">
-             <span class="chart-name" style="font-weight: bold; font-size: 0.85em; color: #333;">
-                <i class="fas fa-map-marked-alt"></i> GPS Track
-             </span>
-          </div>
-          <div class="chart-actions">
-             <button class="btn-remove" id="btn-hide-map" title="Hide Map">×</button>
-          </div>
-      </div>
-      <div class="canvas-wrapper" style="flex: 1; position: relative; padding: 0;">
-          <div id="gps-map-view" style="width: auto; height: 100%;"></div>
-      </div>
-    `;
-
-    const closeBtn = container.querySelector('#btn-hide-map');
-    if (closeBtn) {
-      closeBtn.onclick = () => {
-        container.style.display = 'none';
-      };
-    }
-
-    this.#map = L.map('gps-map-view', { zoomControl: false }).setView(
-      [0, 0],
-      2
-    );
-
-    L.control.zoom({ position: 'topleft' }).addTo(this.#map);
-
-    const isDark = Preferences.prefs.darkTheme;
-    const initialUrl = isDark ? TILES_DARK : TILES_LIGHT;
-
-    this.#tileLayer = L.tileLayer(initialUrl, {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(this.#map);
+    container.style.gap = '10px';
+    container.style.background = 'transparent';
+    container.style.border = 'none';
 
     this.#isReady = true;
 
@@ -133,61 +81,79 @@ class MapManager {
 
     messenger.on('preferences:updated', (prefs) => {
       if (prefs.loadMap) {
-        if (AppState.files.length > 0) {
-          mapManager.loadRoute(0);
-        }
+        AppState.files.forEach((_, index) => {
+          this.loadRoute(index);
+        });
       } else {
-        mapManager.reset();
+        this.reset();
       }
     });
   }
 
   updateTheme(theme) {
-    if (!this.#tileLayer) return;
     const newUrl = theme === 'dark' ? TILES_DARK : TILES_LIGHT;
-    this.#tileLayer.setUrl(newUrl);
+
+    // Update all active maps
+    this.#contexts.forEach((ctx) => {
+      if (ctx.tileLayer) {
+        ctx.tileLayer.setUrl(newUrl);
+      }
+    });
   }
 
   #handleFileRemoved(data) {
-    if (this.#loadedFileIndex === data.index) {
-      this.clearMap();
-      this.#loadedFileIndex = -1;
-      if (this.#container) this.#container.style.display = 'none';
-    } else if (this.#loadedFileIndex > data.index) {
-      this.#loadedFileIndex--;
+    this.#removeMapContext(data.index);
+    // Hide container if no maps left
+    if (this.#contexts.size === 0 && this.#container) {
+      this.#container.style.display = 'none';
+    }
+  }
+
+  #removeMapContext(fileIndex) {
+    if (this.#contexts.has(fileIndex)) {
+      const ctx = this.#contexts.get(fileIndex);
+
+      // Remove Leaflet instance
+      if (ctx.map) {
+        ctx.map.remove();
+      }
+
+      // Remove DOM Element
+      const mapCard = document.getElementById(`map-card-${fileIndex}`);
+      if (mapCard) {
+        mapCard.remove();
+      }
+
+      this.#contexts.delete(fileIndex);
     }
   }
 
   loadRoute(fileIndex) {
-    if (!Preferences.prefs.loadMap) {
-      if (this.#container) this.#container.style.display = 'none';
-      return;
-    }
+    if (!Preferences.prefs.loadMap) return;
 
     if (!this.#isReady) this.init();
-
-    const mapWrapper = this.#container;
-    if (!this.#map || !mapWrapper) return;
-
-    mapWrapper.style.display = 'flex';
-    mapWrapper.style.height = '350px';
 
     const file = AppState.files[fileIndex];
     if (!file) return;
 
-    this.#loadedFileIndex = fileIndex;
+    // Check availability of GPS data before creating UI
     const { latKey, lonKey } = this.#detectGpsSignals(file);
+    if (!latKey || !lonKey) return;
 
-    if (!latKey || !lonKey) {
-      mapWrapper.style.display = 'none';
-      return;
+    this.#container.style.display = 'flex';
+
+    // Create Map Context if it doesn't exist
+    if (!this.#contexts.has(fileIndex)) {
+      this.#createMapUI(fileIndex, file.name || `Log #${fileIndex + 1}`);
     }
 
+    const ctx = this.#contexts.get(fileIndex);
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
-    this.#latInterpolator = new LinearInterpolator(latData);
-    this.#lonInterpolator = new LinearInterpolator(lonData);
+    // Setup Interpolators
+    ctx.latInterpolator = new LinearInterpolator(latData);
+    ctx.lonInterpolator = new LinearInterpolator(lonData);
 
     const routePoints = [];
     const step = Math.max(1, Math.ceil(latData.length / 2000));
@@ -195,120 +161,147 @@ class MapManager {
     for (let i = 0; i < latData.length; i += step) {
       const p = latData[i];
       const lat = parseFloat(p.y);
-      const lon = parseFloat(this.#lonInterpolator.getValueAt(p.x));
+      const lon = parseFloat(ctx.lonInterpolator.getValueAt(p.x));
 
       if (this.#isValidGps(lat, lon)) {
         routePoints.push([lat, lon]);
       }
     }
 
-    this.#clearLayers();
+    // Clear existing layers for this context
+    if (ctx.routeLayer) ctx.map.removeLayer(ctx.routeLayer);
+    if (ctx.positionMarker) ctx.map.removeLayer(ctx.positionMarker);
 
     if (routePoints.length === 0) return;
 
-    this.#routeLayer = L.polyline(routePoints, {
-      color: '#3388ff',
+    // Draw Route
+    ctx.routeLayer = L.polyline(routePoints, {
+      color: this.#getRouteColor(fileIndex),
       weight: 4,
       opacity: 0.8,
-    }).addTo(this.#map);
+    }).addTo(ctx.map);
 
+    // Create Marker
     const arrowIcon = L.divIcon({
       className: 'gps-marker-icon',
       html: `
         <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
-            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="#ff0000" stroke="white" stroke-width="2"/>
+            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
         </svg>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
 
-    this.#positionMarker = L.marker(routePoints[0], { icon: arrowIcon }).addTo(
-      this.#map
+    ctx.positionMarker = L.marker(routePoints[0], { icon: arrowIcon }).addTo(
+      ctx.map
     );
 
-    const stats = this.#calculateStats(latData, this.#lonInterpolator);
-    this.#updateInfoControl(stats);
+    // Update Stats
+    const stats = this.#calculateStats(latData, ctx.lonInterpolator);
+    this.#updateInfoControl(ctx, stats);
 
-    this.#fitBoundsSafely();
+    // Fit bounds
+    requestAnimationFrame(() => {
+      if (ctx.map && ctx.routeLayer) {
+        ctx.map.invalidateSize();
+        const bounds = ctx.routeLayer.getBounds();
+        if (bounds.isValid()) {
+          ctx.map.fitBounds(bounds, { padding: [20, 20] });
+        }
+      }
+    });
   }
 
-  #fitBoundsSafely() {
-    const mapInstance = this.#map;
-    const layerInstance = this.#routeLayer;
-    if (!mapInstance || !layerInstance) return;
+  #createMapUI(fileIndex, title) {
+    const cardId = `map-card-${fileIndex}`;
+    const mapId = `gps-map-view-${fileIndex}`;
 
-    mapInstance.invalidateSize();
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        if (mapInstance && layerInstance) {
-          mapInstance.invalidateSize();
-          const bounds = layerInstance.getBounds();
-          if (
-            bounds &&
-            typeof bounds.isValid === 'function' &&
-            bounds.isValid()
-          ) {
-            mapInstance.fitBounds(bounds, {
-              padding: [30, 30],
-              maxZoom: 18,
-              animate: false,
-            });
-          }
-        }
-      }, 300);
+    const cardHtml = `
+      <div id="${cardId}" class="chart-card-compact" style="display: flex; flex-direction: column; height: 350px; border: 1px solid #ccc;">
+          <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+              <span class="chart-name" style="font-weight: bold; font-size: 0.85em; color: #333;">
+                  <i class="fas fa-map-marked-alt"></i> ${title}
+              </span>
+              <button class="btn-remove" onclick="document.getElementById('${cardId}').remove()" title="Hide Map">×</button>
+          </div>
+          <div class="canvas-wrapper" style="flex: 1; position: relative; padding: 0;">
+              <div id="${mapId}" style="width: 100%; height: 100%;"></div>
+          </div>
+      </div>
+    `;
+
+    // Append to container
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = cardHtml;
+    const newCard = tempDiv.firstElementChild;
+
+    // Attach close handler specifically to remove context
+    const closeBtn = newCard.querySelector('.btn-remove');
+    closeBtn.onclick = () => {
+      this.#removeMapContext(fileIndex);
+      // Also check if we should hide the main container
+      if (this.#contexts.size === 0) this.#container.style.display = 'none';
+    };
+
+    this.#container.appendChild(newCard);
+
+    // Initialize Leaflet
+    const mapInstance = L.map(mapId, { zoomControl: false }).setView([0, 0], 2);
+    L.control.zoom({ position: 'topleft' }).addTo(mapInstance);
+
+    const isDark = Preferences.prefs.darkTheme;
+    const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
+
+    const tileLayer = L.tileLayer(tileUrl, {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(mapInstance);
+
+    // Store in context
+    this.#contexts.set(fileIndex, {
+      map: mapInstance,
+      tileLayer: tileLayer,
+      routeLayer: null,
+      positionMarker: null,
+      latInterpolator: null,
+      lonInterpolator: null,
+      infoControl: null,
     });
   }
 
   syncPosition(time) {
-    if (
-      !this.#isReady ||
-      !this.#map ||
-      !this.#latInterpolator ||
-      !this.#lonInterpolator
-    )
-      return;
+    if (!this.#isReady || this.#contexts.size === 0) return;
 
-    const lat = this.#latInterpolator.getValueAt(time);
-    const lon = this.#lonInterpolator.getValueAt(time);
-    const nextLat = this.#latInterpolator.getValueAt(time + 1000);
-    const nextLon = this.#lonInterpolator.getValueAt(time + 1000);
+    // Update every active map
+    this.#contexts.forEach((ctx) => {
+      if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
 
-    if (this.#isValidGps(lat, lon)) {
-      if (this.#positionMarker) {
-        this.#positionMarker.setLatLng([lat, lon]);
-      }
-      if (this.#isValidGps(nextLat, nextLon)) {
-        if (
-          Math.abs(nextLat - lat) > 0.00005 ||
-          Math.abs(nextLon - lon) > 0.00005
-        ) {
-          const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
-          this.#rotateMarker(angle);
+      const lat = ctx.latInterpolator.getValueAt(time);
+      const lon = ctx.lonInterpolator.getValueAt(time);
+      const nextLat = ctx.latInterpolator.getValueAt(time + 1000);
+      const nextLon = ctx.lonInterpolator.getValueAt(time + 1000);
+
+      if (this.#isValidGps(lat, lon)) {
+        if (ctx.positionMarker) {
+          ctx.positionMarker.setLatLng([lat, lon]);
+        }
+        if (this.#isValidGps(nextLat, nextLon)) {
+          if (
+            Math.abs(nextLat - lat) > 0.00005 ||
+            Math.abs(nextLon - lon) > 0.00005
+          ) {
+            const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
+            this.#rotateMarker(ctx.positionMarker, angle);
+          }
         }
       }
-    }
+    });
   }
 
-  clearMap() {
-    this.#clearLayers();
-    if (this.#infoControl && this.#map) {
-      this.#map.removeControl(this.#infoControl);
-      this.#infoControl = null;
-    }
-    this.#latInterpolator = null;
-    this.#lonInterpolator = null;
-  }
-
-  #clearLayers() {
-    if (!this.#map) return;
-    if (this.#routeLayer) {
-      this.#map.removeLayer(this.#routeLayer);
-      this.#routeLayer = null;
-    }
-    if (this.#positionMarker) {
-      this.#map.removeLayer(this.#positionMarker);
-      this.#positionMarker = null;
-    }
+  clearAllMaps() {
+    this.#contexts.forEach((_, key) => {
+      this.#removeMapContext(key);
+    });
+    this.#contexts.clear();
   }
 
   #detectGpsSignals(file) {
@@ -355,20 +348,16 @@ class MapManager {
 
     const firstTime = parseFloat(latData[0].x);
     const lastTime = parseFloat(latData[latData.length - 1].x);
-    // Auto-detect unit: if average step is small (<10), it's likely Seconds -> convert to MS
     const avgStep = (lastTime - firstTime) / latData.length;
     const isSeconds = avgStep < 10;
     const timeMult = isSeconds ? 1000 : 1;
 
     let totalDistKm = 0;
     let maxSpeedKmh = 0;
-
     const SMOOTHING_FACTOR = 0.5;
     let currentSmoothedSpeed = 0;
-
     const validPoints = [];
 
-    // --- 1. Normalize Data ---
     for (let i = 0; i < latData.length; i++) {
       const p = latData[i];
       const lat = parseFloat(p.y);
@@ -400,18 +389,14 @@ class MapManager {
       }
 
       if (timeDiffHours > 0.00005) {
-        // Avoid divide by zero or tiny deltas
         const instantSpeed = dist / timeDiffHours;
-
         if (instantSpeed < 300) {
-          // If it's the first point, initialize
           if (currentSmoothedSpeed === 0) currentSmoothedSpeed = instantSpeed;
           else {
             currentSmoothedSpeed =
               currentSmoothedSpeed * SMOOTHING_FACTOR +
               instantSpeed * (1 - SMOOTHING_FACTOR);
           }
-
           if (currentSmoothedSpeed > maxSpeedKmh) {
             maxSpeedKmh = currentSmoothedSpeed;
           }
@@ -419,7 +404,6 @@ class MapManager {
       }
     }
 
-    // Average Speed (Total Distance / Total Time)
     const totalTimeHours =
       (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
     const avgSpeedKmh =
@@ -432,9 +416,9 @@ class MapManager {
     };
   }
 
-  #updateInfoControl(stats) {
-    if (!this.#map) return;
-    if (this.#infoControl) this.#map.removeControl(this.#infoControl);
+  #updateInfoControl(ctx, stats) {
+    if (!ctx.map) return;
+    if (ctx.infoControl) ctx.map.removeControl(ctx.infoControl);
 
     const InfoControl = L.Control.extend({
       onAdd: function () {
@@ -442,7 +426,7 @@ class MapManager {
         div.style.cssText =
           'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px;';
         div.innerHTML = `
-           <div style="font-weight:bold; border-bottom:1px solid #aaa; margin-bottom:4px;">GPS Stats</div>
+           <div style="font-weight:bold; border-bottom:1px solid #aaa; margin-bottom:4px;">Stats</div>
            <div><b>Dist:</b> ${stats.dist} km</div>
            <div><b>Avg:</b> ${stats.avg} km/h</div>
            <div><b>Max:</b> ${stats.max} km/h</div>
@@ -451,8 +435,8 @@ class MapManager {
       },
     });
 
-    this.#infoControl = new InfoControl({ position: 'topright' });
-    this.#infoControl.addTo(this.#map);
+    ctx.infoControl = new InfoControl({ position: 'topright' });
+    ctx.infoControl.addTo(ctx.map);
   }
 
   #getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -473,9 +457,9 @@ class MapManager {
     return deg * (Math.PI / 180);
   }
 
-  #rotateMarker(angle) {
-    if (!this.#positionMarker) return;
-    const markerEl = this.#positionMarker.getElement();
+  #rotateMarker(marker, angle) {
+    if (!marker) return;
+    const markerEl = marker.getElement();
     if (markerEl) {
       const svg = markerEl.querySelector('svg');
       if (svg) svg.style.transform = `rotate(${angle}deg)`;
@@ -505,6 +489,16 @@ class MapManager {
   }
   #toDegrees(rad) {
     return (rad * 180) / Math.PI;
+  }
+
+  #getRouteColor(index) {
+    const colors = ['#3388ff', '#ff3333', '#33ff33', '#ffa500'];
+    return colors[index % colors.length];
+  }
+
+  #getMarkerColor(index) {
+    const colors = ['#ff0000', '#0000ff', '#00aa00', '#aa00aa'];
+    return colors[index % colors.length];
   }
 }
 
