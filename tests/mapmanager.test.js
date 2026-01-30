@@ -7,11 +7,10 @@ import {
   afterEach,
 } from '@jest/globals';
 
-// --- 1. MOCK LEAFLET ---
 const mockMap = {
   setView: jest.fn().mockReturnThis(),
   addTo: jest.fn().mockReturnThis(),
-  remove: jest.fn(), // This is critical for the file:removed test
+  remove: jest.fn(),
   invalidateSize: jest.fn(),
   fitBounds: jest.fn(),
   hasLayer: jest.fn().mockReturnValue(false),
@@ -86,7 +85,6 @@ await jest.unstable_mockModule('leaflet', () => ({
 
 global.L = mockLeafletObj;
 
-// --- 2. MOCK CONFIG & BUS ---
 await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [] },
   DOM: { get: jest.fn() },
@@ -103,7 +101,6 @@ await jest.unstable_mockModule('../src/bus.js', () => ({
   messenger: mockMessenger,
 }));
 
-// --- 3. MOCK PREFERENCES ---
 await jest.unstable_mockModule('../src/preferences.js', () => ({
   Preferences: {
     prefs: {
@@ -113,24 +110,27 @@ await jest.unstable_mockModule('../src/preferences.js', () => ({
   },
 }));
 
-// --- 4. IMPORTS ---
 const { mapManager, LinearInterpolator } = await import('../src/mapmanager.js');
 const { AppState, DOM } = await import('../src/config.js');
 
 describe('MapManager System', () => {
+  const createEmbeddedMapContainer = (index) => {
+    const div = document.createElement('div');
+    div.id = `embedded-map-${index}`;
+    document.body.appendChild(div);
+    return div;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     AppState.files = [];
 
-    // Reset DOM
-    document.body.innerHTML = '<div id="mapContainer"></div>';
+    document.body.innerHTML = '';
     DOM.get.mockImplementation((id) => document.getElementById(id));
 
-    // MOCK requestAnimationFrame
     global.requestAnimationFrame = (cb) => cb();
 
-    // Reset Singleton State
     if (mapManager.reset) {
       mapManager.reset();
     }
@@ -141,7 +141,6 @@ describe('MapManager System', () => {
     jest.useRealTimers();
   });
 
-  // --- UNIT TESTS: LINEAR INTERPOLATOR ---
   describe('LinearInterpolator', () => {
     test('should interpolate correctly', () => {
       const data = [
@@ -163,17 +162,12 @@ describe('MapManager System', () => {
     });
   });
 
-  // --- INTEGRATION TESTS: MAPMANAGER ---
   describe('MapManager Logic', () => {
     test('should initialize container listeners but NOT map immediately', () => {
-      // In the new multi-map architecture, init() prepares the container
-      // but does NOT call L.map() until a route is actually loaded.
       mapManager.init();
 
-      // Expect map NOT to be called yet
       expect(mockLeafletObj.map).not.toHaveBeenCalled();
 
-      // Verify messenger listener was attached
       expect(mockMessenger.on).toHaveBeenCalledWith(
         'file:removed',
         expect.any(Function)
@@ -181,9 +175,17 @@ describe('MapManager System', () => {
     });
 
     test('should NOT initialize if container is missing', () => {
-      document.body.innerHTML = '';
+      const mockFile = {
+        name: 'Trip.json',
+        availableSignals: ['GPS Latitude', 'GPS Longitude'],
+        signals: { 'GPS Latitude': [], 'GPS Longitude': [] },
+      };
+      AppState.files = [mockFile];
+
       mockLeafletObj.map.mockClear();
       mapManager.init();
+      mapManager.loadRoute(0);
+
       expect(mockLeafletObj.map).not.toHaveBeenCalled();
     });
 
@@ -202,14 +204,15 @@ describe('MapManager System', () => {
           ],
         },
       };
-
       AppState.files = [mockFile];
-      mapManager.init();
-      mapManager.loadRoute(0); // This should trigger L.map creation
 
-      // Check if map was created with the specific dynamic ID for file index 0
+      createEmbeddedMapContainer(0);
+
+      mapManager.init();
+      mapManager.loadRoute(0);
+
       expect(mockLeafletObj.map).toHaveBeenCalledWith(
-        'gps-map-view-0',
+        'embedded-map-0',
         expect.objectContaining({ zoomControl: false })
       );
 
@@ -233,10 +236,12 @@ describe('MapManager System', () => {
         },
       };
       AppState.files = [mockFile];
+
+      createEmbeddedMapContainer(0);
+
       mapManager.init();
       mapManager.loadRoute(0);
 
-      // Trigger delayed fitBounds
       jest.runAllTimers();
 
       expect(mockMap.invalidateSize).toHaveBeenCalled();
@@ -257,8 +262,10 @@ describe('MapManager System', () => {
           ],
         },
       };
-
       AppState.files = [mockFile];
+
+      createEmbeddedMapContainer(0);
+
       mapManager.init();
       mapManager.loadRoute(0);
 
@@ -278,13 +285,13 @@ describe('MapManager System', () => {
       };
       AppState.files = [mockFile];
 
+      createEmbeddedMapContainer(0);
+
       mapManager.init();
       mapManager.loadRoute(0);
 
-      // Verify map exists before removal (L.map was called)
       expect(mockLeafletObj.map).toHaveBeenCalledTimes(1);
 
-      // Simulate event via the mock callback
       const call = mockMessenger.on.mock.calls.find(
         (c) => c[0] === 'file:removed'
       );
@@ -292,7 +299,6 @@ describe('MapManager System', () => {
         const eventCallback = call[1];
         eventCallback({ index: 0 });
 
-        // In multi-map mode, we destroy the entire map instance
         expect(mockMap.remove).toHaveBeenCalled();
       } else {
         throw new Error('file:removed listener was not registered in init()');
