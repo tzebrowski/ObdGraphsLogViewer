@@ -308,6 +308,12 @@ export const ChartManager = {
     AppState.chartInstances.forEach((c) => c?.destroy());
     AppState.chartInstances = [];
 
+    // --- FIX: CLEAR MAP CONTEXTS ON RENDER ---
+    // Since we are about to destroy the DOM nodes, we must tell mapManager
+    // to forget the old map instances so it can attach to the new ones.
+    mapManager.clearAllMaps();
+    // -----------------------------------------
+
     let emptyState = document.getElementById('empty-state');
     if (emptyState && container.contains(emptyState)) {
       container.removeChild(emptyState);
@@ -466,7 +472,7 @@ export const ChartManager = {
           </div>
       </div>
       
-      <div class="local-slider-ui" style="padding: 10px 15px 5px 15px;">
+      <div class="local-slider-ui" style="padding: 5px 15px;">
           <div style="position: relative; height: 16px; margin-bottom: 4px;">
               <input type="range" class="local-range-start" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="0" 
                     style="position: absolute; width: 100%; pointer-events: none; z-index: 3;">
@@ -481,8 +487,11 @@ export const ChartManager = {
           </div>
       </div>
 
-      <div class="canvas-wrapper" style="height: 300px; padding: 5px;">
-          <canvas id="chart-${idx}" tabindex="0"></canvas>
+      <div class="chart-body-row">
+          <div class="chart-canvas-container">
+              <canvas id="chart-${idx}" tabindex="0"></canvas>
+          </div>
+          <div id="embedded-map-${idx}" class="embedded-map-container"></div>
       </div>
     `;
     container.appendChild(wrapper);
