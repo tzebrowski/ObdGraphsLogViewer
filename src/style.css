@@ -585,6 +585,7 @@ input[type='range']::-webkit-slider-thumb {
   background: white;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* <--- Add this if missing to contain the layout */
 }
 
 ::-webkit-scrollbar {
@@ -711,7 +712,13 @@ input[type='range']::-webkit-slider-thumb {
   padding: 10px 5px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+
+  /* --- CHANGED LINES BELOW --- */
+  flex: 1 1 auto !important; /* 1. Force it to fill available space */
+  height: auto !important; /* 2. FORCE remove the 100% height constraint */
+  min-height: 0 !important; /* 3. Allow it to shrink if the map needs space */
+  /* --------------------------- */
+
   overflow-y: auto;
   gap: 10px;
   box-sizing: border-box;
@@ -2844,6 +2851,7 @@ body.pref-theme-dark .search-option:hover {
 
 #mapContainer,
 .map-section {
+  flex: 0 0 auto !important;
   margin-left: 5px !important;
   margin-right: 5px !important;
   width: auto !important;
@@ -2854,4 +2862,84 @@ body.pref-theme-dark .search-option:hover {
   display: block;
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+
+#chartContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 5px;
+  gap: 10px;
+  background-color: #f0f2f5;
+}
+
+.chart-card-compact {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 450px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 10%),
+    0 2px 4px -2px rgb(0 0 0 / 10%);
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.chart-body-row {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 300px;
+  border-top: 1px solid #eee;
+}
+
+.chart-canvas-container {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-canvas-container canvas {
+  flex: 1;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.embedded-map-container {
+  width: 30%;
+  min-width: 300px;
+  border-left: 1px solid #ddd;
+  position: relative;
+  display: none;
+  background: #fdfdfd;
+}
+
+.embedded-map-container.active {
+  display: block;
+}
+
+@media (width <= 768px) {
+  .chart-body-row {
+    flex-direction: column;
+    height: auto;
+    flex: 0 0 auto;
+  }
+
+  .chart-canvas-container {
+    height: 300px;
+    flex: none;
+  }
+
+  .embedded-map-container {
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid #ddd;
+  }
 }

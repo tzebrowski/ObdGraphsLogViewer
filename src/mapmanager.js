@@ -46,35 +46,12 @@ class MapManager {
 
   constructor() {}
 
-  get #container() {
-    return document.getElementById('mapContainer');
-  }
-
   reset() {
     this.clearAllMaps();
     this.#isReady = false;
-
-    if (this.#container) {
-      this.#container.style.display = 'none';
-      this.#container.innerHTML = ''; // Clear DOM
-    }
   }
 
   init() {
-    if (this.#isReady) return;
-
-    const container = this.#container;
-    if (!container) {
-      console.warn('MapManager: #mapContainer not found in DOM.');
-      return;
-    }
-
-    container.style.display = 'none';
-    container.style.flexDirection = 'column';
-    container.style.gap = '10px';
-    container.style.background = 'transparent';
-    container.style.border = 'none';
-
     this.#isReady = true;
 
     messenger.on('file:removed', (data) => this.#handleFileRemoved(data));
@@ -92,8 +69,6 @@ class MapManager {
 
   updateTheme(theme) {
     const newUrl = theme === 'dark' ? TILES_DARK : TILES_LIGHT;
-
-    // Update all active maps
     this.#contexts.forEach((ctx) => {
       if (ctx.tileLayer) {
         ctx.tileLayer.setUrl(newUrl);
@@ -103,48 +78,75 @@ class MapManager {
 
   #handleFileRemoved(data) {
     this.#removeMapContext(data.index);
-    // Hide container if no maps left
-    if (this.#contexts.size === 0 && this.#container) {
-      this.#container.style.display = 'none';
-    }
   }
 
   #removeMapContext(fileIndex) {
     if (this.#contexts.has(fileIndex)) {
       const ctx = this.#contexts.get(fileIndex);
 
-      // Remove Leaflet instance
       if (ctx.map) {
         ctx.map.remove();
       }
 
-      // Remove DOM Element
-      const mapCard = document.getElementById(`map-card-${fileIndex}`);
-      if (mapCard) {
-        mapCard.remove();
-      }
-
       this.#contexts.delete(fileIndex);
+
+      // Hide the embedded container
+      const container = document.getElementById(`embedded-map-${fileIndex}`);
+      if (container) {
+        container.classList.remove('active');
+        container.innerHTML = ''; // Clean up DOM
+      }
     }
   }
 
   loadRoute(fileIndex) {
     if (!Preferences.prefs.loadMap) return;
-
     if (!this.#isReady) this.init();
 
     const file = AppState.files[fileIndex];
     if (!file) return;
 
-    // Check availability of GPS data before creating UI
+    // Check availability of GPS data
     const { latKey, lonKey } = this.#detectGpsSignals(file);
     if (!latKey || !lonKey) return;
 
-    this.#container.style.display = 'flex';
+    // TARGET THE EMBEDDED DIV
+    const mapDivId = `embedded-map-${fileIndex}`;
+    const mapContainer = document.getElementById(mapDivId);
+
+    if (!mapContainer) {
+      // Container might not be rendered yet if charts are still initializing
+      return;
+    }
+
+    // Show the container
+    mapContainer.classList.add('active');
 
     // Create Map Context if it doesn't exist
     if (!this.#contexts.has(fileIndex)) {
-      this.#createMapUI(fileIndex, file.name || `Log #${fileIndex + 1}`);
+      // Initialize Leaflet
+      const mapInstance = L.map(mapDivId, { zoomControl: false }).setView(
+        [0, 0],
+        2
+      );
+      L.control.zoom({ position: 'topright' }).addTo(mapInstance);
+
+      const isDark = Preferences.prefs.darkTheme;
+      const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
+
+      const tileLayer = L.tileLayer(tileUrl, {
+        attribution: '© OpenStreetMap contributors',
+      }).addTo(mapInstance);
+
+      this.#contexts.set(fileIndex, {
+        map: mapInstance,
+        tileLayer: tileLayer,
+        routeLayer: null,
+        positionMarker: null,
+        latInterpolator: null,
+        lonInterpolator: null,
+        infoControl: null,
+      });
     }
 
     const ctx = this.#contexts.get(fileIndex);
@@ -168,11 +170,11 @@ class MapManager {
       }
     }
 
-    // Clear existing layers for this context
+    if (routePoints.length === 0) return;
+
+    // Clear existing layers
     if (ctx.routeLayer) ctx.map.removeLayer(ctx.routeLayer);
     if (ctx.positionMarker) ctx.map.removeLayer(ctx.positionMarker);
-
-    if (routePoints.length === 0) return;
 
     // Draw Route
     ctx.routeLayer = L.polyline(routePoints, {
@@ -206,72 +208,15 @@ class MapManager {
         ctx.map.invalidateSize();
         const bounds = ctx.routeLayer.getBounds();
         if (bounds.isValid()) {
-          ctx.map.fitBounds(bounds, { padding: [20, 20] });
+          ctx.map.fitBounds(bounds, { padding: [10, 10] });
         }
       }
-    });
-  }
-
-  #createMapUI(fileIndex, title) {
-    const cardId = `map-card-${fileIndex}`;
-    const mapId = `gps-map-view-${fileIndex}`;
-
-    const cardHtml = `
-      <div id="${cardId}" class="chart-card-compact" style="display: flex; flex-direction: column; height: 350px; border: 1px solid #ccc;">
-          <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
-              <span class="chart-name" style="font-weight: bold; font-size: 0.85em; color: #333;">
-                  <i class="fas fa-map-marked-alt"></i> ${title}
-              </span>
-              <button class="btn-remove" onclick="document.getElementById('${cardId}').remove()" title="Hide Map">×</button>
-          </div>
-          <div class="canvas-wrapper" style="flex: 1; position: relative; padding: 0;">
-              <div id="${mapId}" style="width: 100%; height: 100%;"></div>
-          </div>
-      </div>
-    `;
-
-    // Append to container
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = cardHtml;
-    const newCard = tempDiv.firstElementChild;
-
-    // Attach close handler specifically to remove context
-    const closeBtn = newCard.querySelector('.btn-remove');
-    closeBtn.onclick = () => {
-      this.#removeMapContext(fileIndex);
-      // Also check if we should hide the main container
-      if (this.#contexts.size === 0) this.#container.style.display = 'none';
-    };
-
-    this.#container.appendChild(newCard);
-
-    // Initialize Leaflet
-    const mapInstance = L.map(mapId, { zoomControl: false }).setView([0, 0], 2);
-    L.control.zoom({ position: 'topleft' }).addTo(mapInstance);
-
-    const isDark = Preferences.prefs.darkTheme;
-    const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
-
-    const tileLayer = L.tileLayer(tileUrl, {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(mapInstance);
-
-    // Store in context
-    this.#contexts.set(fileIndex, {
-      map: mapInstance,
-      tileLayer: tileLayer,
-      routeLayer: null,
-      positionMarker: null,
-      latInterpolator: null,
-      lonInterpolator: null,
-      infoControl: null,
     });
   }
 
   syncPosition(time) {
     if (!this.#isReady || this.#contexts.size === 0) return;
 
-    // Update every active map
     this.#contexts.forEach((ctx) => {
       if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
 
@@ -303,6 +248,8 @@ class MapManager {
     });
     this.#contexts.clear();
   }
+
+  // --- PRIVATE HELPER METHODS ---
 
   #detectGpsSignals(file) {
     const signals = file.availableSignals || [];
@@ -424,7 +371,7 @@ class MapManager {
       onAdd: function () {
         const div = L.DomUtil.create('div', 'info-legend');
         div.style.cssText =
-          'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px;';
+          'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px; font-size: 0.8em;';
         div.innerHTML = `
            <div style="font-weight:bold; border-bottom:1px solid #aaa; margin-bottom:4px;">Stats</div>
            <div><b>Dist:</b> ${stats.dist} km</div>
@@ -435,7 +382,7 @@ class MapManager {
       },
     });
 
-    ctx.infoControl = new InfoControl({ position: 'topright' });
+    ctx.infoControl = new InfoControl({ position: 'bottomleft' });
     ctx.infoControl.addTo(ctx.map);
   }
 
