@@ -599,3 +599,96 @@ invalid,2000
     expect(result.availableSignals).toHaveLength(0);
   });
 });
+
+describe('DataProcessor: Nested Object Support', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    AppState.files = [];
+    DOM.get = jest.fn((id) => document.getElementById(id));
+  });
+
+  test('should flatten nested objects into composite signals', () => {
+    const rawData = [
+      {
+        t: 1000,
+        s: 'GPS',
+        v: {
+          latitude: 54.1,
+          longitude: 16.2,
+          altitude: 85,
+        },
+      },
+    ];
+
+    const result = dataProcessor.process(rawData, 'gps.json');
+
+    // Expect multiple signals created from one point
+    expect(result.availableSignals).toEqual(
+      expect.arrayContaining(['GPS-Latitude', 'GPS-Longitude', 'GPS-Altitude'])
+    );
+
+    // Check values
+    expect(result.signals['GPS-Latitude'][0].y).toBe(54.1);
+    expect(result.signals['GPS-Longitude'][0].y).toBe(16.2);
+    expect(result.signals['GPS-Altitude'][0].y).toBe(85);
+  });
+
+  test('should capitalize keys in nested objects', () => {
+    const rawData = [{ t: 1000, s: 'IMU', v: { accelX: 0.5, gyroZ: 0.1 } }];
+
+    const result = dataProcessor.process(rawData, 'imu.json');
+
+    // "accelX" -> "IMU AccelX"
+    expect(result.availableSignals).toContain('IMU-AccelX');
+    expect(result.availableSignals).toContain('IMU-GyroZ');
+  });
+
+  test('should handle objects without a prefix signal name', () => {
+    // Case where 's' is empty or missing, but v is an object
+    // Though usually schema requires 's', let's simulate empty string
+    const rawData = [{ t: 1000, s: '', v: { speed: 50, rpm: 2000 } }];
+
+    const result = dataProcessor.process(rawData, 'noprefix.json');
+
+    // "speed" -> "Speed" (since prefix is empty)
+    expect(result.availableSignals).toContain('Speed');
+    expect(result.availableSignals).toContain('Rpm');
+    expect(result.signals['Speed'][0].y).toBe(50);
+  });
+
+  test('should ignore non-numeric values inside nested objects', () => {
+    const rawData = [
+      {
+        t: 1000,
+        s: 'Status',
+        v: {
+          code: 200,
+          message: 'OK', // String -> should be ignored
+          isValid: true, // Boolean -> true=1, so usually included
+        },
+      },
+    ];
+
+    const result = dataProcessor.process(rawData, 'status.json');
+
+    expect(result.availableSignals).toContain('Status-Code');
+    expect(result.availableSignals).not.toContain('Status-Message');
+
+    // Check boolean handling: true casts to 1
+    expect(result.availableSignals).toContain('Status-IsValid');
+    expect(result.signals['Status-IsValid'][0].y).toBe(1);
+  });
+
+  test('should handle mixed flat and nested data in the same file', () => {
+    const rawData = [
+      { t: 1000, s: 'RPM', v: 2000 },
+      { t: 1000, s: 'GPS', v: { lat: 50, lon: 10 } },
+    ];
+
+    const result = dataProcessor.process(rawData, 'mixed.json');
+
+    expect(result.availableSignals).toContain('RPM');
+    expect(result.availableSignals).toContain('GPS-Lat');
+    expect(result.availableSignals).toContain('GPS-Lon');
+  });
+});
