@@ -270,7 +270,7 @@ class MapManager {
 
     let latKey = findMappedSignal('Latitude');
     let lonKey = findMappedSignal('Longitude');
-
+    
     if (!latKey)
       latKey = signals.find((s) => /lat/i.test(s) && !/lateral/i.test(s));
     if (!lonKey) lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
