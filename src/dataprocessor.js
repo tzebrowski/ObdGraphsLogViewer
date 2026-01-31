@@ -117,8 +117,7 @@ class DataProcessor {
       let telemetryPoints = data;
       let fileMetadata = {};
 
-      // OPTIONAL: Check if the first element is a metadata block
-      // Example format: [{ "metadata": { ... } }, { "t": 1, "s": "sig", "v": 10 }, ...]
+      // Check if the first element is a metadata block
       if (data.length > 0 && data[0].metadata) {
         fileMetadata = data[0].metadata;
         // The rest of the array is the actual telemetry data
@@ -130,28 +129,28 @@ class DataProcessor {
         console.warn(
           'Preprocessing: File contains metadata but no telemetry points.'
         );
-        // Create an empty result structure or handle as needed
       }
 
       // Detect schema based on the first actual data point
       const schema = this.#detectSchema(telemetryPoints[0]);
 
-      const processedPoints = telemetryPoints
-        .map((item) => this.#applyMappingAndCleaning(item, schema))
-        .filter((point) => point !== null);
+      // CHANGED: Use flatMap to handle 1-to-many expansion (e.g. Object -> Multiple Signals)
+      const processedPoints = telemetryPoints.flatMap((item) =>
+        this.#applyMappingAndCleaning(item, schema)
+      );
 
       const result = this.#transformRawData(processedPoints, fileName);
 
       // Attach the extracted metadata to the result object
       result.metadata = fileMetadata;
-      result.size = telemetryPoints.length; // Update size to reflect actual data count
+      result.size = telemetryPoints.length;
 
       AppState.files.push(result);
 
       projectManager.registerFile({
         name: fileName,
         size: result.size,
-        metadata: result.metadata, // Register metadata with project manager if supported
+        metadata: result.metadata,
       });
 
       return result;
@@ -174,29 +173,67 @@ class DataProcessor {
   }
 
   /**
-   * Combines key mapping and data sanitization in one pass.
+   * Combines key mapping, object flattening, and data sanitization.
+   * Returns an array of points to support 1-to-many mapping.
    * @private
    */
   #applyMappingAndCleaning(rawPoint, schema) {
     try {
-      const mapped = {
-        signal: rawPoint[schema.signal],
-        timestamp: Number(rawPoint[schema.timestamp]),
-        value: Number(rawPoint[schema.value]),
-      };
+      const baseSignal = rawPoint[schema.signal];
+      const timestamp = Number(rawPoint[schema.timestamp]);
+      const rawValue = rawPoint[schema.value];
 
-      if (typeof mapped.signal === 'string') {
-        mapped.signal = mapped.signal.replace(/\n/g, ' ').trim();
+      // Validate Timestamp
+      if (isNaN(timestamp)) return [];
+
+      // Clean base signal name
+      let prefix = '';
+      if (typeof baseSignal === 'string') {
+        prefix = baseSignal.replace(/\n/g, ' ').trim();
       }
 
-      if (isNaN(mapped.timestamp) || isNaN(mapped.value)) {
-        console.warn('Preprocessing: Dropping malformed point', rawPoint);
-        return null;
+      // Supports GPS, Accelerometer, or any complex object structure
+      if (typeof rawValue === 'object' && rawValue !== null) {
+        const derivedPoints = [];
+
+        for (const [key, val] of Object.entries(rawValue)) {
+          const numVal = Number(val);
+
+          // Strict check: we only want to graph numbers
+          if (isNaN(numVal)) continue;
+
+          // Format Key: "latitude" -> "Latitude"
+          const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+
+          // Construct Composite Signal Name: "GPS" + "Latitude" -> "GPS Latitude"
+          const finalSignal = prefix
+            ? `${prefix}-${formattedKey}`
+            : formattedKey;
+
+          derivedPoints.push({
+            signal: finalSignal,
+            timestamp: timestamp,
+            value: numVal,
+          });
+        }
+        return derivedPoints;
       }
 
-      return mapped;
-    } catch {
-      return null;
+      const numValue = Number(rawValue);
+      if (isNaN(numValue)) {
+        return [];
+      }
+
+      return [
+        {
+          signal: prefix || String(baseSignal),
+          timestamp: timestamp,
+          value: numValue,
+        },
+      ];
+    } catch (e) {
+      console.error('Data cleaning error:', e);
+      return [];
     }
   }
 
@@ -211,10 +248,8 @@ class DataProcessor {
     const headers = lines[0].split(',').map((h) => h.trim());
 
     return lines.slice(1).map((line) => {
-      // Handle simplistic CSV splitting (warning: doesn't handle commas in quotes)
       const values = line.split(',');
       return headers.reduce((obj, header, i) => {
-        // Guard against row length mismatch
         obj[header] = values[i] !== undefined ? values[i].trim() : '';
         return obj;
       }, {});
@@ -223,7 +258,6 @@ class DataProcessor {
 
   /**
    * Converts Wide Format (Time, Sig1, Sig2...) to Long Format (SensorName, Time_ms, Reading)
-   * This enables importing files generated by the "Export" feature.
    * @private
    */
   #normalizeWideCSV(rows) {
@@ -239,26 +273,21 @@ class DataProcessor {
       return rows;
     }
 
-    // 2. Detect Time Column (common variations: "Time", "Time (s)", "time")
+    // 2. Detect Time Column
     const timeKey = keys.find((k) => k.toLowerCase().includes('time'));
-
-    // If no time column found, we can't pivot. Return original and let schema detection fail naturally.
     if (!timeKey) return rows;
 
     const normalized = [];
-    // All other keys are treated as Signals
     const signalKeys = keys.filter((k) => k !== timeKey);
 
     rows.forEach((row) => {
       const timeVal = parseFloat(row[timeKey]);
       if (isNaN(timeVal)) return;
 
-      // Exports are usually in Seconds (e.g. 0.1), internals need Milliseconds (e.g. 100)
       const timestampMs = timeKey.includes('(s)') ? timeVal * 1000 : timeVal;
 
       signalKeys.forEach((sigKey) => {
         const val = row[sigKey];
-        // Only add if value exists and is not empty string
         if (val !== '' && val !== null && val !== undefined) {
           normalized.push({
             SensorName: sigKey,
