@@ -10,17 +10,17 @@ import { debounce } from './debounce.js';
 export const Drive = {
   activeLoadToken: 0,
   PATH_CONFIG: { root: 'mygiulia', sub: 'trips' },
-  
+
   // Data Store
   fileData: [], // Stores objects: { file, meta }
-  
+
   _state: {
     sortOrder: 'desc',
     filters: { term: '', start: null, end: null },
     pagination: {
       currentPage: 1,
       itemsPerPage: 10, // Adjust this number to change page size
-    }
+    },
   },
 
   // --- Core Drive Operations ---
@@ -77,7 +77,8 @@ export const Drive = {
     const listEl = document.getElementById('driveFileContainer');
     if (!listEl) return;
 
-    listEl.innerHTML = '<div class="status-msg">Fetching all logs from Drive...</div>';
+    listEl.innerHTML =
+      '<div class="status-msg">Fetching all logs from Drive...</div>';
     this.fileData = []; // Clear existing data
 
     let pageToken = null;
@@ -91,16 +92,16 @@ export const Drive = {
           fields: 'nextPageToken, files(id, name, size, modifiedTime)',
           q: `'${folderId}' in parents and name contains '.json' and trashed=false`,
           orderBy: 'modifiedTime desc',
-          pageToken: pageToken
+          pageToken: pageToken,
         });
 
         const files = res.result.files || [];
-        
+
         // Process and store data immediately
-        const processedFiles = files.map(f => ({
+        const processedFiles = files.map((f) => ({
           file: f,
           meta: this.getFileMetadata(f.name),
-          timestamp: this.extractTimestamp(f.name) // Pre-calculate for sorting
+          timestamp: this.extractTimestamp(f.name), // Pre-calculate for sorting
         }));
 
         this.fileData = [...this.fileData, ...processedFiles];
@@ -109,8 +110,8 @@ export const Drive = {
         if (!pageToken) {
           hasMore = false;
         } else {
-           // Optional: Update UI with progress
-           listEl.innerHTML = `<div class="status-msg">Loaded ${this.fileData.length} logs...</div>`;
+          // Optional: Update UI with progress
+          listEl.innerHTML = `<div class="status-msg">Loaded ${this.fileData.length} logs...</div>`;
         }
       }
 
@@ -134,9 +135,9 @@ export const Drive = {
     let recent = JSON.parse(localStorage.getItem('recent_logs') || '[]');
     recent = [id, ...recent.filter((i) => i !== id)].slice(0, 3);
     localStorage.setItem('recent_logs', JSON.stringify(recent));
-    
+
     // Do NOT full refreshUI here, or we lose page position.
-    
+
     const currentToken = ++this.activeLoadToken;
     UI.setLoading(true, 'Fetching from Drive...', () => {
       this.activeLoadToken++;
@@ -171,30 +172,46 @@ export const Drive = {
       end: document.getElementById('driveDateEnd'),
       sortBtn: document.getElementById('driveSortToggle'),
     };
-    
+
     // Helper to wire up events safely
     const safeAddEvent = (id, event, handler) => {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener(event, handler);
-        return el;
-    }
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(event, handler);
+      return el;
+    };
 
     const debouncedRefresh = debounce(() => this.refreshUI(), 250);
 
     const updateHandler = (immediate = false) => {
       this._state.filters = {
-        term: document.getElementById('driveSearchInput')?.value.toLowerCase().trim() || '',
+        term:
+          document
+            .getElementById('driveSearchInput')
+            ?.value.toLowerCase()
+            .trim() || '',
         start: document.getElementById('driveDateStart')?.value
-          ? new Date(document.getElementById('driveDateStart').value).setHours(0, 0, 0, 0)
+          ? new Date(document.getElementById('driveDateStart').value).setHours(
+              0,
+              0,
+              0,
+              0
+            )
           : null,
         end: document.getElementById('driveDateEnd')?.value
-          ? new Date(document.getElementById('driveDateEnd').value).setHours(23, 59, 59, 999)
+          ? new Date(document.getElementById('driveDateEnd').value).setHours(
+              23,
+              59,
+              59,
+              999
+            )
           : null,
       };
 
       const clearTextBtn = document.getElementById('clearDriveSearchText');
       if (clearTextBtn)
-        clearTextBtn.style.display = this._state.filters.term ? 'block' : 'none';
+        clearTextBtn.style.display = this._state.filters.term
+          ? 'block'
+          : 'none';
 
       // Reset to page 1 on filter change
       this._state.pagination.currentPage = 1;
@@ -208,24 +225,24 @@ export const Drive = {
       if (input) input.value = '';
       updateHandler(true);
     });
-    
+
     safeAddEvent('clearDriveFilters', 'click', () => {
-        const start = document.getElementById('driveDateStart');
-        const end = document.getElementById('driveDateEnd');
-        if (start) start.value = '';
-        if (end) end.value = '';
-        updateHandler(true);
+      const start = document.getElementById('driveDateStart');
+      const end = document.getElementById('driveDateEnd');
+      if (start) start.value = '';
+      if (end) end.value = '';
+      updateHandler(true);
     });
 
-    ['driveSearchInput', 'driveDateStart', 'driveDateEnd'].forEach(id => 
-        safeAddEvent(id, 'input', () => updateHandler(id !== 'driveSearchInput'))
+    ['driveSearchInput', 'driveDateStart', 'driveDateEnd'].forEach((id) =>
+      safeAddEvent(id, 'input', () => updateHandler(id !== 'driveSearchInput'))
     );
 
     safeAddEvent('driveSortToggle', 'click', (e) => {
-        const btn = e.currentTarget;
-        this._state.sortOrder = this._state.sortOrder === 'desc' ? 'asc' : 'desc';
-        btn.innerHTML = this.TEMPLATES.sortBtnContent(this._state.sortOrder);
-        this.refreshUI();
+      const btn = e.currentTarget;
+      this._state.sortOrder = this._state.sortOrder === 'desc' ? 'asc' : 'desc';
+      btn.innerHTML = this.TEMPLATES.sortBtnContent(this._state.sortOrder);
+      this.refreshUI();
     });
 
     this.refreshUI();
@@ -244,28 +261,31 @@ export const Drive = {
 
     const { currentPage, itemsPerPage } = this._state.pagination;
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
-    
+
     // Ensure current page is valid
-    if (currentPage > totalPages && totalPages > 0) this._state.pagination.currentPage = totalPages;
+    if (currentPage > totalPages && totalPages > 0)
+      this._state.pagination.currentPage = totalPages;
     if (currentPage < 1) this._state.pagination.currentPage = 1;
 
     const startIdx = (this._state.pagination.currentPage - 1) * itemsPerPage;
     const paginatedItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
     container.innerHTML = '';
-    
+
     // Only show recent section on first page and if no filters are active
-    const isFiltering = this._state.filters.term || this._state.filters.start || this._state.filters.end;
+    const isFiltering =
+      this._state.filters.term ||
+      this._state.filters.start ||
+      this._state.filters.end;
     if (!isFiltering && this._state.pagination.currentPage === 1) {
-        this.renderRecentSection(container);
+      this.renderRecentSection(container);
     }
 
     this.renderGroupedCards(container, paginatedItems);
     this.renderPaginationControls(container, filtered.length, totalPages);
 
     const countEl = document.getElementById('driveResultCount');
-    if (countEl)
-      countEl.innerText = `Found ${filtered.length} logs`;
+    if (countEl) countEl.innerText = `Found ${filtered.length} logs`;
   },
 
   _applyFilters(item) {
@@ -274,7 +294,8 @@ export const Drive = {
     const name = item.file.name.toLowerCase();
 
     const matchesText = name.includes(term);
-    const matchesDate = (!start || fileDate >= start) && (!end || fileDate <= end);
+    const matchesDate =
+      (!start || fileDate >= start) && (!end || fileDate <= end);
 
     return matchesText && matchesDate;
   },
@@ -282,9 +303,10 @@ export const Drive = {
   // --- Rendering Helpers ---
 
   renderGroupedCards(container, items) {
-    if(items.length === 0) {
-        container.innerHTML += '<div class="status-msg">No logs match your criteria.</div>';
-        return;
+    if (items.length === 0) {
+      container.innerHTML +=
+        '<div class="status-msg">No logs match your criteria.</div>';
+      return;
     }
 
     let lastMonth = '';
@@ -294,21 +316,24 @@ export const Drive = {
       const dateObj = new Date(item.timestamp);
       // Fallback if timestamp is invalid
       const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
-      
-      const monthYear = validDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+      const monthYear = validDate.toLocaleString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
 
       if (monthYear !== lastMonth) {
         currentGroup = this.createMonthGroup(monthYear);
         container.appendChild(currentGroup);
         lastMonth = monthYear;
       }
-      
+
       const cardHtml = this.TEMPLATES.fileCard(item.file, item.meta);
       // We need to convert string to DOM element to append
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = cardHtml;
       const cardEl = tempDiv.firstElementChild;
-      
+
       currentGroup.querySelector('.month-list').appendChild(cardEl);
     });
   },
@@ -319,8 +344,8 @@ export const Drive = {
 
     // Find full file objects for recent IDs
     const recentItems = recentIds
-        .map(id => this.fileData.find(f => f.file.id === id))
-        .filter(item => item !== undefined);
+      .map((id) => this.fileData.find((f) => f.file.id === id))
+      .filter((item) => item !== undefined);
 
     if (recentItems.length === 0) return;
 
@@ -329,48 +354,56 @@ export const Drive = {
     section.innerHTML = this.TEMPLATES.recentSectionHeader();
     const list = section.querySelector('.recent-list-container') || section; // Fallback
 
-    recentItems.forEach(item => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = this.TEMPLATES.fileCard(item.file, item.meta);
-        const card = tempDiv.firstElementChild;
-        card.style.borderLeft = '3px solid #4285F4';
-        card.style.marginBottom = '8px';
-        list.appendChild(card);
+    recentItems.forEach((item) => {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = this.TEMPLATES.fileCard(item.file, item.meta);
+      const card = tempDiv.firstElementChild;
+      card.style.borderLeft = '3px solid #4285F4';
+      card.style.marginBottom = '8px';
+      list.appendChild(card);
     });
 
     container.appendChild(section);
 
-    document.getElementById('clearRecentHistory')?.addEventListener('click', (e) => {
+    document
+      .getElementById('clearRecentHistory')
+      ?.addEventListener('click', (e) => {
         e.stopPropagation();
         this.clearRecentHistory();
-    });
+      });
   },
 
   renderPaginationControls(container, totalItems, totalPages) {
-      if (totalItems === 0) return;
+    if (totalItems === 0) return;
 
-      const { currentPage, itemsPerPage } = this._state.pagination;
-      const start = (currentPage - 1) * itemsPerPage + 1;
-      const end = Math.min(currentPage * itemsPerPage, totalItems);
+    const { currentPage, itemsPerPage } = this._state.pagination;
+    const start = (currentPage - 1) * itemsPerPage + 1;
+    const end = Math.min(currentPage * itemsPerPage, totalItems);
 
-      const navDiv = document.createElement('div');
-      navDiv.innerHTML = this.TEMPLATES.paginationControls(currentPage, totalPages, start, end, totalItems);
-      container.appendChild(navDiv);
+    const navDiv = document.createElement('div');
+    navDiv.innerHTML = this.TEMPLATES.paginationControls(
+      currentPage,
+      totalPages,
+      start,
+      end,
+      totalItems
+    );
+    container.appendChild(navDiv);
 
-      // Bind Events
-      navDiv.querySelector('#prevPageBtn')?.addEventListener('click', () => {
-          if (currentPage > 1) {
-              this._state.pagination.currentPage--;
-              this.refreshUI();
-          }
-      });
+    // Bind Events
+    navDiv.querySelector('#prevPageBtn')?.addEventListener('click', () => {
+      if (currentPage > 1) {
+        this._state.pagination.currentPage--;
+        this.refreshUI();
+      }
+    });
 
-      navDiv.querySelector('#nextPageBtn')?.addEventListener('click', () => {
-          if (currentPage < totalPages) {
-              this._state.pagination.currentPage++;
-              this.refreshUI();
-          }
-      });
+    navDiv.querySelector('#nextPageBtn')?.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        this._state.pagination.currentPage++;
+        this.refreshUI();
+      }
+    });
   },
 
   createMonthGroup(monthYear) {
@@ -400,8 +433,8 @@ export const Drive = {
   },
 
   extractTimestamp(fileName) {
-     const match = fileName.match(/-(\d+)-(\d+)\.json$/);
-     return match ? parseInt(match[1]) : 0;
+    const match = fileName.match(/-(\d+)-(\d+)\.json$/);
+    return match ? parseInt(match[1]) : 0;
   },
 
   handleApiError(error, listEl) {
@@ -496,6 +529,6 @@ export const Drive = {
            Next <i class="fas fa-chevron-right"></i>
         </button>
       </div>
-    `
+    `,
   },
 };

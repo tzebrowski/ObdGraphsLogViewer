@@ -1,8 +1,7 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals'; // Add this line
+import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { Drive } from '../../src/drive.js';
 import { DOM } from '../../src/config.js';
 
-// Mocking global dependencies
 global.gapi = {
   client: {
     drive: { files: { list: jest.fn(), get: jest.fn() } },
@@ -19,21 +18,31 @@ describe('Drive Module - Month Grouping & Interactions', () => {
     `;
     DOM.get = jest.fn((id) => document.getElementById(id));
 
-    // Create two cards in the same month
-    const card1 = document.createElement('div');
-    card1.className = 'drive-file-card';
-    card1.innerHTML = `<div class="file-name-title">Log A</div><div class="meta-item"><span>2026-01-10T10:00:00Z</span></div>`;
+    // Reset state
+    Drive._state.filters = { term: '', start: null, end: null };
+    Drive._state.pagination.currentPage = 1;
 
-    const card2 = document.createElement('div');
-    card2.className = 'drive-file-card';
-    card2.innerHTML = `<div class="file-name-title">Log B</div><div class="meta-item"><span>2026-01-15T10:00:00Z</span></div>`;
+    // Create Data Objects (mocking what fetchJsonFiles does)
+    const item1 = {
+      file: { id: '1', name: 'Log A', size: 1024 },
+      meta: { date: '2026-01-10T10:00:00Z', length: 100 },
+      timestamp: new Date('2026-01-10T10:00:00Z').getTime(),
+    };
 
-    Drive.masterCards = [card1, card2];
+    const item2 = {
+      file: { id: '2', name: 'Log B', size: 1024 },
+      meta: { date: '2026-01-15T10:00:00Z', length: 100 },
+      timestamp: new Date('2026-01-15T10:00:00Z').getTime(),
+    };
+
+    Drive.fileData = [item1, item2];
   });
 
   test('renderGroupedCards creates a single month header for same-month logs', () => {
     const container = document.getElementById('driveFileContainer');
-    Drive.initSearch(); // Triggers the render sequence
+
+    // Trigger render
+    Drive.refreshUI();
 
     const headers = container.querySelectorAll('.month-header');
     const cards = container.querySelectorAll('.drive-file-card');
@@ -45,12 +54,12 @@ describe('Drive Module - Month Grouping & Interactions', () => {
   });
 
   test('Clicking month header toggles the visibility of the card list', () => {
-    Drive.initSearch();
+    Drive.refreshUI();
     const container = document.getElementById('driveFileContainer');
     const header = container.querySelector('.month-header');
     const list = container.querySelector('.month-list');
 
-    // Initial state: visible
+    // Initial state: visible (block or default)
     expect(list.style.display).not.toBe('none');
 
     // First Click: Collapse
@@ -68,23 +77,18 @@ describe('Drive Module - Month Grouping & Interactions', () => {
     );
   });
 
-  test('renderRecentSection handles missing card references gracefully', () => {
-    document.body.innerHTML = `
-      <div id="driveList"></div>
-      <div id="driveFileContainer"></div>
-    `;
-    let container = document.getElementById('driveFileContainer');
+  test('renderRecentSection handles missing fileData references gracefully', () => {
+    const container = document.getElementById('driveFileContainer');
 
+    // Set localStorage to an ID that doesn't exist in fileData
     localStorage.setItem('recent_logs', JSON.stringify(['missing-id']));
-    Drive.masterCards = []; // No cards loaded to simulate a mismatch
+    Drive.fileData = []; // No data loaded
 
     Drive.renderRecentSection(container);
 
-    // Target the specific DIV created for the list, not the header
-    const recentList =
-      container.querySelector('.recent-section').lastElementChild;
-
-    // This will now correctly be 0 because no matching cards were found to append
-    expect(recentList.children.length).toBe(0);
+    // Only the header should exist or nothing if logical check prevents it
+    // Logic: if recentItems.length === 0 return;
+    const section = container.querySelector('.recent-section');
+    expect(section).toBeNull();
   });
 });

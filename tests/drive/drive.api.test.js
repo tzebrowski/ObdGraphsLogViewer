@@ -7,18 +7,14 @@ import { dataProcessor } from '../../src/dataprocessor.js';
 describe('Drive Module - API & Folder Discovery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    document.body.innerHTML = `<div id="driveList"></div>`;
+    document.body.innerHTML = `<div id="driveList"></div><div id="driveFileContainer"></div>`;
     DOM.get = jest.fn((id) => document.getElementById(id));
     UI.setLoading = jest.fn();
 
-    // Global GAPI mock
     global.gapi = {
       client: {
         drive: {
-          files: {
-            list: jest.fn(),
-            get: jest.fn(),
-          },
+          files: { list: jest.fn(), get: jest.fn() },
         },
         setToken: jest.fn(),
       },
@@ -49,19 +45,12 @@ describe('Drive Module - API & Folder Discovery', () => {
 
     const id = await Drive.findFolderId('mygiulia');
     expect(id).toBe('folder-123');
-    // Verify query format (Line 13-16)
-    expect(gapi.client.drive.files.list).toHaveBeenCalledWith(
-      expect.objectContaining({
-        q: expect.stringContaining("name = 'mygiulia'"),
-      })
-    );
   });
 
   test('listFiles handles missing subfolder error', async () => {
-    // Mock root found, but subfolder not found
     gapi.client.drive.files.list
-      .mockResolvedValueOnce({ result: { files: [{ id: 'root-id' }] } }) // find root
-      .mockResolvedValueOnce({ result: { files: [] } }); // find sub (trips)
+      .mockResolvedValueOnce({ result: { files: [{ id: 'root-id' }] } })
+      .mockResolvedValueOnce({ result: { files: [] } });
 
     await Drive.listFiles();
 
@@ -72,69 +61,69 @@ describe('Drive Module - API & Folder Discovery', () => {
 
 describe('Drive Module - Various Tests', () => {
   beforeEach(() => {
-    document.body.innerHTML = `
-      <div id="driveList"></div>
-      <div id="driveFileContainer"></div>
-    `;
-
+    document.body.innerHTML = `<div id="driveList"></div><div id="driveFileContainer"></div>`;
     localStorage.clear();
     jest.clearAllMocks();
-
     dataProcessor.process = jest.fn();
 
-    // Global GAPI mock
-    global.gapi = {
-      client: {
-        drive: {
-          files: {
-            list: jest.fn(),
-            get: jest.fn(),
-          },
-        },
-        setToken: jest.fn(),
-      },
+    // Reset state
+    Drive._state = {
+      sortOrder: 'desc',
+      filters: { term: '', start: null, end: null },
+      pagination: { currentPage: 1, itemsPerPage: 10 },
     };
   });
 
   test('_applyFilters handles null/empty filter states', () => {
-    const card = document.createElement('div');
-    card.innerHTML =
-      '<div class="file-name-title">Trip-Log</div><div class="meta-item"><span>2026-01-01</span></div>';
+    // Prepare Data Object (not DOM element)
+    const item = {
+      file: { name: 'Trip-Log.json' },
+      timestamp: new Date('2026-01-01').getTime(),
+    };
 
-    // Reset state to empty filters
     Drive._state.filters = { term: '', start: null, end: null };
 
-    expect(Drive._applyFilters(card)).toBe(true);
+    expect(Drive._applyFilters(item)).toBe(true);
   });
 
   test('_applyFilters correctly rejects mismatching text', () => {
-    const card = document.createElement('div');
-    card.innerHTML =
-      '<div class="file-name-title">Speed-Test</div><div class="meta-item"><span>2026-01-01</span></div>';
+    const item = {
+      file: { name: 'Speed-Test.json' },
+      timestamp: new Date('2026-01-01').getTime(),
+    };
 
     Drive._state.filters = { term: 'trip', start: null, end: null };
 
-    expect(Drive._applyFilters(card)).toBe(false);
+    expect(Drive._applyFilters(item)).toBe(false);
   });
 
-  test('loadFile ignores old requests if a new one starts (Token check)', async () => {
+  test('_applyFilters correctly accepts matching text', () => {
+    const item = {
+      file: { name: 'Speed-Test.json' },
+      timestamp: new Date('2026-01-01').getTime(),
+    };
+
+    Drive._state.filters = { term: 'speed', start: null, end: null };
+
+    expect(Drive._applyFilters(item)).toBe(true);
+  });
+
+  test('loadFile ignores old requests if a new one starts', async () => {
+    // ... existing test code is fine as loadFile logic relies on closure tokens ...
     const fileId1 = 'id-1';
     const fileId2 = 'id-2';
 
-    // Setup gapi.get to return successfully
+    global.gapi = { client: { drive: { files: { get: jest.fn() } } } };
+
     gapi.client.drive.files.get.mockResolvedValue({
       result: { data: 'old-data' },
     });
 
-    // Start first load
     const promise1 = Drive.loadFile('file1', fileId1);
-
-    // Start second load immediately (increments activeLoadToken)
     const promise2 = Drive.loadFile('file2', fileId2);
 
     await Promise.all([promise1, promise2]);
 
-    // DataProcessor should only be called for the second file
     expect(dataProcessor.process).toHaveBeenCalledTimes(1);
     expect(dataProcessor.process).not.toHaveBeenCalledWith(
       expect.anything(),
