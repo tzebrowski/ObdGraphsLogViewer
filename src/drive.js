@@ -7,21 +7,94 @@ import { debounce } from './debounce.js';
 /**
  * Drive Module - Handles Google Drive file interactions, filtering, and UI rendering.
  */
-export const Drive = {
-  activeLoadToken: 0,
-  PATH_CONFIG: { root: 'mygiulia', sub: 'trips' },
+class DriveManager {
+  constructor() {
+    this.activeLoadToken = 0;
+    this.PATH_CONFIG = { root: 'mygiulia', sub: 'trips' };
 
-  // Data Store
-  fileData: [], // Stores objects: { file, meta }
+    // Data Store
+    this.fileData = []; // Stores objects: { file, meta, timestamp }
 
-  _state: {
-    sortOrder: 'desc',
-    filters: { term: '', start: null, end: null },
-    pagination: {
-      currentPage: 1,
-      itemsPerPage: 10, // Adjust this number to change page size
-    },
-  },
+    this._state = {
+      sortOrder: 'desc',
+      filters: { term: '', start: null, end: null },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 10,
+      },
+    };
+
+    // HTML Templates
+    this.TEMPLATES = {
+      searchInterface: () => `
+        <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+          <div style="position: relative; display: flex; align-items: center;">
+            <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
+            <input type="text" id="driveSearchInput" placeholder="Filter by name..." style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
+            <i class="fas fa-times-circle" id="clearDriveSearchText" style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" title="Clear search"></i>
+          </div>
+          <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
+            <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+            <span>to</span>
+            <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+            <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div id="driveResultCount" style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;"></div>
+            <button id="driveSortToggle" class="btn btn-sm" style="font-size: 0.75em; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
+              <i class="fas fa-sort-amount-down"></i> Newest
+            </button>
+          </div>
+        </div>
+        <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
+      `,
+      fileCard: (file, meta) => `
+        <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
+          <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
+          <div class="file-card-body">
+            <div class="file-name-title">${file.name}</div>
+            <div class="file-card-meta-grid">
+              <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
+              <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
+              <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
+            </div>
+          </div>
+        </div>
+      `,
+      monthGroup: (monthYear) => `
+        <div class="month-header" style="padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837; margin: 10px 0 5px 0; text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>${monthYear}</span> <i class="fas fa-chevron-down toggle-icon"></i>
+        </div>
+        <div class="month-list"></div>
+      `,
+      recentSectionHeader: () => `
+        <div class="month-header" style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span><i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed</span>
+          <span id="clearRecentHistory" style="font-size: 0.8em; cursor: pointer; opacity: 0.8;" title="Clear History">
+            <i class="fas fa-trash-alt"></i> Clear
+          </span>
+        </div>
+        <div class="recent-list-container"></div>
+      `,
+      sortBtnContent: (order) => `
+        <i class="fas fa-sort-amount-${order === 'desc' ? 'down' : 'up'}"></i> 
+        ${order === 'desc' ? 'Newest' : 'Oldest'}
+      `,
+      paginationControls: (current, total, start, end, totalItems) => `
+        <div class="pagination-controls" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-top: 1px solid var(--border-color); margin-top: 10px; font-size: 0.8em;">
+          <button id="prevPageBtn" class="btn btn-sm" ${current === 1 ? 'disabled style="opacity:0.5"' : ''}>
+             <i class="fas fa-chevron-left"></i> Prev
+          </button>
+          <span style="color: var(--text-muted);">
+             ${start}-${end} of ${totalItems}
+          </span>
+          <button id="nextPageBtn" class="btn btn-sm" ${current === total ? 'disabled style="opacity:0.5"' : ''}>
+             Next <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      `,
+    };
+  }
 
   // --- Core Drive Operations ---
 
@@ -47,7 +120,7 @@ export const Drive = {
       console.error(`Drive: Error locating folder "${name}":`, error);
       return null;
     }
-  },
+  }
 
   async listFiles() {
     const listEl = DOM.get('driveList');
@@ -71,7 +144,7 @@ export const Drive = {
     } catch (error) {
       this.handleApiError(error, document.getElementById('driveFileContainer'));
     }
-  },
+  }
 
   async fetchJsonFiles(folderId) {
     const listEl = document.getElementById('driveFileContainer');
@@ -85,10 +158,9 @@ export const Drive = {
     let hasMore = true;
 
     try {
-      // Loop to fetch ALL pages
       while (hasMore) {
         const res = await gapi.client.drive.files.list({
-          pageSize: 100, // Fetch in larger chunks
+          pageSize: 100,
           fields: 'nextPageToken, files(id, name, size, modifiedTime)',
           q: `'${folderId}' in parents and name contains '.json' and trashed=false`,
           orderBy: 'modifiedTime desc',
@@ -97,11 +169,10 @@ export const Drive = {
 
         const files = res.result.files || [];
 
-        // Process and store data immediately
         const processedFiles = files.map((f) => ({
           file: f,
           meta: this.getFileMetadata(f.name),
-          timestamp: this.extractTimestamp(f.name), // Pre-calculate for sorting
+          timestamp: this.extractTimestamp(f.name),
         }));
 
         this.fileData = [...this.fileData, ...processedFiles];
@@ -110,7 +181,6 @@ export const Drive = {
         if (!pageToken) {
           hasMore = false;
         } else {
-          // Optional: Update UI with progress
           listEl.innerHTML = `<div class="status-msg">Loaded ${this.fileData.length} logs...</div>`;
         }
       }
@@ -124,7 +194,7 @@ export const Drive = {
     } catch (error) {
       this.handleApiError(error, listEl);
     }
-  },
+  }
 
   async loadFile(fileName, id, element) {
     document
@@ -135,8 +205,6 @@ export const Drive = {
     let recent = JSON.parse(localStorage.getItem('recent_logs') || '[]');
     recent = [id, ...recent.filter((i) => i !== id)].slice(0, 3);
     localStorage.setItem('recent_logs', JSON.stringify(recent));
-
-    // Do NOT full refreshUI here, or we lose page position.
 
     const currentToken = ++this.activeLoadToken;
     UI.setLoading(true, 'Fetching from Drive...', () => {
@@ -159,12 +227,11 @@ export const Drive = {
     } finally {
       if (currentToken === this.activeLoadToken) UI.setLoading(false);
     }
-  },
+  }
 
   // --- Search & Filtering Logic ---
 
   initSearch() {
-    // Fixed typo here: was 'constinputs', now 'const inputs'
     const inputs = {
       text: document.getElementById('driveSearchInput'),
       clearText: document.getElementById('clearDriveSearchText'),
@@ -173,7 +240,6 @@ export const Drive = {
       sortBtn: document.getElementById('driveSortToggle'),
     };
 
-    // Helper to wire up events safely
     const safeAddEvent = (id, event, handler) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener(event, handler);
@@ -213,7 +279,6 @@ export const Drive = {
           ? 'block'
           : 'none';
 
-      // Reset to page 1 on filter change
       this._state.pagination.currentPage = 1;
 
       if (immediate) this.refreshUI();
@@ -246,23 +311,25 @@ export const Drive = {
     });
 
     this.refreshUI();
-  },
+  }
 
   refreshUI() {
     const container = document.getElementById('driveFileContainer');
     if (!container) return;
 
+    // 1. Filter
     const filtered = this.fileData.filter((item) => this._applyFilters(item));
 
+    // 2. Sort
     filtered.sort((a, b) => {
       const diff = a.timestamp - b.timestamp;
       return this._state.sortOrder === 'desc' ? -diff : diff;
     });
 
+    // 3. Paginate
     const { currentPage, itemsPerPage } = this._state.pagination;
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
-    // Ensure current page is valid
     if (currentPage > totalPages && totalPages > 0)
       this._state.pagination.currentPage = totalPages;
     if (currentPage < 1) this._state.pagination.currentPage = 1;
@@ -270,9 +337,9 @@ export const Drive = {
     const startIdx = (this._state.pagination.currentPage - 1) * itemsPerPage;
     const paginatedItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
+    // 4. Render
     container.innerHTML = '';
 
-    // Only show recent section on first page and if no filters are active
     const isFiltering =
       this._state.filters.term ||
       this._state.filters.start ||
@@ -286,7 +353,7 @@ export const Drive = {
 
     const countEl = document.getElementById('driveResultCount');
     if (countEl) countEl.innerText = `Found ${filtered.length} logs`;
-  },
+  }
 
   _applyFilters(item) {
     const { term, start, end } = this._state.filters;
@@ -298,7 +365,7 @@ export const Drive = {
       (!start || fileDate >= start) && (!end || fileDate <= end);
 
     return matchesText && matchesDate;
-  },
+  }
 
   // --- Rendering Helpers ---
 
@@ -314,9 +381,7 @@ export const Drive = {
 
     items.forEach((item) => {
       const dateObj = new Date(item.timestamp);
-      // Fallback if timestamp is invalid
       const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
-
       const monthYear = validDate.toLocaleString('en-US', {
         month: 'long',
         year: 'numeric',
@@ -328,21 +393,18 @@ export const Drive = {
         lastMonth = monthYear;
       }
 
-      const cardHtml = this.TEMPLATES.fileCard(item.file, item.meta);
-      // We need to convert string to DOM element to append
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = cardHtml;
+      tempDiv.innerHTML = this.TEMPLATES.fileCard(item.file, item.meta);
       const cardEl = tempDiv.firstElementChild;
 
       currentGroup.querySelector('.month-list').appendChild(cardEl);
     });
-  },
+  }
 
   renderRecentSection(container) {
     const recentIds = JSON.parse(localStorage.getItem('recent_logs') || '[]');
     if (recentIds.length === 0) return;
 
-    // Find full file objects for recent IDs
     const recentItems = recentIds
       .map((id) => this.fileData.find((f) => f.file.id === id))
       .filter((item) => item !== undefined);
@@ -352,7 +414,7 @@ export const Drive = {
     const section = document.createElement('div');
     section.className = 'recent-section';
     section.innerHTML = this.TEMPLATES.recentSectionHeader();
-    const list = section.querySelector('.recent-list-container') || section; // Fallback
+    const list = section.querySelector('.recent-list-container') || section;
 
     recentItems.forEach((item) => {
       const tempDiv = document.createElement('div');
@@ -371,7 +433,7 @@ export const Drive = {
         e.stopPropagation();
         this.clearRecentHistory();
       });
-  },
+  }
 
   renderPaginationControls(container, totalItems, totalPages) {
     if (totalItems === 0) return;
@@ -390,7 +452,6 @@ export const Drive = {
     );
     container.appendChild(navDiv);
 
-    // Bind Events
     navDiv.querySelector('#prevPageBtn')?.addEventListener('click', () => {
       if (currentPage > 1) {
         this._state.pagination.currentPage--;
@@ -404,7 +465,7 @@ export const Drive = {
         this.refreshUI();
       }
     });
-  },
+  }
 
   createMonthGroup(monthYear) {
     const group = document.createElement('div');
@@ -421,7 +482,7 @@ export const Drive = {
         : 'fas fa-chevron-right toggle-icon';
     };
     return group;
-  },
+  }
 
   // --- Utilities & Metadata ---
 
@@ -430,12 +491,12 @@ export const Drive = {
     if (!match) return { date: 'Unknown', length: '?' };
     const date = new Date(parseInt(match[1]));
     return { date: date.toISOString(), length: match[2] };
-  },
+  }
 
   extractTimestamp(fileName) {
     const match = fileName.match(/-(\d+)-(\d+)\.json$/);
     return match ? parseInt(match[1]) : 0;
-  },
+  }
 
   handleApiError(error, listEl) {
     if (error.status === 401 || error.status === 403)
@@ -445,90 +506,19 @@ export const Drive = {
         error.result?.error?.message || error.message || 'Unknown error';
       listEl.innerHTML = `<div class="error-msg">Drive error: ${error.status === 401 ? 'Session expired' : msg}</div>`;
     }
-  },
+  }
 
   _renderError(msg) {
     const container = document.getElementById('driveFileContainer');
     if (container) container.innerHTML = `<div class="error-msg">${msg}</div>`;
-  },
+  }
 
   clearRecentHistory() {
     if (confirm('Clear recently viewed history?')) {
       localStorage.removeItem('recent_logs');
-      // No need to fetch again, just refresh UI
       this.refreshUI();
     }
-  },
+  }
+}
 
-  // --- HTML Templates ---
-
-  TEMPLATES: {
-    searchInterface: () => `
-      <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-        <div style="position: relative; display: flex; align-items: center;">
-          <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
-          <input type="text" id="driveSearchInput" placeholder="Filter by name..." style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
-          <i class="fas fa-times-circle" id="clearDriveSearchText" style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" title="Clear search"></i>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
-          <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
-          <span>to</span>
-          <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
-          <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div id="driveResultCount" style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;"></div>
-          <button id="driveSortToggle" class="btn btn-sm" style="font-size: 0.75em; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
-            <i class="fas fa-sort-amount-down"></i> Newest
-          </button>
-        </div>
-      </div>
-      <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
-    `,
-    fileCard: (file, meta) => `
-      <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
-        <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
-        <div class="file-card-body">
-          <div class="file-name-title">${file.name}</div>
-          <div class="file-card-meta-grid">
-            <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
-            <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
-            <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
-          </div>
-        </div>
-      </div>
-    `,
-    monthGroup: (monthYear) => `
-      <div class="month-header" style="padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837; margin: 10px 0 5px 0; text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-        <span>${monthYear}</span> <i class="fas fa-chevron-down toggle-icon"></i>
-      </div>
-      <div class="month-list"></div>
-    `,
-    recentSectionHeader: () => `
-      <div class="month-header" style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-        <span><i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed</span>
-        <span id="clearRecentHistory" style="font-size: 0.8em; cursor: pointer; opacity: 0.8;" title="Clear History">
-          <i class="fas fa-trash-alt"></i> Clear
-        </span>
-      </div>
-      <div class="recent-list-container"></div>
-    `,
-    sortBtnContent: (order) => `
-      <i class="fas fa-sort-amount-${order === 'desc' ? 'down' : 'up'}"></i> 
-      ${order === 'desc' ? 'Newest' : 'Oldest'}
-    `,
-    paginationControls: (current, total, start, end, totalItems) => `
-      <div class="pagination-controls" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-top: 1px solid var(--border-color); margin-top: 10px; font-size: 0.8em;">
-        <button id="prevPageBtn" class="btn btn-sm" ${current === 1 ? 'disabled style="opacity:0.5"' : ''}>
-           <i class="fas fa-chevron-left"></i> Prev
-        </button>
-        <span style="color: var(--text-muted);">
-           ${start}-${end} of ${totalItems}
-        </span>
-        <button id="nextPageBtn" class="btn btn-sm" ${current === total ? 'disabled style="opacity:0.5"' : ''}>
-           Next <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
-    `,
-  },
-};
+export const Drive = new DriveManager();
