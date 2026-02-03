@@ -61,11 +61,12 @@ class DriveManager {
           </div>
         </div>
       `,
+      // UPDATED: Default to collapsed (chevron-right, display: none)
       monthGroup: (monthYear) => `
         <div class="month-header" style="padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837; margin: 10px 0 5px 0; text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-          <span>${monthYear}</span> <i class="fas fa-chevron-down toggle-icon"></i>
+          <span>${monthYear}</span> <i class="fas fa-chevron-right toggle-icon"></i>
         </div>
-        <div class="month-list"></div>
+        <div class="month-list" style="display: none;"></div>
       `,
       recentSectionHeader: () => `
         <div class="month-header" style="display: flex; justify-content: space-between; margin-bottom: 5px;">
@@ -521,4 +522,5 @@ class DriveManager {
   }
 }
 
+// Export a singleton instance to maintain backward compatibility
 export const Drive = new DriveManager();
