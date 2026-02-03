@@ -150,6 +150,7 @@ class MapManager {
     }
 
     const ctx = this.#contexts.get(fileIndex);
+
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
@@ -194,9 +195,18 @@ class MapManager {
       iconAnchor: [12, 12],
     });
 
-    ctx.positionMarker = L.marker(routePoints[0], { icon: arrowIcon }).addTo(
-      ctx.map
-    );
+    ctx.positionMarker = L.marker(routePoints[0], {
+      icon: arrowIcon,
+      draggable: true,
+    }).addTo(ctx.map);
+
+    ctx.positionMarker.on('drag', (e) => {
+      this.#handleMapInteraction(fileIndex, e.target.getLatLng());
+    });
+
+    ctx.routeLayer.on('click', (e) => {
+      this.#handleMapInteraction(fileIndex, e.latlng);
+    });
 
     // Update Stats
     const stats = this.#calculateStats(latData, ctx.lonInterpolator);
@@ -250,6 +260,39 @@ class MapManager {
   }
 
   // --- PRIVATE HELPER METHODS ---
+
+  #handleMapInteraction(fileIndex, latlng) {
+    const time = this.#findNearestTime(fileIndex, latlng);
+    if (time !== null) {
+      messenger.emit('map:position-selected', { time, fileIndex });
+    }
+  }
+
+  #findNearestTime(fileIndex, latlng) {
+    const file = AppState.files[fileIndex];
+    const latData = file.signals[this.#detectGpsSignals(file).latKey];
+    if (!latData) return null;
+
+    let minFormatDist = Infinity;
+    let closestTime = null;
+
+    // We check the sampled points to find the closest geographic match
+    latData.forEach((p) => {
+      const lat = parseFloat(p.y);
+      const lon = parseFloat(
+        this.#contexts.get(fileIndex).lonInterpolator.getValueAt(p.x)
+      );
+
+      // Simple Pythagorean distance is usually enough for local coordinate clicks
+      const d = Math.pow(lat - latlng.lat, 2) + Math.pow(lon - latlng.lng, 2);
+      if (d < minFormatDist) {
+        minFormatDist = d;
+        closestTime = p.x;
+      }
+    });
+
+    return closestTime;
+  }
 
   #detectGpsSignals(file) {
     const signals = file.availableSignals || [];

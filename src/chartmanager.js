@@ -57,6 +57,27 @@ export const ChartManager = {
     messenger.on('dataprocessor:batch-load-completed', (_event) => {
       ChartManager.render();
     });
+
+    messenger.on('map:position-selected', (data) => {
+      const { time, fileIndex } = data;
+
+      this.hoverValue = time;
+      this.activeChartIndex = fileIndex;
+
+      const chart = AppState.chartInstances[fileIndex];
+      if (chart) {
+        // Move the vertical cursor and tooltip to the point clicked on the map
+        this._syncTooltip(chart, time);
+
+        // If the map point is off-screen on the chart, jump to it
+        if (time < chart.scales.x.min || time > chart.scales.x.max) {
+          const range = chart.scales.x.max - chart.scales.x.min;
+          chart.options.scales.x.min = time - range / 2;
+          chart.options.scales.x.max = time + range / 2;
+          chart.update('none');
+        }
+      }
+    });
   },
 
   _syncTooltip(chart, timeValue) {

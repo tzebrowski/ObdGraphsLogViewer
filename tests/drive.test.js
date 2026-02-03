@@ -481,18 +481,19 @@ describe('Drive Module Combined Suite', () => {
       const header = container.querySelector('.month-header');
       const list = container.querySelector('.month-list');
 
-      // 1. Initial State: Visible
-      expect(list.style.display).not.toBe('none');
-
-      // 2. Click to Collapse
-      header.click();
+      // Initial State: Collapsed (Matches updated drive.js default)
       expect(list.style.display).toBe('none');
       expect(header.querySelector('i').className).toContain('fa-chevron-right');
 
-      // 3. Click to Expand
+      //Click to Expand
       header.click();
       expect(list.style.display).toBe('block');
       expect(header.querySelector('i').className).toContain('fa-chevron-down');
+
+      //Click to Collapse
+      header.click();
+      expect(list.style.display).toBe('none');
+      expect(header.querySelector('i').className).toContain('fa-chevron-right');
     });
   });
 

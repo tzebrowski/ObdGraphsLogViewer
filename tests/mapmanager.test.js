@@ -19,11 +19,14 @@ const mockMap = {
   removeControl: jest.fn(),
 };
 
+// ... existing mockMap setup ...
+
 const mockPolyline = {
   addTo: jest.fn().mockReturnThis(),
   setLatLngs: jest.fn().mockReturnThis(),
   remove: jest.fn(),
   getBounds: jest.fn().mockReturnValue({ isValid: () => true }),
+  on: jest.fn().mockReturnThis(),
 };
 
 const mockMarkerElement = document.createElement('div');
@@ -34,8 +37,10 @@ const mockMarker = {
   setLatLng: jest.fn().mockReturnThis(),
   remove: jest.fn(),
   getElement: jest.fn().mockReturnValue(mockMarkerElement),
+  on: jest.fn().mockReturnThis(),
 };
 
+// ... existing mockTileLayer and others ...
 const mockTileLayer = {
   addTo: jest.fn().mockReturnThis(),
   setUrl: jest.fn().mockReturnThis(),
@@ -311,5 +316,92 @@ describe('MapManager System', () => {
       mapManager.syncPosition(1000);
       expect(mockMarker.setLatLng).not.toHaveBeenCalled();
     });
+  });
+
+  test('should trigger messenger event when route is clicked', () => {
+    const mockFile = {
+      name: 'ClickSync.json',
+      availableSignals: ['GPS Latitude', 'GPS Longitude'],
+      signals: {
+        'GPS Latitude': [
+          { x: 1000, y: 52.0 },
+          { x: 2000, y: 52.1 },
+        ],
+        'GPS Longitude': [
+          { x: 1000, y: 20.0 },
+          { x: 2000, y: 20.1 },
+        ],
+      },
+    };
+    AppState.files = [mockFile];
+    createEmbeddedMapContainer(0);
+
+    mapManager.init();
+    mapManager.loadRoute(0);
+
+    // Extract the click handler registered on the polyline
+    const clickHandler = mockPolyline.on.mock.calls.find(
+      (c) => c[0] === 'click'
+    )[1];
+
+    // Simulate a click event near the first coordinate
+    clickHandler({ latlng: { lat: 52.0001, lng: 20.0001 } });
+
+    // Verify the messenger emitted the correct time (1000) for that location
+    expect(mockMessenger.emit).toHaveBeenCalledWith('map:position-selected', {
+      time: 1000,
+      fileIndex: 0,
+    });
+  });
+
+  test('should trigger messenger event when marker is dragged', () => {
+    const mockFile = {
+      name: 'DragSync.json',
+      availableSignals: ['GPS Latitude', 'GPS Longitude'],
+      signals: {
+        'GPS Latitude': [{ x: 5000, y: 40.0 }],
+        'GPS Longitude': [{ x: 5000, y: -74.0 }],
+      },
+    };
+    AppState.files = [mockFile];
+    createEmbeddedMapContainer(0);
+
+    mapManager.init();
+    mapManager.loadRoute(0);
+
+    // Extract the drag handler registered on the marker
+    const dragHandler = mockMarker.on.mock.calls.find(
+      (c) => c[0] === 'drag'
+    )[1];
+
+    // Simulate the marker being dragged to a specific location
+    dragHandler({ target: { getLatLng: () => ({ lat: 40.0, lng: -74.0 }) } });
+
+    expect(mockMessenger.emit).toHaveBeenCalledWith('map:position-selected', {
+      time: 5000,
+      fileIndex: 0,
+    });
+  });
+
+  test('should ensure marker is initialized as draggable', () => {
+    const mockFile = {
+      name: 'DraggableTest.json',
+      availableSignals: ['GPS Latitude', 'GPS Longitude'],
+      signals: {
+        'GPS Latitude': [{ x: 0, y: 1 }],
+        'GPS Longitude': [{ x: 0, y: 1 }],
+      },
+    };
+    AppState.files = [mockFile];
+    createEmbeddedMapContainer(0);
+
+    mapManager.init();
+    mapManager.loadRoute(0);
+
+    // Verify the marker was created with draggable: true
+    expect(mockLeafletObj.marker).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ draggable: true })
+    );
   });
 });
