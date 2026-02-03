@@ -19,11 +19,14 @@ const mockMap = {
   removeControl: jest.fn(),
 };
 
+// ... existing mockMap setup ...
+
 const mockPolyline = {
   addTo: jest.fn().mockReturnThis(),
   setLatLngs: jest.fn().mockReturnThis(),
   remove: jest.fn(),
   getBounds: jest.fn().mockReturnValue({ isValid: () => true }),
+  on: jest.fn().mockReturnThis(),
 };
 
 const mockMarkerElement = document.createElement('div');
@@ -34,8 +37,10 @@ const mockMarker = {
   setLatLng: jest.fn().mockReturnThis(),
   remove: jest.fn(),
   getElement: jest.fn().mockReturnValue(mockMarkerElement),
+  on: jest.fn().mockReturnThis(),
 };
 
+// ... existing mockTileLayer and others ...
 const mockTileLayer = {
   addTo: jest.fn().mockReturnThis(),
   setUrl: jest.fn().mockReturnThis(),
