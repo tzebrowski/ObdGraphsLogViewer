@@ -58,11 +58,7 @@ class MapManager {
 
     messenger.on('preferences:updated', (prefs) => {
       if (prefs.loadMap) {
-        // If in overlay mode, we might need a different refresh logic,
-        // but typically ChartManager calls render() which calls loadOverlayMap()
-        // so specific handling might not be needed here if view logic drives it.
         AppState.files.forEach((_, index) => {
-          // This is mostly for stack mode
           this.loadRoute(index);
         });
       } else {
@@ -73,7 +69,6 @@ class MapManager {
 
   updateTheme(theme) {
     const newUrl = theme === 'dark' ? TILES_DARK : TILES_LIGHT;
-    // We must update all unique map instances (handles both stack and shared overlay maps)
     const updatedMaps = new Set();
     this.#contexts.forEach((ctx) => {
       if (ctx.tileLayer && ctx.map && !updatedMaps.has(ctx.map)) {
@@ -90,17 +85,6 @@ class MapManager {
   #removeMapContext(fileIndex) {
     if (this.#contexts.has(fileIndex)) {
       const ctx = this.#contexts.get(fileIndex);
-
-      // In stack mode, we own the map. In overlay mode, we share it.
-      // Simplest safety check: only remove map if no other context uses it.
-      // However, clearAllMaps() is usually called on render reset.
-
-      // If we are just removing one file, we might leave the shared map alone
-      // or rely on full re-render.
-
-      // For now, if map is unique to this context (Stack Mode), remove it.
-      // If shared, we usually rely on ChartManager re-rendering the whole view.
-
       this.#contexts.delete(fileIndex);
 
       const container = document.getElementById(`embedded-map-${fileIndex}`);
@@ -180,10 +164,17 @@ class MapManager {
           iconAnchor: [12, 12],
         });
 
+        // --- UPDATED: Enable Dragging ---
         const positionMarker = L.marker(routePoints[0], {
           icon: arrowIcon,
-          interactive: false,
+          draggable: true, // Enable dragging
+          autoPan: false, // Prevent map jumping while scrubbing
         }).addTo(mapInstance);
+
+        // --- UPDATED: Add Drag Listener ---
+        positionMarker.on('drag', (e) => {
+          this.#handleMapInteraction(fileIndex, e.target.getLatLng());
+        });
 
         // Save Context (pointing to shared map)
         this.#contexts.set(fileIndex, {
@@ -193,7 +184,7 @@ class MapManager {
           positionMarker,
           latInterpolator,
           lonInterpolator,
-          infoControl: null, // Info control might be tricky in overlay, skipping for now
+          infoControl: null,
         });
       }
     });
@@ -210,25 +201,17 @@ class MapManager {
     const file = AppState.files[fileIndex];
     if (!file) return;
 
-    // Check availability of GPS data
     const { latKey, lonKey } = this.#detectGpsSignals(file);
     if (!latKey || !lonKey) return;
 
-    // TARGET THE EMBEDDED DIV
     const mapDivId = `embedded-map-${fileIndex}`;
     const mapContainer = document.getElementById(mapDivId);
 
-    if (!mapContainer) {
-      // Container might not be rendered yet if charts are still initializing
-      return;
-    }
+    if (!mapContainer) return;
 
-    // Show the container
     mapContainer.classList.add('active');
 
-    // Create Map Context if it doesn't exist
     if (!this.#contexts.has(fileIndex)) {
-      // Initialize Leaflet
       const mapInstance = L.map(mapDivId, { zoomControl: false }).setView(
         [0, 0],
         2
@@ -258,7 +241,6 @@ class MapManager {
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
-    // Setup Interpolators
     ctx.latInterpolator = new LinearInterpolator(latData);
     ctx.lonInterpolator = new LinearInterpolator(lonData);
 
@@ -277,18 +259,15 @@ class MapManager {
 
     if (routePoints.length === 0) return;
 
-    // Clear existing layers
     if (ctx.routeLayer) ctx.map.removeLayer(ctx.routeLayer);
     if (ctx.positionMarker) ctx.map.removeLayer(ctx.positionMarker);
 
-    // Draw Route
     ctx.routeLayer = L.polyline(routePoints, {
       color: this.#getRouteColor(fileIndex),
       weight: 4,
       opacity: 0.8,
     }).addTo(ctx.map);
 
-    // Create Marker
     const arrowIcon = L.divIcon({
       className: 'gps-marker-icon',
       html: `
@@ -312,11 +291,9 @@ class MapManager {
       this.#handleMapInteraction(fileIndex, e.latlng);
     });
 
-    // Update Stats
     const stats = this.#calculateStats(latData, ctx.lonInterpolator);
     this.#updateInfoControl(ctx, stats);
 
-    // Fit bounds
     requestAnimationFrame(() => {
       if (ctx.map && ctx.routeLayer) {
         ctx.map.invalidateSize();
@@ -356,7 +333,6 @@ class MapManager {
     });
   }
 
-  // Wrapper to handle time shift in overlay mode
   syncOverlayPosition(relativeTime) {
     const baseStart = AppState.files[0].startTime;
 
@@ -364,11 +340,25 @@ class MapManager {
       const file = AppState.files[fileIdx];
       if (!file) return;
 
-      // Calculate absolute time for this specific file
-      // relativeTime is (realTime - baseStart)
-      // We want: realTime = relativeTime + file.startTime - offset...
-      // Wait, the chart x is: baseStart + (p.x - fileStart)
-      // So p.x (absolute time) = chartX - baseStart + fileStart
+      // --- UPDATED: Anti-Jitter check ---
+      // If this specific marker is being dragged by the user, do not force-update it
+      // This prevents the marker from jumping back and forth under the cursor
+      if (
+        ctx.positionMarker &&
+        ctx.positionMarker.dragging &&
+        ctx.positionMarker.dragging.enabled()
+      ) {
+        // Leaflet doesn't always expose 'dragging' state easily,
+        // but checking if the icon has the dragging class is a robust way to know
+        if (
+          ctx.positionMarker.getElement() &&
+          ctx.positionMarker
+            .getElement()
+            .classList.contains('leaflet-drag-target')
+        ) {
+          return;
+        }
+      }
 
       const absTime = relativeTime - baseStart + file.startTime;
 
@@ -397,8 +387,6 @@ class MapManager {
   }
 
   clearAllMaps() {
-    // Collect unique map instances to avoid calling remove() multiple times on the same map
-    // (which happens in overlay mode where multiple contexts share one map)
     const uniqueMaps = new Set();
     this.#contexts.forEach((ctx) => {
       if (ctx.map) uniqueMaps.add(ctx.map);
@@ -428,14 +416,12 @@ class MapManager {
     let minFormatDist = Infinity;
     let closestTime = null;
 
-    // We check the sampled points to find the closest geographic match
     latData.forEach((p) => {
       const lat = parseFloat(p.y);
       const lon = parseFloat(
         this.#contexts.get(fileIndex).lonInterpolator.getValueAt(p.x)
       );
 
-      // Simple Pythagorean distance is usually enough for local coordinate clicks
       const d = Math.pow(lat - latlng.lat, 2) + Math.pow(lon - latlng.lng, 2);
       if (d < minFormatDist) {
         minFormatDist = d;
