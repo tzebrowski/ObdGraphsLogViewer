@@ -64,6 +64,31 @@ export const ChartManager = {
       this.hoverValue = time;
       this.activeChartIndex = fileIndex;
 
+      // In overlay mode, we might receive events from the shared map.
+      // We need to translate the absolute time of that file to the relative time of the chart.
+      if (this.viewMode === 'overlay') {
+        const file = AppState.files[fileIndex];
+        const baseStart = AppState.files[0].startTime;
+        const relativeTime = baseStart + (time - file.startTime);
+
+        // Find the overlay chart
+        const chart = AppState.chartInstances[0];
+        if (chart) {
+          this._syncTooltip(chart, relativeTime);
+          // Ensure the view is centered if zoomed in
+          if (
+            relativeTime < chart.scales.x.min ||
+            relativeTime > chart.scales.x.max
+          ) {
+            const range = chart.scales.x.max - chart.scales.x.min;
+            chart.options.scales.x.min = relativeTime - range / 2;
+            chart.options.scales.x.max = relativeTime + range / 2;
+            chart.update('none');
+          }
+        }
+        return;
+      }
+
       const chart = AppState.chartInstances[fileIndex];
       if (chart) {
         // Move the vertical cursor and tooltip to the point clicked on the map
@@ -86,7 +111,13 @@ export const ChartManager = {
     const activeElements = [];
     const xTarget = chart.scales.x.getPixelForValue(timeValue);
 
-    mapManager.syncPosition(timeValue);
+    // In overlay mode, timeValue is relative to the first file's start time.
+    // We must pass the correct absolute times to the map manager for each file.
+    if (this.viewMode === 'overlay') {
+      mapManager.syncOverlayPosition(timeValue);
+    } else {
+      mapManager.syncPosition(timeValue);
+    }
 
     chart.data.datasets.forEach((ds, dsIdx) => {
       if (!chart.isDatasetVisible(dsIdx)) return;
@@ -154,9 +185,18 @@ export const ChartManager = {
     const stepSize = 100;
     let newVal = currentVal + stepCount * stepSize;
 
-    const maxTime = file.startTime + file.duration * 1000;
-    if (newVal < file.startTime) newVal = file.startTime;
-    if (newVal > maxTime) newVal = maxTime;
+    // Boundary checks differ for overlay mode (relative time) vs stack mode (absolute)
+    if (this.viewMode === 'overlay') {
+      const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
+      const baseStart = AppState.files[0].startTime;
+      if (newVal < baseStart) newVal = baseStart;
+      if (newVal > baseStart + maxDuration * 1000)
+        newVal = baseStart + maxDuration * 1000;
+    } else {
+      const maxTime = file.startTime + file.duration * 1000;
+      if (newVal < file.startTime) newVal = file.startTime;
+      if (newVal > maxTime) newVal = maxTime;
+    }
 
     this.hoverValue = newVal;
     this.activeChartIndex = index;
@@ -330,8 +370,6 @@ export const ChartManager = {
     AppState.chartInstances = [];
 
     // --- FIX: CLEAR MAP CONTEXTS ON RENDER ---
-    // Since we are about to destroy the DOM nodes, we must tell mapManager
-    // to forget the old map instances so it can attach to the new ones.
     mapManager.clearAllMaps();
     // -----------------------------------------
 
@@ -389,6 +427,7 @@ export const ChartManager = {
     const baseStartTime = AppState.files[0].startTime;
     const shortcuts = this._getShortcutsText();
 
+    // Changed layout to split view (flex-col) to accommodate the map
     wrapper.innerHTML = `
       <div class="chart-header-sm">
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
@@ -404,8 +443,11 @@ export const ChartManager = {
                <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
       </div>
-      <div class="canvas-wrapper" style="height: calc(100vh - 200px); padding: 5px;">
-          <canvas id="chart-overlay" tabindex="0"></canvas>
+      <div style="display: flex; flex-direction: column; height: calc(100vh - 120px); padding: 5px;">
+          <div class="canvas-wrapper" style="flex: 3; min-height: 0; position: relative;">
+              <canvas id="chart-overlay" tabindex="0"></canvas>
+          </div>
+          <div id="overlay-map-container" style="flex: 2; min-height: 0; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; background: #f0f0f0;"></div>
       </div>
     `;
     container.appendChild(wrapper);
@@ -447,6 +489,9 @@ export const ChartManager = {
     AppState.chartInstances.push(chart);
     this.initKeyboardControls(canvas, 0);
     this._attachMouseListeners(canvas, 0);
+
+    // Initialize the shared overlay map
+    mapManager.loadOverlayMap();
   },
 
   formatDuration(totalSeconds) {

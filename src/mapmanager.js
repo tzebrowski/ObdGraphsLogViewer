@@ -69,9 +69,11 @@ class MapManager {
 
   updateTheme(theme) {
     const newUrl = theme === 'dark' ? TILES_DARK : TILES_LIGHT;
+    const updatedMaps = new Set();
     this.#contexts.forEach((ctx) => {
-      if (ctx.tileLayer) {
+      if (ctx.tileLayer && ctx.map && !updatedMaps.has(ctx.map)) {
         ctx.tileLayer.setUrl(newUrl);
+        updatedMaps.add(ctx.map);
       }
     });
   }
@@ -83,19 +85,112 @@ class MapManager {
   #removeMapContext(fileIndex) {
     if (this.#contexts.has(fileIndex)) {
       const ctx = this.#contexts.get(fileIndex);
-
-      if (ctx.map) {
-        ctx.map.remove();
-      }
-
       this.#contexts.delete(fileIndex);
 
-      // Hide the embedded container
       const container = document.getElementById(`embedded-map-${fileIndex}`);
       if (container) {
         container.classList.remove('active');
-        container.innerHTML = ''; // Clean up DOM
+        container.innerHTML = '';
       }
+    }
+  }
+
+  loadOverlayMap() {
+    if (!Preferences.prefs.loadMap) return;
+    if (!this.#isReady) this.init();
+
+    const containerId = 'overlay-map-container';
+    const mapContainer = document.getElementById(containerId);
+    if (!mapContainer) return;
+
+    // 1. Initialize Shared Map
+    const mapInstance = L.map(containerId, { zoomControl: false });
+    L.control.zoom({ position: 'topright' }).addTo(mapInstance);
+
+    const isDark = Preferences.prefs.darkTheme;
+    const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
+
+    const tileLayer = L.tileLayer(tileUrl, {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(mapInstance);
+
+    const allBounds = L.latLngBounds([]);
+    let hasValidRoute = false;
+
+    // 2. Loop through all files and add them to the shared map
+    AppState.files.forEach((file, fileIndex) => {
+      const { latKey, lonKey } = this.#detectGpsSignals(file);
+      if (!latKey || !lonKey) return;
+
+      const latData = file.signals[latKey];
+      const lonData = file.signals[lonKey];
+
+      const latInterpolator = new LinearInterpolator(latData);
+      const lonInterpolator = new LinearInterpolator(lonData);
+
+      const routePoints = [];
+      const step = Math.max(1, Math.ceil(latData.length / 2000));
+
+      for (let i = 0; i < latData.length; i += step) {
+        const p = latData[i];
+        const lat = parseFloat(p.y);
+        const lon = parseFloat(lonInterpolator.getValueAt(p.x));
+
+        if (this.#isValidGps(lat, lon)) {
+          routePoints.push([lat, lon]);
+        }
+      }
+
+      if (routePoints.length > 0) {
+        hasValidRoute = true;
+
+        // Add Polyline
+        const routeLayer = L.polyline(routePoints, {
+          color: this.#getRouteColor(fileIndex),
+          weight: 3,
+          opacity: 0.8,
+        }).addTo(mapInstance);
+
+        allBounds.extend(routeLayer.getBounds());
+
+        // Add Marker
+        const arrowIcon = L.divIcon({
+          className: 'gps-marker-icon',
+          html: `
+                    <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
+                    </svg>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+
+        // --- UPDATED: Enable Dragging ---
+        const positionMarker = L.marker(routePoints[0], {
+          icon: arrowIcon,
+          draggable: true, // Enable dragging
+          autoPan: false, // Prevent map jumping while scrubbing
+        }).addTo(mapInstance);
+
+        // --- UPDATED: Add Drag Listener ---
+        positionMarker.on('drag', (e) => {
+          this.#handleMapInteraction(fileIndex, e.target.getLatLng());
+        });
+
+        // Save Context (pointing to shared map)
+        this.#contexts.set(fileIndex, {
+          map: mapInstance, // SHARED INSTANCE
+          tileLayer,
+          routeLayer,
+          positionMarker,
+          latInterpolator,
+          lonInterpolator,
+          infoControl: null,
+        });
+      }
+    });
+
+    if (hasValidRoute) {
+      mapInstance.fitBounds(allBounds, { padding: [20, 20] });
     }
   }
 
@@ -106,25 +201,17 @@ class MapManager {
     const file = AppState.files[fileIndex];
     if (!file) return;
 
-    // Check availability of GPS data
     const { latKey, lonKey } = this.#detectGpsSignals(file);
     if (!latKey || !lonKey) return;
 
-    // TARGET THE EMBEDDED DIV
     const mapDivId = `embedded-map-${fileIndex}`;
     const mapContainer = document.getElementById(mapDivId);
 
-    if (!mapContainer) {
-      // Container might not be rendered yet if charts are still initializing
-      return;
-    }
+    if (!mapContainer) return;
 
-    // Show the container
     mapContainer.classList.add('active');
 
-    // Create Map Context if it doesn't exist
     if (!this.#contexts.has(fileIndex)) {
-      // Initialize Leaflet
       const mapInstance = L.map(mapDivId, { zoomControl: false }).setView(
         [0, 0],
         2
@@ -154,7 +241,6 @@ class MapManager {
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
-    // Setup Interpolators
     ctx.latInterpolator = new LinearInterpolator(latData);
     ctx.lonInterpolator = new LinearInterpolator(lonData);
 
@@ -173,18 +259,15 @@ class MapManager {
 
     if (routePoints.length === 0) return;
 
-    // Clear existing layers
     if (ctx.routeLayer) ctx.map.removeLayer(ctx.routeLayer);
     if (ctx.positionMarker) ctx.map.removeLayer(ctx.positionMarker);
 
-    // Draw Route
     ctx.routeLayer = L.polyline(routePoints, {
       color: this.#getRouteColor(fileIndex),
       weight: 4,
       opacity: 0.8,
     }).addTo(ctx.map);
 
-    // Create Marker
     const arrowIcon = L.divIcon({
       className: 'gps-marker-icon',
       html: `
@@ -208,11 +291,9 @@ class MapManager {
       this.#handleMapInteraction(fileIndex, e.latlng);
     });
 
-    // Update Stats
     const stats = this.#calculateStats(latData, ctx.lonInterpolator);
     this.#updateInfoControl(ctx, stats);
 
-    // Fit bounds
     requestAnimationFrame(() => {
       if (ctx.map && ctx.routeLayer) {
         ctx.map.invalidateSize();
@@ -252,10 +333,69 @@ class MapManager {
     });
   }
 
-  clearAllMaps() {
-    this.#contexts.forEach((_, key) => {
-      this.#removeMapContext(key);
+  syncOverlayPosition(relativeTime) {
+    const baseStart = AppState.files[0].startTime;
+
+    this.#contexts.forEach((ctx, fileIdx) => {
+      const file = AppState.files[fileIdx];
+      if (!file) return;
+
+      // --- UPDATED: Anti-Jitter check ---
+      // If this specific marker is being dragged by the user, do not force-update it
+      // This prevents the marker from jumping back and forth under the cursor
+      if (
+        ctx.positionMarker &&
+        ctx.positionMarker.dragging &&
+        ctx.positionMarker.dragging.enabled()
+      ) {
+        // Leaflet doesn't always expose 'dragging' state easily,
+        // but checking if the icon has the dragging class is a robust way to know
+        if (
+          ctx.positionMarker.getElement() &&
+          ctx.positionMarker
+            .getElement()
+            .classList.contains('leaflet-drag-target')
+        ) {
+          return;
+        }
+      }
+
+      const absTime = relativeTime - baseStart + file.startTime;
+
+      if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
+
+      const lat = ctx.latInterpolator.getValueAt(absTime);
+      const lon = ctx.lonInterpolator.getValueAt(absTime);
+      const nextLat = ctx.latInterpolator.getValueAt(absTime + 1000);
+      const nextLon = ctx.lonInterpolator.getValueAt(absTime + 1000);
+
+      if (this.#isValidGps(lat, lon)) {
+        if (ctx.positionMarker) {
+          ctx.positionMarker.setLatLng([lat, lon]);
+        }
+        if (this.#isValidGps(nextLat, nextLon)) {
+          if (
+            Math.abs(nextLat - lat) > 0.00005 ||
+            Math.abs(nextLon - lon) > 0.00005
+          ) {
+            const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
+            this.#rotateMarker(ctx.positionMarker, angle);
+          }
+        }
+      }
     });
+  }
+
+  clearAllMaps() {
+    const uniqueMaps = new Set();
+    this.#contexts.forEach((ctx) => {
+      if (ctx.map) uniqueMaps.add(ctx.map);
+    });
+
+    uniqueMaps.forEach((mapInstance) => {
+      mapInstance.remove();
+    });
+
     this.#contexts.clear();
   }
 
@@ -276,14 +416,12 @@ class MapManager {
     let minFormatDist = Infinity;
     let closestTime = null;
 
-    // We check the sampled points to find the closest geographic match
     latData.forEach((p) => {
       const lat = parseFloat(p.y);
       const lon = parseFloat(
         this.#contexts.get(fileIndex).lonInterpolator.getValueAt(p.x)
       );
 
-      // Simple Pythagorean distance is usually enough for local coordinate clicks
       const d = Math.pow(lat - latlng.lat, 2) + Math.pow(lon - latlng.lng, 2);
       if (d < minFormatDist) {
         minFormatDist = d;
