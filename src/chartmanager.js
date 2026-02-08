@@ -64,18 +64,14 @@ export const ChartManager = {
       this.hoverValue = time;
       this.activeChartIndex = fileIndex;
 
-      // In overlay mode, we might receive events from the shared map.
-      // We need to translate the absolute time of that file to the relative time of the chart.
       if (this.viewMode === 'overlay') {
         const file = AppState.files[fileIndex];
         const baseStart = AppState.files[0].startTime;
         const relativeTime = baseStart + (time - file.startTime);
 
-        // Find the overlay chart
         const chart = AppState.chartInstances[0];
         if (chart) {
           this._syncTooltip(chart, relativeTime);
-          // Ensure the view is centered if zoomed in
           if (
             relativeTime < chart.scales.x.min ||
             relativeTime > chart.scales.x.max
@@ -91,10 +87,7 @@ export const ChartManager = {
 
       const chart = AppState.chartInstances[fileIndex];
       if (chart) {
-        // Move the vertical cursor and tooltip to the point clicked on the map
         this._syncTooltip(chart, time);
-
-        // If the map point is off-screen on the chart, jump to it
         if (time < chart.scales.x.min || time > chart.scales.x.max) {
           const range = chart.scales.x.max - chart.scales.x.min;
           chart.options.scales.x.min = time - range / 2;
@@ -111,8 +104,6 @@ export const ChartManager = {
     const activeElements = [];
     const xTarget = chart.scales.x.getPixelForValue(timeValue);
 
-    // In overlay mode, timeValue is relative to the first file's start time.
-    // We must pass the correct absolute times to the map manager for each file.
     if (this.viewMode === 'overlay') {
       mapManager.syncOverlayPosition(timeValue);
     } else {
@@ -185,7 +176,6 @@ export const ChartManager = {
     const stepSize = 100;
     let newVal = currentVal + stepCount * stepSize;
 
-    // Boundary checks differ for overlay mode (relative time) vs stack mode (absolute)
     if (this.viewMode === 'overlay') {
       const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
       const baseStart = AppState.files[0].startTime;
@@ -296,19 +286,16 @@ export const ChartManager = {
     const meta = file.metadata || {};
     const durationFormatted = this.formatDuration(file.duration);
 
-    // Generate rows for all metadata keys found in the file
     let dynamicMetaRows = '';
     if (Object.keys(meta).length > 0) {
       dynamicMetaRows += `<h5 style="margin: 15px 0 5px; color:#c22636; border-bottom: 2px solid #eee; padding-bottom:5px;">Extended Metadata</h5>`;
 
       Object.entries(meta).forEach(([key, value]) => {
-        // Formatting: "trip.profileLabel" -> "Profile Label"
         const label = key
           .replace('trip.', '')
-          .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-          .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, (str) => str.toUpperCase());
 
-        // Format Timestamps if detected
         let displayValue = value;
         if (
           key.toLowerCase().includes('time') &&
@@ -331,13 +318,10 @@ export const ChartManager = {
           </div>
           <div class="modal-body">
             <h4 style="margin-top:0; color:#1c3d72;">${file.name}</h4>
-            
             ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
             ${createRow('Duration', durationFormatted)}
             ${createRow('Signals Count', file.availableSignals.length)}
-            
             ${dynamicMetaRows}
-
             <div style="margin-top: 20px; text-align: right;">
                <button class="btn btn-primary" onclick="document.getElementById('metadataModal').remove()">Close</button>
             </div>
@@ -369,9 +353,7 @@ export const ChartManager = {
     AppState.chartInstances.forEach((c) => c?.destroy());
     AppState.chartInstances = [];
 
-    // --- FIX: CLEAR MAP CONTEXTS ON RENDER ---
     mapManager.clearAllMaps();
-    // -----------------------------------------
 
     let emptyState = document.getElementById('empty-state');
     if (emptyState && container.contains(emptyState)) {
@@ -427,7 +409,6 @@ export const ChartManager = {
     const baseStartTime = AppState.files[0].startTime;
     const shortcuts = this._getShortcutsText();
 
-    // Changed layout to split view (flex-col) to accommodate the map
     wrapper.innerHTML = `
       <div class="chart-header-sm">
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
@@ -490,7 +471,6 @@ export const ChartManager = {
     this.initKeyboardControls(canvas, 0);
     this._attachMouseListeners(canvas, 0);
 
-    // Initialize the shared overlay map
     mapManager.loadOverlayMap();
   },
 
@@ -628,6 +608,17 @@ export const ChartManager = {
     }
   },
 
+  _centerCursorOnView(chart) {
+    if (!chart) return;
+    // Calculate the midpoint of the current view
+    const mid = (chart.scales.x.min + chart.scales.x.max) / 2;
+    // Update the app state hover value
+    this.hoverValue = mid;
+    this.activeChartIndex = AppState.chartInstances.indexOf(chart);
+    // Move the marker and tooltip to this new center
+    this._syncTooltip(chart, mid);
+  },
+
   resetChart(idx) {
     AppState.activeHighlight = null;
     const chart = AppState.chartInstances[idx];
@@ -635,23 +626,51 @@ export const ChartManager = {
       this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
 
     if (file && chart) {
-      chart.options.scales.x.min = file.startTime;
-      chart.options.scales.x.max =
+      const min = file.startTime;
+      const max =
         file.startTime +
         (this.viewMode === 'overlay'
           ? Math.max(...AppState.files.map((f) => f.duration)) * 1000
           : file.duration * 1000);
+
+      chart.options.scales.x.min = min;
+      chart.options.scales.x.max = max;
+
       chart.resetZoom();
       chart.update('none');
+
       if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
+
+      mapManager.syncMapBounds(
+        min,
+        max,
+        this.viewMode === 'overlay' ? null : idx
+      );
+
+      // --- ADD SYNC MARKER ---
+      this._centerCursorOnView(chart);
     }
   },
 
   manualZoom(index, zoomLevel) {
     const chart = AppState.chartInstances[index];
     if (!chart) return;
+
     chart.zoom(zoomLevel);
+
+    const min = chart.scales.x.min;
+    const max = chart.scales.x.max;
+
     if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+
+    mapManager.syncMapBounds(
+      min,
+      max,
+      this.viewMode === 'overlay' ? null : index
+    );
+
+    // --- ADD SYNC MARKER ---
+    this._centerCursorOnView(chart);
   },
 
   reset() {
@@ -878,6 +897,17 @@ export const ChartManager = {
               const idx = AppState.chartInstances.indexOf(chart);
               if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
             },
+            onPanComplete: ({ chart }) => {
+              const idx = AppState.chartInstances.indexOf(chart);
+              if (!isOverlay) this._updateLocalSliderUI(idx);
+              mapManager.syncMapBounds(
+                chart.scales.x.min,
+                chart.scales.x.max,
+                isOverlay ? null : idx
+              );
+              // --- ADD SYNC MARKER ---
+              this._centerCursorOnView(chart);
+            },
           },
           zoom: {
             wheel: { enabled: true },
@@ -887,6 +917,18 @@ export const ChartManager = {
               const idx = AppState.chartInstances.indexOf(chart);
               if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
               this.updateLabelVisibility(chart);
+            },
+            onZoomComplete: ({ chart }) => {
+              const idx = AppState.chartInstances.indexOf(chart);
+              if (!isOverlay) this._updateLocalSliderUI(idx);
+
+              mapManager.syncMapBounds(
+                chart.scales.x.min,
+                chart.scales.x.max,
+                isOverlay ? null : idx
+              );
+              // --- ADD SYNC MARKER ---
+              this._centerCursorOnView(chart);
             },
           },
         },
