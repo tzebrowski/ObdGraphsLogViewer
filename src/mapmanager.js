@@ -58,7 +58,11 @@ class MapManager {
 
     messenger.on('preferences:updated', (prefs) => {
       if (prefs.loadMap) {
+        // If in overlay mode, we might need a different refresh logic,
+        // but typically ChartManager calls render() which calls loadOverlayMap()
+        // so specific handling might not be needed here if view logic drives it.
         AppState.files.forEach((_, index) => {
+          // This is mostly for stack mode
           this.loadRoute(index);
         });
       } else {
@@ -69,9 +73,12 @@ class MapManager {
 
   updateTheme(theme) {
     const newUrl = theme === 'dark' ? TILES_DARK : TILES_LIGHT;
+    // We must update all unique map instances (handles both stack and shared overlay maps)
+    const updatedMaps = new Set();
     this.#contexts.forEach((ctx) => {
-      if (ctx.tileLayer) {
+      if (ctx.tileLayer && ctx.map && !updatedMaps.has(ctx.map)) {
         ctx.tileLayer.setUrl(newUrl);
+        updatedMaps.add(ctx.map);
       }
     });
   }
@@ -84,18 +91,115 @@ class MapManager {
     if (this.#contexts.has(fileIndex)) {
       const ctx = this.#contexts.get(fileIndex);
 
-      if (ctx.map) {
-        ctx.map.remove();
-      }
+      // In stack mode, we own the map. In overlay mode, we share it.
+      // Simplest safety check: only remove map if no other context uses it.
+      // However, clearAllMaps() is usually called on render reset.
+
+      // If we are just removing one file, we might leave the shared map alone
+      // or rely on full re-render.
+
+      // For now, if map is unique to this context (Stack Mode), remove it.
+      // If shared, we usually rely on ChartManager re-rendering the whole view.
 
       this.#contexts.delete(fileIndex);
 
-      // Hide the embedded container
       const container = document.getElementById(`embedded-map-${fileIndex}`);
       if (container) {
         container.classList.remove('active');
-        container.innerHTML = ''; // Clean up DOM
+        container.innerHTML = '';
       }
+    }
+  }
+
+  loadOverlayMap() {
+    if (!Preferences.prefs.loadMap) return;
+    if (!this.#isReady) this.init();
+
+    const containerId = 'overlay-map-container';
+    const mapContainer = document.getElementById(containerId);
+    if (!mapContainer) return;
+
+    // 1. Initialize Shared Map
+    const mapInstance = L.map(containerId, { zoomControl: false });
+    L.control.zoom({ position: 'topright' }).addTo(mapInstance);
+
+    const isDark = Preferences.prefs.darkTheme;
+    const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
+
+    const tileLayer = L.tileLayer(tileUrl, {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(mapInstance);
+
+    const allBounds = L.latLngBounds([]);
+    let hasValidRoute = false;
+
+    // 2. Loop through all files and add them to the shared map
+    AppState.files.forEach((file, fileIndex) => {
+      const { latKey, lonKey } = this.#detectGpsSignals(file);
+      if (!latKey || !lonKey) return;
+
+      const latData = file.signals[latKey];
+      const lonData = file.signals[lonKey];
+
+      const latInterpolator = new LinearInterpolator(latData);
+      const lonInterpolator = new LinearInterpolator(lonData);
+
+      const routePoints = [];
+      const step = Math.max(1, Math.ceil(latData.length / 2000));
+
+      for (let i = 0; i < latData.length; i += step) {
+        const p = latData[i];
+        const lat = parseFloat(p.y);
+        const lon = parseFloat(lonInterpolator.getValueAt(p.x));
+
+        if (this.#isValidGps(lat, lon)) {
+          routePoints.push([lat, lon]);
+        }
+      }
+
+      if (routePoints.length > 0) {
+        hasValidRoute = true;
+
+        // Add Polyline
+        const routeLayer = L.polyline(routePoints, {
+          color: this.#getRouteColor(fileIndex),
+          weight: 3,
+          opacity: 0.8,
+        }).addTo(mapInstance);
+
+        allBounds.extend(routeLayer.getBounds());
+
+        // Add Marker
+        const arrowIcon = L.divIcon({
+          className: 'gps-marker-icon',
+          html: `
+                    <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
+                    </svg>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+
+        const positionMarker = L.marker(routePoints[0], {
+          icon: arrowIcon,
+          interactive: false,
+        }).addTo(mapInstance);
+
+        // Save Context (pointing to shared map)
+        this.#contexts.set(fileIndex, {
+          map: mapInstance, // SHARED INSTANCE
+          tileLayer,
+          routeLayer,
+          positionMarker,
+          latInterpolator,
+          lonInterpolator,
+          infoControl: null, // Info control might be tricky in overlay, skipping for now
+        });
+      }
+    });
+
+    if (hasValidRoute) {
+      mapInstance.fitBounds(allBounds, { padding: [20, 20] });
     }
   }
 
@@ -252,10 +356,58 @@ class MapManager {
     });
   }
 
-  clearAllMaps() {
-    this.#contexts.forEach((_, key) => {
-      this.#removeMapContext(key);
+  // Wrapper to handle time shift in overlay mode
+  syncOverlayPosition(relativeTime) {
+    const baseStart = AppState.files[0].startTime;
+
+    this.#contexts.forEach((ctx, fileIdx) => {
+      const file = AppState.files[fileIdx];
+      if (!file) return;
+
+      // Calculate absolute time for this specific file
+      // relativeTime is (realTime - baseStart)
+      // We want: realTime = relativeTime + file.startTime - offset...
+      // Wait, the chart x is: baseStart + (p.x - fileStart)
+      // So p.x (absolute time) = chartX - baseStart + fileStart
+
+      const absTime = relativeTime - baseStart + file.startTime;
+
+      if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
+
+      const lat = ctx.latInterpolator.getValueAt(absTime);
+      const lon = ctx.lonInterpolator.getValueAt(absTime);
+      const nextLat = ctx.latInterpolator.getValueAt(absTime + 1000);
+      const nextLon = ctx.lonInterpolator.getValueAt(absTime + 1000);
+
+      if (this.#isValidGps(lat, lon)) {
+        if (ctx.positionMarker) {
+          ctx.positionMarker.setLatLng([lat, lon]);
+        }
+        if (this.#isValidGps(nextLat, nextLon)) {
+          if (
+            Math.abs(nextLat - lat) > 0.00005 ||
+            Math.abs(nextLon - lon) > 0.00005
+          ) {
+            const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
+            this.#rotateMarker(ctx.positionMarker, angle);
+          }
+        }
+      }
     });
+  }
+
+  clearAllMaps() {
+    // Collect unique map instances to avoid calling remove() multiple times on the same map
+    // (which happens in overlay mode where multiple contexts share one map)
+    const uniqueMaps = new Set();
+    this.#contexts.forEach((ctx) => {
+      if (ctx.map) uniqueMaps.add(ctx.map);
+    });
+
+    uniqueMaps.forEach((mapInstance) => {
+      mapInstance.remove();
+    });
+
     this.#contexts.clear();
   }
 
