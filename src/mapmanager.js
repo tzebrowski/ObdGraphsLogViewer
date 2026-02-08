@@ -103,7 +103,6 @@ class MapManager {
     const mapContainer = document.getElementById(containerId);
     if (!mapContainer) return;
 
-    // 1. Initialize Shared Map
     const mapInstance = L.map(containerId, { zoomControl: false });
     L.control.zoom({ position: 'topright' }).addTo(mapInstance);
 
@@ -117,7 +116,6 @@ class MapManager {
     const allBounds = L.latLngBounds([]);
     let hasValidRoute = false;
 
-    // 2. Loop through all files and add them to the shared map
     AppState.files.forEach((file, fileIndex) => {
       const { latKey, lonKey } = this.#detectGpsSignals(file);
       if (!latKey || !lonKey) return;
@@ -144,7 +142,6 @@ class MapManager {
       if (routePoints.length > 0) {
         hasValidRoute = true;
 
-        // Add Polyline
         const routeLayer = L.polyline(routePoints, {
           color: this.#getRouteColor(fileIndex),
           weight: 3,
@@ -153,7 +150,6 @@ class MapManager {
 
         allBounds.extend(routeLayer.getBounds());
 
-        // Add Marker
         const arrowIcon = L.divIcon({
           className: 'gps-marker-icon',
           html: `
@@ -164,21 +160,18 @@ class MapManager {
           iconAnchor: [12, 12],
         });
 
-        // --- UPDATED: Enable Dragging ---
         const positionMarker = L.marker(routePoints[0], {
           icon: arrowIcon,
-          draggable: true, // Enable dragging
-          autoPan: false, // Prevent map jumping while scrubbing
+          draggable: true,
+          autoPan: false,
         }).addTo(mapInstance);
 
-        // --- UPDATED: Add Drag Listener ---
         positionMarker.on('drag', (e) => {
           this.#handleMapInteraction(fileIndex, e.target.getLatLng());
         });
 
-        // Save Context (pointing to shared map)
         this.#contexts.set(fileIndex, {
-          map: mapInstance, // SHARED INSTANCE
+          map: mapInstance,
           tileLayer,
           routeLayer,
           positionMarker,
@@ -340,16 +333,11 @@ class MapManager {
       const file = AppState.files[fileIdx];
       if (!file) return;
 
-      // --- UPDATED: Anti-Jitter check ---
-      // If this specific marker is being dragged by the user, do not force-update it
-      // This prevents the marker from jumping back and forth under the cursor
       if (
         ctx.positionMarker &&
         ctx.positionMarker.dragging &&
         ctx.positionMarker.dragging.enabled()
       ) {
-        // Leaflet doesn't always expose 'dragging' state easily,
-        // but checking if the icon has the dragging class is a robust way to know
         if (
           ctx.positionMarker.getElement() &&
           ctx.positionMarker
@@ -384,6 +372,80 @@ class MapManager {
         }
       }
     });
+  }
+
+  syncMapBounds(start, end, fileIndex) {
+    if (!this.#isReady || this.#contexts.size === 0) return;
+
+    const bounds = L.latLngBounds([]);
+    let hasPoints = false;
+
+    // Helper to process a specific file and add its points to the bounds
+    const processFile = (idx, tStart, tEnd) => {
+      const file = AppState.files[idx];
+      const ctx = this.#contexts.get(idx);
+
+      if (!file || !ctx || !ctx.latInterpolator || !ctx.lonInterpolator) return;
+
+      const { latKey } = this.#detectGpsSignals(file);
+      if (!latKey) return;
+
+      const latData = file.signals[latKey];
+
+      // Optimization: If the range is huge (showing > 90% of file),
+      // just use the route layer bounds instead of iterating points
+      if (ctx.routeLayer && tEnd - tStart > file.duration * 1000 * 0.9) {
+        bounds.extend(ctx.routeLayer.getBounds());
+        hasPoints = true;
+        return;
+      }
+
+      // Step 5 for performance optimization
+      for (let i = 0; i < latData.length; i += 5) {
+        const p = latData[i];
+        if (p.x >= tStart && p.x <= tEnd) {
+          const lat = parseFloat(p.y);
+          const lon = parseFloat(ctx.lonInterpolator.getValueAt(p.x));
+          if (this.#isValidGps(lat, lon)) {
+            bounds.extend([lat, lon]);
+            hasPoints = true;
+          }
+        }
+      }
+    };
+
+    if (fileIndex !== null && fileIndex !== undefined) {
+      // --- SINGLE VIEW MODE ---
+      processFile(fileIndex, start, end);
+      const ctx = this.#contexts.get(fileIndex);
+      if (hasPoints && ctx && ctx.map) {
+        ctx.map.fitBounds(bounds, {
+          padding: [20, 20],
+          animate: true,
+          duration: 0.5,
+        });
+      }
+    } else {
+      // --- OVERLAY MODE ---
+      const baseStart = AppState.files[0].startTime;
+
+      AppState.files.forEach((file, idx) => {
+        // Calculate absolute time for this file based on the relative chart time
+        const fileStartAbs = start - baseStart + file.startTime;
+        const fileEndAbs = end - baseStart + file.startTime;
+        processFile(idx, fileStartAbs, fileEndAbs);
+      });
+
+      // Overlay uses a shared map, usually accessible via the first valid context
+      const ctx = this.#contexts.get(0);
+      if (hasPoints && ctx && ctx.map) {
+        ctx.map.fitBounds(bounds, {
+          padding: [20, 20],
+          animate: true,
+          duration: 0.5,
+        });
+      }
+    }
   }
 
   clearAllMaps() {
