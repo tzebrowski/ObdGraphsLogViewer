@@ -404,4 +404,242 @@ describe('MapManager System', () => {
       expect.objectContaining({ draggable: true })
     );
   });
+
+  describe('Overlay Mode (Shared Map)', () => {
+    let overlayContainer;
+    let markersCreated = [];
+
+    // Helper to create the overlay container
+    const createOverlayContainer = () => {
+      const div = document.createElement('div');
+      div.id = 'overlay-map-container';
+      document.body.appendChild(div);
+      return div;
+    };
+
+    beforeEach(() => {
+      // RESET mocks for this specific suite to handle multiple markers
+      markersCreated = [];
+
+      // Override the global L.marker mock to return UNIQUE instances
+      // This is crucial for testing the "Anti-Jitter" logic where we need
+      // to distinguish between two different markers on the same map.
+      mockLeafletObj.marker.mockImplementation(() => {
+        const el = document.createElement('div');
+        const instance = {
+          addTo: jest.fn().mockReturnThis(),
+          setLatLng: jest.fn().mockReturnThis(),
+          remove: jest.fn(),
+          getElement: jest.fn().mockReturnValue(el),
+          on: jest.fn().mockImplementation((event, cb) => {
+            // Store handler for triggering later
+            instance._handlers = instance._handlers || {};
+            instance._handlers[event] = cb;
+            return instance;
+          }),
+          dragging: { enabled: () => true },
+        };
+        markersCreated.push(instance);
+        return instance;
+      });
+
+      overlayContainer = createOverlayContainer();
+    });
+
+    test('should initialize a single shared map for multiple files', () => {
+      // Setup 2 files
+      AppState.files = [
+        {
+          name: 'File1',
+          startTime: 1000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [{ x: 1000, y: 10 }],
+            'GPS Longitude': [{ x: 1000, y: 10 }],
+          },
+        },
+        {
+          name: 'File2',
+          startTime: 2000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [{ x: 2000, y: 20 }],
+            'GPS Longitude': [{ x: 2000, y: 20 }],
+          },
+        },
+      ];
+
+      mapManager.loadOverlayMap();
+
+      // Should create ONE map instance
+      expect(mockLeafletObj.map).toHaveBeenCalledTimes(1);
+      expect(mockLeafletObj.map).toHaveBeenCalledWith(
+        'overlay-map-container',
+        expect.any(Object)
+      );
+
+      // Should create TWO polylines and TWO markers
+      expect(mockLeafletObj.polyline).toHaveBeenCalledTimes(2);
+      expect(mockLeafletObj.marker).toHaveBeenCalledTimes(2);
+    });
+
+    test('should configure overlay markers as draggable with autoPan disabled', () => {
+      AppState.files = [
+        {
+          name: 'File1',
+          startTime: 1000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [{ x: 1000, y: 10 }],
+            'GPS Longitude': [{ x: 1000, y: 10 }],
+          },
+        },
+      ];
+
+      mapManager.loadOverlayMap();
+
+      expect(mockLeafletObj.marker).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          draggable: true,
+          autoPan: false, // Verify specific overlay configuration
+        })
+      );
+    });
+
+    test('should sync multiple files relative to base start time', () => {
+      // File 1 starts at T=1000. File 2 starts at T=2000.
+      // We simulate a relative time of +100s.
+      // File 1 should look for T=1100.
+      // File 2 should look for T=2100.
+
+      AppState.files = [
+        {
+          name: 'File1',
+          startTime: 1000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [
+              { x: 1000, y: 10 },
+              { x: 1100, y: 11 },
+            ],
+            'GPS Longitude': [
+              { x: 1000, y: 10 },
+              { x: 1100, y: 11 },
+            ],
+          },
+        },
+        {
+          name: 'File2',
+          startTime: 2000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [
+              { x: 2000, y: 20 },
+              { x: 2100, y: 21 },
+            ],
+            'GPS Longitude': [
+              { x: 2000, y: 20 },
+              { x: 2100, y: 21 },
+            ],
+          },
+        },
+      ];
+
+      mapManager.loadOverlayMap();
+
+      // Clear initial setLatLng calls from initialization
+      markersCreated.forEach((m) => m.setLatLng.mockClear());
+
+      // Sync at Relative Time = 1000 + 100 = 1100 (Absolute for File 1)
+      // For File 2 (Start 2000), Relative 100 means Absolute 2100.
+      mapManager.syncOverlayPosition(1000 + 100);
+
+      // Verify Marker 1 moved to (11, 11)
+      expect(markersCreated[0].setLatLng).toHaveBeenCalledWith([11, 11]);
+
+      // Verify Marker 2 moved to (21, 21)
+      expect(markersCreated[1].setLatLng).toHaveBeenCalledWith([21, 21]);
+    });
+
+    test('ANTI-JITTER: should NOT update a marker if it is currently being dragged', () => {
+      AppState.files = [
+        {
+          name: 'File1',
+          startTime: 1000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [
+              { x: 1000, y: 10 },
+              { x: 1100, y: 11 },
+            ],
+            'GPS Longitude': [{ x: 1000, y: 10 }],
+          },
+        },
+        {
+          name: 'File2',
+          startTime: 2000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [
+              { x: 2000, y: 20 },
+              { x: 2100, y: 21 },
+            ],
+            'GPS Longitude': [{ x: 2000, y: 20 }],
+          },
+        },
+      ];
+
+      mapManager.loadOverlayMap();
+      markersCreated.forEach((m) => m.setLatLng.mockClear());
+
+      const marker1 = markersCreated[0];
+      const marker2 = markersCreated[1];
+
+      // Simulate Marker 1 being dragged by adding the class Leaflet uses
+      marker1.getElement().classList.add('leaflet-drag-target');
+
+      // Attempt to sync positions
+      mapManager.syncOverlayPosition(1100);
+
+      // Marker 1 (Dragging) should NOT be updated (Anti-Jitter)
+      expect(marker1.setLatLng).not.toHaveBeenCalled();
+
+      // Marker 2 (Idle) SHOULD be updated normally
+      expect(marker2.setLatLng).toHaveBeenCalled();
+    });
+
+    test('should emit map:position-selected with correct params when dragged', () => {
+      AppState.files = [
+        {
+          name: 'File1',
+          startTime: 1000,
+          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          signals: {
+            'GPS Latitude': [
+              { x: 1000, y: 10 },
+              { x: 1100, y: 11 },
+            ], // Distance
+            'GPS Longitude': [
+              { x: 1000, y: 10 },
+              { x: 1100, y: 11 },
+            ],
+          },
+        },
+      ];
+
+      mapManager.loadOverlayMap();
+
+      const marker = markersCreated[0];
+      const dragHandler = marker._handlers['drag'];
+
+      // Simulate dragging to coordinates corresponding to T=1100
+      dragHandler({ target: { getLatLng: () => ({ lat: 11, lng: 11 }) } });
+
+      expect(mockMessenger.emit).toHaveBeenCalledWith('map:position-selected', {
+        time: 1100, // Should find the time closest to lat/lng (11,11)
+        fileIndex: 0,
+      });
+    });
+  });
 });
