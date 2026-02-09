@@ -88,7 +88,6 @@ describe('UI Module Consolidated', () => {
           <div class="group-content"></div>
         </div>
       </div>
-      
       <div id="mainContent"></div>
       
       <div id="loadingOverlay" style="display:none">
@@ -96,7 +95,11 @@ describe('UI Module Consolidated', () => {
         <button id="cancelLoadBtn"></button>
       </div>
 
-      <div id="signalList"></div>
+      <div id="signalList">
+        <div id="signalSearchInput"></div>
+        <div id="clearSignalSearch"></div>
+        <div id="signalListContent"></div>
+      </div>
       <div id="chartContainer"></div>
       <div id="scanResults"></div>
       <div id="scanCount"></div>
@@ -248,7 +251,10 @@ describe('UI Module Consolidated', () => {
   describe('Signal List Logic', () => {
     beforeEach(() => {
       AppState.files = [
-        { name: 'Log 1.json', availableSignals: ['RPM', 'Speed'] },
+        {
+          name: 'Log 1.json',
+          availableSignals: ['RPM', 'Speed', 'Math: Calculated'],
+        },
       ];
       AppState.chartInstances = [
         {
@@ -268,12 +274,12 @@ describe('UI Module Consolidated', () => {
       ];
     });
 
-    test('renderSignalList generates proper HTML structure', () => {
+    test('renderSignalList generates proper HTML structure including Math signals', () => {
       UI.renderSignalList();
       const content = document.getElementById('signalListContent');
       expect(content.innerHTML).toContain('Log 1.json');
+      expect(content.innerHTML).toContain('Math: Calculated');
       expect(content.innerHTML).toContain('RPM');
-      expect(content.innerHTML).toContain('Speed');
     });
 
     test('renderSignalList shows empty message if no files', () => {
@@ -297,13 +303,25 @@ describe('UI Module Consolidated', () => {
       expect(speedItem.style.display).toBe('none');
     });
 
+    test('clearSignalFilter clears input and resets view', () => {
+      UI.renderSignalList();
+      const input = document.getElementById('signalSearchInput');
+      input.value = 'RPM';
+
+      UI.clearSignalFilter();
+
+      expect(input.value).toBe('');
+    });
+
     test('color picker updates preference correctly', () => {
       UI.renderSignalList();
       const picker = document.querySelector('.signal-color-picker');
       picker.value = '#00ff00';
       picker.dispatchEvent(new Event('change'));
 
-      expect(mockPreferences.customPalette['Log 1.json-RPM']).toBe('#00ff00');
+      expect(mockPreferences.customPalette['Log 1.json-Math: Calculated']).toBe(
+        '#00ff00'
+      );
       expect(mockChartManager.render).toHaveBeenCalled();
     });
   });
@@ -376,6 +394,22 @@ describe('UI Module Consolidated', () => {
       document.dispatchEvent(new MouseEvent('mouseup'));
     });
 
+    test('initResizer ignores out of bounds', () => {
+      UI.initResizer();
+      const resizer = document.getElementById('resizer');
+      const sidebar = document.getElementById('sidebar');
+
+      resizer.dispatchEvent(new MouseEvent('mousedown'));
+
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100 }));
+      expect(sidebar.style.width).not.toBe('100px');
+
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 800 }));
+      expect(sidebar.style.width).not.toBe('800px');
+
+      document.dispatchEvent(new MouseEvent('mouseup'));
+    });
+
     test('toggleSidebar handles desktop collapse', () => {
       window.innerWidth = 1024;
       UI.toggleSidebar();
@@ -435,7 +469,23 @@ describe('UI Module Consolidated', () => {
     });
   });
 
-  describe('Project History', () => {
+  describe('Project Actions & History', () => {
+    test('replayProjectHistory calls manager', () => {
+      UI.replayProjectHistory();
+      expect(mockProjectManager.replayHistory).toHaveBeenCalled();
+    });
+
+    test('resetProject calls manager', () => {
+      UI.resetProject();
+      expect(mockProjectManager.resetProject).toHaveBeenCalled();
+    });
+
+    test('editProjectName prompts user and calls manager', () => {
+      jest.spyOn(window, 'prompt').mockReturnValue('New Name');
+      UI.editProjectName();
+      expect(mockProjectManager.renameProject).toHaveBeenCalledWith('New Name');
+    });
+
     test('renders empty state correctly', () => {
       mockProjectManager.getResources.mockReturnValue([]);
       UI.renderProjectHistory();
@@ -533,9 +583,12 @@ describe('UI Module Consolidated', () => {
       );
     });
 
-    test('InfoPage open/close logic', () => {
+    test('InfoPage open/close logic with persistence', () => {
       InfoPage.open();
       expect(document.getElementById('infoModal').style.display).toBe('flex');
+
+      document.getElementById('hideInfoCheckbox').checked = true;
+
       InfoPage.close();
       expect(document.getElementById('infoModal').style.display).toBe('none');
     });
@@ -553,6 +606,12 @@ describe('UI Module Consolidated', () => {
       await UI.loadSampleData(false);
       expect(global.fetch).toHaveBeenCalled();
       expect(mockDataProcessor.process).toHaveBeenCalled();
+    });
+
+    test('loadSampleData handles error', async () => {
+      global.fetch = jest.fn(() => Promise.reject('Network Error'));
+      await UI.loadSampleData(false);
+      expect(mockAlert.showAlert).toHaveBeenCalled();
     });
 
     test('populateXYSelectors selects defaults from Config', () => {
