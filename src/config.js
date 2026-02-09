@@ -10,12 +10,14 @@ export const DEFAULT_SIGNALS = [
 ];
 
 export const SIGNAL_MAPPINGS = {
-  'Engine Speed': ['RPM', 'Engine Speed', 'Engine RPM'],
+  'Engine Speed': ['RPM', 'Engine Speed', 'Engine RPM', 'Engine Rpm'],
   'Intake Manifold Pressure Measured': [
     'Manifold Abs',
     'MAP',
     'Intake Press',
     'Boost Pressure',
+    'Manifold Pressure',
+    'Boost',
   ],
 
   MAF: ['Air Mass', 'MAF', 'Flow'],
@@ -34,6 +36,21 @@ export const SIGNAL_MAPPINGS = {
   'Spark Advance': ['Ignition Timing', 'Timing Adv', 'Spark Angle'],
   'Lambda Sensor 1': ['O2 Sensor', 'Equivalence Ratio', 'AFR', 'Lambda'],
   'Short Fuel Trim': ['SFT', 'STFT', 'Short Term'],
+
+  'Atmospheric Pressure': [
+    'Atmospheric',
+    'Baro',
+    'Barometric',
+    'Ambient Pressure',
+  ],
+  'AFR Commanded': ['Commanded', 'Target AFR', 'Lambda Request', 'AFR Target'],
+  'AFR Measured': [
+    'Measured',
+    'Current',
+    'AFR Measured',
+    'Lambda Actual',
+    'AFR',
+  ],
 };
 
 export const Config = {

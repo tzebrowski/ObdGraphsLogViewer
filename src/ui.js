@@ -1,4 +1,4 @@
-import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
+import { AppState, DOM, DEFAULT_SIGNALS, SIGNAL_MAPPINGS } from './config.js';
 import { dataProcessor } from './dataprocessor.js';
 import { Preferences } from './preferences.js';
 import { Alert } from './alert.js';
@@ -121,12 +121,21 @@ export const UI = {
       xSel.innerHTML = options;
       ySel.innerHTML = options;
 
-      if (file.availableSignals.includes('Engine Rpm'))
-        xSel.value = 'Engine Rpm';
-      else if (file.availableSignals.includes('Rpm')) xSel.value = 'Rpm';
+      // --- Helper to find matching signal from config ---
+      const findSignal = (mappingKey) => {
+        const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
+        // Find exact match in available signals
+        return file.availableSignals.find((s) =>
+          aliases.some((alias) => s.toLowerCase() === alias.toLowerCase())
+        );
+      };
 
-      if (file.availableSignals.includes('Boost Pressure'))
-        ySel.value = 'Boost Pressure';
+      // Set Defaults based on Config
+      const rpm = findSignal('Engine Speed');
+      if (rpm) xSel.value = rpm;
+
+      const boost = findSignal('Intake Manifold Pressure Measured');
+      if (boost) ySel.value = boost;
     };
 
     fileSel.onchange = updateSignals;
