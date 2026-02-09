@@ -9,6 +9,17 @@ export const DEFAULT_SIGNALS = [
   'Torque',
 ];
 
+export const VIEW_MODES = {
+  STACK: 'stack',
+  OVERLAY: 'overlay',
+};
+
+export const EVENTS = {
+  MAP_SELECTED: 'map:position-selected',
+  FILE_REMOVED: 'file:removed',
+  BATCH_LOADED: 'dataprocessor:batch-load-completed',
+};
+
 export const SIGNAL_MAPPINGS = {
   'Engine Speed': ['RPM', 'Engine Speed', 'Engine RPM', 'Engine Rpm'],
   'Intake Manifold Pressure Measured': [

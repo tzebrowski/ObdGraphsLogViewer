@@ -1,4 +1,10 @@
-import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
+import {
+  AppState,
+  DOM,
+  DEFAULT_SIGNALS,
+  VIEW_MODES,
+  EVENTS,
+} from './config.js';
 import { PaletteManager } from './palettemanager.js';
 import { UI } from './ui.js';
 import { Preferences } from './preferences.js';
@@ -27,7 +33,7 @@ export const ChartManager = {
   hoverValue: null,
   activeChartIndex: null,
   datalabelsSettings: { timeRange: 5000, visibleDatasets: 5 },
-  viewMode: 'stack',
+  viewMode: VIEW_MODES.STACK,
   _rafId: null,
 
   init() {
@@ -54,17 +60,17 @@ export const ChartManager = {
       zoomPlugin
     );
 
-    messenger.on('dataprocessor:batch-load-completed', (_event) => {
+    messenger.on(EVENTS.BATCH_LOADED, (_event) => {
       ChartManager.render();
     });
 
-    messenger.on('map:position-selected', (data) => {
+    messenger.on(EVENTS.MAP_SELECTED, (data) => {
       const { time, fileIndex } = data;
 
       this.hoverValue = time;
       this.activeChartIndex = fileIndex;
 
-      if (this.viewMode === 'overlay') {
+      if (this.viewMode === VIEW_MODES.OVERLAY) {
         const file = AppState.files[fileIndex];
         const baseStart = AppState.files[0].startTime;
         const relativeTime = baseStart + (time - file.startTime);
@@ -104,7 +110,7 @@ export const ChartManager = {
     const activeElements = [];
     const xTarget = chart.scales.x.getPixelForValue(timeValue);
 
-    if (this.viewMode === 'overlay') {
+    if (this.viewMode === VIEW_MODES.OVERLAY) {
       mapManager.syncOverlayPosition(timeValue);
     } else {
       mapManager.syncPosition(timeValue);
@@ -164,7 +170,9 @@ export const ChartManager = {
   stepCursor(index, stepCount) {
     const chart = AppState.chartInstances[index];
     const file =
-      this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[index];
+      this.viewMode === VIEW_MODES.OVERLAY
+        ? AppState.files[0]
+        : AppState.files[index];
 
     if (!chart || !file) return;
 
@@ -176,7 +184,7 @@ export const ChartManager = {
     const stepSize = 100;
     let newVal = currentVal + stepCount * stepSize;
 
-    if (this.viewMode === 'overlay') {
+    if (this.viewMode === VIEW_MODES.OVERLAY) {
       const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
       const baseStart = AppState.files[0].startTime;
       if (newVal < baseStart) newVal = baseStart;
@@ -214,7 +222,7 @@ export const ChartManager = {
 
     this._syncTooltip(chart, newVal);
 
-    if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+    if (this.viewMode !== VIEW_MODES.OVERLAY) this._updateLocalSliderUI(index);
   },
 
   exportDataRange(index) {
@@ -389,7 +397,7 @@ export const ChartManager = {
       this.hoverValue = AppState.files[0].startTime;
     }
 
-    if (this.viewMode === 'overlay') {
+    if (this.viewMode === VIEW_MODES.OVERLAY) {
       this._renderOverlayMode(container);
     } else {
       AppState.files.forEach((file, idx) => {
@@ -576,9 +584,11 @@ export const ChartManager = {
   _updateLocalSliderUI(idx) {
     const chart = AppState.chartInstances[idx];
     const file =
-      this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
+      this.viewMode === VIEW_MODES.OVERLAY
+        ? AppState.files[0]
+        : AppState.files[idx];
     if (!chart || !file) return;
-    if (this.viewMode === 'overlay') return;
+    if (this.viewMode === VIEW_MODES.OVERLAY) return;
 
     const card = document
       .getElementById(`chart-${idx}`)
@@ -610,12 +620,9 @@ export const ChartManager = {
 
   _centerCursorOnView(chart) {
     if (!chart) return;
-    // Calculate the midpoint of the current view
     const mid = (chart.scales.x.min + chart.scales.x.max) / 2;
-    // Update the app state hover value
     this.hoverValue = mid;
     this.activeChartIndex = AppState.chartInstances.indexOf(chart);
-    // Move the marker and tooltip to this new center
     this._syncTooltip(chart, mid);
   },
 
@@ -623,13 +630,15 @@ export const ChartManager = {
     AppState.activeHighlight = null;
     const chart = AppState.chartInstances[idx];
     const file =
-      this.viewMode === 'overlay' ? AppState.files[0] : AppState.files[idx];
+      this.viewMode === VIEW_MODES.OVERLAY
+        ? AppState.files[0]
+        : AppState.files[idx];
 
     if (file && chart) {
       const min = file.startTime;
       const max =
         file.startTime +
-        (this.viewMode === 'overlay'
+        (this.viewMode === VIEW_MODES.OVERLAY
           ? Math.max(...AppState.files.map((f) => f.duration)) * 1000
           : file.duration * 1000);
 
@@ -639,15 +648,14 @@ export const ChartManager = {
       chart.resetZoom();
       chart.update('none');
 
-      if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
+      if (this.viewMode !== VIEW_MODES.OVERLAY) this._updateLocalSliderUI(idx);
 
       mapManager.syncMapBounds(
         min,
         max,
-        this.viewMode === 'overlay' ? null : idx
+        this.viewMode === VIEW_MODES.OVERLAY ? null : idx
       );
 
-      // --- ADD SYNC MARKER ---
       this._centerCursorOnView(chart);
     }
   },
@@ -661,15 +669,14 @@ export const ChartManager = {
     const min = chart.scales.x.min;
     const max = chart.scales.x.max;
 
-    if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+    if (this.viewMode !== VIEW_MODES.OVERLAY) this._updateLocalSliderUI(index);
 
     mapManager.syncMapBounds(
       min,
       max,
-      this.viewMode === 'overlay' ? null : index
+      this.viewMode === VIEW_MODES.OVERLAY ? null : index
     );
 
-    // --- ADD SYNC MARKER ---
     this._centerCursorOnView(chart);
   },
 
@@ -719,7 +726,7 @@ export const ChartManager = {
   },
 
   removeChart(index) {
-    if (this.viewMode === 'overlay') return;
+    if (this.viewMode === VIEW_MODES.OVERLAY) return;
 
     projectManager.onFileRemoved(index);
 
@@ -727,7 +734,7 @@ export const ChartManager = {
     this.activeChartIndex = null;
     AppState.files.splice(index, 1);
 
-    messenger.emit('file:removed', { index });
+    messenger.emit(EVENTS.FILE_REMOVED, { index });
 
     this.render();
     UI.renderSignalList();
@@ -804,133 +811,141 @@ export const ChartManager = {
     };
   },
 
+  // --- REFACTORED: Decomposed Chart Options ---
   _getChartOptions(file) {
-    const isOverlay = this.viewMode === 'overlay';
     return {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-
       interaction: {
         mode: 'nearest',
         axis: 'x',
         intersect: false,
       },
+      scales: this._getScalesConfig(file),
+      plugins: this._getPluginsConfig(),
+    };
+  },
 
-      scales: {
-        y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
-        x: {
-          type: 'time',
-          time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
-          min: file.startTime,
-          max: file.startTime + file.duration * 1000,
+  _getScalesConfig(file) {
+    return {
+      y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
+      x: {
+        type: 'time',
+        time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
+        min: file.startTime,
+        max: file.startTime + file.duration * 1000,
+      },
+    };
+  },
+
+  _getPluginsConfig() {
+    return {
+      datalabels: {
+        display: (ctx) => this._shouldShowLabels(ctx.chart),
+        anchor: 'end',
+        align: 'top',
+        backgroundColor: (ctx) => ctx.dataset.borderColor,
+        color: 'white',
+        formatter: (value, context) => {
+          const ds = context.dataset;
+          const realY =
+            value.y * (ds.originalMax - ds.originalMin) + ds.originalMin;
+          return realY.toFixed(1);
         },
       },
-      plugins: {
-        datalabels: {
-          display: (ctx) => this._shouldShowLabels(ctx.chart),
-          anchor: 'end',
-          align: 'top',
-          backgroundColor: (ctx) => ctx.dataset.borderColor,
-          color: 'white',
-          formatter: (value, context) => {
+      tooltip: {
+        enabled: true,
+        events: [],
+        mode: 'index',
+        position: 'topRightCorner',
+        yAlign: 'top',
+        xAlign: 'right',
+        caretSize: 0,
+        intersect: false,
+        itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
+        callbacks: {
+          title: (items) => {
+            if (!items.length) return '';
+            const xVal = items[0].parsed.x;
+            if (this.viewMode === VIEW_MODES.OVERLAY) {
+              const seconds = (xVal - items[0].chart.scales.x.min) / 1000;
+              return `T + ${Math.max(0, seconds).toFixed(2)}s`;
+            }
+            return new Date(xVal).toISOString().substring(14, 19);
+          },
+          label: (context) => {
             const ds = context.dataset;
             const realY =
-              value.y * (ds.originalMax - ds.originalMin) + ds.originalMin;
-            return realY.toFixed(1);
+              context.parsed.y * (ds.originalMax - ds.originalMin) +
+              ds.originalMin;
+            let label = ds.label || '';
+            if (label) {
+              label += ': ';
+            }
+            return label + realY.toFixed(2);
           },
         },
-        tooltip: {
-          enabled: true,
-          events: [],
-          mode: 'index',
-          position: 'topRightCorner',
-          yAlign: 'top',
-          xAlign: 'right',
-          caretSize: 0,
-          intersect: false,
-          itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
-          callbacks: {
-            title: (items) => {
-              if (!items.length) return '';
-              const xVal = items[0].parsed.x;
-              if (isOverlay) {
-                const seconds = (xVal - items[0].chart.scales.x.min) / 1000;
-                return `T + ${Math.max(0, seconds).toFixed(2)}s`;
-              }
-              return new Date(xVal).toISOString().substring(14, 19);
-            },
-            label: (context) => {
-              const ds = context.dataset;
-              const realY =
-                context.parsed.y * (ds.originalMax - ds.originalMin) +
-                ds.originalMin;
-              let label = ds.label || '';
-              if (label) {
-                label += ': ';
-              }
-              return label + realY.toFixed(2);
-            },
+      },
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          font: { size: 11 },
+          filter: (item, chartData) => {
+            if (this.viewMode === VIEW_MODES.OVERLAY) {
+              return !chartData.datasets[item.datasetIndex].hidden;
+            }
+            const checkbox = document.querySelector(
+              `#signalList input[data-key="${item.text}"]`
+            );
+            return checkbox ? checkbox.checked : false;
           },
         },
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            font: { size: 11 },
-            filter: (item, chartData) => {
-              if (isOverlay) {
-                return !chartData.datasets[item.datasetIndex].hidden;
-              }
-              const checkbox = document.querySelector(
-                `#signalList input[data-key="${item.text}"]`
-              );
-              return checkbox ? checkbox.checked : false;
-            },
-          },
-        },
-        zoom: {
-          pan: {
-            enabled: true,
-            mode: 'x',
-            onPan: ({ chart }) => {
-              const idx = AppState.chartInstances.indexOf(chart);
-              if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
-            },
-            onPanComplete: ({ chart }) => {
-              const idx = AppState.chartInstances.indexOf(chart);
-              if (!isOverlay) this._updateLocalSliderUI(idx);
-              mapManager.syncMapBounds(
-                chart.scales.x.min,
-                chart.scales.x.max,
-                isOverlay ? null : idx
-              );
-              // --- ADD SYNC MARKER ---
-              this._centerCursorOnView(chart);
-            },
-          },
-          zoom: {
-            wheel: { enabled: true },
-            pinch: { enabled: true },
-            mode: 'x',
-            onZoom: ({ chart }) => {
-              const idx = AppState.chartInstances.indexOf(chart);
-              if (this.viewMode !== 'overlay') this._updateLocalSliderUI(idx);
-              this.updateLabelVisibility(chart);
-            },
-            onZoomComplete: ({ chart }) => {
-              const idx = AppState.chartInstances.indexOf(chart);
-              if (!isOverlay) this._updateLocalSliderUI(idx);
+      },
+      zoom: this._getZoomPluginConfig(),
+    };
+  },
 
-              mapManager.syncMapBounds(
-                chart.scales.x.min,
-                chart.scales.x.max,
-                isOverlay ? null : idx
-              );
-              // --- ADD SYNC MARKER ---
-              this._centerCursorOnView(chart);
-            },
-          },
+  _getZoomPluginConfig() {
+    const isOverlay = this.viewMode === VIEW_MODES.OVERLAY;
+    return {
+      pan: {
+        enabled: true,
+        mode: 'x',
+        onPan: ({ chart }) => {
+          const idx = AppState.chartInstances.indexOf(chart);
+          if (!isOverlay) this._updateLocalSliderUI(idx);
+        },
+        onPanComplete: ({ chart }) => {
+          const idx = AppState.chartInstances.indexOf(chart);
+          if (!isOverlay) this._updateLocalSliderUI(idx);
+          mapManager.syncMapBounds(
+            chart.scales.x.min,
+            chart.scales.x.max,
+            isOverlay ? null : idx
+          );
+          this._centerCursorOnView(chart);
+        },
+      },
+      zoom: {
+        wheel: { enabled: true },
+        pinch: { enabled: true },
+        mode: 'x',
+        onZoom: ({ chart }) => {
+          const idx = AppState.chartInstances.indexOf(chart);
+          if (!isOverlay) this._updateLocalSliderUI(idx);
+          this.updateLabelVisibility(chart);
+        },
+        onZoomComplete: ({ chart }) => {
+          const idx = AppState.chartInstances.indexOf(chart);
+          if (!isOverlay) this._updateLocalSliderUI(idx);
+          mapManager.syncMapBounds(
+            chart.scales.x.min,
+            chart.scales.x.max,
+            isOverlay ? null : idx
+          );
+          this._centerCursorOnView(chart);
         },
       },
     };
@@ -990,7 +1005,7 @@ export const ChartManager = {
 
   _canPerformSmartUpdate() {
     return (
-      this.viewMode !== 'overlay' &&
+      this.viewMode !== VIEW_MODES.OVERLAY &&
       AppState.chartInstances.length > 0 &&
       AppState.chartInstances.length === AppState.files.length
     );
@@ -1044,7 +1059,8 @@ export const ChartManager = {
           return;
       }
 
-      if (this.viewMode !== 'overlay') this._updateLocalSliderUI(index);
+      if (this.viewMode !== VIEW_MODES.OVERLAY)
+        this._updateLocalSliderUI(index);
 
       this.hoverValue = (chart.scales.x.min + chart.scales.x.max) / 2;
       this.activeChartIndex = index;

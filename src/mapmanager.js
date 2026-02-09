@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { AppState, SIGNAL_MAPPINGS } from './config.js';
+import { AppState, SIGNAL_MAPPINGS, EVENTS } from './config.js';
 import { messenger } from './bus.js';
 import { Preferences } from './preferences.js';
 
@@ -54,7 +54,7 @@ class MapManager {
   init() {
     this.#isReady = true;
 
-    messenger.on('file:removed', (data) => this.#handleFileRemoved(data));
+    messenger.on(EVENTS.FILE_REMOVED, (data) => this.#handleFileRemoved(data));
 
     messenger.on('preferences:updated', (prefs) => {
       if (prefs.loadMap) {
@@ -84,7 +84,6 @@ class MapManager {
 
   #removeMapContext(fileIndex) {
     if (this.#contexts.has(fileIndex)) {
-      const ctx = this.#contexts.get(fileIndex);
       this.#contexts.delete(fileIndex);
 
       const container = document.getElementById(`embedded-map-${fileIndex}`);
@@ -95,6 +94,81 @@ class MapManager {
     }
   }
 
+  // --- REFACTORED: Unified Data Processing ---
+  #processGpsData(file) {
+    const { latKey, lonKey } = this.#detectGpsSignals(file);
+    if (!latKey || !lonKey) return null;
+
+    const latData = file.signals[latKey];
+    const lonData = file.signals[lonKey];
+
+    const latInterpolator = new LinearInterpolator(latData);
+    const lonInterpolator = new LinearInterpolator(lonData);
+
+    const routePoints = [];
+    const step = Math.max(1, Math.ceil(latData.length / 2000));
+
+    for (let i = 0; i < latData.length; i += step) {
+      const p = latData[i];
+      const lat = parseFloat(p.y);
+      const lon = parseFloat(lonInterpolator.getValueAt(p.x));
+
+      if (this.#isValidGps(lat, lon)) {
+        routePoints.push([lat, lon]);
+      }
+    }
+
+    if (routePoints.length === 0) return null;
+
+    return {
+      routePoints,
+      latInterpolator,
+      lonInterpolator,
+      latData, // Return raw data for stats/bounds calculation
+    };
+  }
+
+  // --- REFACTORED: Unified Visual Creation ---
+  #addRouteVisuals(mapInstance, routePoints, fileIndex, options = {}) {
+    const { isOverlay = false } = options;
+
+    const routeLayer = L.polyline(routePoints, {
+      color: this.#getRouteColor(fileIndex),
+      weight: isOverlay ? 3 : 4,
+      opacity: 0.8,
+    }).addTo(mapInstance);
+
+    const arrowIcon = L.divIcon({
+      className: 'gps-marker-icon',
+      html: `
+        <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
+            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
+        </svg>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
+    // Handle AutoPan logic based on mode
+    const positionMarker = L.marker(routePoints[0], {
+      icon: arrowIcon,
+      draggable: true,
+      autoPan: !isOverlay, // Enable autoPan only in single view
+    }).addTo(mapInstance);
+
+    // Common Event Listeners
+    positionMarker.on('drag', (e) => {
+      this.#handleMapInteraction(fileIndex, e.target.getLatLng());
+    });
+
+    if (!isOverlay) {
+      routeLayer.on('click', (e) => {
+        this.#handleMapInteraction(fileIndex, e.latlng);
+      });
+    }
+
+    return { routeLayer, positionMarker };
+  }
+
   loadOverlayMap() {
     if (!Preferences.prefs.loadMap) return;
     if (!this.#isReady) this.init();
@@ -103,12 +177,12 @@ class MapManager {
     const mapContainer = document.getElementById(containerId);
     if (!mapContainer) return;
 
+    // Initialize Shared Map
     const mapInstance = L.map(containerId, { zoomControl: false });
     L.control.zoom({ position: 'topright' }).addTo(mapInstance);
 
     const isDark = Preferences.prefs.darkTheme;
     const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
-
     const tileLayer = L.tileLayer(tileUrl, {
       attribution: '© OpenStreetMap contributors',
     }).addTo(mapInstance);
@@ -117,69 +191,33 @@ class MapManager {
     let hasValidRoute = false;
 
     AppState.files.forEach((file, fileIndex) => {
-      const { latKey, lonKey } = this.#detectGpsSignals(file);
-      if (!latKey || !lonKey) return;
+      const processed = this.#processGpsData(file);
+      if (!processed) return;
 
-      const latData = file.signals[latKey];
-      const lonData = file.signals[lonKey];
+      const { routePoints, latInterpolator, lonInterpolator } = processed;
+      hasValidRoute = true;
 
-      const latInterpolator = new LinearInterpolator(latData);
-      const lonInterpolator = new LinearInterpolator(lonData);
-
-      const routePoints = [];
-      const step = Math.max(1, Math.ceil(latData.length / 2000));
-
-      for (let i = 0; i < latData.length; i += step) {
-        const p = latData[i];
-        const lat = parseFloat(p.y);
-        const lon = parseFloat(lonInterpolator.getValueAt(p.x));
-
-        if (this.#isValidGps(lat, lon)) {
-          routePoints.push([lat, lon]);
+      // Use Helper to add visuals
+      const visuals = this.#addRouteVisuals(
+        mapInstance,
+        routePoints,
+        fileIndex,
+        {
+          isOverlay: true,
         }
-      }
+      );
 
-      if (routePoints.length > 0) {
-        hasValidRoute = true;
+      allBounds.extend(visuals.routeLayer.getBounds());
 
-        const routeLayer = L.polyline(routePoints, {
-          color: this.#getRouteColor(fileIndex),
-          weight: 3,
-          opacity: 0.8,
-        }).addTo(mapInstance);
-
-        allBounds.extend(routeLayer.getBounds());
-
-        const arrowIcon = L.divIcon({
-          className: 'gps-marker-icon',
-          html: `
-                    <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
-                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
-                    </svg>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-
-        const positionMarker = L.marker(routePoints[0], {
-          icon: arrowIcon,
-          draggable: true,
-          autoPan: false,
-        }).addTo(mapInstance);
-
-        positionMarker.on('drag', (e) => {
-          this.#handleMapInteraction(fileIndex, e.target.getLatLng());
-        });
-
-        this.#contexts.set(fileIndex, {
-          map: mapInstance,
-          tileLayer,
-          routeLayer,
-          positionMarker,
-          latInterpolator,
-          lonInterpolator,
-          infoControl: null,
-        });
-      }
+      this.#contexts.set(fileIndex, {
+        map: mapInstance,
+        tileLayer,
+        routeLayer: visuals.routeLayer,
+        positionMarker: visuals.positionMarker,
+        latInterpolator,
+        lonInterpolator,
+        infoControl: null,
+      });
     });
 
     if (hasValidRoute) {
@@ -194,16 +232,19 @@ class MapManager {
     const file = AppState.files[fileIndex];
     if (!file) return;
 
-    const { latKey, lonKey } = this.#detectGpsSignals(file);
-    if (!latKey || !lonKey) return;
+    const processed = this.#processGpsData(file);
+    if (!processed) return;
+
+    const { routePoints, latInterpolator, lonInterpolator, latData } =
+      processed;
 
     const mapDivId = `embedded-map-${fileIndex}`;
     const mapContainer = document.getElementById(mapDivId);
-
     if (!mapContainer) return;
 
     mapContainer.classList.add('active');
 
+    // Create Map Instance if needed
     if (!this.#contexts.has(fileIndex)) {
       const mapInstance = L.map(mapDivId, { zoomControl: false }).setView(
         [0, 0],
@@ -213,7 +254,6 @@ class MapManager {
 
       const isDark = Preferences.prefs.darkTheme;
       const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
-
       const tileLayer = L.tileLayer(tileUrl, {
         attribution: '© OpenStreetMap contributors',
       }).addTo(mapInstance);
@@ -230,60 +270,22 @@ class MapManager {
     }
 
     const ctx = this.#contexts.get(fileIndex);
+    ctx.latInterpolator = latInterpolator;
+    ctx.lonInterpolator = lonInterpolator;
 
-    const latData = file.signals[latKey];
-    const lonData = file.signals[lonKey];
-
-    ctx.latInterpolator = new LinearInterpolator(latData);
-    ctx.lonInterpolator = new LinearInterpolator(lonData);
-
-    const routePoints = [];
-    const step = Math.max(1, Math.ceil(latData.length / 2000));
-
-    for (let i = 0; i < latData.length; i += step) {
-      const p = latData[i];
-      const lat = parseFloat(p.y);
-      const lon = parseFloat(ctx.lonInterpolator.getValueAt(p.x));
-
-      if (this.#isValidGps(lat, lon)) {
-        routePoints.push([lat, lon]);
-      }
-    }
-
-    if (routePoints.length === 0) return;
-
+    // Clean old layers
     if (ctx.routeLayer) ctx.map.removeLayer(ctx.routeLayer);
     if (ctx.positionMarker) ctx.map.removeLayer(ctx.positionMarker);
 
-    ctx.routeLayer = L.polyline(routePoints, {
-      color: this.#getRouteColor(fileIndex),
-      weight: 4,
-      opacity: 0.8,
-    }).addTo(ctx.map);
-
-    const arrowIcon = L.divIcon({
-      className: 'gps-marker-icon',
-      html: `
-        <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
-            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
-        </svg>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+    // Use Helper to add visuals
+    const visuals = this.#addRouteVisuals(ctx.map, routePoints, fileIndex, {
+      isOverlay: false,
     });
 
-    ctx.positionMarker = L.marker(routePoints[0], {
-      icon: arrowIcon,
-      draggable: true,
-    }).addTo(ctx.map);
+    ctx.routeLayer = visuals.routeLayer;
+    ctx.positionMarker = visuals.positionMarker;
 
-    ctx.positionMarker.on('drag', (e) => {
-      this.#handleMapInteraction(fileIndex, e.target.getLatLng());
-    });
-
-    ctx.routeLayer.on('click', (e) => {
-      this.#handleMapInteraction(fileIndex, e.latlng);
-    });
-
+    // Stats and Bounds (Specific to Single View)
     const stats = this.#calculateStats(latData, ctx.lonInterpolator);
     this.#updateInfoControl(ctx, stats);
 
@@ -380,7 +382,6 @@ class MapManager {
     const bounds = L.latLngBounds([]);
     let hasPoints = false;
 
-    // Helper to process a specific file and add its points to the bounds
     const processFile = (idx, tStart, tEnd) => {
       const file = AppState.files[idx];
       const ctx = this.#contexts.get(idx);
@@ -392,15 +393,12 @@ class MapManager {
 
       const latData = file.signals[latKey];
 
-      // Optimization: If the range is huge (showing > 90% of file),
-      // just use the route layer bounds instead of iterating points
       if (ctx.routeLayer && tEnd - tStart > file.duration * 1000 * 0.9) {
         bounds.extend(ctx.routeLayer.getBounds());
         hasPoints = true;
         return;
       }
 
-      // Step 5 for performance optimization
       for (let i = 0; i < latData.length; i += 5) {
         const p = latData[i];
         if (p.x >= tStart && p.x <= tEnd) {
@@ -415,7 +413,6 @@ class MapManager {
     };
 
     if (fileIndex !== null && fileIndex !== undefined) {
-      // --- SINGLE VIEW MODE ---
       processFile(fileIndex, start, end);
       const ctx = this.#contexts.get(fileIndex);
       if (hasPoints && ctx && ctx.map) {
@@ -426,17 +423,13 @@ class MapManager {
         });
       }
     } else {
-      // --- OVERLAY MODE ---
       const baseStart = AppState.files[0].startTime;
-
       AppState.files.forEach((file, idx) => {
-        // Calculate absolute time for this file based on the relative chart time
         const fileStartAbs = start - baseStart + file.startTime;
         const fileEndAbs = end - baseStart + file.startTime;
         processFile(idx, fileStartAbs, fileEndAbs);
       });
 
-      // Overlay uses a shared map, usually accessible via the first valid context
       const ctx = this.#contexts.get(0);
       if (hasPoints && ctx && ctx.map) {
         ctx.map.fitBounds(bounds, {
@@ -461,12 +454,12 @@ class MapManager {
     this.#contexts.clear();
   }
 
-  // --- PRIVATE HELPER METHODS ---
+  // --- PRIVATE HELPERS ---
 
   #handleMapInteraction(fileIndex, latlng) {
     const time = this.#findNearestTime(fileIndex, latlng);
     if (time !== null) {
-      messenger.emit('map:position-selected', { time, fileIndex });
+      messenger.emit(EVENTS.MAP_SELECTED, { time, fileIndex });
     }
   }
 
