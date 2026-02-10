@@ -1,40 +1,91 @@
-{
-  "Engine Speed": ["RPM", "Engine Speed", "Engine RPM", "Engine Rpm"],
-  "Intake Manifold Pressure Measured": [
-    "Manifold Abs",
-    "MAP",
-    "Intake Press",
-    "Boost Pressure",
-    "Manifold Pressure",
-    "Boost"
-  ],
-  "MAF": ["Air Mass", "MAF", "Flow"],
-  "Latitude": ["GPS-Lat", "lat", "Lat", "lateral", "GPS Latitude", "Latitude"],
-  "Longitude": ["GPS-Lon", "lng", "Lng", "lon", "GPS Longitude", "Longitude"],
-  "Torque": ["Torque", "Engine Torque", "Nm"],
-  "Vehicle Speed": ["Vehicle Speed", "Speed", "Velocity"],
-  "Gas Pedal Position": [
-    "Accelerator Pedal Position",
-    "Pedal Pos",
-    "Gas Pedal Position",
-    "Throttle Pos",
-    "TPS"
-  ],
-  "Spark Advance": ["Ignition Timing", "Timing Adv", "Spark Angle"],
-  "Lambda Sensor 1": ["O2 Sensor", "Equivalence Ratio", "AFR", "Lambda"],
-  "Short Fuel Trim": ["SFT", "STFT", "Short Term"],
-  "Atmospheric Pressure": [
-    "Atmospheric",
-    "Baro",
-    "Barometric",
-    "Ambient Pressure"
-  ],
-  "AFR Commanded": ["Commanded", "Target AFR", "Lambda Request", "AFR Target"],
-  "AFR Measured": [
-    "Measured",
-    "Current",
-    "AFR Measured",
-    "Lambda Actual",
-    "AFR"
-  ]
-}
+[
+  {
+    "name": "Engine Speed",
+    "default": true,
+    "aliases": ["RPM", "Engine Speed", "Engine RPM", "Engine Rpm"]
+  },
+  {
+    "name": "Intake Manifold Pressure Measured",
+    "default": false,
+    "aliases": [
+      "Manifold Abs",
+      "MAP",
+      "Intake Press",
+      "Boost Pressure",
+      "Manifold Pressure",
+      "Boost"
+    ]
+  },
+  {
+    "name": "Gas Pedal Position",
+    "default": true,
+    "aliases": [
+      "Accelerator Pedal Position",
+      "Pedal Pos",
+      "Gas Pedal Position",
+      "Throttle Pos",
+      "TPS"
+    ]
+  },
+  {
+    "name": "AFR",
+    "default": false,
+    "aliases": [
+      "Air Fuel Ratio",
+      "Current",
+      "AFR Measured",
+      "Lambda Actual",
+      "AFR"
+    ]
+  },
+  {
+    "name": "Spark Advance",
+    "default": true,
+    "aliases": ["Spark Advance", "Ignition Timing", "Timing Adv", "Spark Angle"]
+  },
+  {
+    "name": "MAF",
+    "default": false,
+    "aliases": ["Air Mass", "MAF", "Flow"]
+  },
+  {
+    "name": "Latitude",
+    "default": false,
+    "aliases": ["GPS-Lat", "lat", "Lat", "lateral", "GPS Latitude", "Latitude"]
+  },
+  {
+    "name": "Longitude",
+    "default": false,
+    "aliases": ["GPS-Lon", "lng", "Lng", "lon", "GPS Longitude", "Longitude"]
+  },
+  {
+    "name": "Torque",
+    "default": false,
+    "aliases": ["Torque", "Engine Torque", "Nm"]
+  },
+  {
+    "name": "Vehicle Speed",
+    "default": false,
+    "aliases": ["Vehicle Speed", "Speed", "Velocity"]
+  },
+  {
+    "name": "Lambda Sensor 1",
+    "default": false,
+    "aliases": ["O2 Sensor", "Equivalence Ratio", "AFR", "Lambda"]
+  },
+  {
+    "name": "Short Fuel Trim",
+    "default": false,
+    "aliases": ["SFT", "STFT", "Short Term"]
+  },
+  {
+    "name": "Atmospheric Pressure",
+    "default": false,
+    "aliases": ["Atmospheric", "Baro", "Barometric", "Ambient Pressure"]
+  },
+  {
+    "name": "AFR Commanded",
+    "default": false,
+    "aliases": ["Commanded", "Target AFR", "Lambda Request", "AFR Target"]
+  }
+]

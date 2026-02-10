@@ -130,7 +130,6 @@ const mockViewModes = {
 await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [], chartInstances: [], activeHighlight: null },
   DOM: { get: jest.fn() },
-  DEFAULT_SIGNALS: [],
   EVENTS: mockEvents,
   VIEW_MODES: mockViewModes,
 }));

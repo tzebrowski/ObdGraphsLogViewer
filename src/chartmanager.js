@@ -1,10 +1,4 @@
-import {
-  AppState,
-  DOM,
-  DEFAULT_SIGNALS,
-  VIEW_MODES,
-  EVENTS,
-} from './config.js';
+import { AppState, DOM, VIEW_MODES, EVENTS } from './config.js';
 import { PaletteManager } from './palettemanager.js';
 import { UI } from './ui.js';
 import { Preferences } from './preferences.js';
@@ -28,6 +22,7 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 import { mapManager } from './mapmanager.js';
+import { signalRegistry } from './signalregistry.js';
 
 export const ChartManager = {
   hoverValue: null,
@@ -786,11 +781,12 @@ export const ChartManager = {
     const checkbox = document.querySelector(
       `#signalList input[data-key="${key}"][data-file-idx="${fileIdx}"]`
     );
+
     let isVisible = false;
     if (checkbox) {
       isVisible = checkbox.checked;
     } else {
-      isVisible = DEFAULT_SIGNALS.some((k) => key.includes(k));
+      isVisible = signalRegistry.isDefaultSignal(key);
     }
 
     return {
