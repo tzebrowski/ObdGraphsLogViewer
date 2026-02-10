@@ -5,9 +5,15 @@
     "aliases": ["RPM", "Engine Speed", "Engine RPM", "Engine Rpm"]
   },
   {
-    "name": "Intake Manifold Pressure Measured",
-    "default": false,
+    "name": "Boost",
+    "default": true,
+    "aliases": ["Boost Pressure", "Boost"]
+  },
+  {
+    "name": "Intake Manifold Pressure",
+    "default": true,
     "aliases": [
+      "Intake Manifold Pressure",
       "Manifold Abs",
       "MAP",
       "Intake Press",
@@ -60,7 +66,7 @@
   },
   {
     "name": "Torque",
-    "default": false,
+    "default": true,
     "aliases": ["Torque", "Engine Torque", "Nm"]
   },
   {
