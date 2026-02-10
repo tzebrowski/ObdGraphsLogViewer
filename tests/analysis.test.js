@@ -1,5 +1,4 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { Analysis } from '../src/analysis.js';
 import { AppState, DOM, Config } from '../src/config.js';
 import { UI } from '../src/ui.js';
 import { ChartManager } from '../src/chartmanager.js';
@@ -11,6 +10,8 @@ const mockSignalRegistry = {
 await jest.unstable_mockModule('../src/signalregistry.js', () => ({
   signalRegistry: mockSignalRegistry,
 }));
+
+const { Analysis } = await import('../src/analysis.js');
 
 ChartManager.zoomTo = jest.fn();
 
@@ -99,10 +100,12 @@ describe('Analysis Module - Deep Coverage', () => {
 
   test('applyTemplate() maps signals using aliases if exact match fails', () => {
     // 1. Setup Data: We need a file that actually has "RPM" so it appears in the dropdown
-    AppState.files = [{
-      name: 'log.json',
-      availableSignals: ['RPM', 'Speed']
-    }];
+    AppState.files = [
+      {
+        name: 'log.json',
+        availableSignals: ['RPM', 'Speed'],
+      },
+    ];
 
     // 2. Setup Template
     Config.ANOMALY_TEMPLATES = {
@@ -203,7 +206,7 @@ test('Analysis guard clauses and alias fallbacks', () => {
       rules: [{ sig: 'NonExistent', op: '>', val: '0' }],
     },
   };
-  
+
   document.body.innerHTML =
     '<select id="anomalyTemplate"><option value="empty"></option></select><div id="filtersContainer"></div>';
   Analysis.applyTemplate();
