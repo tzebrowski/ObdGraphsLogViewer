@@ -102,15 +102,10 @@ await jest.unstable_mockModule('../src/config.js', () => ({
   DOM: { get: jest.fn() },
   Config: { ANOMALY_TEMPLATES: [] },
   DEFAULT_SIGNALS: [],
-  // FIX: Provide the actual EVENTS object expected by the refactored code
   EVENTS: {
     MAP_SELECTED: 'map:position-selected',
     FILE_REMOVED: 'file:removed',
     BATCH_LOADED: 'dataprocessor:batch-load-completed',
-  },
-  SIGNAL_MAPPINGS: {
-    Latitude: ['GPS Latitude', 'GpsLat'],
-    Longitude: ['GPS Longitude', 'GpsLon'],
   },
 }));
 

@@ -36,6 +36,10 @@ const mockMapManager = {
   updateTheme: jest.fn(),
 };
 
+const mockSignalRegistry = {
+  findSignal: jest.fn(),
+};
+
 await jest.unstable_mockModule('../src/bus.js', () => ({
   messenger: mockMessenger,
 }));
@@ -59,6 +63,10 @@ await jest.unstable_mockModule('../src/mapmanager.js', () => ({
   mapManager: mockMapManager,
 }));
 
+await jest.unstable_mockModule('../src/signalregistry.js', () => ({
+  signalRegistry: mockSignalRegistry,
+}));
+
 const mockAppState = {
   files: [],
   chartInstances: [],
@@ -69,10 +77,6 @@ await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: mockAppState,
   DOM: { get: (id) => document.getElementById(id) },
   DEFAULT_SIGNALS: ['RPM'],
-  SIGNAL_MAPPINGS: {
-    'Engine Speed': ['RPM'],
-    'Intake Manifold Pressure Measured': ['Boost'],
-  },
 }));
 
 const { UI, InfoPage } = await import('../src/ui.js');
@@ -618,6 +622,13 @@ describe('UI Module Consolidated', () => {
       AppState.files = [
         { name: 'log.json', availableSignals: ['RPM', 'Boost'] },
       ];
+
+      mockSignalRegistry.findSignal.mockImplementation((key) => {
+        if (key === 'Engine Speed') return 'RPM';
+        if (key === 'Intake Manifold Pressure Measured') return 'Boost';
+        return null;
+      });
+
       UI.populateXYSelectors();
 
       expect(document.getElementById('xyXAxis').value).toBe('RPM');

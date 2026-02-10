@@ -1,4 +1,4 @@
-import { AppState, DOM, DEFAULT_SIGNALS, SIGNAL_MAPPINGS } from './config.js';
+import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
 import { dataProcessor } from './dataprocessor.js';
 import { Preferences } from './preferences.js';
 import { Alert } from './alert.js';
@@ -7,6 +7,7 @@ import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 import { mapManager } from './mapmanager.js';
+import { signalRegistry } from './signalregistry.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -118,23 +119,20 @@ export const UI = {
         .sort()
         .map((s) => `<option value="${s}">${s}</option>`)
         .join('');
+
       xSel.innerHTML = options;
       ySel.innerHTML = options;
 
-      // --- Helper to find matching signal from config ---
-      const findSignal = (mappingKey) => {
-        const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
-        // Find exact match in available signals
-        return file.availableSignals.find((s) =>
-          aliases.some((alias) => s.toLowerCase() === alias.toLowerCase())
-        );
-      };
-
-      // Set Defaults based on Config
-      const rpm = findSignal('Engine Speed');
+      const rpm = signalRegistry.findSignal(
+        'Engine Speed',
+        file.availableSignals
+      );
       if (rpm) xSel.value = rpm;
 
-      const boost = findSignal('Intake Manifold Pressure Measured');
+      const boost = signalRegistry.findSignal(
+        'Intake Manifold Pressure Measured',
+        file.availableSignals
+      );
       if (boost) ySel.value = boost;
     };
 

@@ -1,7 +1,8 @@
 import L from 'leaflet';
-import { AppState, SIGNAL_MAPPINGS, EVENTS } from './config.js';
+import { AppState, EVENTS } from './config.js';
 import { messenger } from './bus.js';
 import { Preferences } from './preferences.js';
+import { signalRegistry } from './signalregistry.js';
 
 const TILES_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILES_DARK =
@@ -489,27 +490,17 @@ class MapManager {
 
   #detectGpsSignals(file) {
     const signals = file.availableSignals || [];
-    const findMappedSignal = (mappingKey) => {
-      const aliases = SIGNAL_MAPPINGS[mappingKey] || [];
-      for (const alias of aliases) {
-        if (signals.some((s) => s.toLowerCase() === alias.toLowerCase()))
-          return alias;
-      }
-      for (const alias of aliases) {
-        const match = signals.find((s) =>
-          s.toLowerCase().includes(alias.toLowerCase())
-        );
-        if (match) return match;
-      }
-      return null;
-    };
 
-    let latKey = findMappedSignal('Latitude');
-    let lonKey = findMappedSignal('Longitude');
+    let latKey = signalRegistry.findSignal('Latitude', signals);
+    let lonKey = signalRegistry.findSignal('Longitude', signals);
 
-    if (!latKey)
+    if (!latKey) {
       latKey = signals.find((s) => /lat/i.test(s) && !/lateral/i.test(s));
-    if (!lonKey) lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
+    }
+
+    if (!lonKey) {
+      lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
+    }
 
     return { latKey, lonKey };
   }

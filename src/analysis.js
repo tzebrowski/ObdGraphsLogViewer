@@ -1,7 +1,8 @@
-import { Config, AppState, DOM, SIGNAL_MAPPINGS } from './config.js';
+import { Config, AppState, DOM } from './config.js';
 import { UI } from './ui.js';
 import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
+import { signalRegistry } from './signalregistry.js';
 
 /**
  * Analysis Module
@@ -97,7 +98,7 @@ export const Analysis = {
     ];
 
     template.rules.forEach((rule) => {
-      const bestSig = this._findBestSignalMatch(rule.sig, allSignals);
+      const bestSig = signalRegistry.findSignal(rule.sig, allSignals) || '';
       this.addFilterRow(bestSig, rule.op, rule.val);
     });
 
@@ -200,18 +201,6 @@ export const Analysis = {
       }
     });
     return results;
-  },
-
-  _findBestSignalMatch(targetSig, allSignals) {
-    if (allSignals.includes(targetSig)) return targetSig;
-    const aliases = (SIGNAL_MAPPINGS[targetSig] || []).map((a) =>
-      a.toLowerCase()
-    );
-    return (
-      allSignals.find((s) =>
-        aliases.some((alias) => s.toLowerCase().includes(alias))
-      ) || ''
-    );
   },
 
   _generateFilterRowHTML(sigName, operator, value, fileIdx) {

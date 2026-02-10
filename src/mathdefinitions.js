@@ -1,4 +1,6 @@
-import { SIGNAL_MAPPINGS } from './config.js';
+import { signalRegistry } from './signalregistry.js';
+
+const MAPPINGS = signalRegistry.mappings;
 
 export const MATH_DEFINITIONS = [
   {
@@ -264,7 +266,7 @@ export const MATH_DEFINITIONS = [
       'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS.MAF,
+        name: MAPPINGS.MAF,
         label: 'Air Mass Flow (kg/h)',
       },
       {
@@ -284,7 +286,7 @@ export const MATH_DEFINITIONS = [
       'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS.MAF,
+        name: MAPPINGS.MAF,
         label: 'Air Mass Flow (g/s)',
       },
       {
@@ -304,11 +306,11 @@ export const MATH_DEFINITIONS = [
       'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS.Torque,
+        name: MAPPINGS.Torque,
         label: 'Torque (Nm or daNm)',
       },
       {
-        name: SIGNAL_MAPPINGS['Engine Speed'],
+        name: MAPPINGS['Engine Speed'],
         label: 'Engine RPM',
       },
       {
@@ -328,7 +330,7 @@ export const MATH_DEFINITIONS = [
       'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS['Vehicle Speed'],
+        name: MAPPINGS['Vehicle Speed'],
         label: 'Speed (km/h)',
       },
     ],
@@ -402,11 +404,11 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS['Intake Manifold Pressure Measured'],
+        name: MAPPINGS['Intake Manifold Pressure Measured'],
         label: 'Intake Manifold Pressure',
       },
       {
-        name: SIGNAL_MAPPINGS['Atmospheric Pressure'],
+        name: MAPPINGS['Atmospheric Pressure'],
         label: 'Atmospheric Pressure',
       },
     ],
@@ -419,11 +421,11 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS['AFR Commanded'],
+        name: MAPPINGS['AFR Commanded'],
         label: 'AFR Commanded',
       },
       {
-        name: SIGNAL_MAPPINGS['AFR Measured'],
+        name: MAPPINGS['AFR Measured'],
         label: 'AFR Measured',
       },
     ],
@@ -436,11 +438,11 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
     inputs: [
       {
-        name: SIGNAL_MAPPINGS['Intake Manifold Pressure Measured'],
+        name: MAPPINGS['Intake Manifold Pressure Measured'],
         label: 'Intake Manifold Pressure',
       },
       {
-        name: SIGNAL_MAPPINGS['Atmospheric Pressure'],
+        name: MAPPINGS['Atmospheric Pressure'],
         label: 'Atmospheric Pressure',
       },
     ],
