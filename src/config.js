@@ -9,31 +9,15 @@ export const DEFAULT_SIGNALS = [
   'Torque',
 ];
 
-export const SIGNAL_MAPPINGS = {
-  'Engine Speed': ['RPM', 'Engine Speed', 'Engine RPM'],
-  'Intake Manifold Pressure Measured': [
-    'Manifold Abs',
-    'MAP',
-    'Intake Press',
-    'Boost Pressure',
-  ],
+export const VIEW_MODES = {
+  STACK: 'stack',
+  OVERLAY: 'overlay',
+};
 
-  MAF: ['Air Mass', 'MAF', 'Flow'],
-  Latitude: ['GPS-Lat', 'lat', 'Lat', 'lateral', 'GPS Latitude', 'Latitude'],
-  Longitude: ['GPS-Lon', 'lng', 'Lng', 'lon', 'GPS Longitude', 'Longitude'],
-
-  Torque: ['Torque', 'Engine Torque', 'Nm'],
-  'Vehicle Speed': ['Vehicle Speed', 'Speed', 'Velocity'],
-  'Gas Pedal Position': [
-    'Accelerator Pedal Position',
-    'Pedal Pos',
-    'Gas Pedal Position',
-    'Throttle Pos',
-    'TPS',
-  ],
-  'Spark Advance': ['Ignition Timing', 'Timing Adv', 'Spark Angle'],
-  'Lambda Sensor 1': ['O2 Sensor', 'Equivalence Ratio', 'AFR', 'Lambda'],
-  'Short Fuel Trim': ['SFT', 'STFT', 'Short Term'],
+export const EVENTS = {
+  MAP_SELECTED: 'map:position-selected',
+  FILE_REMOVED: 'file:removed',
+  BATCH_LOADED: 'dataprocessor:batch-load-completed',
 };
 
 export const Config = {

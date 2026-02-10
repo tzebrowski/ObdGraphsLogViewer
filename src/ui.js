@@ -7,6 +7,7 @@ import { ChartManager } from './chartmanager.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 import { mapManager } from './mapmanager.js';
+import { signalRegistry } from './signalregistry.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -118,15 +119,21 @@ export const UI = {
         .sort()
         .map((s) => `<option value="${s}">${s}</option>`)
         .join('');
+
       xSel.innerHTML = options;
       ySel.innerHTML = options;
 
-      if (file.availableSignals.includes('Engine Rpm'))
-        xSel.value = 'Engine Rpm';
-      else if (file.availableSignals.includes('Rpm')) xSel.value = 'Rpm';
+      const rpm = signalRegistry.findSignal(
+        'Engine Speed',
+        file.availableSignals
+      );
+      if (rpm) xSel.value = rpm;
 
-      if (file.availableSignals.includes('Boost Pressure'))
-        ySel.value = 'Boost Pressure';
+      const boost = signalRegistry.findSignal(
+        'Intake Manifold Pressure Measured',
+        file.availableSignals
+      );
+      if (boost) ySel.value = boost;
     };
 
     fileSel.onchange = updateSignals;

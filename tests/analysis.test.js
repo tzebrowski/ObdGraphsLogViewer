@@ -1,8 +1,17 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import { Analysis } from '../src/analysis.js';
-import { AppState, DOM, Config, SIGNAL_MAPPINGS } from '../src/config.js';
+import { AppState, DOM, Config } from '../src/config.js';
 import { UI } from '../src/ui.js';
 import { ChartManager } from '../src/chartmanager.js';
+
+const mockSignalRegistry = {
+  findSignal: jest.fn(),
+};
+
+await jest.unstable_mockModule('../src/signalregistry.js', () => ({
+  signalRegistry: mockSignalRegistry,
+}));
+
+const { Analysis } = await import('../src/analysis.js');
 
 ChartManager.zoomTo = jest.fn();
 
@@ -90,24 +99,45 @@ describe('Analysis Module - Deep Coverage', () => {
   });
 
   test('applyTemplate() maps signals using aliases if exact match fails', () => {
-    // Setup a template that looks for "EngineSpeed" (not in our file)
+    // 1. Setup Data: We need a file that actually has "RPM" so it appears in the dropdown
+    AppState.files = [
+      {
+        name: 'log.json',
+        availableSignals: ['RPM', 'Speed'],
+      },
+    ];
+
+    // 2. Setup Template
     Config.ANOMALY_TEMPLATES = {
       test: {
         name: 'Test',
         rules: [{ sig: 'EngineSpeed', op: '>', val: '4000' }],
       },
     };
-    // Map "EngineSpeed" to "RPM" via aliases
-    SIGNAL_MAPPINGS['EngineSpeed'] = ['rpm'];
 
-    const sel = document.getElementById('anomalyTemplate');
-    sel.innerHTML = '<option value="test" selected>Test</option>';
-    sel.value = 'test';
+    // 3. Mock Registry
+    // When logic asks for "EngineSpeed", registry says "RPM" matches
+    mockSignalRegistry.findSignal.mockImplementation((key) => {
+      if (key === 'EngineSpeed') return 'RPM';
+      return null;
+    });
 
+    // 4. Setup DOM: Must include filtersContainer!
+    document.body.innerHTML = `
+      <select id="anomalyTemplate">
+        <option value="test" selected>Test</option>
+      </select>
+      <div id="filtersContainer"></div>
+      <div id="scanResults"></div>
+      <div id="scanCount"></div>
+    `;
+
+    // 5. Run
     Analysis.applyTemplate();
 
+    // 6. Assert
     const sigSelect = document.querySelector('.sig-select');
-    // It should have found "RPM" because it contains the alias "rpm"
+    expect(sigSelect).not.toBeNull(); // Ensure row was actually added
     expect(sigSelect.value).toBe('RPM');
   });
 
@@ -176,7 +206,6 @@ test('Analysis guard clauses and alias fallbacks', () => {
       rules: [{ sig: 'NonExistent', op: '>', val: '0' }],
     },
   };
-  SIGNAL_MAPPINGS['NonExistent'] = []; // No aliases
 
   document.body.innerHTML =
     '<select id="anomalyTemplate"><option value="empty"></option></select><div id="filtersContainer"></div>';

@@ -9,28 +9,20 @@ import {
 
 import { messenger } from '../src/bus.js';
 
-// --- 1. GLOBAL MOCKS SETUP ---
-
-// Spies for Context Properties
 const ctxFillStyleSpy = jest.fn();
 const ctxStrokeStyleSpy = jest.fn();
 const ctxLineWidthSpy = jest.fn();
 const ctxSetLineDashSpy = jest.fn();
 
 const mockChartInstance = {
-  // Core methods
   destroy: jest.fn(),
   update: jest.fn(),
   draw: jest.fn(),
   resetZoom: jest.fn(),
   pan: jest.fn(),
   zoom: jest.fn(),
-
-  // Properties required by logic
   width: 1000,
   chartArea: { top: 10, bottom: 90, left: 10, right: 190 },
-
-  // Scales
   scales: {
     x: {
       min: 0,
@@ -40,8 +32,6 @@ const mockChartInstance = {
     },
     y: { min: 0, max: 100 },
   },
-
-  // Data & Options
   data: { datasets: [] },
   options: {
     interaction: { mode: 'nearest' },
@@ -53,8 +43,6 @@ const mockChartInstance = {
     },
     scales: { x: { min: 0, max: 0 } },
   },
-
-  // Canvas Context Mock with Property Spies
   ctx: {
     save: jest.fn(),
     restore: jest.fn(),
@@ -69,22 +57,18 @@ const mockChartInstance = {
     font: '',
     textAlign: '',
     textBaseline: '',
-
-    // Property Setters/Getters
     set fillStyle(val) {
       ctxFillStyleSpy(val);
     },
     get fillStyle() {
       return 'mock_fill';
     },
-
     set strokeStyle(val) {
       ctxStrokeStyleSpy(val);
     },
     get strokeStyle() {
       return 'mock_stroke';
     },
-
     set lineWidth(val) {
       ctxLineWidthSpy(val);
     },
@@ -92,8 +76,6 @@ const mockChartInstance = {
       return 1;
     },
   },
-
-  // Tooltip & Element Management
   tooltip: {
     getActiveElements: jest.fn(() => []),
     setActiveElements: jest.fn(),
@@ -104,7 +86,6 @@ const mockChartInstance = {
   getElementsAtEventForMode: jest.fn(() => []),
 };
 
-// Mock Chart.js Library
 await jest.unstable_mockModule('chart.js', () => {
   const MockChart = jest.fn((ctx, config) => {
     if (config && config.options) mockChartInstance.options = config.options;
@@ -128,7 +109,6 @@ await jest.unstable_mockModule('chart.js', () => {
   };
 });
 
-// Dependencies
 await jest.unstable_mockModule('hammerjs', () => ({ default: jest.fn() }));
 await jest.unstable_mockModule('chartjs-plugin-datalabels', () => ({
   default: {},
@@ -136,11 +116,23 @@ await jest.unstable_mockModule('chartjs-plugin-datalabels', () => ({
 await jest.unstable_mockModule('chartjs-adapter-date-fns', () => ({}));
 await jest.unstable_mockModule('chartjs-plugin-zoom', () => ({ default: {} }));
 
+const mockEvents = {
+  BATCH_LOADED: 'dataprocessor:batch-load-completed',
+  MAP_SELECTED: 'map:position-selected',
+  FILE_REMOVED: 'file:removed',
+};
+
+const mockViewModes = {
+  STACK: 'stack',
+  OVERLAY: 'overlay',
+};
+
 await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [], chartInstances: [], activeHighlight: null },
   DOM: { get: jest.fn() },
   DEFAULT_SIGNALS: [],
-  SIGNAL_MAPPINGS: [],
+  EVENTS: mockEvents,
+  VIEW_MODES: mockViewModes,
 }));
 
 await jest.unstable_mockModule('../src/ui.js', () => ({
@@ -159,7 +151,25 @@ await jest.unstable_mockModule('../src/preferences.js', () => ({
   Preferences: { prefs: { showAreaFills: true } },
 }));
 
-// --- 2. IMPORTS ---
+const mockMapManager = {
+  syncPosition: jest.fn(),
+  syncOverlayPosition: jest.fn(),
+  syncMapBounds: jest.fn(),
+  clearAllMaps: jest.fn(),
+  loadRoute: jest.fn(),
+  loadOverlayMap: jest.fn(),
+};
+await jest.unstable_mockModule('../src/mapmanager.js', () => ({
+  mapManager: mockMapManager,
+}));
+
+const mockProjectManager = {
+  onFileRemoved: jest.fn(),
+};
+await jest.unstable_mockModule('../src/projectmanager.js', () => ({
+  projectManager: mockProjectManager,
+}));
+
 const { ChartManager } = await import('../src/chartmanager.js');
 const { AppState, DOM } = await import('../src/config.js');
 const { Chart, Tooltip } = await import('chart.js');
@@ -169,15 +179,12 @@ const { Preferences } = await import('../src/preferences.js');
 messenger.emit = jest.fn();
 messenger.on = jest.fn();
 
-// --- 3. TEST SUITE ---
-
 describe('ChartManager Complete Suite', () => {
   let container;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset AppState
     AppState.files = [];
     AppState.chartInstances = [];
     AppState.activeHighlight = null;
@@ -185,13 +192,11 @@ describe('ChartManager Complete Suite', () => {
     ChartManager.activeChartIndex = null;
     ChartManager.hoverValue = null;
 
-    // Reset Context Spies
     ctxFillStyleSpy.mockClear();
     ctxStrokeStyleSpy.mockClear();
     ctxLineWidthSpy.mockClear();
     ctxSetLineDashSpy.mockClear();
 
-    // Reset DOM
     document.body.innerHTML = `
       <div id="chartContainer"></div>
       <button id="btn-mode-stack" class="view-mode-btn active"></button>
@@ -213,9 +218,6 @@ describe('ChartManager Complete Suite', () => {
     jest.restoreAllMocks();
   });
 
-  // ==========================================
-  // SECTION: Lifecycle & Initialization
-  // ==========================================
   describe('Lifecycle & Initialization', () => {
     test('init registers chart plugins and listeners', () => {
       ChartManager.init();
@@ -245,7 +247,6 @@ describe('ChartManager Complete Suite', () => {
       ChartManager.removeChart(0);
       expect(AppState.files).toHaveLength(0);
       expect(UI.renderSignalList).toHaveBeenCalled();
-
       expect(messenger.emit).toHaveBeenCalledWith('file:removed', { index: 0 });
     });
 
@@ -257,9 +258,6 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: View Modes
-  // ==========================================
   describe('View Modes & Overlay', () => {
     const file1 = {
       name: 'log1.json',
@@ -301,9 +299,6 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: Navigation & Sliders
-  // ==========================================
   describe('Navigation & Sliders', () => {
     test('Slider swaps values if start > end', () => {
       const mockFile = {
@@ -356,10 +351,7 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: Step Cursor & Tooltips
-  // ==========================================
-  describe('Step Cursor & Time Sync', () => {
+  describe('Step Cursor & Tooltips', () => {
     beforeEach(() => {
       const mockFile = {
         name: 'test.json',
@@ -405,8 +397,8 @@ describe('ChartManager Complete Suite', () => {
     });
 
     test('Shifts view when cursor hits right edge', () => {
-      ChartManager.hoverValue = 6000; // Right edge
-      ChartManager.stepCursor(0, 1); // Step out to 6100
+      ChartManager.hoverValue = 6000;
+      ChartManager.stepCursor(0, 1);
 
       expect(mockChartInstance.options.scales.x.min).toBe(5100);
       expect(mockChartInstance.update).toHaveBeenCalledWith('none');
@@ -429,9 +421,6 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: Mouse Interactions
-  // ==========================================
   describe('Mouse Interactions', () => {
     let canvas;
     beforeEach(() => {
@@ -471,9 +460,6 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: CSV Export
-  // ==========================================
   describe('CSV Export Logic', () => {
     let anchorSpy;
 
@@ -532,9 +518,6 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: Chart Info Modal
-  // ==========================================
   describe('Chart Info Modal', () => {
     test('showChartInfo displays metadata', () => {
       AppState.files = [
@@ -556,9 +539,6 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: Coverage Booster
-  // ==========================================
   describe('Coverage Booster', () => {
     const file = {
       name: 't',
@@ -629,7 +609,6 @@ describe('ChartManager Complete Suite', () => {
       ChartManager.viewMode = 'overlay';
       expect(ChartManager._canPerformSmartUpdate()).toBe(false);
       ChartManager.viewMode = 'stack';
-      // Fix: Ensure files array matches length check logic
       AppState.files = [{}, {}];
       AppState.chartInstances = [{}, {}];
       expect(ChartManager._canPerformSmartUpdate()).toBe(true);
@@ -643,7 +622,6 @@ describe('ChartManager Complete Suite', () => {
       expect(mockChartInstance.data.datasets[0].borderColor).toBe('#ff0000');
     });
 
-    // --- Highligher Plugin Coverage ---
     test('HighlighterPlugin: Annotation Drawing', () => {
       const noteFile = {
         name: 'n',
@@ -665,7 +643,6 @@ describe('ChartManager Complete Suite', () => {
     test('HighlighterPlugin: Draw Highlight Box', () => {
       AppState.activeHighlight = { start: 0, end: 5, targetIndex: 0 };
       AppState.chartInstances = [mockChartInstance];
-      // FIX: Ensure files is present for the conditional check
       AppState.files = [{ startTime: 1000 }];
 
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
@@ -698,19 +675,11 @@ describe('ChartManager Complete Suite', () => {
     });
   });
 
-  // ==========================================
-  // SECTION: Extended Coverage & Edge Cases
-  // ==========================================
   describe('Extended Coverage & Edge Cases', () => {
-    // Test for zoomTo logic (used by anomalies list)
     test('zoomTo sets highlight and updates chart scales with padding', () => {
       const file = { startTime: 1000, duration: 100 };
       AppState.files = [file];
       AppState.chartInstances = [mockChartInstance];
-
-      // Target: Start 10s, End 20s (Duration 10s)
-      // Padding logic in source: duration * 4.0 = 40s
-      // Expected range: 10s - 40s = -30s (clamped to 0) to 20s + 40s = 60s
 
       ChartManager.zoomTo(10, 20, 0);
 
@@ -720,14 +689,11 @@ describe('ChartManager Complete Suite', () => {
         targetIndex: 0,
       });
 
-      // 1000 (startTime) + 0 (clamped min) * 1000
       expect(mockChartInstance.options.scales.x.min).toBe(1000);
-      // 1000 (startTime) + 60 (padded max) * 1000
       expect(mockChartInstance.options.scales.x.max).toBe(61000);
       expect(mockChartInstance.update).toHaveBeenCalledWith('none');
     });
 
-    // Test for Area Fills toggle
     test('updateAreaFills toggles dataset fill properties', () => {
       AppState.chartInstances = [mockChartInstance];
       const dataset = {
@@ -737,14 +703,12 @@ describe('ChartManager Complete Suite', () => {
       };
       mockChartInstance.data.datasets = [dataset];
 
-      // Case 1: Enable Fills
       Preferences.prefs.showAreaFills = true;
       ChartManager.updateAreaFills();
 
       expect(dataset.fill).toBe('origin');
-      expect(dataset.backgroundColor).toContain('rgba(255, 0, 0, 0.1)'); // Converted from #ff0000
+      expect(dataset.backgroundColor).toContain('rgba(255, 0, 0, 0.1)');
 
-      // Case 2: Disable Fills
       Preferences.prefs.showAreaFills = false;
       ChartManager.updateAreaFills();
 
@@ -753,7 +717,6 @@ describe('ChartManager Complete Suite', () => {
       expect(mockChartInstance.update).toHaveBeenCalledWith('none');
     });
 
-    // Test internal binary search logic explicitly
     test('_findNearestIndex handles various array positions', () => {
       const data = [
         { x: 100, y: 1 },
@@ -761,29 +724,17 @@ describe('ChartManager Complete Suite', () => {
         { x: 300, y: 3 },
       ];
 
-      // 1. Empty data
       expect(ChartManager._findNearestIndex([], 100)).toBe(-1);
-
-      // 2. Before start
       expect(ChartManager._findNearestIndex(data, 50)).toBe(0);
-
-      // 3. After end
       expect(ChartManager._findNearestIndex(data, 400)).toBe(2);
-
-      // 4. Exact match
       expect(ChartManager._findNearestIndex(data, 200)).toBe(1);
-
-      // 5. Midpoint rounding (closer to 200)
       expect(ChartManager._findNearestIndex(data, 240)).toBe(1);
-
-      // 6. Midpoint rounding (closer to 300)
       expect(ChartManager._findNearestIndex(data, 260)).toBe(2);
     });
 
-    // Test Keyboard Annotation edge cases
     test('_addAnnotationViaKeyboard handles null hoverValue', () => {
       const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-      ChartManager.hoverValue = null; // No cursor active
+      ChartManager.hoverValue = null;
 
       ChartManager._addAnnotationViaKeyboard(0);
       expect(alertSpy).toHaveBeenCalled();
@@ -796,7 +747,7 @@ describe('ChartManager Complete Suite', () => {
       const file = { startTime: 1000, annotations: [] };
       AppState.files = [file];
       AppState.chartInstances = [mockChartInstance];
-      ChartManager.hoverValue = 2000; // 1s into file
+      ChartManager.hoverValue = 2000;
       ChartManager.activeChartIndex = 0;
 
       ChartManager._addAnnotationViaKeyboard(0);
@@ -806,7 +757,6 @@ describe('ChartManager Complete Suite', () => {
       expect(mockChartInstance.draw).toHaveBeenCalled();
     });
 
-    // Test Export validation
     test('exportDataRange alerts if no signals are checked', () => {
       const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
       AppState.files = [
@@ -819,20 +769,17 @@ describe('ChartManager Complete Suite', () => {
       ];
       AppState.chartInstances = [mockChartInstance];
 
-      // Mock querySelector to always return null (unchecked)
       jest.spyOn(document, 'querySelector').mockReturnValue(null);
 
       ChartManager.exportDataRange(0);
       expect(alertSpy).toHaveBeenCalledWith('No signals visible to export.');
     });
 
-    // Test Mobile Responsiveness Logic
     test('updateLabelVisibility hides labels on small screens', () => {
-      // Mock window.innerWidth
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
-        value: 500, // Mobile width
+        value: 500,
       });
 
       mockChartInstance.options.plugins.datalabels.display = true;
@@ -840,46 +787,37 @@ describe('ChartManager Complete Suite', () => {
 
       expect(mockChartInstance.options.plugins.datalabels.display).toBe(false);
 
-      // Restore width
       window.innerWidth = 1024;
     });
 
-    // Test Duration Formatting
     test('formatDuration formats strings correctly', () => {
       expect(ChartManager.formatDuration(NaN)).toBe('0s');
       expect(ChartManager.formatDuration(45)).toBe('45s');
       expect(ChartManager.formatDuration(125)).toBe('2m 5s');
     });
 
-    // Test Tooltip Sync Logic when dataset is hidden
     test('_syncTooltip ignores hidden datasets', () => {
       AppState.chartInstances = [mockChartInstance];
-      mockChartInstance.data.datasets = [{}, {}]; // 2 datasets
+      mockChartInstance.data.datasets = [{}, {}];
 
-      // Mock isDatasetVisible: Index 0 is hidden, Index 1 is visible
       mockChartInstance.isDatasetVisible.mockImplementation((i) => i === 1);
 
-      // Mock finding index
       jest.spyOn(ChartManager, '_findNearestIndex').mockReturnValue(0);
       mockChartInstance.scales.x.getPixelForValue.mockReturnValue(100);
 
-      // Setup data for dataset 1
       mockChartInstance.data.datasets[1].data = [{ x: 1000 }];
 
       ChartManager._syncTooltip(mockChartInstance, 1000);
 
-      // Only dataset 1 should be added to active elements
       expect(mockChartInstance.setActiveElements).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ datasetIndex: 1 })])
       );
-      // Ensure dataset 0 was skipped
       const callArgs = mockChartInstance.setActiveElements.mock.calls[0][0];
       expect(callArgs.find((x) => x.datasetIndex === 0)).toBeUndefined();
     });
   });
 
   test('Cursor/HoverValue remains active after mouse leave (Sticky Tooltip)', () => {
-    // 1. Setup Data
     const mockFile = {
       name: 'test.log',
       startTime: 1000,
@@ -889,39 +827,28 @@ describe('ChartManager Complete Suite', () => {
     };
     AppState.files = [mockFile];
 
-    // 2. Render chart (this calls createInstance)
     ChartManager.render();
 
-    // 3. Get the created canvas element
     const canvas = document.getElementById('chart-0');
     expect(canvas).toBeTruthy();
 
-    // 4. Simulate Mouse Move to set cursor
     const mouseMoveEvent = new MouseEvent('mousemove', {
       clientX: 50,
       clientY: 50,
       bubbles: true,
     });
 
-    // We need to wait for requestAnimationFrame, so we use Jest timers or simulate sync execution
-    // Since requestAnimationFrame is used inside, we might need to rely on the side effect directly
-    // or mock requestAnimationFrame. For this test, we verify the logic inside the listener.
-
     canvas.dispatchEvent(mouseMoveEvent);
 
-    // Force the hoverValue to be set (mimicking what happens inside the listener via Chart scale)
-    // Because we mocked Chart above to return a specific value:
     ChartManager.hoverValue = 1234567890;
 
     expect(ChartManager.hoverValue).not.toBeNull();
 
-    // 5. Simulate Mouse Leave
     const mouseLeaveEvent = new MouseEvent('mouseleave', {
       bubbles: true,
     });
     canvas.dispatchEvent(mouseLeaveEvent);
 
-    // 6. ASSERT: HoverValue should still be set (Sticky behavior)
     expect(ChartManager.hoverValue).toBe(1234567890);
     expect(ChartManager.hoverValue).not.toBeNull();
   });
