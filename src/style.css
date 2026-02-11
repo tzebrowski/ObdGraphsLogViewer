@@ -2948,43 +2948,15 @@ body.pref-theme-dark .search-option:hover {
 }
 
 #xyModal .modal-body {
-  max-height: none !important;
-  height: 100% !important;
-  flex: 1 1 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
   background-color: #f3f4f6 !important;
-  gap: 12px;
-  padding: 12px !important;
-}
-
-#xySplitView {
-  flex: 2 !important;
-  display: flex;
-  min-height: 0;
-  border-bottom: 2px solid #ccc;
-}
-
-#xyTimelineView {
-  flex: 1 !important;
-  display: flex;
-  flex-direction: column;
-  min-height: 200px;
-  background: #fafafa;
-}
-
-#xyTimelineView > div {
-  flex: 0.1;
-  position: relative;
-  min-height: 0;
-  width: 100%;
+  gap: 6px;
+  padding: 6px !important;
 }
 
 #xySplitView {
   background: transparent !important;
   border: none !important;
-  gap: 12px;
+  gap: 6px;
 }
 
 .xy-panel {
@@ -2992,7 +2964,7 @@ body.pref-theme-dark .search-option:hover {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
   border: 1px solid #e5e7eb;
-  padding: 15px !important;
+  padding: 6px !important;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -3001,9 +2973,9 @@ body.pref-theme-dark .search-option:hover {
 .xy-panel-toolbar {
   background-color: #f8f9fa;
   border-radius: 6px;
-  padding: 10px 12px !important;
+  padding: 4px 8px !important;
   border: 1px solid #eee;
-  margin-bottom: 15px !important;
+  margin-bottom: 5px !important;
 }
 
 .xy-panel-toolbar div > div:first-child {
@@ -3012,7 +2984,7 @@ body.pref-theme-dark .search-option:hover {
   letter-spacing: 0.5px;
   font-weight: 700;
   color: #888;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 #xyTimelineView {
@@ -3021,15 +2993,16 @@ body.pref-theme-dark .search-option:hover {
   box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
   border: 1px solid #e5e7eb;
   margin: 0 !important;
-  padding: 10px !important;
+  padding: 6px !important;
 }
 
 #xyTimelineView > div:first-child {
   border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
   color: #1c3d72;
   font-weight: 600;
+  font-size: 0.85em;
 }
 
 body.pref-theme-dark #xyModal .modal-body {
