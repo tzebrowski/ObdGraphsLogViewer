@@ -168,7 +168,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
       XYAnalysis.openXYModal();
 
       expect(modal.style.display).toBe('flex');
-      expect(split.style.flex).toMatch(/^3/);
+      expect(split.style.flex).toMatch('2 1 0%');
       expect(timeline.style.flex).toMatch(/^1/);
       expect(spy).toHaveBeenCalled();
     });
