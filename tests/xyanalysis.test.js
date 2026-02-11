@@ -65,7 +65,7 @@ await jest.unstable_mockModule('../src/palettemanager.js', () => ({
   PaletteManager: { getColorForSignal: jest.fn(() => '#ff0000') },
 }));
 
-const { xyAnalysis } = await import('../src/xyAnalysis.js');
+const { xyAnalysis } = await import('../src/xyanalysis.js');
 const { AppState } = await import('../src/config.js');
 const { Chart, Tooltip } = await import('chart.js');
 
