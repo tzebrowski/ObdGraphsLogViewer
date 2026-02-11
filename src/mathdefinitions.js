@@ -2,6 +2,235 @@ import { signalRegistry } from './signalregistry.js';
 
 export const MATH_DEFINITIONS = [
   {
+    id: 'gps_distance_accumulated',
+    name: 'GPS Trip Distance',
+    unit: 'km',
+    category: 'Business',
+    description:
+      'Calculates total distance traveled based on GPS path (Haversine method).',
+    inputs: [
+      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
+      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+    ],
+    customProcess: (signals) => {
+      const latSig = signals[0];
+      const lonSig = signals[1];
+      if (!latSig || !lonSig || latSig.length === 0) return [];
+
+      const result = [];
+      const toRad = (val) => (val * Math.PI) / 180;
+      const R = 6371e3; // Earth radius in meters
+      let totalDist = 0;
+
+      for (let i = 1; i < latSig.length; i++) {
+        const t2 = latSig[i].x;
+
+        const lat1 = toRad(latSig[i - 1].y);
+        const lat2 = toRad(latSig[i].y);
+        const lon1 = toRad(lonSig[i - 1].y);
+        const lon2 = toRad(lonSig[i].y);
+
+        const dLat = lat2 - lat1;
+        const dLon = lon2 - lon1;
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) *
+            Math.cos(lat2) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const stepDist = R * c; // meters
+
+        // Filter huge jumps (GPS glitches > 100m per sample)
+        if (stepDist < 100) {
+          totalDist += stepDist;
+        }
+
+        result.push({ x: t2, y: totalDist / 1000 }); // Convert to km
+      }
+      return result;
+    },
+  },
+  {
+    id: 'gps_accel_g',
+    name: 'GPS Acceleration (Long. G)',
+    unit: 'G',
+    category: 'Business',
+    description:
+      'Estimates longitudinal G-Force derived from GPS Speed changes.',
+    inputs: [
+      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
+      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+    ],
+    customProcess: (signals) => {
+      const latSig = signals[0];
+      const lonSig = signals[1];
+      if (!latSig || !lonSig || latSig.length === 0) return [];
+
+      const result = [];
+      const toRad = (val) => (val * Math.PI) / 180;
+      const R = 6371e3;
+
+      for (let i = 1; i < latSig.length; i++) {
+        const t1 = latSig[i - 1].x;
+        const t2 = latSig[i].x;
+        const dt = (t2 - t1) / 1000; // seconds
+
+        if (dt <= 0.05) continue; // Skip tiny time steps to avoid noise
+
+        const lat1 = toRad(latSig[i - 1].y);
+        const lat2 = toRad(latSig[i].y);
+        const dLat = lat2 - lat1;
+        const dLon = toRad(lonSig[i].y) - toRad(lonSig[i - 1].y);
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) *
+            Math.cos(lat2) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        const v = dist / dt; // speed in m/s
+
+        // Acceleration = delta V / delta T
+        // We need previous velocity. For i=1 we assume 0 start or just skip
+        if (i > 1) {
+          // Robust approach: Calculate V current, V prev
+          const prevV = result[result.length - 1]?._rawV || 0;
+          const accelMps2 = (v - prevV) / dt;
+
+          // Convert to G (1G = 9.81 m/s^2)
+          let gForce = accelMps2 / 9.81;
+
+          // Clamp noise
+          if (gForce > 2.0) gForce = 2.0;
+          if (gForce < -2.0) gForce = -2.0;
+
+          // Store metadata for next iteration
+          const point = { x: t2, y: gForce, _rawV: v };
+          result.push(point);
+        } else {
+          result.push({ x: t2, y: 0, _rawV: v });
+        }
+      }
+      return result;
+    },
+  },
+
+  {
+    id: 'gps_speed_calc',
+    name: 'GPS Speed (Calculated)',
+    unit: 'km/h',
+    category: 'Business',
+    description:
+      'Calculates vehicle speed based on GPS coordinates (Latitude/Longitude) and time delta.',
+    inputs: [
+      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
+      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+    ],
+    customProcess: (signals) => {
+      const latSig = signals[0];
+      const lonSig = signals[1];
+
+      if (!latSig || !lonSig || latSig.length === 0) return [];
+
+      const result = [];
+      const toRad = (val) => (val * Math.PI) / 180;
+      const R = 6371e3; // Earth radius in meters
+
+      // Start from the second point so we have a previous point to compare
+      for (let i = 1; i < latSig.length; i++) {
+        const t1 = latSig[i - 1].x;
+        const t2 = latSig[i].x;
+        const dt = (t2 - t1) / 1000; // Delta time in seconds
+
+        if (dt <= 0) continue; // Skip duplicate timestamps
+
+        const lat1 = toRad(latSig[i - 1].y);
+        const lat2 = toRad(latSig[i].y);
+        const lon1 = toRad(lonSig[i - 1].y);
+        const lon2 = toRad(lonSig[i].y);
+        const dLat = lat2 - lat1;
+        const dLon = lon2 - lon1;
+
+        // Haversine Formula
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) *
+            Math.cos(lat2) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c; // Distance in meters
+
+        const speedMps = distance / dt; // m/s
+        const speedKph = speedMps * 3.6; // km/h
+
+        // Filter massive spikes (e.g. GPS jump) - limit to 350 km/h
+        if (speedKph < 350) {
+          result.push({ x: t2, y: speedKph });
+        }
+      }
+      return result;
+    },
+  },
+  {
+    id: 'trip_cost_sensor',
+    name: 'Trip Cost (Sensor Based)',
+    unit: 'Currency',
+    category: 'Business',
+    description:
+      'Calculates cost by measuring the actual drop in fuel level. Warning: Subject to "fuel slosh" noise.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Fuel Level'],
+        label: 'Fuel Level (%)',
+      },
+      {
+        name: 'capacity',
+        label: 'Tank Capacity (Liters)',
+        isConstant: true,
+        defaultValue: 58,
+      },
+      {
+        name: 'price',
+        label: 'Fuel Price (per Liter)',
+        isConstant: true,
+        defaultValue: 1.5,
+      },
+    ],
+    customProcess: (signals, constants) => {
+      const source = signals[0];
+      const capacity = constants[0];
+      const price = constants[1];
+
+      if (!source || source.length === 0) return [];
+
+      // Get the starting fuel level (percentage)
+      const startPct = Math.min(Math.max(source[0].y, 0), 100);
+      const startLiters = (startPct / 100) * capacity;
+
+      return source.map((point) => {
+        // Clamp current reading 0-100
+        const currentPct = Math.min(Math.max(point.y, 0), 100);
+        const currentLiters = (currentPct / 100) * capacity;
+
+        // Fuel Consumed = Start - Current
+        // We use Math.max(0, ...) to prevent negative cost if fuel sloshes "up"
+        const consumedLiters = Math.max(0, startLiters - currentLiters);
+
+        return {
+          x: point.x,
+          y: consumedLiters * price,
+        };
+      });
+    },
+  },
+  {
     id: 'fuel_volume',
     name: 'Fuel Volume (Liters)',
     unit: 'L',
