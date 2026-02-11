@@ -88,10 +88,5 @@
     "name": "Atmospheric Pressure",
     "default": false,
     "aliases": ["Atmospheric", "Baro", "Barometric", "Ambient Pressure"]
-  },
-  {
-    "name": "AFR Commanded",
-    "default": false,
-    "aliases": ["Commanded", "Target AFR", "Lambda Request", "AFR Target"]
   }
 ]
