@@ -5,6 +5,7 @@ export const MATH_DEFINITIONS = [
     id: 'trip_distance',
     name: 'Trip Distance',
     unit: 'km',
+    category: 'Business',
     description:
       'Calculates distance traveled since the start of the log: Current Odometer - Initial Odometer.',
     inputs: [
@@ -26,6 +27,7 @@ export const MATH_DEFINITIONS = [
     id: 'power_from_torque',
     name: 'Power (Torque)',
     unit: 'HP',
+    category: 'Business',
     description:
       'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
     inputs: [
@@ -46,11 +48,11 @@ export const MATH_DEFINITIONS = [
     ],
     formula: (values) => (values[0] * values[2] * values[1]) / 7127,
   },
-
   {
     id: 'est_power_kgh',
     name: 'Est. Power (MAF kg/h)',
     unit: 'HP',
+    category: 'Business',
     description:
       'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
     inputs: [
@@ -71,6 +73,7 @@ export const MATH_DEFINITIONS = [
     id: 'est_power_gs',
     name: 'Est. Power (MAF g/s)',
     unit: 'HP',
+    category: 'Business',
     description:
       'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
     inputs: [
@@ -91,6 +94,7 @@ export const MATH_DEFINITIONS = [
     id: 'acceleration',
     name: 'Acceleration',
     unit: 'm/s²',
+    category: 'Business',
     description:
       'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
     inputs: [
@@ -114,11 +118,11 @@ export const MATH_DEFINITIONS = [
       return result;
     },
   },
-
   {
     id: 'boost',
     name: 'Boost Pressure',
     unit: 'Bar',
+    category: 'Business',
     description: 'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
     inputs: [
       {
@@ -136,6 +140,7 @@ export const MATH_DEFINITIONS = [
     id: 'afr_error',
     name: 'AFR Error',
     unit: 'AFR',
+    category: 'Business',
     description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
     inputs: [
       {
@@ -153,6 +158,7 @@ export const MATH_DEFINITIONS = [
     id: 'pressure_ratio',
     name: 'Pressure Ratio',
     unit: 'Ratio',
+    category: 'Business',
     description: 'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
     inputs: [
       {
@@ -167,10 +173,12 @@ export const MATH_DEFINITIONS = [
     formula: (values) => (values[1] !== 0 ? values[0] / values[1] : 0),
   },
 
+  // --- TECHNICAL FORMULAS ---
   {
     id: 'filter_gt',
     name: 'Filtered (> Threshold)',
     unit: '',
+    category: 'Technical',
     description:
       'Passes the Source signal ONLY if the Condition signal > Threshold. Otherwise returns Fallback value.',
     inputs: [
@@ -195,6 +203,7 @@ export const MATH_DEFINITIONS = [
     id: 'filter_lt',
     name: 'Filtered (< Threshold)',
     unit: '',
+    category: 'Technical',
     description:
       'Passes the Source signal ONLY if the Condition signal < Threshold. Otherwise returns Fallback value.',
     inputs: [
@@ -215,11 +224,11 @@ export const MATH_DEFINITIONS = [
     ],
     formula: (values) => (values[1] < values[2] ? values[0] : values[3]),
   },
-
   {
     id: 'filtered_batch',
     name: 'Filtered (Multi-Signal)',
     unit: 'Match Source',
+    category: 'Technical',
     description:
       'Creates multiple channels at once. Filters selected Source signals based on the Condition.',
     isBatch: true,
@@ -263,6 +272,7 @@ export const MATH_DEFINITIONS = [
     id: 'filtered_single',
     name: 'Filtered (Single)',
     unit: '',
+    category: 'Technical',
     description: 'Internal Logic for Batch Filter',
     isHidden: true,
     inputs: [
@@ -306,6 +316,7 @@ export const MATH_DEFINITIONS = [
     id: 'filter_range_batch',
     name: 'Filtered Range (Multi-Signal)',
     unit: 'Match Source',
+    category: 'Technical',
     description:
       'Creates multiple channels at once. Passes the Source signals only if the Condition is within (or outside) the specified Range.',
     isBatch: true,
@@ -355,6 +366,7 @@ export const MATH_DEFINITIONS = [
     id: 'filter_range',
     name: 'Filtered (Range)',
     unit: '',
+    category: 'Technical',
     description:
       'Passes the Source signal if the Condition signal is within (or outside) the specified range [Min, Max].',
     inputs: [
@@ -416,6 +428,7 @@ export const MATH_DEFINITIONS = [
     id: 'smoothing_batch',
     name: 'Smoothed (Multi-Signal)',
     unit: 'Match Source',
+    category: 'Technical',
     description:
       'Creates multiple smoothed channels at once using a Moving Average filter.',
     isBatch: true,
@@ -439,6 +452,7 @@ export const MATH_DEFINITIONS = [
     id: 'smoothing',
     name: 'Smoothed Signal',
     unit: '',
+    category: 'Technical',
     description:
       'Reduces noise in a signal using a Moving Average filter over N samples.',
     inputs: [
@@ -475,6 +489,7 @@ export const MATH_DEFINITIONS = [
     id: 'multiply_const',
     name: 'Multiplied Signal',
     unit: '',
+    category: 'Technical',
     description:
       'Multiplies a signal by a constant factor. Useful for unit matched conversion.',
     inputs: [

@@ -297,11 +297,44 @@ class MathChannels {
     if (!select) return;
 
     select.innerHTML = '<option value="">-- Select Formula --</option>';
+
+    // --- NEW: Category Grouping Logic ---
+    const categories = {
+      Business: [],
+      Technical: [],
+    };
+
     this.#definitions.forEach((def) => {
       if (!def.isHidden) {
-        select.innerHTML += `<option value="${def.id}">${def.name}</option>`;
+        const cat = def.category || 'Technical';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(def);
       }
     });
+
+    if (categories.Business.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = 'Business Formulas';
+      categories.Business.forEach((def) => {
+        const opt = document.createElement('option');
+        opt.value = def.id;
+        opt.text = def.name;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
+
+    if (categories.Technical.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = 'Technical Processing';
+      categories.Technical.forEach((def) => {
+        const opt = document.createElement('option');
+        opt.value = def.id;
+        opt.text = def.name;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
 
     document.getElementById('mathInputsContainer').innerHTML = '';
     this.#toggleDisplay('mathDescriptionContainer', false);
