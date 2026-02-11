@@ -1,8 +1,221 @@
 import { signalRegistry } from './signalregistry.js';
 
-const MAPPINGS = signalRegistry.mappings;
-
 export const MATH_DEFINITIONS = [
+  {
+    id: 'trip_distance',
+    name: 'Trip Distance',
+    unit: 'km',
+    description:
+      'Calculates distance traveled since the start of the log: Current Odometer - Initial Odometer.',
+    inputs: [
+      { name: signalRegistry.mappings.Distance, label: 'Odometer Signal' },
+    ],
+    customProcess: (signals) => {
+      const source = signals[0];
+      if (!source || source.length === 0) return [];
+
+      const initialValue = source[0].y;
+
+      return source.map((point) => ({
+        x: point.x,
+        y: point.y - initialValue,
+      }));
+    },
+  },
+  {
+    id: 'power_from_torque',
+    name: 'Power (Torque)',
+    unit: 'HP',
+    description:
+      'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
+    inputs: [
+      {
+        name: signalRegistry.mappings.Torque,
+        label: 'Torque (Nm or daNm)',
+      },
+      {
+        name: signalRegistry.mappings['Engine Speed'],
+        label: 'Engine RPM',
+      },
+      {
+        name: 'factor',
+        label: 'Correction Factor (1 for Nm, 10 for daNm)',
+        isConstant: true,
+        defaultValue: 1.0,
+      },
+    ],
+    formula: (values) => (values[0] * values[2] * values[1]) / 7127,
+  },
+
+  {
+    id: 'est_power_kgh',
+    name: 'Est. Power (MAF kg/h)',
+    unit: 'HP',
+    description:
+      'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
+    inputs: [
+      {
+        name: signalRegistry.mappings.MAF,
+        label: 'Air Mass Flow (kg/h)',
+      },
+      {
+        name: 'factor',
+        label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
+        isConstant: true,
+        defaultValue: 1.35,
+      },
+    ],
+    formula: (values) => (values[0] / 3.6) * values[1],
+  },
+  {
+    id: 'est_power_gs',
+    name: 'Est. Power (MAF g/s)',
+    unit: 'HP',
+    description:
+      'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
+    inputs: [
+      {
+        name: signalRegistry.mappings.MAF,
+        label: 'Air Mass Flow (g/s)',
+      },
+      {
+        name: 'factor',
+        label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
+        isConstant: true,
+        defaultValue: 1.35,
+      },
+    ],
+    formula: (values) => values[0] * values[1],
+  },
+  {
+    id: 'acceleration',
+    name: 'Acceleration',
+    unit: 'm/s²',
+    description:
+      'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Vehicle Speed'],
+        label: 'Speed (km/h)',
+      },
+    ],
+    customProcess: (signals) => {
+      const sourceData = signals[0];
+      const result = [];
+      for (let i = 1; i < sourceData.length; i++) {
+        const p1 = sourceData[i - 1];
+        const p2 = sourceData[i];
+        const dt = (p2.x - p1.x) / 1000;
+        if (dt <= 0) continue;
+        const dv = (p2.y - p1.y) / 3.6;
+        const accel = dv / dt;
+        result.push({ x: p2.x, y: accel });
+      }
+      return result;
+    },
+  },
+
+  {
+    id: 'boost',
+    name: 'Boost Pressure',
+    unit: 'Bar',
+    description: 'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Intake Manifold Pressure Measured'],
+        label: 'Intake Manifold Pressure',
+      },
+      {
+        name: signalRegistry.mappings['Atmospheric Pressure'],
+        label: 'Atmospheric Pressure',
+      },
+    ],
+    formula: (values) => values[0] - values[1],
+  },
+  {
+    id: 'afr_error',
+    name: 'AFR Error',
+    unit: 'AFR',
+    description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['AFR Commanded'],
+        label: 'AFR Commanded',
+      },
+      {
+        name: signalRegistry.mappings['AFR Measured'],
+        label: 'AFR Measured',
+      },
+    ],
+    formula: (values) => values[0] - values[1],
+  },
+  {
+    id: 'pressure_ratio',
+    name: 'Pressure Ratio',
+    unit: 'Ratio',
+    description: 'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Intake Manifold Pressure Measured'],
+        label: 'Intake Manifold Pressure',
+      },
+      {
+        name: signalRegistry.mappings['Atmospheric Pressure'],
+        label: 'Atmospheric Pressure',
+      },
+    ],
+    formula: (values) => (values[1] !== 0 ? values[0] / values[1] : 0),
+  },
+
+  {
+    id: 'filter_gt',
+    name: 'Filtered (> Threshold)',
+    unit: '',
+    description:
+      'Passes the Source signal ONLY if the Condition signal > Threshold. Otherwise returns Fallback value.',
+    inputs: [
+      { name: 'source', label: 'Signal to Display' },
+      { name: 'cond', label: 'Condition Signal' },
+      {
+        name: 'thresh',
+        label: 'Threshold',
+        isConstant: true,
+        defaultValue: 90,
+      },
+      {
+        name: 'fallback',
+        label: 'Fallback Value',
+        isConstant: true,
+        defaultValue: 0,
+      },
+    ],
+    formula: (values) => (values[1] > values[2] ? values[0] : values[3]),
+  },
+  {
+    id: 'filter_lt',
+    name: 'Filtered (< Threshold)',
+    unit: '',
+    description:
+      'Passes the Source signal ONLY if the Condition signal < Threshold. Otherwise returns Fallback value.',
+    inputs: [
+      { name: 'source', label: 'Signal to Display' },
+      { name: 'cond', label: 'Condition Signal' },
+      {
+        name: 'thresh',
+        label: 'Threshold',
+        isConstant: true,
+        defaultValue: 10,
+      },
+      {
+        name: 'fallback',
+        label: 'Fallback Value',
+        isConstant: true,
+        defaultValue: 0,
+      },
+    ],
+    formula: (values) => (values[1] < values[2] ? values[0] : values[3]),
+  },
+
   {
     id: 'filtered_batch',
     name: 'Filtered (Multi-Signal)',
@@ -257,196 +470,6 @@ export const MATH_DEFINITIONS = [
       }
       return smoothed;
     },
-  },
-  {
-    id: 'est_power_kgh',
-    name: 'Est. Power (MAF kg/h)',
-    unit: 'HP',
-    description:
-      'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
-    inputs: [
-      {
-        name: MAPPINGS.MAF,
-        label: 'Air Mass Flow (kg/h)',
-      },
-      {
-        name: 'factor',
-        label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
-        isConstant: true,
-        defaultValue: 1.35,
-      },
-    ],
-    formula: (values) => (values[0] / 3.6) * values[1],
-  },
-  {
-    id: 'est_power_gs',
-    name: 'Est. Power (MAF g/s)',
-    unit: 'HP',
-    description:
-      'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
-    inputs: [
-      {
-        name: MAPPINGS.MAF,
-        label: 'Air Mass Flow (g/s)',
-      },
-      {
-        name: 'factor',
-        label: 'Factor (Diesel ~1.35, Petrol ~1.25)',
-        isConstant: true,
-        defaultValue: 1.35,
-      },
-    ],
-    formula: (values) => values[0] * values[1],
-  },
-  {
-    id: 'power_from_torque',
-    name: 'Power (Torque)',
-    unit: 'HP',
-    description:
-      'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
-    inputs: [
-      {
-        name: MAPPINGS.Torque,
-        label: 'Torque (Nm or daNm)',
-      },
-      {
-        name: MAPPINGS['Engine Speed'],
-        label: 'Engine RPM',
-      },
-      {
-        name: 'factor',
-        label: 'Correction Factor (1 for Nm, 10 for daNm)',
-        isConstant: true,
-        defaultValue: 1.0,
-      },
-    ],
-    formula: (values) => (values[0] * values[2] * values[1]) / 7127,
-  },
-  {
-    id: 'acceleration',
-    name: 'Acceleration',
-    unit: 'm/s²',
-    description:
-      'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
-    inputs: [
-      {
-        name: MAPPINGS['Vehicle Speed'],
-        label: 'Speed (km/h)',
-      },
-    ],
-    customProcess: (signals) => {
-      const sourceData = signals[0];
-      const result = [];
-      for (let i = 1; i < sourceData.length; i++) {
-        const p1 = sourceData[i - 1];
-        const p2 = sourceData[i];
-        const dt = (p2.x - p1.x) / 1000;
-        if (dt <= 0) continue;
-        const dv = (p2.y - p1.y) / 3.6;
-        const accel = dv / dt;
-        result.push({ x: p2.x, y: accel });
-      }
-      return result;
-    },
-  },
-  {
-    id: 'filter_gt',
-    name: 'Filtered (> Threshold)',
-    unit: '',
-    description:
-      'Passes the Source signal ONLY if the Condition signal > Threshold. Otherwise returns Fallback value.',
-    inputs: [
-      { name: 'source', label: 'Signal to Display' },
-      { name: 'cond', label: 'Condition Signal' },
-      {
-        name: 'thresh',
-        label: 'Threshold',
-        isConstant: true,
-        defaultValue: 90,
-      },
-      {
-        name: 'fallback',
-        label: 'Fallback Value',
-        isConstant: true,
-        defaultValue: 0,
-      },
-    ],
-    formula: (values) => (values[1] > values[2] ? values[0] : values[3]),
-  },
-  {
-    id: 'filter_lt',
-    name: 'Filtered (< Threshold)',
-    unit: '',
-    description:
-      'Passes the Source signal ONLY if the Condition signal < Threshold. Otherwise returns Fallback value.',
-    inputs: [
-      { name: 'source', label: 'Signal to Display' },
-      { name: 'cond', label: 'Condition Signal' },
-      {
-        name: 'thresh',
-        label: 'Threshold',
-        isConstant: true,
-        defaultValue: 10,
-      },
-      {
-        name: 'fallback',
-        label: 'Fallback Value',
-        isConstant: true,
-        defaultValue: 0,
-      },
-    ],
-    formula: (values) => (values[1] < values[2] ? values[0] : values[3]),
-  },
-  {
-    id: 'boost',
-    name: 'Boost Pressure',
-    unit: 'Bar',
-    description: 'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
-    inputs: [
-      {
-        name: MAPPINGS['Intake Manifold Pressure Measured'],
-        label: 'Intake Manifold Pressure',
-      },
-      {
-        name: MAPPINGS['Atmospheric Pressure'],
-        label: 'Atmospheric Pressure',
-      },
-    ],
-    formula: (values) => values[0] - values[1],
-  },
-  {
-    id: 'afr_error',
-    name: 'AFR Error',
-    unit: 'AFR',
-    description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
-    inputs: [
-      {
-        name: MAPPINGS['AFR Commanded'],
-        label: 'AFR Commanded',
-      },
-      {
-        name: MAPPINGS['AFR Measured'],
-        label: 'AFR Measured',
-      },
-    ],
-    formula: (values) => values[0] - values[1],
-  },
-  {
-    id: 'pressure_ratio',
-    name: 'Pressure Ratio',
-    unit: 'Ratio',
-    description: 'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
-    inputs: [
-      {
-        name: MAPPINGS['Intake Manifold Pressure Measured'],
-        label: 'Intake Manifold Pressure',
-      },
-      {
-        name: MAPPINGS['Atmospheric Pressure'],
-        label: 'Atmospheric Pressure',
-      },
-    ],
-    formula: (values) => (values[1] !== 0 ? values[0] / values[1] : 0),
   },
   {
     id: 'multiply_const',
