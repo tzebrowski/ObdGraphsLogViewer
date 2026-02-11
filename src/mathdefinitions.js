@@ -2,6 +2,126 @@ import { signalRegistry } from './signalregistry.js';
 
 export const MATH_DEFINITIONS = [
   {
+    id: 'gps_distance_accumulated',
+    name: 'GPS Trip Distance',
+    unit: 'km',
+    category: 'Business',
+    description:
+      'Calculates total distance traveled based on GPS path (Haversine method).',
+    inputs: [
+      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
+      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+    ],
+    customProcess: (signals) => {
+      const latSig = signals[0];
+      const lonSig = signals[1];
+      if (!latSig || !lonSig || latSig.length === 0) return [];
+
+      const result = [];
+      const toRad = (val) => (val * Math.PI) / 180;
+      const R = 6371e3; // Earth radius in meters
+      let totalDist = 0;
+
+      for (let i = 1; i < latSig.length; i++) {
+        const t2 = latSig[i].x;
+
+        const lat1 = toRad(latSig[i - 1].y);
+        const lat2 = toRad(latSig[i].y);
+        const lon1 = toRad(lonSig[i - 1].y);
+        const lon2 = toRad(lonSig[i].y);
+
+        const dLat = lat2 - lat1;
+        const dLon = lon2 - lon1;
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) *
+            Math.cos(lat2) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const stepDist = R * c; // meters
+
+        // Filter huge jumps (GPS glitches > 100m per sample)
+        if (stepDist < 100) {
+          totalDist += stepDist;
+        }
+
+        result.push({ x: t2, y: totalDist / 1000 }); // Convert to km
+      }
+      return result;
+    },
+  },
+  {
+    id: 'gps_accel_g',
+    name: 'GPS Acceleration (Long. G)',
+    unit: 'G',
+    category: 'Business',
+    description:
+      'Estimates longitudinal G-Force derived from GPS Speed changes.',
+    inputs: [
+      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
+      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+    ],
+    customProcess: (signals) => {
+      const latSig = signals[0];
+      const lonSig = signals[1];
+      if (!latSig || !lonSig || latSig.length === 0) return [];
+
+      const result = [];
+      const toRad = (val) => (val * Math.PI) / 180;
+      const R = 6371e3;
+
+      for (let i = 1; i < latSig.length; i++) {
+        const t1 = latSig[i - 1].x;
+        const t2 = latSig[i].x;
+        const dt = (t2 - t1) / 1000; // seconds
+
+        if (dt <= 0.05) continue; // Skip tiny time steps to avoid noise
+
+        const lat1 = toRad(latSig[i - 1].y);
+        const lat2 = toRad(latSig[i].y);
+        const dLat = lat2 - lat1;
+        const dLon = toRad(lonSig[i].y) - toRad(lonSig[i - 1].y);
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) *
+            Math.cos(lat2) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        const v = dist / dt; // speed in m/s
+
+        // Acceleration = delta V / delta T
+        // We need previous velocity. For i=1 we assume 0 start or just skip
+        if (i > 1) {
+          // Robust approach: Calculate V current, V prev
+          const prevV = result[result.length - 1]?._rawV || 0;
+          const accelMps2 = (v - prevV) / dt;
+
+          // Convert to G (1G = 9.81 m/s^2)
+          let gForce = accelMps2 / 9.81;
+
+          // Clamp noise
+          if (gForce > 2.0) gForce = 2.0;
+          if (gForce < -2.0) gForce = -2.0;
+
+          // Store metadata for next iteration
+          const point = { x: t2, y: gForce, _rawV: v };
+          result.push(point);
+        } else {
+          result.push({ x: t2, y: 0, _rawV: v });
+        }
+      }
+      return result;
+    },
+  },
+
+  {
     id: 'gps_speed_calc',
     name: 'GPS Speed (Calculated)',
     unit: 'km/h',
