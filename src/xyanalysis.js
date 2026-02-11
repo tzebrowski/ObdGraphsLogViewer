@@ -16,7 +16,7 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
 
-class XYAnalysisClass {
+class XYAnalysis {
   #charts = [null, null];
   #timelineChart = null;
   #currentFileIndex = 0;
@@ -682,4 +682,4 @@ class XYAnalysisClass {
   }
 }
 
-export const XYAnalysis = new XYAnalysisClass();
+export const xyAnalysis = new XYAnalysis();

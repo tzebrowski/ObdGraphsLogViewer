@@ -65,19 +65,19 @@ await jest.unstable_mockModule('../src/palettemanager.js', () => ({
   PaletteManager: { getColorForSignal: jest.fn(() => '#ff0000') },
 }));
 
-const { XYAnalysis } = await import('../src/xyanalysis.js');
+const { xyAnalysis } = await import('../src/xyAnalysis.js');
 const { AppState } = await import('../src/config.js');
 const { Chart, Tooltip } = await import('chart.js');
 
-describe('XYAnalysis Comprehensive Tests', () => {
+describe('xyAnalysis Comprehensive Tests', () => {
   const originalCreateElement = document.createElement.bind(document);
 
   beforeEach(() => {
     jest.clearAllMocks();
     AppState.files = [];
-    XYAnalysis.charts = [null, null];
-    XYAnalysis.timelineChart = null;
-    XYAnalysis.currentFileIndex = undefined;
+    xyAnalysis.charts = [null, null];
+    xyAnalysis.timelineChart = null;
+    xyAnalysis.currentFileIndex = undefined;
 
     jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
       const el = originalCreateElement(tagName);
@@ -138,12 +138,12 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
   describe('Initialization', () => {
     test('init registers Chart.js plugins', () => {
-      XYAnalysis.init();
+      xyAnalysis.init();
       expect(Chart.register).toHaveBeenCalled();
     });
 
     test('xyFixed positioner returns correct coordinates', () => {
-      XYAnalysis.init();
+      xyAnalysis.init();
       const positioner = Tooltip.positioners.xyFixed;
       const context = { chart: { chartArea: { top: 50, right: 500 } } };
       const pos = positioner.call(context, [], {});
@@ -151,7 +151,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
     });
 
     test('xyFixed returns undefined if no chart', () => {
-      XYAnalysis.init();
+      xyAnalysis.init();
       const positioner = Tooltip.positioners.xyFixed;
       const pos = positioner.call({}, [], {});
       expect(pos).toBeUndefined();
@@ -163,9 +163,9 @@ describe('XYAnalysis Comprehensive Tests', () => {
       const modal = document.getElementById('xyModal');
       const split = document.getElementById('xySplitView');
       const timeline = document.getElementById('xyTimelineView');
-      const spy = jest.spyOn(XYAnalysis, 'populateGlobalFileSelector');
+      const spy = jest.spyOn(xyAnalysis, 'populateGlobalFileSelector');
 
-      XYAnalysis.openXYModal();
+      xyAnalysis.openXYModal();
 
       expect(modal.style.display).toBe('flex');
       expect(split.style.flex).toMatch('2 1 0%');
@@ -176,7 +176,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
     test('closeXYModal hides modal', () => {
       const modal = document.getElementById('xyModal');
       modal.style.display = 'flex';
-      XYAnalysis.closeXYModal();
+      xyAnalysis.closeXYModal();
       expect(modal.style.display).toBe('none');
     });
 
@@ -186,7 +186,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
         container.outerHTML =
           '<select id="xyX-0" class="test-class" style="color:red"></select>';
 
-        XYAnalysis.createSearchableSelect('xyX-0', ['A', 'B'], 'A', jest.fn());
+        xyAnalysis.createSearchableSelect('xyX-0', ['A', 'B'], 'A', jest.fn());
 
         const newEl = document.getElementById('xyX-0');
         expect(newEl.tagName).toBe('DIV');
@@ -198,7 +198,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
         const options = ['Engine Rpm', 'Speed', 'Boost'];
         const defaultValue = 'Speed';
 
-        XYAnalysis.createSearchableSelect(
+        xyAnalysis.createSearchableSelect(
           'xyGlobalFile',
           options,
           defaultValue,
@@ -221,7 +221,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
       });
 
       test('Filter logic shows "No signals found"', () => {
-        XYAnalysis.createSearchableSelect(
+        xyAnalysis.createSearchableSelect(
           'xyGlobalFile',
           ['OptionA'],
           '',
@@ -240,7 +240,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
       test('Clicking option updates value and hides list', () => {
         const cb = jest.fn();
-        XYAnalysis.createSearchableSelect('xyGlobalFile', ['OptionA'], '', cb);
+        xyAnalysis.createSearchableSelect('xyGlobalFile', ['OptionA'], '', cb);
         const container = document.getElementById('xyGlobalFile');
         const input = container.querySelector('input');
         const list = container.querySelector('.search-results-list');
@@ -255,7 +255,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
       });
 
       test('Clicking outside closes list', () => {
-        XYAnalysis.createSearchableSelect('xyGlobalFile', ['A'], '', jest.fn());
+        xyAnalysis.createSearchableSelect('xyGlobalFile', ['A'], '', jest.fn());
         const container = document.getElementById('xyGlobalFile');
         const input = container.querySelector('input');
         const list = container.querySelector('.search-results-list');
@@ -268,7 +268,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
       test('getInputValue handles missing input gracefully', () => {
         document.getElementById('xyX-0').innerHTML = '<div>Broken</div>';
-        const val = XYAnalysis.getInputValue('xyX-0');
+        const val = xyAnalysis.getInputValue('xyX-0');
         expect(val).toBe('');
       });
 
@@ -276,16 +276,16 @@ describe('XYAnalysis Comprehensive Tests', () => {
         const container = document.getElementById('xyX-0');
         container.outerHTML =
           '<select id="xyX-0"><option value="A" selected>A</option></select>';
-        const val = XYAnalysis.getInputValue('xyX-0');
+        const val = xyAnalysis.getInputValue('xyX-0');
         expect(val).toBe('A');
       });
     });
 
     test('populateGlobalFileSelector fills searchable list and triggers change', () => {
       AppState.files = [{ name: 'Trip A', availableSignals: [], signals: {} }];
-      const spy = jest.spyOn(XYAnalysis, 'onFileChange');
+      const spy = jest.spyOn(xyAnalysis, 'onFileChange');
 
-      XYAnalysis.populateGlobalFileSelector();
+      xyAnalysis.populateGlobalFileSelector();
 
       const container = document.getElementById('xyGlobalFile');
       const input = container.querySelector('input');
@@ -316,10 +316,10 @@ describe('XYAnalysis Comprehensive Tests', () => {
           },
         },
       ];
-      XYAnalysis.populateGlobalFileSelector();
-      const updateTimelineSpy = jest.spyOn(XYAnalysis, 'updateTimeline');
+      xyAnalysis.populateGlobalFileSelector();
+      const updateTimelineSpy = jest.spyOn(xyAnalysis, 'updateTimeline');
 
-      XYAnalysis.onFileChange();
+      xyAnalysis.onFileChange();
 
       expect(getInputValue('xyX-0')).toBe('Engine Rpm');
       expect(getInputValue('xyY-0')).toBe('Intake Manifold Pressure');
@@ -328,8 +328,8 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
     test('onFileChange handles missing file gracefully', () => {
       AppState.files = [];
-      XYAnalysis.currentFileIndex = 0;
-      expect(() => XYAnalysis.onFileChange()).not.toThrow();
+      xyAnalysis.currentFileIndex = 0;
+      expect(() => xyAnalysis.onFileChange()).not.toThrow();
     });
   });
 
@@ -344,7 +344,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           },
         },
       ];
-      const result = XYAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
+      const result = xyAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({ x: 1, y: 2, z: 3 });
     });
@@ -359,7 +359,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           },
         },
       ];
-      const result = XYAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
+      const result = xyAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
       expect(result).toHaveLength(0);
     });
 
@@ -380,21 +380,21 @@ describe('XYAnalysis Comprehensive Tests', () => {
           },
         },
       ];
-      const result = XYAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
+      const result = xyAnalysis.generateScatterData(0, 'X', 'Y', 'Z');
       expect(result[0]).toEqual({ x: 100, y: 10, z: 20 });
     });
 
     test('getHeatColor gradient checks', () => {
-      expect(XYAnalysis.getHeatColor(10, 10, 10)).toBe(
+      expect(xyAnalysis.getHeatColor(10, 10, 10)).toBe(
         'hsla(240, 100%, 50%, 0.8)'
       );
-      expect(XYAnalysis.getHeatColor(0, 0, 100)).toContain('240');
-      expect(XYAnalysis.getHeatColor(100, 0, 100)).toContain('0');
+      expect(xyAnalysis.getHeatColor(0, 0, 100)).toContain('240');
+      expect(xyAnalysis.getHeatColor(100, 0, 100)).toContain('0');
     });
 
     describe('Legend Logic', () => {
       test('updateLegend handles constant values', () => {
-        XYAnalysis.updateLegend('0', 10, 10, 'Constant');
+        xyAnalysis.updateLegend('0', 10, 10, 'Constant');
         const legend = document.getElementById('xyLegend-0');
         const values = legend.querySelectorAll('.legend-values span');
         expect(values[0].innerText).toBe('10.0');
@@ -402,7 +402,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
       });
 
       test('updateLegend creates gradient structure', () => {
-        XYAnalysis.updateLegend('0', 0, 100, 'Label');
+        xyAnalysis.updateLegend('0', 0, 100, 'Label');
         const legend = document.getElementById('xyLegend-0');
         expect(legend.querySelector('.gradient-bar')).not.toBeNull();
         expect(legend.querySelector('.z-axis-label').innerText).toBe('Label');
@@ -410,25 +410,25 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
       test('updateLegend returns early if element missing', () => {
         document.getElementById('xyLegend-0').remove();
-        expect(() => XYAnalysis.updateLegend('0', 0, 10, 'L')).not.toThrow();
+        expect(() => xyAnalysis.updateLegend('0', 0, 10, 'L')).not.toThrow();
       });
     });
   });
 
   describe('Scatter Chart Rendering', () => {
     test('renderChart handles empty data gracefully', () => {
-      jest.spyOn(XYAnalysis, 'generateScatterData').mockReturnValue([]);
-      XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
+      jest.spyOn(xyAnalysis, 'generateScatterData').mockReturnValue([]);
+      xyAnalysis.renderChart('0', 0, 'A', 'B', 'C');
       expect(Chart).toHaveBeenCalledTimes(0);
     });
 
     test('renderChart configures Axis Titles and Zoom', () => {
       AppState.files = [{ availableSignals: ['X', 'Y', 'Z'], signals: {} }];
       jest
-        .spyOn(XYAnalysis, 'generateScatterData')
+        .spyOn(xyAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
 
-      XYAnalysis.renderChart('0', 0, 'X', 'Y', 'Z');
+      xyAnalysis.renderChart('0', 0, 'X', 'Y', 'Z');
 
       const config = Chart.mock.calls[0][1];
       expect(config.options.scales.x.title.text).toBe('X');
@@ -438,11 +438,11 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
     test('Scatter chart uses external tooltip handler', () => {
       jest
-        .spyOn(XYAnalysis, 'generateScatterData')
+        .spyOn(xyAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 2, z: 3 }]);
       AppState.files = [{ availableSignals: ['A', 'B', 'C'], signals: {} }];
 
-      XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
+      xyAnalysis.renderChart('0', 0, 'A', 'B', 'C');
 
       const config = Chart.mock.calls[0][1];
       const tooltipConfig = config.options.plugins.tooltip;
@@ -455,10 +455,10 @@ describe('XYAnalysis Comprehensive Tests', () => {
         { availableSignals: ['RPM', 'MAP', 'MAF'], signals: {} },
       ];
       jest
-        .spyOn(XYAnalysis, 'generateScatterData')
+        .spyOn(xyAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
 
-      XYAnalysis.renderChart('0', 0, 'RPM', 'MAP', 'MAF');
+      xyAnalysis.renderChart('0', 0, 'RPM', 'MAP', 'MAF');
 
       const config = Chart.mock.calls[0][1];
       const externalHandler = config.options.plugins.tooltip.external;
@@ -501,9 +501,9 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
     test('Custom Tooltip: Hides when opacity is 0', () => {
       jest
-        .spyOn(XYAnalysis, 'generateScatterData')
+        .spyOn(xyAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
-      XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
+      xyAnalysis.renderChart('0', 0, 'A', 'B', 'C');
 
       const handler = Chart.mock.calls[0][1].options.plugins.tooltip.external;
       const mockEl = document.createElement('div');
@@ -521,16 +521,16 @@ describe('XYAnalysis Comprehensive Tests', () => {
       mockParent.appendChild(mockCanvas);
 
       const chart = { canvas: mockCanvas };
-      const tooltip = XYAnalysis.getOrCreateTooltip(chart);
+      const tooltip = xyAnalysis.getOrCreateTooltip(chart);
 
       expect(tooltip.className).toBe('chartjs-tooltip');
       expect(mockParent.querySelector('.chartjs-tooltip')).not.toBeNull();
     });
 
     test('resetAllZooms resets all charts', () => {
-      XYAnalysis.charts = [mockChartInstance, null];
-      XYAnalysis.timelineChart = mockChartInstance;
-      XYAnalysis.resetAllZooms();
+      xyAnalysis.charts = [mockChartInstance, null];
+      xyAnalysis.timelineChart = mockChartInstance;
+      xyAnalysis.resetAllZooms();
       expect(mockChartInstance.resetZoom).toHaveBeenCalledTimes(2);
     });
   });
@@ -553,7 +553,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['RPM', 'Boost']);
+      xyAnalysis.renderTimeline(0, ['RPM', 'Boost']);
 
       const config = Chart.mock.calls[0][1];
       expect(config.data.datasets.length).toBe(2);
@@ -570,7 +570,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           signals: { S1: [{ x: 0, y: 50 }] },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['S1']);
+      xyAnalysis.renderTimeline(0, ['S1']);
 
       const callback =
         Chart.mock.calls[0][1].options.plugins.tooltip.callbacks.label;
@@ -589,7 +589,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           signals: { SigA: [{ x: 0, y: 0 }] },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['SigA']);
+      xyAnalysis.renderTimeline(0, ['SigA']);
       const config = Chart.mock.calls[0][1];
       expect(config.data.datasets[0].borderColor).toBe('#ff0000');
     });
@@ -607,7 +607,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['Flat']);
+      xyAnalysis.renderTimeline(0, ['Flat']);
       const data = Chart.mock.calls[0][1].data.datasets[0].data;
       expect(data[0].y).toBe(0);
     });
@@ -620,13 +620,13 @@ describe('XYAnalysis Comprehensive Tests', () => {
           signals: { A: [{ x: 0, y: 0 }] },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['A', 'Missing']);
+      xyAnalysis.renderTimeline(0, ['A', 'Missing']);
       expect(Chart.mock.calls[0][1].data.datasets).toHaveLength(1);
     });
 
     test('renderTimeline returns early if canvas missing', () => {
       document.getElementById('xyTimelineCanvas').remove();
-      XYAnalysis.renderTimeline(0, ['RPM']);
+      xyAnalysis.renderTimeline(0, ['RPM']);
       expect(Chart).not.toHaveBeenCalled();
     });
 
@@ -638,7 +638,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           signals: { S1: [{ x: 0, y: 0 }] },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['S1']);
+      xyAnalysis.renderTimeline(0, ['S1']);
 
       const config = Chart.mock.calls[0][1];
       const hoverPlugin = config.plugins.find((p) => p.id === 'xyHoverLine');
@@ -683,10 +683,10 @@ describe('XYAnalysis Comprehensive Tests', () => {
           signals: { S1: [], S2: [], S3: [] },
         },
       ];
-      XYAnalysis.currentFileIndex = 0;
+      xyAnalysis.currentFileIndex = 0;
 
-      const spy = jest.spyOn(XYAnalysis, 'renderTimeline');
-      XYAnalysis.updateTimeline();
+      const spy = jest.spyOn(xyAnalysis, 'renderTimeline');
+      xyAnalysis.updateTimeline();
 
       expect(spy).toHaveBeenCalledWith(
         expect.anything(),
@@ -696,10 +696,10 @@ describe('XYAnalysis Comprehensive Tests', () => {
 
     test('plot triggers both scatter and timeline updates', () => {
       const scatterSpy = jest
-        .spyOn(XYAnalysis, 'renderChart')
+        .spyOn(xyAnalysis, 'renderChart')
         .mockImplementation(() => {});
       const timelineSpy = jest
-        .spyOn(XYAnalysis, 'updateTimeline')
+        .spyOn(xyAnalysis, 'updateTimeline')
         .mockImplementation(() => {});
 
       document.getElementById('xyX-0').innerHTML = `<input value="A">`;
@@ -707,9 +707,9 @@ describe('XYAnalysis Comprehensive Tests', () => {
       document.getElementById('xyZ-0').innerHTML = `<input value="C">`;
 
       AppState.files = [{ name: 'F', startTime: 0, signals: {} }];
-      XYAnalysis.currentFileIndex = 0;
+      xyAnalysis.currentFileIndex = 0;
 
-      XYAnalysis.plot('0');
+      xyAnalysis.plot('0');
 
       expect(scatterSpy).toHaveBeenCalled();
       expect(timelineSpy).toHaveBeenCalled();
@@ -719,28 +719,28 @@ describe('XYAnalysis Comprehensive Tests', () => {
   describe('Edge Cases & Full Coverage', () => {
     test('getHeatColor handles values outside min/max range', () => {
       // Value below min (0) should be clamped to min -> Hue 240 (Blue)
-      expect(XYAnalysis.getHeatColor(-50, 0, 100)).toContain('240');
+      expect(xyAnalysis.getHeatColor(-50, 0, 100)).toContain('240');
       // Value above max (100) should be clamped to max -> Hue 0 (Red)
-      expect(XYAnalysis.getHeatColor(150, 0, 100)).toContain('0');
+      expect(xyAnalysis.getHeatColor(150, 0, 100)).toContain('0');
     });
 
     test('renderChart destroys existing chart before creating new one', () => {
       const destroySpy = jest.fn();
-      XYAnalysis.charts = [{ destroy: destroySpy }, null];
+      xyAnalysis.charts = [{ destroy: destroySpy }, null];
 
       AppState.files = [{ availableSignals: ['A', 'B', 'C'], signals: {} }];
       jest
-        .spyOn(XYAnalysis, 'generateScatterData')
+        .spyOn(xyAnalysis, 'generateScatterData')
         .mockReturnValue([{ x: 1, y: 1, z: 1 }]);
 
-      XYAnalysis.renderChart('0', 0, 'A', 'B', 'C');
+      xyAnalysis.renderChart('0', 0, 'A', 'B', 'C');
 
       expect(destroySpy).toHaveBeenCalled();
     });
 
     test('renderTimeline destroys existing chart', () => {
       const destroySpy = jest.fn();
-      XYAnalysis.timelineChart = { destroy: destroySpy };
+      xyAnalysis.timelineChart = { destroy: destroySpy };
 
       AppState.files = [
         {
@@ -749,7 +749,7 @@ describe('XYAnalysis Comprehensive Tests', () => {
           signals: { A: [{ x: 0, y: 0 }] },
         },
       ];
-      XYAnalysis.renderTimeline(0, ['A']);
+      xyAnalysis.renderTimeline(0, ['A']);
 
       expect(destroySpy).toHaveBeenCalled();
     });
@@ -764,14 +764,14 @@ describe('XYAnalysis Comprehensive Tests', () => {
         },
       ];
 
-      XYAnalysis.renderTimeline(0, ['GhostSignal']);
+      xyAnalysis.renderTimeline(0, ['GhostSignal']);
 
       const config = Chart.mock.calls[0][1];
       expect(config.data.datasets.length).toBe(0); // Should be filtered out
     });
 
     test('Event listener cleanup when element is removed from DOM', () => {
-      XYAnalysis.createSearchableSelect('xyGlobalFile', ['A'], '', jest.fn());
+      xyAnalysis.createSearchableSelect('xyGlobalFile', ['A'], '', jest.fn());
       const container = document.getElementById('xyGlobalFile');
       const list = container.querySelector('.search-results-list');
 
@@ -786,12 +786,12 @@ describe('XYAnalysis Comprehensive Tests', () => {
     });
 
     test('plot returns early if inputs are missing', () => {
-      const renderSpy = jest.spyOn(XYAnalysis, 'renderChart');
+      const renderSpy = jest.spyOn(xyAnalysis, 'renderChart');
 
       // Only set X, leave Y and Z empty
       document.getElementById('xyX-0').innerHTML = `<input value="A">`;
 
-      XYAnalysis.plot('0');
+      xyAnalysis.plot('0');
 
       expect(renderSpy).not.toHaveBeenCalled();
     });

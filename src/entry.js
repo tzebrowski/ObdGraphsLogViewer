@@ -10,7 +10,7 @@ import { Preferences } from './preferences.js';
 import { Navigation } from './navigation.js';
 import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
-import { XYAnalysis } from './xyanalysis.js';
+import { xyAnalysis } from './xyAnalysis.js';
 import { Histogram } from './histogram.js';
 import { mathChannels } from './mathchannels.js';
 
@@ -27,7 +27,7 @@ window.onload = async function () {
   Preferences.init();
   Navigation.init();
   PaletteManager.init();
-  XYAnalysis.init();
+  xyAnalysis.init();
   Histogram.init();
 
   const fileInput = DOM.get('fileInput');
@@ -66,14 +66,14 @@ window.resetZoom = () => ChartManager.reset();
 window.manualZoom = (e, f) => ChartManager.manualZoom(e, f);
 window.toggleViewMode = (f) => ChartManager.toggleViewMode(f);
 
-window.openXYModal = () => XYAnalysis.openXYModal();
-window.closeXYModal = () => XYAnalysis.closeXYModal();
+window.openXYModal = () => xyAnalysis.openXYModal();
+window.closeXYModal = () => xyAnalysis.closeXYModal();
 window.showChartInfo = (e) => ChartManager.showChartInfo(e);
 window.exportDataRange = (e) => ChartManager.exportDataRange(e);
 window.stepCursor = (idx, step) => ChartManager.stepCursor(idx, step);
-window.plot = (e) => XYAnalysis.plot(e);
-window.resetAllZooms = () => XYAnalysis.resetAllZooms();
-window.onFileChange = () => XYAnalysis.onFileChange();
+window.plot = (e) => xyAnalysis.plot(e);
+window.resetAllZooms = () => xyAnalysis.resetAllZooms();
+window.onFileChange = () => xyAnalysis.onFileChange();
 window.histogram_openModal = () => Histogram.openModal();
 window.histogram_generate = () => Histogram.generate();
 
