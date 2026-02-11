@@ -130,7 +130,103 @@ describe('MathChannels', () => {
     });
   });
 
-  describe('Specific Formula Logic', () => {
+  describe('Business Formulas', () => {
+    test('Fuel Volume: Clamps input percentage between 0 and 100', () => {
+      const fuelLevel = [
+        { x: 1, y: -10 }, // Should clamp to 0
+        { x: 2, y: 50 },  // 50%
+        { x: 3, y: 150 }, // Should clamp to 100
+      ];
+      const capacity = 60; // Liters
+
+      AppState.files = [
+        { signals: { Fuel: fuelLevel }, availableSignals: ['Fuel'] },
+      ];
+
+      mathChannels.createChannel(
+        0,
+        'fuel_volume',
+        ['Fuel', capacity.toString()],
+        'Liters'
+      );
+      const res = AppState.files[0].signals['Math: Liters'];
+
+      expect(res[0].y).toBe(0);          // 0% of 60L
+      expect(res[1].y).toBe(30);         // 50% of 60L
+      expect(res[2].y).toBe(60);         // 100% of 60L
+    });
+
+    test('Est Range (Fixed): Calculates correctly and avoids division by zero', () => {
+      const fuelLevel = [{ x: 1, y: 50 }]; // 50%
+      const capacity = 50; // Liters
+      const validCons = 10; // L/100km
+      const zeroCons = 0; // Invalid
+
+      AppState.files = [
+        { signals: { Fuel: fuelLevel }, availableSignals: ['Fuel'] },
+      ];
+
+      // Test Valid Consumption
+      mathChannels.createChannel(
+        0,
+        'est_range_fixed',
+        ['Fuel', capacity.toString(), validCons.toString()],
+        'Range'
+      );
+      // 50% of 50L = 25L. Range = (25 / 10) * 100 = 250km
+      expect(AppState.files[0].signals['Math: Range'][0].y).toBe(250);
+
+      // Test Zero Consumption (Should return 0, not Infinity)
+      mathChannels.createChannel(
+        0,
+        'est_range_fixed',
+        ['Fuel', capacity.toString(), zeroCons.toString()],
+        'RangeZero'
+      );
+      expect(AppState.files[0].signals['Math: RangeZero'][0].y).toBe(0);
+    });
+
+    test('Est Range (Dynamic): Uses signal for consumption', () => {
+      const fuelLevel = [{ x: 1, y: 50 }]; // 50% of 58L = 29L
+      const currentCons = [{ x: 1, y: 14.5 }]; // L/100km
+      
+      AppState.files = [
+        { 
+            signals: { Fuel: fuelLevel, Cons: currentCons }, 
+            availableSignals: ['Fuel', 'Cons'] 
+        },
+      ];
+
+      mathChannels.createChannel(
+        0,
+        'est_range_dynamic',
+        ['Fuel', 'Cons', '58'],
+        'DynRange'
+      );
+      
+      // Range = (29L / 14.5) * 100 = 200km
+      expect(AppState.files[0].signals['Math: DynRange'][0].y).toBeCloseTo(200);
+    });
+
+    test('Trip Distance: Subtracts initial odometer value', () => {
+        const odo = [
+            { x: 0, y: 10000 },
+            { x: 1, y: 10005 },
+            { x: 2, y: 10010 },
+        ];
+
+        AppState.files = [{ signals: { Odo: odo }, availableSignals: ['Odo'] }];
+
+        mathChannels.createChannel(0, 'trip_distance', ['Odo'], 'Trip');
+        const res = AppState.files[0].signals['Math: Trip'];
+
+        expect(res[0].y).toBe(0);
+        expect(res[1].y).toBe(5);
+        expect(res[2].y).toBe(10);
+    });
+  });
+
+  describe('Specific Formula Logic (Technical)', () => {
     test('Acceleration: Standard Calculation & dt=0 skip', () => {
       const speedData = [
         { x: 0, y: 0 },
@@ -286,7 +382,7 @@ describe('MathChannels', () => {
       mathChannels.openModal();
 
       const select = document.getElementById('mathFormulaSelect');
-      // Adjusted expectation: 1 default option + 2 optgroups = 3 direct children
+      // Adjusted: 1 default option + 2 optgroups = 3 direct children
       expect(select.children.length).toBeGreaterThan(0);
       expect(document.getElementById('mathModal').style.display).toBe('flex');
     });
