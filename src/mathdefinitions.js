@@ -2,6 +2,115 @@ import { signalRegistry } from './signalregistry.js';
 
 export const MATH_DEFINITIONS = [
   {
+    id: 'gps_speed_calc',
+    name: 'GPS Speed (Calculated)',
+    unit: 'km/h',
+    category: 'Business',
+    description:
+      'Calculates vehicle speed based on GPS coordinates (Latitude/Longitude) and time delta.',
+    inputs: [
+      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
+      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+    ],
+    customProcess: (signals) => {
+      const latSig = signals[0];
+      const lonSig = signals[1];
+
+      if (!latSig || !lonSig || latSig.length === 0) return [];
+
+      const result = [];
+      const toRad = (val) => (val * Math.PI) / 180;
+      const R = 6371e3; // Earth radius in meters
+
+      // Start from the second point so we have a previous point to compare
+      for (let i = 1; i < latSig.length; i++) {
+        const t1 = latSig[i - 1].x;
+        const t2 = latSig[i].x;
+        const dt = (t2 - t1) / 1000; // Delta time in seconds
+
+        if (dt <= 0) continue; // Skip duplicate timestamps
+
+        const lat1 = toRad(latSig[i - 1].y);
+        const lat2 = toRad(latSig[i].y);
+        const lon1 = toRad(lonSig[i - 1].y);
+        const lon2 = toRad(lonSig[i].y);
+        const dLat = lat2 - lat1;
+        const dLon = lon2 - lon1;
+
+        // Haversine Formula
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) *
+            Math.cos(lat2) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c; // Distance in meters
+
+        const speedMps = distance / dt; // m/s
+        const speedKph = speedMps * 3.6; // km/h
+
+        // Filter massive spikes (e.g. GPS jump) - limit to 350 km/h
+        if (speedKph < 350) {
+          result.push({ x: t2, y: speedKph });
+        }
+      }
+      return result;
+    },
+  },
+  {
+    id: 'trip_cost_sensor',
+    name: 'Trip Cost (Sensor Based)',
+    unit: 'Currency',
+    category: 'Business',
+    description:
+      'Calculates cost by measuring the actual drop in fuel level. Warning: Subject to "fuel slosh" noise.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Fuel Level'],
+        label: 'Fuel Level (%)',
+      },
+      {
+        name: 'capacity',
+        label: 'Tank Capacity (Liters)',
+        isConstant: true,
+        defaultValue: 58,
+      },
+      {
+        name: 'price',
+        label: 'Fuel Price (per Liter)',
+        isConstant: true,
+        defaultValue: 1.5,
+      },
+    ],
+    customProcess: (signals, constants) => {
+      const source = signals[0];
+      const capacity = constants[0];
+      const price = constants[1];
+
+      if (!source || source.length === 0) return [];
+
+      // Get the starting fuel level (percentage)
+      const startPct = Math.min(Math.max(source[0].y, 0), 100);
+      const startLiters = (startPct / 100) * capacity;
+
+      return source.map((point) => {
+        // Clamp current reading 0-100
+        const currentPct = Math.min(Math.max(point.y, 0), 100);
+        const currentLiters = (currentPct / 100) * capacity;
+
+        // Fuel Consumed = Start - Current
+        // We use Math.max(0, ...) to prevent negative cost if fuel sloshes "up"
+        const consumedLiters = Math.max(0, startLiters - currentLiters);
+
+        return {
+          x: point.x,
+          y: consumedLiters * price,
+        };
+      });
+    },
+  },
+  {
     id: 'fuel_volume',
     name: 'Fuel Volume (Liters)',
     unit: 'L',
