@@ -848,11 +848,6 @@ input[type='range']::-webkit-slider-thumb {
   --active-bg: #f0f0f0;
 }
 
-#xyModal .modal-content {
-  max-width: 95vw !important;
-  height: 90vh !important;
-}
-
 .modal-header {
   background: var(--sidebar-bg, #f8f9fa);
   padding: 15px 20px;
@@ -2942,4 +2937,85 @@ body.pref-theme-dark .search-option:hover {
     border-left: none;
     border-top: 1px solid #ddd;
   }
+}
+
+#xyModal .modal-content {
+  max-width: 98vw !important;
+  height: 95vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+}
+
+#xyModal .modal-body {
+  background-color: #f3f4f6 !important;
+  gap: 6px;
+  padding: 6px !important;
+}
+
+#xySplitView {
+  background: transparent !important;
+  border: none !important;
+  gap: 6px;
+}
+
+.xy-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
+  border: 1px solid #e5e7eb;
+  padding: 6px !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.xy-panel-toolbar {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 4px 8px !important;
+  border: 1px solid #eee;
+  margin-bottom: 5px !important;
+}
+
+.xy-panel-toolbar div > div:first-child {
+  text-transform: uppercase;
+  font-size: 0.65rem !important;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: #888;
+  margin-bottom: 2px;
+}
+
+#xyTimelineView {
+  background: #fff !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
+  border: 1px solid #e5e7eb;
+  margin: 0 !important;
+  padding: 6px !important;
+}
+
+#xyTimelineView > div:first-child {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  color: #1c3d72;
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+body.pref-theme-dark #xyModal .modal-body {
+  background-color: #121212 !important;
+}
+
+body.pref-theme-dark .xy-panel,
+body.pref-theme-dark #xyTimelineView {
+  background-color: #1e1e1e !important;
+  border-color: #333;
+}
+
+body.pref-theme-dark .xy-panel-toolbar {
+  background-color: #252525;
+  border-color: #333;
 }
