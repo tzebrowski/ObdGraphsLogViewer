@@ -2943,3 +2943,43 @@ body.pref-theme-dark .search-option:hover {
     border-top: 1px solid #ddd;
   }
 }
+
+#xyModal .modal-content {
+  max-width: 98vw !important;
+  height: 95vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+}
+
+#xyModal .modal-body {
+  max-height: none !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+#xySplitView {
+  flex: 2 !important;
+  display: flex;
+  min-height: 0;
+  border-bottom: 2px solid #ccc;
+}
+
+#xyTimelineView {
+  flex: 1 !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  background: #fafafa;
+}
+
+#xyTimelineView > div {
+  flex: 0.1;
+  position: relative;
+  min-height: 0;
+  width: 100%;
+}

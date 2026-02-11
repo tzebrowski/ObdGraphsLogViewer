@@ -70,13 +70,17 @@ class XYAnalysisClass {
 
   openXYModal() {
     const modal = document.getElementById('xyModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+      modal.style.display = 'flex';
+      const modalBody = modal.querySelector('.modal-body');
+      if (modalBody) modalBody.style.maxHeight = 'none';
+    }
 
     const splitView = document.getElementById('xySplitView');
     const timelineView = document.getElementById('xyTimelineView');
 
     if (splitView && timelineView) {
-      splitView.style.flex = '3';
+      splitView.style.flex = '2';
       timelineView.style.flex = '1';
     }
 
