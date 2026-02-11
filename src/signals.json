@@ -1,5 +1,22 @@
 [
   {
+    "name": "Fuel Level",
+    "default": false,
+    "aliases": ["Fuel Level"]
+  },
+
+  {
+    "name": "Fuel Consumption",
+    "default": false,
+    "aliases": ["Fuel Consumption"]
+  },
+
+  {
+    "name": "Distance",
+    "default": false,
+    "aliases": ["Distance", "Odometer", "Odo"]
+  },
+  {
     "name": "Engine Speed",
     "default": true,
     "aliases": ["RPM", "Engine Speed", "Engine RPM", "Engine Rpm"]

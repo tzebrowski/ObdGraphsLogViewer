@@ -598,7 +598,7 @@ class MapManager {
       onAdd: function () {
         const div = L.DomUtil.create('div', 'info-legend');
         div.style.cssText =
-          'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px; font-size: 0.8em;';
+          'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px; font-size: 1em;';
         div.innerHTML = `
            <div style="font-weight:bold; border-bottom:1px solid #aaa; margin-bottom:4px;">Stats</div>
            <div><b>Dist:</b> ${stats.dist} km</div>

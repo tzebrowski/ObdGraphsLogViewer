@@ -60,7 +60,7 @@ class MathChannels {
   closeModal() {
     const modal = document.getElementById('mathModal');
     if (modal) modal.style.display = 'none';
-    this.#clearError(); // Reset error state on close
+    this.#clearError();
   }
 
   onFormulaChange() {
@@ -243,8 +243,6 @@ class MathChannels {
     return finalName;
   }
 
-  // --- UI Logic & Error Handling ---
-
   #getCreateBtn() {
     return (
       document.getElementById('btnCreate') ||
@@ -257,12 +255,10 @@ class MathChannels {
     let errorBox = document.getElementById('mathErrorBox');
 
     if (!errorBox) {
-      // Use the helper to find the button
       const btn = this.#getCreateBtn();
       if (btn && btn.parentNode) {
         errorBox = document.createElement('div');
         errorBox.id = 'mathErrorBox';
-        // Insert before the button (or its container if needed)
         btn.parentNode.insertBefore(errorBox, btn);
       }
     }
@@ -291,7 +287,6 @@ class MathChannels {
     const btn = this.#getCreateBtn();
     if (btn) {
       btn.disabled = true;
-      // Ensure we don't double-bind if onclick is already in HTML
       btn.onclick = (e) => {
         e.preventDefault();
         this.createMathChannel();
@@ -302,11 +297,44 @@ class MathChannels {
     if (!select) return;
 
     select.innerHTML = '<option value="">-- Select Formula --</option>';
+
+    // --- NEW: Category Grouping Logic ---
+    const categories = {
+      Business: [],
+      Technical: [],
+    };
+
     this.#definitions.forEach((def) => {
       if (!def.isHidden) {
-        select.innerHTML += `<option value="${def.id}">${def.name}</option>`;
+        const cat = def.category || 'Technical';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(def);
       }
     });
+
+    if (categories.Business.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = 'Business Formulas';
+      categories.Business.forEach((def) => {
+        const opt = document.createElement('option');
+        opt.value = def.id;
+        opt.text = def.name;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
+
+    if (categories.Technical.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = 'Technical Processing';
+      categories.Technical.forEach((def) => {
+        const opt = document.createElement('option');
+        opt.value = def.id;
+        opt.text = def.name;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
 
     document.getElementById('mathInputsContainer').innerHTML = '';
     this.#toggleDisplay('mathDescriptionContainer', false);
@@ -519,7 +547,7 @@ class MathChannels {
           e.stopPropagation();
           this.#handleMultiSelectAll(input, signals, matches);
           input.focus();
-          input.dispatchEvent(new Event('input')); // Trigger Validation
+          input.dispatchEvent(new Event('input'));
         };
         resultsList.appendChild(allBtn);
       }
@@ -541,7 +569,7 @@ class MathChannels {
               input.value = sig;
               resultsList.style.display = 'none';
             }
-            input.dispatchEvent(new Event('input')); // Trigger Validation
+            input.dispatchEvent(new Event('input'));
           };
           resultsList.appendChild(div);
         });
@@ -567,19 +595,26 @@ class MathChannels {
   }
 
   #handleMultiSelect(input, sig) {
-    const current = input.value
+    const rawVal = input.value;
+    const isSearching =
+      rawVal.trim().length > 0 && !rawVal.trim().endsWith(',');
+
+    let current = rawVal
       .split(',')
       .map((s) => s.trim())
       .filter((s) => s);
+
     if (current.includes(sig)) {
-      input.value =
-        current.filter((s) => s !== sig).join(', ') +
-        (current.length > 1 ? ', ' : '');
+      current = current.filter((s) => s !== sig);
     } else {
-      current.pop();
+      if (isSearching && current.length > 0) {
+        current.pop();
+      }
       current.push(sig);
-      input.value = current.join(', ') + ', ';
     }
+
+    const newValue = current.join(', ');
+    input.value = newValue.length > 0 ? newValue + ', ' : '';
   }
 
   #handleMultiSelectAll(input, allSignals, visibleMatches) {
@@ -684,7 +719,6 @@ class MathChannels {
       if (typeof UI.renderSignalList === 'function') UI.renderSignalList();
     } catch (e) {
       console.error(e);
-      // Logic failure? Show it in the box.
       this.#showError(e.message);
     }
   }
