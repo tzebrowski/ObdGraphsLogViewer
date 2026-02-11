@@ -1,4 +1,4 @@
-import { AppState, DOM, DEFAULT_SIGNALS } from './config.js';
+import { AppState, DOM } from './config.js';
 import { dataProcessor } from './dataprocessor.js';
 import { Preferences } from './preferences.js';
 import { Alert } from './alert.js';
@@ -559,7 +559,7 @@ export const UI = {
       const createSignalItem = (signal) => {
         const sigIdx = file.availableSignals.indexOf(signal);
         const isMath = signal.startsWith('Math:');
-        const isImportant = DEFAULT_SIGNALS.some((k) => signal.includes(k));
+        const isImportant = signalRegistry.isDefaultSignal(signal);
 
         let isCurrentlyVisible = false;
         let datasetFound = false;

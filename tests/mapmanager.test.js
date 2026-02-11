@@ -101,7 +101,6 @@ await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [] },
   DOM: { get: jest.fn() },
   Config: { ANOMALY_TEMPLATES: [] },
-  DEFAULT_SIGNALS: [],
   EVENTS: {
     MAP_SELECTED: 'map:position-selected',
     FILE_REMOVED: 'file:removed',

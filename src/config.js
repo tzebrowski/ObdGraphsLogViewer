@@ -1,14 +1,3 @@
-export const DEFAULT_SIGNALS = [
-  'Boost',
-  'Rpm',
-  'Pedal',
-  'Trim',
-  'Spark',
-  'Mass',
-  'Intake',
-  'Torque',
-];
-
 export const VIEW_MODES = {
   STACK: 'stack',
   OVERLAY: 'overlay',

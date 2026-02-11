@@ -38,6 +38,7 @@ const mockMapManager = {
 
 const mockSignalRegistry = {
   findSignal: jest.fn(),
+  isDefaultSignal: jest.fn(),
 };
 
 await jest.unstable_mockModule('../src/bus.js', () => ({
@@ -76,7 +77,6 @@ const mockAppState = {
 await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: mockAppState,
   DOM: { get: (id) => document.getElementById(id) },
-  DEFAULT_SIGNALS: ['RPM'],
 }));
 
 const { UI, InfoPage } = await import('../src/ui.js');
