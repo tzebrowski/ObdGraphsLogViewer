@@ -2,6 +2,98 @@ import { signalRegistry } from './signalregistry.js';
 
 export const MATH_DEFINITIONS = [
   {
+    id: 'fuel_volume',
+    name: 'Fuel Volume (Liters)',
+    unit: 'L',
+    category: 'Business',
+    description:
+      'Calculates current fuel volume in liters based on tank percentage (clamped to 100%).',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Fuel Level'],
+        label: 'Fuel Level (%)',
+      },
+      {
+        name: 'capacity',
+        label: 'Tank Capacity (Liters)',
+        isConstant: true,
+        defaultValue: 58,
+      },
+    ],
+    formula: (values) => {
+      const pct = Math.min(Math.max(values[0], 0), 100);
+      return (pct / 100) * values[1];
+    },
+  },
+  {
+    id: 'est_range_fixed',
+    name: 'Est. Range (Fixed Cons.)',
+    unit: 'km',
+    category: 'Business',
+    description:
+      'Stable range estimate using your known Average Consumption (e.g., 10 L/100km).',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Fuel Level'],
+        label: 'Fuel Level (%)',
+      },
+      {
+        name: 'capacity',
+        label: 'Tank Capacity (Liters)',
+        isConstant: true,
+        defaultValue: 58,
+      },
+      {
+        name: signalRegistry.mappings['Fuel Consumption'],
+        label: 'Known Avg Cons. (L/100km)',
+        isConstant: true,
+        defaultValue: 10.5, // Changed to a more realistic daily average
+      },
+    ],
+    formula: (values) => {
+      const pct = Math.min(Math.max(values[0], 0), 100);
+      const cap = values[1];
+      const cons = values[2];
+
+      if (cons <= 0.1) return 0;
+
+      const liters = (pct / 100) * cap;
+      return (liters / cons) * 100;
+    },
+  },
+  {
+    id: 'est_range_dynamic',
+    name: 'Est. Range (Dynamic Signal)',
+    unit: 'km',
+    category: 'Business',
+    description:
+      'Real-time range estimate using "Current Consumption" signal. Shows how range drops during acceleration.',
+    inputs: [
+      {
+        name: signalRegistry.mappings['Fuel Level'],
+        label: 'Fuel Level (%)',
+      },
+      {
+        name: signalRegistry.mappings['Fuel Consumption'],
+        label: 'Current Cons. Signal',
+      },
+      {
+        name: 'capacity',
+        label: 'Tank Capacity (Liters)',
+        isConstant: true,
+        defaultValue: 58,
+      },
+    ],
+    formula: (values) => {
+      const pct = Math.min(Math.max(values[0], 0), 100);
+      const cons = Math.max(values[1], 0.1); // Prevent div/0
+      const cap = values[2];
+
+      const liters = (pct / 100) * cap;
+      return (liters / cons) * 100;
+    },
+  },
+  {
     id: 'trip_distance',
     name: 'Trip Distance',
     unit: 'km',
@@ -9,7 +101,10 @@ export const MATH_DEFINITIONS = [
     description:
       'Calculates distance traveled since the start of the log: Current Odometer - Initial Odometer.',
     inputs: [
-      { name: signalRegistry.mappings.Distance, label: 'Odometer Signal' },
+      {
+        name: signalRegistry.mappings.Distance || 'Distance',
+        label: 'Odometer Signal',
+      },
     ],
     customProcess: (signals) => {
       const source = signals[0];
@@ -126,7 +221,7 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
     inputs: [
       {
-        name: signalRegistry.mappings['Intake Manifold Pressure Measured'],
+        name: signalRegistry.mappings['Intake Manifold Pressure'],
         label: 'Intake Manifold Pressure',
       },
       {
@@ -162,7 +257,7 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
     inputs: [
       {
-        name: signalRegistry.mappings['Intake Manifold Pressure Measured'],
+        name: signalRegistry.mappings['Intake Manifold Pressure'],
         label: 'Intake Manifold Pressure',
       },
       {

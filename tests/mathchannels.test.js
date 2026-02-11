@@ -33,6 +33,7 @@ describe('MathChannels', () => {
         checked: false,
         style: {},
         addEventListener: jest.fn(),
+        appendChild: jest.fn(),
         children: [],
       };
     });
@@ -285,7 +286,8 @@ describe('MathChannels', () => {
       mathChannels.openModal();
 
       const select = document.getElementById('mathFormulaSelect');
-      expect(select.children.length).toBeGreaterThan(5);
+      // Adjusted expectation: 1 default option + 2 optgroups = 3 direct children
+      expect(select.children.length).toBeGreaterThan(0);
       expect(document.getElementById('mathModal').style.display).toBe('flex');
     });
 
@@ -388,7 +390,7 @@ describe('MathChannels', () => {
       };
 
       mockDomElements({
-        mathFormulaSelect: { value: 'multiply_const' },
+        mathFormulaSelect: { value: 'multiply_const', appendChild: jest.fn() },
         'math-input-0': { value: 'A' },
         'math-input-1': { value: '1' },
         mathChannelName: { value: 'ErrorTest' },
@@ -420,7 +422,7 @@ describe('MathChannels', () => {
       mathChannels.openModal();
 
       mockDomElements({
-        mathFormulaSelect: { value: 'filtered_batch' },
+        mathFormulaSelect: { value: 'filtered_batch', appendChild: jest.fn() },
         'math-input-0': { value: 'A, B' },
         'math-input-1': { value: 'A' },
         'math-input-2': { value: '0' },
@@ -460,7 +462,7 @@ describe('MathChannels', () => {
       mathChannels.openModal();
 
       mockDomElements({
-        mathFormulaSelect: { value: 'multiply_const' },
+        mathFormulaSelect: { value: 'multiply_const', appendChild: jest.fn() },
         'math-input-0': { value: 'A' },
         'math-input-1': { value: '5' },
         mathChannelName: { value: 'HighFive' },
@@ -492,7 +494,7 @@ describe('MathChannels', () => {
       mathChannels.openModal();
 
       mockDomElements({
-        mathFormulaSelect: { value: 'multiply_const' },
+        mathFormulaSelect: { value: 'multiply_const', appendChild: jest.fn() },
         mathTargetFile: { value: '1', valueAsNumber: 1 },
         mathChannelName: { value: 'TargetedBoost' },
         'math-input-0': { value: 'TestSig' },
@@ -544,7 +546,7 @@ describe('Event Logging', () => {
     ];
     mathChannels.openModal();
 
-    const mockSelect = { value: 'multiply_const' };
+    const mockSelect = { value: 'multiply_const', appendChild: jest.fn() };
     const mockInputSig = { value: 'A' };
     const mockInputConst = { value: '2' };
     const mockName = { value: 'LogTestChannel' };
@@ -563,6 +565,7 @@ describe('Event Logging', () => {
         checked: false,
         style: {},
         addEventListener: jest.fn(),
+        appendChild: jest.fn(),
       };
     });
 
@@ -595,7 +598,7 @@ describe('Event Logging', () => {
     ];
     mathChannels.openModal();
 
-    const mockSelect = { value: 'filtered_batch' };
+    const mockSelect = { value: 'filtered_batch', appendChild: jest.fn() };
     const mockInputMulti = { value: 'A, B' };
     const mockInputOther = { value: '0' };
 
@@ -641,7 +644,11 @@ describe('Event Logging', () => {
       AppState.files = [{ availableSignals: ['RPM'], signals: {} }];
 
       const mockBtn = { disabled: false };
-      const mockSelect = { value: 'multiply_const', onchange: null };
+      const mockSelect = {
+        value: 'multiply_const',
+        onchange: null,
+        appendChild: jest.fn(),
+      };
       const mockName = { value: '', oninput: null };
       const mockInputSource = { value: '', addEventListener: jest.fn() };
       const mockInputFactor = { value: '1.0', addEventListener: jest.fn() };

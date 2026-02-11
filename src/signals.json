@@ -1,5 +1,17 @@
 [
   {
+    "name": "Fuel Level",
+    "default": false,
+    "aliases": ["Fuel Level"]
+  },
+
+  {
+    "name": "Fuel Consumption",
+    "default": false,
+    "aliases": ["Fuel Consumption"]
+  },
+
+  {
     "name": "Distance",
     "default": false,
     "aliases": ["Distance", "Odometer", "Odo"]
