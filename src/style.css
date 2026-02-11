@@ -2953,8 +2953,10 @@ body.pref-theme-dark .search-option:hover {
   flex: 1 1 auto !important;
   display: flex !important;
   flex-direction: column !important;
-  padding: 0 !important;
   overflow: hidden !important;
+  background-color: #f3f4f6 !important;
+  gap: 12px;
+  padding: 12px !important;
 }
 
 #xySplitView {
@@ -2977,4 +2979,70 @@ body.pref-theme-dark .search-option:hover {
   position: relative;
   min-height: 0;
   width: 100%;
+}
+
+#xySplitView {
+  background: transparent !important;
+  border: none !important;
+  gap: 12px;
+}
+
+.xy-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
+  border: 1px solid #e5e7eb;
+  padding: 15px !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.xy-panel-toolbar {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 10px 12px !important;
+  border: 1px solid #eee;
+  margin-bottom: 15px !important;
+}
+
+.xy-panel-toolbar div > div:first-child {
+  text-transform: uppercase;
+  font-size: 0.65rem !important;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+#xyTimelineView {
+  background: #fff !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
+  border: 1px solid #e5e7eb;
+  margin: 0 !important;
+  padding: 10px !important;
+}
+
+#xyTimelineView > div:first-child {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  color: #1c3d72;
+  font-weight: 600;
+}
+
+body.pref-theme-dark #xyModal .modal-body {
+  background-color: #121212 !important;
+}
+
+body.pref-theme-dark .xy-panel,
+body.pref-theme-dark #xyTimelineView {
+  background-color: #1e1e1e !important;
+  border-color: #333;
+}
+
+body.pref-theme-dark .xy-panel-toolbar {
+  background-color: #252525;
+  border-color: #333;
 }
