@@ -10,7 +10,7 @@ import { Preferences } from './preferences.js';
 import { Navigation } from './navigation.js';
 import { Alert } from './alert.js';
 import { PaletteManager } from './palettemanager.js';
-import { xyAnalysis } from './xyAnalysis.js';
+import { xyAnalysis } from './xyanalysis.js';
 import { Histogram } from './histogram.js';
 import { mathChannels } from './mathchannels.js';
 
