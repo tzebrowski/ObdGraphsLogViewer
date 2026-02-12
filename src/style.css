@@ -2569,7 +2569,7 @@ body.pref-theme-dark .search-option:hover {
 .section-description {
   font-size: 0.8rem;
   color: var(--text-muted);
-  margin-top: -8px;
+  margin-top: 8px;
   margin-bottom: 12px;
   line-height: 1.4;
   font-weight: 400;
@@ -3240,4 +3240,8 @@ body.analyzer-active .view-switcher-container {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+#driveListContainer {
+  display: none;
 }
