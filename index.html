@@ -65,6 +65,16 @@
 
         <div class="view-switcher-container">
           <button
+            id="btn-create-math"
+            class="view-btn"
+            onclick="openMathModal()"
+            style="width: 100%"
+            disabled
+          >
+            <i class="fas fa-calculator"></i>
+          </button>
+
+          <button
             id="btn-mode-stack"
             class="view-btn active"
             onclick="toggleViewMode('stack')"
@@ -294,26 +304,6 @@
               </div>
             </div>
             <div id="fileInfo" class="status-text-subtle"></div>
-          </div>
-
-          <div class="control-group gray-box">
-            <h3 class="group-header">Math Channels</h3>
-            <p class="section-description">
-              Create virtual sensors using formulas (e.g. Boost, HP).
-            </p>
-
-            <div style="padding: 5px 0">
-              <button
-                id="btn-create-math"
-                class="btn btn-secondary"
-                onclick="openMathModal()"
-                style="width: 100%"
-                disabled
-              >
-                <i class="fas fa-calculator"></i>
-                <span>Create New Channel</span>
-              </button>
-            </div>
           </div>
 
           <div
