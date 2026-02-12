@@ -106,9 +106,9 @@ body.docs-body.dark-theme .feature-card {
 .sidebar {
   overflow: hidden auto !important;
   display: block !important;
-  min-width: 280px;
+  min-width: 380px;
   max-width: 600px;
-  width: 280px;
+  width: 380px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
   padding: 5px;
@@ -185,6 +185,14 @@ body.docs-body.dark-theme .feature-card {
   float: right;
 }
 
+.control-group.collapsed > *:not(h3, .group-header, .group-header-row) {
+  display: none !important;
+}
+
+.control-group.collapsed .group-header-row .button-row-sm,
+.control-group.collapsed .group-header-row .btn-sm {
+  display: none !important;
+}
 
 .control-group h3,
 .group-header,
@@ -2198,6 +2206,11 @@ body.analyzer-active {
   box-shadow: 0 4px 20px rgb(0 0 0 / 5%) !important;
 }
 
+.source-button-grid {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
 
 .template-select,
 input[type='text'],
@@ -3009,33 +3022,4 @@ body.pref-theme-dark #xyTimelineView {
 body.pref-theme-dark .xy-panel-toolbar {
   background-color: #252525;
   border-color: #333;
-}
-
-#sidebar .source-button-grid {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important; 
-    gap: 8px !important;                       
-    width: 100% !important;
-    flex-direction: row !important;            
-    margin-left: 0 !important;                 
-    margin-right: 0 !important;
-}
-
-#sidebar .btn {
-    width: 100% !important;
-    margin: 0 !important;          
-    padding: 6px 2px !important;   
-    font-size: 0.8rem !important;  
-    white-space: nowrap !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.control-group.collapsed > *:not(h3, .group-header, .group-header-row) {
-  display: none !important;
-}
-
-#sidebar .control-group.collapsed .source-button-grid {
-    display: none !important;
 }
