@@ -371,6 +371,12 @@ input[type='number'] {
 .button-row-sm {
   display: flex;
   gap: 5px;
+  flex-direction: column;
+}
+
+.button-row-sw {
+  display: flex;
+  gap: 5px;
 }
 
 .mt-5 {

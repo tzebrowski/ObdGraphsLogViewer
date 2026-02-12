@@ -617,6 +617,7 @@ export const UI = {
           const customMap = Preferences.customPalette;
           customMap[signalKey] = e.target.value;
           Preferences.customPalette = customMap;
+          PaletteManager.resetCache();
           if (typeof ChartManager !== 'undefined') ChartManager.render();
         };
 
