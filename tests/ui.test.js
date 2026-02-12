@@ -123,8 +123,8 @@ describe('UI Module Consolidated', () => {
       <select id="xyXAxis"></select>
       <select id="xyYAxis"></select>
       
-      <button class="xy-btn">XY</button>
-      <button title="View Histogram">Hist</button>
+      <button id="btn-xy-analysys">XY</button>
+      <button id="btn-hist">Hist</button>
       <button id="btn-create-math"></button>
       <button id="btn-theme-light"></button>
       <button id="btn-theme-dark"></button>
@@ -203,8 +203,8 @@ describe('UI Module Consolidated', () => {
       const handler = mockMessenger.on.mock.calls.find(
         (c) => c[0] === 'ui:updateDataLoadedState'
       )[1];
-      const xyBtn = document.querySelector('.xy-btn');
-      const histBtn = document.querySelector('button[title="View Histogram"]');
+      const xyBtn = document.getElementById('btn-xy-analysys');
+      const histBtn = document.getElementById('btn-hist');
 
       handler({ status: true });
       expect(
@@ -249,7 +249,7 @@ describe('UI Module Consolidated', () => {
       expect(document.getElementById('fileInfo').innerText).toBe(
         '2 logs loaded'
       );
-      expect(document.querySelector('.xy-btn').disabled).toBe(false);
+      expect(document.getElementById('btn-xy-analysys').disabled).toBe(false);
     });
   });
 

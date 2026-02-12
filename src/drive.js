@@ -318,16 +318,17 @@ class DriveManager {
     const container = document.getElementById('driveFileContainer');
     if (!container) return;
 
-    // 1. Filter
+    const driveListContainer = document.getElementById('driveListContainer');
+    if (!driveListContainer) return;
+    driveListContainer.style.display = 'block';
+
     const filtered = this.fileData.filter((item) => this._applyFilters(item));
 
-    // 2. Sort
     filtered.sort((a, b) => {
       const diff = a.timestamp - b.timestamp;
       return this._state.sortOrder === 'desc' ? -diff : diff;
     });
 
-    // 3. Paginate
     const { currentPage, itemsPerPage } = this._state.pagination;
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
@@ -338,7 +339,6 @@ class DriveManager {
     const startIdx = (this._state.pagination.currentPage - 1) * itemsPerPage;
     const paginatedItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
-    // 4. Render
     container.innerHTML = '';
 
     const isFiltering =
