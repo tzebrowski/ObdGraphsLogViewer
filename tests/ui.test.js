@@ -18,6 +18,7 @@ const mockAlert = { showAlert: jest.fn() };
 const mockPaletteManager = {
   getColorForSignal: jest.fn(() => '#ff0000'),
   getSignalKey: jest.fn((fname, sname) => `${fname}-${sname}`),
+  resetCache: jest.fn(),
 };
 const mockChartManager = {
   render: jest.fn(),
