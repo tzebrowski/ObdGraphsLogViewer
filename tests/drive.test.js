@@ -23,11 +23,10 @@ describe('Drive Module Combined Suite', () => {
   let container;
 
   beforeEach(() => {
-    // 1. Reset Jest Mocks
     jest.clearAllMocks();
 
-    // 2. Reset DOM
     document.body.innerHTML = `
+      <div id="driveListContainer"></div>
       <div id="driveList"></div>
       <div id="driveFileContainer"></div>
       <input type="text" id="driveSearchInput" />
@@ -40,13 +39,11 @@ describe('Drive Module Combined Suite', () => {
     `;
     container = document.getElementById('driveFileContainer');
 
-    // 3. Mock Module Dependencies
     DOM.get = jest.fn((id) => document.getElementById(id));
     UI.setLoading = jest.fn();
     dataProcessor.process = jest.fn();
     global.confirm.mockReturnValue(true);
 
-    // 4. Reset Drive Module Internal State
     Drive.fileData = [];
     Drive._state = {
       sortOrder: 'desc',
