@@ -656,4 +656,54 @@ describe('UI Module Consolidated', () => {
       expect(() => UI.setLoading(true)).not.toThrow();
     });
   });
+
+  describe('Loading Overlay Logic', () => {
+    let overlay;
+
+    beforeEach(() => {
+      overlay = document.getElementById('loadingOverlay');
+      // Simulate the initial HTML state (hidden by default)
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+    });
+
+    test('setLoading(true) removes "hidden" class and sets display flex', () => {
+      UI.setLoading(true, 'Processing...');
+
+      expect(overlay.classList.contains('hidden')).toBe(false);
+      expect(overlay.style.display).toBe('flex');
+      expect(document.getElementById('loadingText').innerText).toBe(
+        'Processing...'
+      );
+    });
+
+    test('setLoading(false) adds "hidden" class and sets display none', () => {
+      // First make it visible
+      UI.setLoading(true, 'Wait');
+      expect(overlay.classList.contains('hidden')).toBe(false);
+
+      // Now hide it
+      UI.setLoading(false);
+
+      expect(overlay.classList.contains('hidden')).toBe(true);
+      expect(overlay.style.display).toBe('none');
+    });
+
+    test('setLoading(true) shows cancel button if callback provided', () => {
+      const onCancel = jest.fn();
+      UI.setLoading(true, 'Wait', onCancel);
+
+      const btn = document.getElementById('cancelLoadBtn');
+      expect(btn.style.display).toBe('inline-block');
+
+      btn.click();
+      expect(onCancel).toHaveBeenCalled();
+    });
+
+    test('setLoading(true) hides cancel button if no callback', () => {
+      UI.setLoading(true, 'Wait'); // No callback
+      const btn = document.getElementById('cancelLoadBtn');
+      expect(btn.style.display).toBe('none');
+    });
+  });
 });
