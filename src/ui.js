@@ -414,7 +414,14 @@ export const UI = {
     if (!loadingOverlay || !loadingText) return;
 
     loadingText.innerText = text;
-    loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+
+    if (isLoading) {
+      loadingOverlay.classList.remove('hidden');
+      loadingOverlay.style.display = 'flex';
+    } else {
+      loadingOverlay.classList.add('hidden');
+      loadingOverlay.style.display = 'none';
+    }
 
     if (isLoading && onCancel) {
       cancelBtn.style.display = 'inline-block';

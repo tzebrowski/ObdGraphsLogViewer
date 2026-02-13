@@ -4,7 +4,6 @@ import { DOM } from '../src/config.js';
 import { UI } from '../src/ui.js';
 import { dataProcessor } from '../src/dataprocessor.js';
 
-// --- Global Mocks ---
 global.gapi = {
   client: {
     drive: {
@@ -51,16 +50,12 @@ describe('Drive Module Combined Suite', () => {
       pagination: { currentPage: 1, itemsPerPage: 10 },
     };
 
-    // 5. Clear LocalStorage
     localStorage.clear();
   });
 
-  // =========================================================================
-  // 1. INITIALIZATION & LIST FILES (Lines 47-72)
-  // =========================================================================
   describe('Initialization & listFiles', () => {
     test('listFiles returns early if driveList DOM element is missing', async () => {
-      document.body.innerHTML = ''; // Remove DOM
+      document.body.innerHTML = '';
       DOM.get.mockReturnValue(null);
 
       await Drive.listFiles();
@@ -69,34 +64,27 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('listFiles renders search interface and calls fetchJsonFiles on success', async () => {
-      // Mock finding Root Folder
       gapi.client.drive.files.list
         .mockResolvedValueOnce({
           result: { files: [{ id: 'root-123', name: 'mygiulia' }] },
         })
-        // Mock finding Sub Folder
         .mockResolvedValueOnce({
           result: { files: [{ id: 'sub-123', name: 'trips' }] },
         })
-        // Mock fetchJsonFiles list call
         .mockResolvedValueOnce({ result: { files: [], nextPageToken: null } });
 
       await Drive.listFiles();
 
       const listEl = document.getElementById('driveList');
       expect(listEl.style.display).toBe('block');
-      // Check if search interface template was injected
       expect(document.getElementById('driveSearchInput')).not.toBeNull();
-      // Check if fetch flow was triggered (3 calls: root, sub, files)
       expect(gapi.client.drive.files.list).toHaveBeenCalledTimes(3);
     });
 
     test('listFiles handles error when required folders are missing', async () => {
-      // Mock finding Root Folder success
       gapi.client.drive.files.list.mockResolvedValueOnce({
         result: { files: [{ id: 'root-123' }] },
       });
-      // Mock finding Sub Folder FAILURE (empty array)
       gapi.client.drive.files.list.mockResolvedValueOnce({
         result: { files: [] },
       });
@@ -108,17 +96,14 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('listFiles handles API errors gracefully', async () => {
-      // 1. Mock Root Folder Discovery (Success)
       gapi.client.drive.files.list.mockResolvedValueOnce({
         result: { files: [{ id: 'root-id' }] },
       });
 
-      // 2. Mock Sub Folder Discovery (Success)
       gapi.client.drive.files.list.mockResolvedValueOnce({
         result: { files: [{ id: 'sub-id' }] },
       });
 
-      // 3. Mock File Listing (Failure) - This will trigger the top-level catch block
       gapi.client.drive.files.list.mockRejectedValueOnce({
         message: 'Network Error',
       });
@@ -130,12 +115,9 @@ describe('Drive Module Combined Suite', () => {
     });
   });
 
-  // =========================================================================
-  // 2. UTILITY FUNCTIONS
-  // =========================================================================
   describe('Utilities', () => {
     test('getFileMetadata correctly parses valid filenames', () => {
-      const fileName = 'trip-log-1704556800000-3600.json'; // Jan 6, 2024
+      const fileName = 'trip-log-1704556800000-3600.json';
       const meta = Drive.getFileMetadata(fileName);
 
       expect(meta.length).toBe('3600');
@@ -152,7 +134,7 @@ describe('Drive Module Combined Suite', () => {
       const fileName = 'trip-log-1766840037973-3600.json';
       const timestamp = Drive.extractTimestamp(fileName);
 
-      expect(timestamp).toBe(1766840037973); // Matches number in filename
+      expect(timestamp).toBe(1766840037973);
     });
 
     test('extractTimestamp returns 0 for invalid filenames', () => {
@@ -161,9 +143,6 @@ describe('Drive Module Combined Suite', () => {
     });
   });
 
-  // =========================================================================
-  // 3. API INTERACTIONS & FETCHING
-  // =========================================================================
   describe('API & Data Fetching', () => {
     test('findFolderId handles different name casing variants', async () => {
       gapi.client.drive.files.list.mockResolvedValue({
@@ -189,7 +168,6 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('fetchJsonFiles populates fileData and renders UI', async () => {
-      // Mock API returning one file
       const mockFiles = [
         { id: 'f1', name: 'trip-2026-1766840037973-3600.json', size: '2048' },
       ];
@@ -199,18 +177,15 @@ describe('Drive Module Combined Suite', () => {
 
       await Drive.fetchJsonFiles('folder-id');
 
-      // Verify Data Store
       expect(Drive.fileData).toHaveLength(1);
       expect(Drive.fileData[0].file.id).toBe('f1');
       expect(Drive.fileData[0].timestamp).toBe(1766840037973);
 
-      // Verify UI Render
       expect(container.innerHTML).toContain('trip-2026');
       expect(container.innerHTML).toContain('2 KB');
     });
 
     test('fetchJsonFiles loops until nextPageToken is null (Pagination Fetching)', async () => {
-      // First call returns token
       gapi.client.drive.files.list
         .mockResolvedValueOnce({
           result: {
@@ -252,9 +227,6 @@ describe('Drive Module Combined Suite', () => {
     });
   });
 
-  // =========================================================================
-  // 4. LOGIC: FILTERING, SORTING & LOADING
-  // =========================================================================
   describe('Logic: Filtering & Loading', () => {
     test('_applyFilters handles null/empty filter states', () => {
       const item = { file: { name: 'Trip.json' }, timestamp: 1000 };
@@ -274,11 +246,9 @@ describe('Drive Module Combined Suite', () => {
 
     test('_applyFilters correctly matches date range', () => {
       const item = { file: { name: 'A.json' }, timestamp: 1000 };
-      // Valid Range
       Drive._state.filters = { term: '', start: 500, end: 1500 };
       expect(Drive._applyFilters(item)).toBe(true);
 
-      // Outside Range
       Drive._state.filters = { term: '', start: 1500, end: 2000 };
       expect(Drive._applyFilters(item)).toBe(false);
     });
@@ -289,7 +259,7 @@ describe('Drive Module Combined Suite', () => {
       });
 
       const p1 = Drive.loadFile('file1', 'id1');
-      const p2 = Drive.loadFile('file2', 'id2'); // Increments token
+      const p2 = Drive.loadFile('file2', 'id2');
 
       await Promise.all([p1, p2]);
 
@@ -301,13 +271,9 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('loadFile handles API errors', async () => {
-      // Mock Alert.showAlert behavior (since Alert module isn't mocked in this file specifically)
-      // We'll just ensure it doesn't crash and console logs or similar
       const consoleSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});
-      // Mock Global Alert object if it exists or rely on the imported module
-      // For this test, we verify that dataProcessor is NOT called
       gapi.client.drive.files.get.mockRejectedValue({ message: 'Load Failed' });
 
       await Drive.loadFile('file', 'id');
@@ -317,40 +283,25 @@ describe('Drive Module Combined Suite', () => {
     });
   });
 
-  // =========================================================================
-  // 5. UI RENDERING & EVENT LISTENERS (Lines 186-245)
-  // =========================================================================
   describe('UI Interactions & Event Listeners', () => {
     beforeEach(() => {
-      // Re-inject search template to ensure listeners attach to fresh elements
       const listEl = document.getElementById('driveList');
       if (listEl) listEl.innerHTML = Drive.TEMPLATES.searchInterface();
     });
 
     test('initSearch attaches listeners and handles input changes', () => {
-      // 1. Call initSearch to bind listeners
       Drive.initSearch();
 
       const input = document.getElementById('driveSearchInput');
       const clearBtn = document.getElementById('clearDriveSearchText');
 
-      // 2. Simulate typing
       input.value = 'test';
       input.dispatchEvent(new Event('input'));
 
-      // 3. Since logic is debounced, verify state update (immediate updateHandler logic for checking Clear Btn visibility)
-      // We might need to manually trigger the handler logic or rely on the immediate updateHandler call in initSearch
-
-      // Let's test the "Clear Text" button click
-      // Manually show it first
       clearBtn.style.display = 'block';
-
-      // Click Clear
       clearBtn.click();
 
-      // Assertions
       expect(input.value).toBe('');
-      // The click handler calls updateHandler(true) -> immediate refresh
       expect(Drive._state.filters.term).toBe('');
     });
 
@@ -373,7 +324,6 @@ describe('Drive Module Combined Suite', () => {
       Drive.initSearch();
       const sortBtn = document.getElementById('driveSortToggle');
 
-      // Initial state is desc
       Drive._state.sortOrder = 'desc';
 
       sortBtn.click();
@@ -387,37 +337,28 @@ describe('Drive Module Combined Suite', () => {
       const start = document.getElementById('driveDateStart');
 
       start.value = '2023-01-01';
-      start.dispatchEvent(new Event('input')); // Trigger listener
-
-      // Should update internal state (immediate = false, so it debounces)
-      // We verify the listener is attached by checking if logic *would* run
-      // For unit test, we can check if filter state is eventually updated or
-      // trust that the previous tests covered logic, this verifies binding.
+      start.dispatchEvent(new Event('input'));
     });
   });
 
-  // =========================================================================
-  // 6. PAGINATION & GROUPING (Lines 371-397)
-  // =========================================================================
   describe('Pagination & Grouping', () => {
-    // Helper to generate mock data
     const generateMockData = (count) => {
       return Array.from({ length: count }, (_, i) => ({
         file: { id: `${i}`, name: `log-${i}.json`, size: 1000 },
         meta: { date: '2026-01-01', length: '100' },
-        timestamp: new Date('2026-01-01').getTime() + i, // Different timestamps for sorting
+        timestamp: new Date('2026-01-01').getTime() + i,
       }));
     };
 
     test('refreshUI renders only itemsPerPage', () => {
-      Drive.fileData = generateMockData(15); // 15 items
+      Drive.fileData = generateMockData(15);
       Drive._state.pagination.itemsPerPage = 10;
       Drive._state.pagination.currentPage = 1;
 
       Drive.refreshUI();
 
       const cards = container.querySelectorAll('.drive-file-card');
-      expect(cards).toHaveLength(10); // Only 1st page shown
+      expect(cards).toHaveLength(10);
 
       const pageInfo = container.querySelector('.pagination-controls span');
       expect(pageInfo.textContent).toContain('1-10 of 15');
@@ -429,17 +370,17 @@ describe('Drive Module Combined Suite', () => {
       Drive.refreshUI();
 
       const nextBtn = container.querySelector('#nextPageBtn');
-      nextBtn.click(); // Trigger event listener
+      nextBtn.click();
 
       const cards = container.querySelectorAll('.drive-file-card');
-      expect(cards).toHaveLength(5); // Remaining 5 items (Page 2)
+      expect(cards).toHaveLength(5);
       expect(Drive._state.pagination.currentPage).toBe(2);
     });
 
     test('Prev Page button decrements page', () => {
       Drive.fileData = generateMockData(15);
       Drive._state.pagination.itemsPerPage = 10;
-      Drive._state.pagination.currentPage = 2; // Start on page 2
+      Drive._state.pagination.currentPage = 2;
       Drive.refreshUI();
 
       const prevBtn = container.querySelector('#prevPageBtn');
@@ -449,20 +390,18 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('Pagination buttons respect bounds', () => {
-      // Test "Next" on last page
       Drive.fileData = generateMockData(5);
       Drive._state.pagination.itemsPerPage = 10;
-      Drive._state.pagination.currentPage = 1; // Only 1 page exists
+      Drive._state.pagination.currentPage = 1;
       Drive.refreshUI();
 
       const nextBtn = container.querySelector('#nextPageBtn');
       nextBtn.click();
-      expect(Drive._state.pagination.currentPage).toBe(1); // Should not increase
+      expect(Drive._state.pagination.currentPage).toBe(1);
 
-      // Test "Prev" on first page
       const prevBtn = container.querySelector('#prevPageBtn');
       prevBtn.click();
-      expect(Drive._state.pagination.currentPage).toBe(1); // Should not decrease
+      expect(Drive._state.pagination.currentPage).toBe(1);
     });
 
     test('Month Header Toggles visibility (Expand/Collapse)', () => {
@@ -478,25 +417,19 @@ describe('Drive Module Combined Suite', () => {
       const header = container.querySelector('.month-header');
       const list = container.querySelector('.month-list');
 
-      // Initial State: Collapsed (Matches updated drive.js default)
-      expect(list.style.display).toBe('none');
+      expect(list.classList.contains('drv-hidden')).toBe(true);
       expect(header.querySelector('i').className).toContain('fa-chevron-right');
 
-      //Click to Expand
       header.click();
       expect(list.style.display).toBe('block');
       expect(header.querySelector('i').className).toContain('fa-chevron-down');
 
-      //Click to Collapse
       header.click();
       expect(list.style.display).toBe('none');
       expect(header.querySelector('i').className).toContain('fa-chevron-right');
     });
   });
 
-  // =========================================================================
-  // 7. RECENT HISTORY (Lines 451-466)
-  // =========================================================================
   describe('Recent History', () => {
     test('Recent History renders if localStorage has items', () => {
       Drive.fileData = [
@@ -526,17 +459,12 @@ describe('Drive Module Combined Suite', () => {
       localStorage.setItem('recent_logs', JSON.stringify(['rec1']));
       Drive.refreshUI();
 
-      // Find the clear button created by renderRecentSection
       const clearBtn = document.getElementById('clearRecentHistory');
-
-      // Mock confirm true
       global.confirm.mockReturnValue(true);
 
-      // Trigger click
       clearBtn.click();
 
       expect(localStorage.getItem('recent_logs')).toBeNull();
-      // UI should update (section removed)
       expect(container.querySelector('.recent-section')).toBeNull();
     });
 

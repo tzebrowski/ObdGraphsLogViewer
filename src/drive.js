@@ -4,16 +4,11 @@ import { dataProcessor } from './dataprocessor.js';
 import { Alert } from './alert.js';
 import { debounce } from './debounce.js';
 
-/**
- * Drive Module - Handles Google Drive file interactions, filtering, and UI rendering.
- */
 class DriveManager {
   constructor() {
     this.activeLoadToken = 0;
     this.PATH_CONFIG = { root: 'mygiulia', sub: 'trips' };
-
-    // Data Store
-    this.fileData = []; // Stores objects: { file, meta, timestamp }
+    this.fileData = [];
 
     this._state = {
       sortOrder: 'desc',
@@ -24,24 +19,23 @@ class DriveManager {
       },
     };
 
-    // HTML Templates
     this.TEMPLATES = {
       searchInterface: () => `
-        <div class="drive-search-container" style="padding: 10px; position: sticky; top: 0; background: var(--sidebar-bg); z-index: 5; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-          <div style="position: relative; display: flex; align-items: center;">
-            <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
-            <input type="text" id="driveSearchInput" placeholder="Filter by name..." style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
-            <i class="fas fa-times-circle" id="clearDriveSearchText" style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" title="Clear search"></i>
+        <div class="drv-search-container">
+          <div class="drv-search-box">
+            <i class="fas fa-search drv-search-icon"></i>
+            <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
+            <i class="fas fa-times-circle drv-clear-icon" id="clearDriveSearchText" title="Clear search"></i>
           </div>
-          <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75em;">
-            <input type="date" id="driveDateStart" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+          <div class="drv-date-filters">
+            <input type="date" id="driveDateStart" class="drv-date-input">
             <span>to</span>
-            <input type="date" id="driveDateEnd" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+            <input type="date" id="driveDateEnd" class="drv-date-input">
             <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div id="driveResultCount" style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;"></div>
-            <button id="driveSortToggle" class="btn btn-sm" style="font-size: 0.75em; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
+          <div class="drv-controls-row">
+            <div id="driveResultCount" class="drv-result-count"></div>
+            <button id="driveSortToggle" class="btn btn-sm drv-sort-btn">
               <i class="fas fa-sort-amount-down"></i> Newest
             </button>
           </div>
@@ -61,17 +55,16 @@ class DriveManager {
           </div>
         </div>
       `,
-      // UPDATED: Default to collapsed (chevron-right, display: none)
       monthGroup: (monthYear) => `
-        <div class="month-header" style="padding: 8px 12px; font-size: 0.75em; font-weight: 800; color: #e31837; background: rgba(227, 24, 55, 0.05); border-left: 3px solid #e31837; margin: 10px 0 5px 0; text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+        <div class="month-header drv-month-header">
           <span>${monthYear}</span> <i class="fas fa-chevron-right toggle-icon"></i>
         </div>
-        <div class="month-list" style="display: none;"></div>
+        <div class="month-list drv-hidden"></div>
       `,
       recentSectionHeader: () => `
-        <div class="month-header" style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-          <span><i class="fas fa-history" style="margin-right: 8px;"></i> Recently Viewed</span>
-          <span id="clearRecentHistory" style="font-size: 0.8em; cursor: pointer; opacity: 0.8;" title="Clear History">
+        <div class="month-header drv-recent-header">
+          <span><i class="fas fa-history drv-icon-margin"></i> Recently Viewed</span>
+          <span id="clearRecentHistory" class="drv-clear-history" title="Clear History">
             <i class="fas fa-trash-alt"></i> Clear
           </span>
         </div>
@@ -82,11 +75,11 @@ class DriveManager {
         ${order === 'desc' ? 'Newest' : 'Oldest'}
       `,
       paginationControls: (current, total, start, end, totalItems) => `
-        <div class="pagination-controls" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-top: 1px solid var(--border-color); margin-top: 10px; font-size: 0.8em;">
+        <div class="pagination-controls drv-pagination">
           <button id="prevPageBtn" class="btn btn-sm" ${current === 1 ? 'disabled style="opacity:0.5"' : ''}>
              <i class="fas fa-chevron-left"></i> Prev
           </button>
-          <span style="color: var(--text-muted);">
+          <span class="drv-page-info">
              ${start}-${end} of ${totalItems}
           </span>
           <button id="nextPageBtn" class="btn btn-sm" ${current === total ? 'disabled style="opacity:0.5"' : ''}>
@@ -96,8 +89,6 @@ class DriveManager {
       `,
     };
   }
-
-  // --- Core Drive Operations ---
 
   async findFolderId(name, parentId = 'root') {
     try {
@@ -153,7 +144,7 @@ class DriveManager {
 
     listEl.innerHTML =
       '<div class="status-msg">Fetching all logs from Drive...</div>';
-    this.fileData = []; // Clear existing data
+    this.fileData = [];
 
     let pageToken = null;
     let hasMore = true;
@@ -229,8 +220,6 @@ class DriveManager {
       if (currentToken === this.activeLoadToken) UI.setLoading(false);
     }
   }
-
-  // --- Search & Filtering Logic ---
 
   initSearch() {
     const inputs = {
@@ -368,8 +357,6 @@ class DriveManager {
     return matchesText && matchesDate;
   }
 
-  // --- Rendering Helpers ---
-
   renderGroupedCards(container, items) {
     if (items.length === 0) {
       container.innerHTML +=
@@ -421,8 +408,7 @@ class DriveManager {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = this.TEMPLATES.fileCard(item.file, item.meta);
       const card = tempDiv.firstElementChild;
-      card.style.borderLeft = '3px solid #4285F4';
-      card.style.marginBottom = '8px';
+      card.classList.add('drv-recent-card');
       list.appendChild(card);
     });
 
@@ -475,17 +461,24 @@ class DriveManager {
 
     const header = group.querySelector('.month-header');
     const list = group.querySelector('.month-list');
+
     header.onclick = () => {
-      const isCollapsed = list.style.display === 'none';
-      list.style.display = isCollapsed ? 'block' : 'none';
-      header.querySelector('.toggle-icon').className = isCollapsed
-        ? 'fas fa-chevron-down toggle-icon'
-        : 'fas fa-chevron-right toggle-icon';
+      const isHidden =
+        list.classList.contains('drv-hidden') || list.style.display === 'none';
+
+      if (isHidden) {
+        list.classList.remove('drv-hidden');
+        list.style.display = 'block';
+        header.querySelector('.toggle-icon').className =
+          'fas fa-chevron-down toggle-icon';
+      } else {
+        list.style.display = 'none';
+        header.querySelector('.toggle-icon').className =
+          'fas fa-chevron-right toggle-icon';
+      }
     };
     return group;
   }
-
-  // --- Utilities & Metadata ---
 
   getFileMetadata(fileName) {
     const match = fileName.match(/-(\d+)-(\d+)\.json$/);
@@ -522,5 +515,4 @@ class DriveManager {
   }
 }
 
-// Export a singleton instance to maintain backward compatibility
 export const Drive = new DriveManager();
