@@ -1795,12 +1795,6 @@ body.analyzer-active {
   text-align: center;
 }
 
-.drive-search-container input[type='date'] {
-  background: var(--card-bg);
-  color: var(--text-color);
-  font-family: inherit;
-}
-
 #clearDriveFilters {
   background: 0 0;
   border: 0;
@@ -3078,4 +3072,140 @@ body.analyzer-active .view-switcher-container {
   font-size: 0.7em;
   font-family: monospace;
   color: #666;
+}
+
+.drive-search-container input[type='date'] {
+  background: var(--card-bg);
+  color: var(--text-color);
+  font-family: inherit;
+}
+
+.drv-search-container {
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--sidebar-bg);
+  z-index: 5;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drv-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.drv-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.drv-search-input {
+  width: 100%;
+  padding: 8px 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+
+.drv-clear-icon {
+  position: absolute;
+  right: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: none;
+}
+
+.drv-date-filters {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75em;
+}
+
+.drv-date-input {
+  flex: 1;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.drv-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drv-result-count {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+.drv-sort-btn {
+  font-size: 0.75em;
+  padding: 2px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.drv-month-header {
+  padding: 8px 12px;
+  font-size: 0.75em;
+  font-weight: 800;
+  color: #e31837;
+  background: rgb(227 24 55 / 5%);
+  border-left: 3px solid #e31837;
+  margin: 10px 0 5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drv-recent-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.drv-icon-margin {
+  margin-right: 8px;
+}
+
+.drv-clear-history {
+  font-size: 0.8em;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.drv-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 10px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 10px;
+  font-size: 0.8em;
+}
+
+.drv-page-info {
+  color: var(--text-muted);
+}
+
+.drv-hidden {
+  display: none;
+}
+
+.drv-recent-card {
+  border-left: 3px solid #4285f4;
+  margin-bottom: 8px;
 }
