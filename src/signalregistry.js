@@ -32,10 +32,12 @@ class SignalRegistry {
   findSignal(canonicalKey, availableSignals) {
     if (!availableSignals || availableSignals.length === 0) return null;
 
+    // Direct exact match
     if (availableSignals.includes(canonicalKey)) return canonicalKey;
 
     const aliases = this.mappings[canonicalKey] || [];
 
+    // Exact alias match (Case-insensitive)
     for (const alias of aliases) {
       const match = availableSignals.find(
         (s) => s.toLowerCase() === alias.toLowerCase()
@@ -43,11 +45,19 @@ class SignalRegistry {
       if (match) return match;
     }
 
+    // Smart Word-Boundary Match (Replaces .includes())
+    // Uses Regex \b to ensure "lat" matches "GPS Lat" but NOT "Calculated"
     for (const alias of aliases) {
-      const match = availableSignals.find((s) =>
-        s.toLowerCase().includes(alias.toLowerCase())
-      );
-      if (match) return match;
+      try {
+        // Escape special regex characters to prevent errors if alias has symbols like "+" or "("
+        const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escapedAlias}\\b`, 'i');
+
+        const match = availableSignals.find((s) => regex.test(s));
+        if (match) return match;
+      } catch (e) {
+        console.warn(`SignalRegistry: Invalid regex for alias "${alias}"`, e);
+      }
     }
 
     return null;
@@ -69,10 +79,18 @@ class SignalRegistry {
   getCanonicalKey(rawSignalName) {
     for (const [key, aliases] of Object.entries(this.mappings)) {
       if (key === rawSignalName) return key;
+
+      // Also updated to use word boundaries for reverse lookup safety
       if (
-        aliases.some((alias) =>
-          rawSignalName.toLowerCase().includes(alias.toLowerCase())
-        )
+        aliases.some((alias) => {
+          if (rawSignalName.toLowerCase() === alias.toLowerCase()) return true;
+          try {
+            const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return new RegExp(`\\b${escaped}\\b`, 'i').test(rawSignalName);
+          } catch {
+            return false;
+          }
+        })
       ) {
         return key;
       }

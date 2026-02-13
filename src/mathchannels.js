@@ -3,6 +3,7 @@ import { UI } from './ui.js';
 import { messenger } from './bus.js';
 import { MATH_DEFINITIONS } from './mathdefinitions.js';
 import { Alert } from './alert.js';
+import { signalRegistry } from './signalregistry.js';
 
 class LinearInterpolator {
   constructor(data) {
@@ -116,16 +117,26 @@ class MathChannels {
   }
 
   #resolveSignalName(file, inputDef, requestedName) {
+    // 1. If the exact requested name exists, use it immediately
     if (file.signals[requestedName]) return requestedName;
 
-    if (Array.isArray(inputDef.name)) {
-      for (const alias of inputDef.name) {
-        const match = file.availableSignals.find((s) =>
-          s.toLowerCase().includes(alias.toLowerCase())
+    // 2. If the definition provides canonical names or aliases, try to resolve via Registry
+    if (inputDef.name) {
+      const candidates = Array.isArray(inputDef.name)
+        ? inputDef.name
+        : [inputDef.name];
+
+      for (const candidate of candidates) {
+        // Use SignalRegistry to find the best match in the file's available signals
+        const match = signalRegistry.findSignal(
+          candidate,
+          file.availableSignals
         );
         if (match && file.signals[match]) return match;
       }
     }
+
+    // 3. Fallback: Return the requested name (likely to fail if not found, but preserves intent)
     return requestedName;
   }
 
@@ -298,7 +309,6 @@ class MathChannels {
 
     select.innerHTML = '<option value="">-- Select Formula --</option>';
 
-    // --- NEW: Category Grouping Logic ---
     const categories = {
       Business: [],
       Technical: [],
@@ -516,15 +526,16 @@ class MathChannels {
     resultsList.className = 'search-results-list';
 
     if (!isMulti && inputFilterName) {
-      const terms = Array.isArray(inputFilterName)
+      const candidates = Array.isArray(inputFilterName)
         ? inputFilterName
         : [inputFilterName];
-      const match = terms.reduce(
-        (found, term) =>
-          found ||
-          signals.find((s) => s.toLowerCase().includes(term.toLowerCase())),
-        null
-      );
+      let match = null;
+
+      for (const candidate of candidates) {
+        match = signalRegistry.findSignal(candidate, signals);
+        if (match) break;
+      }
+
       if (match) input.value = match;
     }
 
@@ -772,6 +783,7 @@ class MathChannels {
       const cb = document.querySelector(
         `input[data-key="${name}"][data-file-idx="${fileIdx}"]`
       );
+
       if (cb) {
         cb.checked = true;
         cb.dispatchEvent(new Event('change', { bubbles: true }));
