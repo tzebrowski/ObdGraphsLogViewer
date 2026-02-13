@@ -768,10 +768,11 @@ export const UI = {
   },
 
   loadSampleData: async (showInfo) => {
-    const sampleUrl =
-      'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
-
+    UI.setLoading('Loading sample file');
     try {
+      const sampleUrl =
+        'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
+
       const btn = document.querySelector('.btn-sample');
       const originalText = btn ? btn.innerText : 'Load Sample';
       if (btn) {
