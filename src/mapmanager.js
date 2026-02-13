@@ -494,14 +494,6 @@ class MapManager {
     let latKey = signalRegistry.findSignal('Latitude', signals);
     let lonKey = signalRegistry.findSignal('Longitude', signals);
 
-    if (!latKey) {
-      latKey = signals.find((s) => /lat/i.test(s) && !/lateral/i.test(s));
-    }
-
-    if (!lonKey) {
-      lonKey = signals.find((s) => /lon/i.test(s) || /lng/i.test(s));
-    }
-
     return { latKey, lonKey };
   }
 
