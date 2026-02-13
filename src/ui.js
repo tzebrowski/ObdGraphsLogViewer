@@ -280,12 +280,13 @@ export const UI = {
       }
     }
 
+    const stackBtn = document.getElementById('btn-mode-stack');
     const xyBtn = document.getElementById('btn-xy-analysys');
     const histBtn = document.getElementById('btn-hist');
     const mathBtn = document.getElementById('btn-create-math');
     const overlayBtn = document.getElementById('btn-mode-overlay');
 
-    [xyBtn, histBtn, mathBtn, overlayBtn].forEach((btn) => {
+    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn].forEach((btn) => {
       if (btn) {
         btn.disabled = !hasData;
         btn.style.opacity = hasData ? '1' : '0.5';

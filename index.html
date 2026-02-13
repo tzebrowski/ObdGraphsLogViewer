@@ -9,13 +9,11 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
-
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <link rel="stylesheet" href="./src/style.css" />
   </head>
 
@@ -66,9 +64,8 @@
         <div class="view-switcher-container">
           <button
             id="btn-create-math"
-            class="view-btn"
+            class="view-btn btn-full-width"
             onclick="openMathModal()"
-            style="width: 100%"
             disabled
           >
             <i class="fas fa-calculator"></i>
@@ -76,7 +73,8 @@
 
           <button
             id="btn-mode-stack"
-            class="view-btn active"
+            class="view-btn"
+            disabled
             onclick="toggleViewMode('stack')"
           >
             <i class="fas fa-stream"></i>
@@ -138,15 +136,8 @@
           Advanced telemetry and diagnostics for the Alfa Romeo enthusiast.
           Native support for 2.0 GME, 2.2 Multijet, and 2.9 QV engines.
         </p>
-        <div
-          class="hero-buttons"
-          style="display: flex; gap: 15px; justify-content: center"
-        >
-          <a
-            href="#analyzer"
-            class="btn-green"
-            style="background-color: var(--brand-red)"
-          >
+        <div class="hero-buttons">
+          <a href="#analyzer" class="btn-green btn-brand-red">
             <i class="fas fa-chart-line"></i> Launch Analyzer
           </a>
           <a
@@ -253,7 +244,7 @@
       </section>
 
       <section class="tech-specs">
-        <div class="container" style="text-align: center">
+        <div class="container text-center">
           <h2>Hardware & Connectivity</h2>
           <p>
             Compatible with high-performance adapters including ELM327 and
@@ -270,7 +261,7 @@
       </section>
     </main>
 
-    <main id="analyzer-page" style="display: none">
+    <main id="analyzer-page">
       <div class="app-container">
         <div class="sidebar" id="sidebar">
           <button
@@ -291,24 +282,13 @@
             <input
               type="file"
               id="fileInput"
-              style="display: none"
+              class="hidden"
               accept=".csv,.json,application/json,text/plain"
             />
 
             <div id="driveList" class="drive-list-modern">
-              <div
-                class="empty-drive-msg"
-                style="
-                  padding: 20px;
-                  text-align: center;
-                  color: #999;
-                  font-size: 0.9em;
-                "
-              >
-                <i
-                  class="fab fa-google-drive"
-                  style="font-size: 2em; margin-bottom: 10px; opacity: 0.5"
-                ></i>
+              <div class="empty-drive-msg">
+                <i class="fab fa-google-drive"></i>
                 <br />
                 Click <strong>Drive Scan</strong> in the top toolbar to load
                 your logs.
@@ -317,27 +297,16 @@
             <div id="fileInfo" class="status-text-subtle"></div>
           </div>
 
-          <div
-            id="projectHistoryContainer"
-            class="control-group gray-box"
-            style="display: none"
-          >
+          <div id="projectHistoryContainer" class="control-group gray-box">
             <div class="group-header-row">
               <h3 id="projectNameDisplay">Project History</h3>
               <button
-                class="btn-icon"
+                class="btn-icon btn-rename-project"
                 onclick="
                   event.stopPropagation();
                   editProjectName();
                 "
                 title="Rename Project"
-                style="
-                  border: none;
-                  background: transparent;
-                  cursor: pointer;
-                  color: #888;
-                  padding: 5px;
-                "
               >
                 <i class="fas fa-pen"></i>
               </button>
@@ -345,25 +314,13 @@
 
             <p class="section-description">Timeline of analysis steps.</p>
 
-            <div
-              id="projectHistoryList"
-              class="history-list"
-              style="
-                max-height: 150px;
-                overflow-y: auto;
-                margin-bottom: 10px;
-                font-size: 0.85em;
-                border: 1px solid #eee;
-                background: #fff;
-              "
-            ></div>
+            <div id="projectHistoryList" class="history-list"></div>
 
-            <div style="display: flex; gap: 5px">
+            <div class="flex-row-gap-5">
               <button
                 id="btnReplayProject"
-                class="btn btn-sm btn-primary"
+                class="btn btn-sm btn-primary flex-1"
                 onclick="replayProjectHistory()"
-                style="flex: 1"
               >
                 <i class="fas fa-play"></i> Replay All
               </button>
@@ -382,7 +339,7 @@
             <p class="section-description">
               Define rules (e.g., Temp > 100) to quickly locate specific events.
             </p>
-            <div style="margin-bottom: 10px">
+            <div class="mb-10">
               <select
                 id="anomalyTemplate"
                 onchange="applyTemplate()"
@@ -505,21 +462,12 @@
                   </button>
                 </div>
 
-                <div
-                  id="configPanel"
-                  style="
-                    display: none;
-                    margin-top: 10px;
-                    padding: 10px;
-                    background: #f0f0f0;
-                    border-radius: 4px;
-                  "
-                >
+                <div id="configPanel" class="config-panel">
                   <input
                     type="text"
                     id="gClientId"
                     placeholder="Enter Google Client ID"
-                    style="margin-bottom: 8px"
+                    class="mb-8"
                   />
                   <button
                     class="btn btn-primary btn-sm"
@@ -583,16 +531,7 @@
             </div>
           </div>
 
-          <div
-            id="mapContainer"
-            style="
-              height: 300px;
-              width: 100%;
-              display: none;
-              margin-top: 10px;
-              border: 1px solid #ccc;
-            "
-          ></div>
+          <div id="mapContainer" class="map-view-container hidden"></div>
 
           <div id="dropZone" class="drop-zone">
             <div class="drop-zone-content">
@@ -604,13 +543,13 @@
         </div>
       </div>
 
-      <div id="loadingOverlay" class="loading-overlay" style="display: none">
+      <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="spinner"></div>
         <div id="loadingText">Loading...</div>
         <button id="cancelLoadBtn" class="btn">Cancel</button>
       </div>
 
-      <div id="infoModal" class="modal-overlay" style="display: none">
+      <div id="infoModal" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
             <h2>Application Overview</h2>
@@ -625,10 +564,7 @@
             </p>
 
             <div class="info-grid">
-              <div
-                class="info-card data-source-card"
-                style="grid-column: span 2"
-              >
+              <div class="info-card data-source-card grid-span-2">
                 <h4>📱 Data Source</h4>
                 <div class="data-source-flex">
                   <img
@@ -660,7 +596,7 @@
                 </div>
               </div>
 
-              <div class="info-card" style="grid-column: span 2">
+              <div class="info-card grid-span-2">
                 <h4>📥 How to Import Logs</h4>
                 <ol class="import-steps">
                   <li>
@@ -688,14 +624,7 @@
 
               <div class="info-card">
                 <h4>⌨️ Keyboard Shortcuts</h4>
-                <ul
-                  style="
-                    list-style: none;
-                    padding-left: 0;
-                    font-size: 0.85em;
-                    color: #555;
-                  "
-                >
+                <ul class="shortcuts-list">
                   <li><strong>A</strong> - Add Annotation at cursor</li>
                   <li><strong>E</strong> - Export visible area to CSV</li>
                   <li><strong>L</strong> - Toggle Floating Legend</li>
@@ -725,27 +654,13 @@
 
               <div class="info-card">
                 <h4>📚 Technical Guides</h4>
-                <p style="margin-bottom: 10px; font-size: 0.9em; color: #666">
-                  Deep dive into engine parameters.
-                </p>
+                <p class="guide-text">Deep dive into engine parameters.</p>
                 <a
                   href="help_spark.html"
                   target="_blank"
-                  class="btn-secondary"
-                  style="
-                    display: inline-block;
-                    text-decoration: none;
-                    padding: 6px 12px;
-                    font-size: 0.9em;
-                    border-radius: 4px;
-                    width: 100%;
-                    text-align: center;
-                  "
+                  class="btn-secondary guide-btn"
                 >
-                  <i
-                    class="fas fa-bolt"
-                    style="color: #ffc107; margin-right: 5px"
-                  ></i>
+                  <i class="fas fa-bolt guide-icon"></i>
                   Spark Advance Guide
                 </a>
               </div>
@@ -767,7 +682,7 @@
         </div>
       </div>
 
-      <div id="customAlert" class="modal-overlay" style="display: none">
+      <div id="customAlert" class="modal-overlay hidden">
         <div class="modal-content alert-modal">
           <div class="modal-header alert-header">
             <h2 id="alertTitle">Notification</h2>
@@ -782,231 +697,85 @@
         </div>
       </div>
 
-      <div id="xyModal" class="modal-overlay" style="display: none">
-        <div
-          class="modal-content"
-          style="
-            width: 95vw;
-            height: 95vh;
-            display: flex;
-            flex-direction: column;
-          "
-        >
+      <div id="xyModal" class="modal-overlay">
+        <div class="modal-content xy-modal-container">
           <div class="modal-header">
             <h2>XY Scatter Analysis</h2>
             <button class="btn-close" onclick="closeXYModal()">×</button>
           </div>
 
-          <div
-            class="modal-body"
-            style="
-              display: flex;
-              flex-direction: column;
-              flex: 1;
-              overflow: hidden;
-              padding: 0;
-            "
-          >
-            <div
-              style="
-                padding: 10px;
-                border-bottom: 1px solid #ddd;
-                background: #f8f9fa;
-                display: flex;
-                gap: 10px;
-                align-items: center;
-              "
-            >
-              <label style="font-weight: bold; color: #555">Log File:</label>
+          <div class="modal-body xy-modal-body">
+            <div class="xy-global-toolbar">
+              <label class="xy-toolbar-label">Log File:</label>
               <select
                 id="xyGlobalFile"
-                class="template-select"
-                style="max-width: 300px"
+                class="template-select xy-file-select"
                 onchange="onFileChange()"
               ></select>
-              <button class="btn" style="width: auto" onclick="resetAllZooms()">
+              <button class="btn btn-auto" onclick="resetAllZooms()">
                 <i class="fas fa-compress-arrows-alt"></i> Reset All
               </button>
             </div>
 
-            <div
-              id="xySplitView"
-              style="
-                display: flex;
-                flex: 2;
-                min-height: 0;
-                border-bottom: 2px solid #ccc;
-              "
-            >
-              <div
-                class="xy-panel"
-                style="
-                  flex: 1;
-                  display: flex;
-                  flex-direction: column;
-                  border-right: 1px solid #ddd;
-                  padding: 10px;
-                  min-width: 0;
-                "
-              >
-                <div
-                  class="xy-panel-toolbar"
-                  style="
-                    display: flex;
-                    gap: 5px;
-                    margin-bottom: 10px;
-                    align-items: center;
-                  "
-                >
-                  <div style="flex: 1; min-width: 0">
-                    <div style="font-size: 0.7em; color: #666">X Axis</div>
-                    <select
-                      id="xyX-0"
-                      class="template-select"
-                      style="width: 100%"
-                    ></select>
+            <div id="xySplitView" class="xy-split-view">
+              <div class="xy-panel border-right">
+                <div class="xy-panel-toolbar">
+                  <div class="flex-1-min-0">
+                    <div class="label-tiny">X Axis</div>
+                    <select id="xyX-0" class="template-select w-full"></select>
                   </div>
-                  <div style="flex: 1; min-width: 0">
-                    <div style="font-size: 0.7em; color: #666">Y Axis</div>
-                    <select
-                      id="xyY-0"
-                      class="template-select"
-                      style="width: 100%"
-                    ></select>
+                  <div class="flex-1-min-0">
+                    <div class="label-tiny">Y Axis</div>
+                    <select id="xyY-0" class="template-select w-full"></select>
                   </div>
-                  <div style="flex: 1; min-width: 0">
-                    <div style="font-size: 0.7em; color: #666">
-                      Z Axis (Color)
-                    </div>
-                    <select
-                      id="xyZ-0"
-                      class="template-select"
-                      style="width: 100%"
-                    ></select>
+                  <div class="flex-1-min-0">
+                    <div class="label-tiny">Z Axis (Color)</div>
+                    <select id="xyZ-0" class="template-select w-full"></select>
                   </div>
-                  <button
-                    class="btn btn-primary"
-                    style="width: auto; height: 32px; align-self: flex-end"
-                    onclick="plot(0)"
-                  >
+                  <button class="btn btn-primary btn-plot" onclick="plot(0)">
                     Plot
                   </button>
                 </div>
-                <div
-                  style="
-                    flex: 1;
-                    position: relative;
-                    min-height: 0;
-                    display: flex;
-                  "
-                >
-                  <div style="flex: 1; position: relative">
+                <div class="xy-chart-area">
+                  <div class="flex-1-relative">
                     <canvas id="xyCanvas-0"></canvas>
                   </div>
-                  <div
-                    id="xyLegend-0"
-                    class="xy-legend-strip"
-                    style="display: none"
-                  ></div>
+                  <div id="xyLegend-0" class="xy-legend-strip hidden"></div>
                 </div>
               </div>
 
-              <div
-                class="xy-panel"
-                style="
-                  flex: 1;
-                  display: flex;
-                  flex-direction: column;
-                  padding: 10px;
-                  min-width: 0;
-                "
-              >
-                <div
-                  class="xy-panel-toolbar"
-                  style="
-                    display: flex;
-                    gap: 5px;
-                    margin-bottom: 10px;
-                    align-items: center;
-                  "
-                >
-                  <div style="flex: 1; min-width: 0">
-                    <div style="font-size: 0.7em; color: #666">X Axis</div>
-                    <select
-                      id="xyX-1"
-                      class="template-select"
-                      style="width: 100%"
-                    ></select>
+              <div class="xy-panel">
+                <div class="xy-panel-toolbar">
+                  <div class="flex-1-min-0">
+                    <div class="label-tiny">X Axis</div>
+                    <select id="xyX-1" class="template-select w-full"></select>
                   </div>
-                  <div style="flex: 1; min-width: 0">
-                    <div style="font-size: 0.7em; color: #666">Y Axis</div>
-                    <select
-                      id="xyY-1"
-                      class="template-select"
-                      style="width: 100%"
-                    ></select>
+                  <div class="flex-1-min-0">
+                    <div class="label-tiny">Y Axis</div>
+                    <select id="xyY-1" class="template-select w-full"></select>
                   </div>
-                  <div style="flex: 1; min-width: 0">
-                    <div style="font-size: 0.7em; color: #666">
-                      Z Axis (Color)
-                    </div>
-                    <select
-                      id="xyZ-1"
-                      class="template-select"
-                      style="width: 100%"
-                    ></select>
+                  <div class="flex-1-min-0">
+                    <div class="label-tiny">Z Axis (Color)</div>
+                    <select id="xyZ-1" class="template-select w-full"></select>
                   </div>
-                  <button
-                    class="btn btn-primary"
-                    style="width: auto; height: 32px; align-self: flex-end"
-                    onclick="plot(1)"
-                  >
+                  <button class="btn btn-primary btn-plot" onclick="plot(1)">
                     Plot
                   </button>
                 </div>
-                <div
-                  style="
-                    flex: 1;
-                    position: relative;
-                    min-height: 0;
-                    display: flex;
-                  "
-                >
-                  <div style="flex: 1; position: relative">
+                <div class="xy-chart-area">
+                  <div class="flex-1-relative">
                     <canvas id="xyCanvas-1"></canvas>
                   </div>
-                  <div
-                    id="xyLegend-1"
-                    class="xy-legend-strip"
-                    style="display: none"
-                  ></div>
+                  <div id="xyLegend-1" class="xy-legend-strip hidden"></div>
                 </div>
               </div>
             </div>
 
-            <div
-              id="xyTimelineView"
-              style="
-                display: flex;
-                flex: 1;
-                min-height: 0;
-                flex-direction: column;
-                padding: 5px;
-                background: #fafafa;
-              "
-            >
-              <div
-                style="
-                  font-size: 0.8em;
-                  font-weight: bold;
-                  color: #555;
-                  margin-bottom: 5px;
-                  padding-left: 5px;
-                "
-              >
+            <div id="xyTimelineView" class="xy-timeline-container">
+              <div class="timeline-header">
                 <i class="fas fa-clock"></i> Timeline Reference (Active Signals)
               </div>
-              <div style="flex: 1; position: relative; min-height: 0">
+              <div class="flex-1-relative">
                 <canvas id="xyTimelineCanvas"></canvas>
               </div>
             </div>
@@ -1014,7 +783,7 @@
         </div>
       </div>
 
-      <div id="mathModal" class="modal-overlay" style="display: none">
+      <div id="mathModal" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
             <h2>Create Math Channel</h2>
@@ -1032,66 +801,28 @@
 
             <div
               id="mathDescriptionContainer"
-              style="
-                margin-top: 10px;
-                padding: 10px;
-                background: #f1f3f5;
-                border-left: 4px solid #1c3d72;
-                border-radius: 4px;
-                display: none; /* Ukryte domyślnie */
-              "
+              class="math-desc-container hidden"
             >
-              <p
-                id="mathFormulaDescription"
-                style="
-                  margin: 0;
-                  font-size: 0.9em;
-                  line-height: 1.4;
-                  color: #495057;
-                "
-              ></p>
+              <p id="mathFormulaDescription" class="math-desc-text"></p>
             </div>
 
-            <div
-              id="mathInputsContainer"
-              style="
-                margin-top: 15px;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-              "
-            ></div>
+            <div id="mathInputsContainer" class="math-inputs-list"></div>
 
             <div
               id="mathNameContainer"
-              class="control-group"
-              style="
-                margin-top: 15px;
-                border-top: 1px solid #eee;
-                padding-top: 15px;
-                display: none;
-              "
+              class="control-group math-name-box hidden"
             >
               <label>New Channel Name:</label>
               <input
                 type="text"
                 id="mathChannelName"
                 placeholder="e.g. My Boost Pressure"
-                style="
-                  width: 100%;
-                  padding: 8px;
-                  box-sizing: border-box;
-                  border: 1px solid #ddd;
-                  border-radius: 4px;
-                "
+                class="math-name-input"
               />
             </div>
           </div>
 
-          <div
-            class="modal-footer"
-            style="padding: 15px; text-align: right; border-top: 1px solid #eee"
-          >
+          <div class="modal-footer math-modal-footer">
             <button
               id="btnCreate"
               class="btn btn-primary"
@@ -1112,18 +843,10 @@
           vehicle manufacturer.</em
         >
       </p>
-      <div
-        class="footer-links"
-        style="
-          margin-top: 10px;
-          display: flex;
-          justify-content: center;
-          gap: 20px;
-        "
-      >
-        <a href="policy.html" style="font-size: 1.1em"
-          ><i class="fas fa-shield-alt"></i> Privacy Policy</a
-        >
+      <div class="footer-links-container">
+        <a href="policy.html" class="footer-link-item">
+          <i class="fas fa-shield-alt"></i> Privacy Policy
+        </a>
         <span id="appVersion" class="app-version-container"></span>
       </div>
     </div>
