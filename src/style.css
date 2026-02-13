@@ -3134,6 +3134,9 @@ body.analyzer-active .view-switcher-container {
   padding: 4px;
   border-radius: 4px;
   border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-color);
+  font-family: inherit;
 }
 
 .drv-controls-row {
