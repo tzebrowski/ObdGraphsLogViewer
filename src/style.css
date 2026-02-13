@@ -2907,3 +2907,151 @@ body.analyzer-active .view-switcher-container {
 .footer-link-item {
   font-size: 1.1em;
 }
+
+.chm-flex-center {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.chm-flex-column {
+  display: flex;
+  flex-direction: column;
+}
+.chm-min-width-0 {
+  min-width: 0;
+}
+.chm-bold-text {
+  font-weight: bold;
+}
+.chm-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chm-border-none {
+  border: none !important;
+}
+.chm-cursor-help {
+  cursor: help;
+}
+.chm-caret {
+  font-size: 1.2em;
+}
+
+.chm-modal-overlay {
+  display: flex;
+}
+.chm-modal-content {
+  max-width: 500px;
+}
+.chm-modal-title {
+  margin-top: 0;
+  color: #1c3d72;
+}
+.chm-modal-footer {
+  margin-top: 20px;
+  text-align: right;
+}
+.chm-meta-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+.chm-meta-label {
+  color: #555;
+}
+.chm-meta-value {
+  font-family: monospace;
+  color: #333;
+  text-align: right;
+}
+.chm-meta-text {
+  font-size: 0.75em;
+  color: #666;
+}
+
+.chm-overlay-body {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  padding: 5px;
+}
+.chm-overlay-canvas-wrapper {
+  flex: 3;
+  min-height: 0;
+  position: relative;
+}
+.chm-overlay-map {
+  flex: 2;
+  min-height: 0;
+  margin-top: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f0f0f0;
+}
+
+.chm-axis-label {
+  font-size: 0.8em;
+  color: #666;
+  margin-right: 10px;
+}
+.chm-step-controls {
+  display: flex;
+  gap: 1px;
+  margin-right: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+}
+.chm-vertical-divider {
+  width: 1px;
+  height: 16px;
+  background: #ddd;
+  margin: 0 4px;
+}
+.chm-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+}
+
+.chm-slider-container {
+  padding: 5px 15px;
+}
+.chm-slider-relative-box {
+  position: relative;
+  height: 16px;
+  margin-bottom: 4px;
+}
+.chm-range-input {
+  position: absolute;
+  width: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+.chm-slider-track-bg {
+  position: absolute;
+  width: 100%;
+  height: 4px;
+  background: #e0e0e0;
+  top: 6px;
+  border-radius: 2px;
+}
+.chm-slider-highlight {
+  position: absolute;
+  height: 4px;
+  background: #e31837;
+  top: 6px;
+  z-index: 2;
+}
+.chm-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7em;
+  font-family: monospace;
+  color: #666;
+}

@@ -281,9 +281,9 @@ export const ChartManager = {
     if (existing) existing.remove();
 
     const createRow = (label, value) => `
-        <div style="display:flex; justify-content:space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
-            <strong style="color: #555;">${label}</strong>
-            <span style="font-family: monospace; color: #333; text-align: right;">${value || 'N/A'}</span>
+        <div class="chm-meta-row">
+            <strong class="chm-meta-label">${label}</strong>
+            <span class="chm-meta-value">${value || 'N/A'}</span>
         </div>`;
 
     const meta = file.metadata || {};
@@ -291,7 +291,7 @@ export const ChartManager = {
 
     let dynamicMetaRows = '';
     if (Object.keys(meta).length > 0) {
-      dynamicMetaRows += `<h5 style="margin: 15px 0 5px; color:#c22636; border-bottom: 2px solid #eee; padding-bottom:5px;">Extended Metadata</h5>`;
+      dynamicMetaRows += `<h5 class="chm-meta-header">Extended Metadata</h5>`;
 
       Object.entries(meta).forEach(([key, value]) => {
         const label = key
@@ -313,19 +313,19 @@ export const ChartManager = {
     }
 
     const modalHtml = `
-      <div id="metadataModal" class="modal-overlay" style="display: flex;">
-        <div class="modal-content" style="max-width: 500px;">
+      <div id="metadataModal" class="modal-overlay chm-modal-overlay">
+        <div class="modal-content chm-modal-content">
           <div class="modal-header">
             <h2>Log Details</h2>
             <button class="btn-close" onclick="document.getElementById('metadataModal').remove()">×</button>
           </div>
           <div class="modal-body">
-            <h4 style="margin-top:0; color:#1c3d72;">${file.name}</h4>
+            <h4 class="chm-modal-title">${file.name}</h4>
             ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
             ${createRow('Duration', durationFormatted)}
             ${createRow('Signals Count', file.availableSignals.length)}
             ${dynamicMetaRows}
-            <div style="margin-top: 20px; text-align: right;">
+            <div class="chm-modal-footer">
                <button class="btn btn-primary" onclick="document.getElementById('metadataModal').remove()">Close</button>
             </div>
           </div>
@@ -404,9 +404,7 @@ export const ChartManager = {
 
   _renderOverlayMode(container) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'chart-card-compact';
-    wrapper.style.flex = '1';
-    wrapper.style.height = '100%';
+    wrapper.className = 'chart-card-compact chm-overlay-wrapper';
 
     const maxDuration = Math.max(...AppState.files.map((f) => f.duration));
     const baseStartTime = AppState.files[0].startTime;
@@ -415,23 +413,23 @@ export const ChartManager = {
     wrapper.innerHTML = `
       <div class="chart-header-sm">
           <span class="chart-name">Overlay Comparison (${AppState.files.length} logs)</span>
-          <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
-               <span style="font-size:0.8em; color:#666; margin-right:10px;">X-Axis: Relative Time (s)</span>
-               <div style="display: flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff;">
-                  <button class="btn-icon" onclick="stepCursor(0, -10)" title="-1s" style="border:none;"><i class="fas fa-backward"></i></button>
-                  <button class="btn-icon" onclick="stepCursor(0, -1)" title="-0.1s" style="border:none;"><i class="fas fa-caret-left" style="font-size: 1.2em;"></i></button>
-                  <button class="btn-icon" onclick="stepCursor(0, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
-                  <button class="btn-icon" onclick="stepCursor(0, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
+          <div class="chart-actions chm-flex-center">
+               <span class="chm-axis-label">X-Axis: Relative Time (s)</span>
+               <div class="chm-step-controls">
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(0, -10)" title="-1s"><i class="fas fa-backward"></i></button>
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(0, -1)" title="-0.1s"><i class="fas fa-caret-left chm-caret"></i></button>
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(0, 1)" title="+0.1s"><i class="fas fa-caret-right chm-caret"></i></button>
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(0, 10)" title="+1s"><i class="fas fa-forward"></i></button>
               </div>
-               <button class="btn-icon" style="cursor: help;" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
+               <button class="btn-icon chm-cursor-help" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
                <button class="btn-icon" onclick="resetChart(0)" title="Reset Zoom"><i class="fas fa-sync-alt"></i></button>
           </div>
       </div>
-      <div style="display: flex; flex-direction: column; height: calc(100vh - 120px); padding: 5px;">
-          <div class="canvas-wrapper" style="flex: 3; min-height: 0; position: relative;">
+      <div class="chm-overlay-body">
+          <div class="canvas-wrapper chm-overlay-canvas-wrapper">
               <canvas id="chart-overlay" tabindex="0"></canvas>
           </div>
-          <div id="overlay-map-container" style="flex: 2; min-height: 0; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; background: #f0f0f0;"></div>
+          <div id="overlay-map-container" class="chm-overlay-map"></div>
       </div>
     `;
     container.appendChild(wrapper);
@@ -496,24 +494,24 @@ export const ChartManager = {
     const shortcuts = this._getShortcutsText();
 
     wrapper.innerHTML = `
-      <div class="chart-header-sm" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
-          <div style="display: flex; flex-direction: column; min-width: 0;">
-             <span class="chart-name" style="font-weight: bold; font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.name}</span>
-             <span class="chart-meta-info" style="font-size: 0.75em; color: #666;">
+      <div class="chart-header-sm chm-card-header">
+          <div class="chm-flex-column chm-min-width-0">
+             <span class="chart-name chm-bold-text chm-truncate">${file.name}</span>
+             <span class="chart-meta-info chm-meta-text">
                 <i class="far fa-clock"></i> ${dateStr} &nbsp;|&nbsp; <i class="fas fa-stopwatch"></i> ${durationStr}
              </span>
           </div>
-          <div class="chart-actions" style="display: flex; gap: 4px; align-items: center;">
-              <div style="display: flex; gap: 1px; margin-right: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff;">
-                  <button class="btn-icon" onclick="stepCursor(${idx}, -10)" title="-1s" style="border:none;"><i class="fas fa-backward"></i></button>
-                  <button class="btn-icon" onclick="stepCursor(${idx}, -1)" title="-0.1s" style="border:none;"><i class="fas fa-caret-left" style="font-size: 1.2em;"></i></button>
-                  <button class="btn-icon" onclick="stepCursor(${idx}, 1)" title="+0.1s" style="border:none;"><i class="fas fa-caret-right" style="font-size: 1.2em;"></i></button>
-                  <button class="btn-icon" onclick="stepCursor(${idx}, 10)" title="+1s" style="border:none;"><i class="fas fa-forward"></i></button>
+          <div class="chart-actions chm-flex-center">
+              <div class="chm-step-controls">
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(${idx}, -10)" title="-1s"><i class="fas fa-backward"></i></button>
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(${idx}, -1)" title="-0.1s"><i class="fas fa-caret-left chm-caret"></i></button>
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(${idx}, 1)" title="+0.1s"><i class="fas fa-caret-right chm-caret"></i></button>
+                  <button class="btn-icon chm-border-none" onclick="stepCursor(${idx}, 10)" title="+1s"><i class="fas fa-forward"></i></button>
               </div>  
               <button class="btn-icon" onclick="exportDataRange(${idx})" title="Export Visible CSV"><i class="fas fa-file-csv"></i></button>
-              <button class="btn-icon" style="cursor: help;" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
+              <button class="btn-icon chm-cursor-help" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
               <button class="btn-icon" onclick="showChartInfo(${idx})" title="Log Details"><i class="fas fa-info-circle"></i></button>
-              <div style="width: 1px; height: 16px; background: #ddd; margin: 0 4px;"></div>
+              <div class="chm-vertical-divider"></div>
               <button class="btn-icon" onclick="manualZoom(${idx}, 1.1)" title="Zoom In"><i class="fas fa-plus"></i></button>
               <button class="btn-icon" onclick="manualZoom(${idx}, 0.9)" title="Zoom Out"><i class="fas fa-minus"></i></button>
               <button class="btn-icon" onclick="resetChart(${idx})" title="Reset View"><i class="fas fa-sync-alt"></i></button>
@@ -521,16 +519,14 @@ export const ChartManager = {
           </div>
       </div>
       
-      <div class="local-slider-ui" style="padding: 5px 15px;">
-          <div style="position: relative; height: 16px; margin-bottom: 4px;">
-              <input type="range" class="local-range-start" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="0" 
-                    style="position: absolute; width: 100%; pointer-events: none; z-index: 3;">
-              <input type="range" class="local-range-end" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="${file.duration}" 
-                    style="position: absolute; width: 100%; pointer-events: none; z-index: 3;">
-              <div class="local-slider-track" style="position: absolute; width: 100%; height: 4px; background: #e0e0e0; top: 6px; border-radius: 2px;"></div>
-              <div id="highlight-${idx}" class="local-slider-selection" style="position: absolute; height: 4px; background: #e31837; top: 6px; z-index: 2;"></div>
+      <div class="local-slider-ui chm-slider-container">
+          <div class="chm-slider-relative-box">
+              <input type="range" class="local-range-start chm-range-input" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="0">
+              <input type="range" class="local-range-end chm-range-input" data-index="${idx}" min="0" max="${file.duration}" step="0.1" value="${file.duration}">
+              <div class="local-slider-track chm-slider-track-bg"></div>
+              <div id="highlight-${idx}" class="local-slider-selection chm-slider-highlight"></div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.7em; font-family: monospace; color: #666;">
+          <div class="chm-slider-labels">
               <span id="txt-start-${idx}">0.0s</span>
               <span id="txt-end-${idx}">${file.duration.toFixed(1)}s</span>
           </div>
