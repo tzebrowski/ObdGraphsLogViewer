@@ -41,12 +41,21 @@ export const UI = {
 
     messenger.on('dataprocessor:batch-load-completed', (event) => {
       UI.renderSignalList();
+
+      // 1. Reveal the container first
       UI.updateDataLoadedState(true);
       UI.setLoading(false);
 
       const fileInfo = DOM.get('fileInfo');
       if (fileInfo) {
         fileInfo.innerText = `${AppState.files.length} logs loaded`;
+      }
+
+      // 2. Wait for DOM reflow before rendering chart.
+      if (AppState.files.length > 0) {
+        requestAnimationFrame(() => {
+          ChartManager.render();
+        });
       }
     });
 

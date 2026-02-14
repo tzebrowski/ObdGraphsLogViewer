@@ -297,92 +297,125 @@
             <div id="fileInfo" class="status-text-subtle"></div>
           </div>
 
-          <div id="projectUnifiedPanel" class="control-group gray-box">
+          <div
+            id="projectUnifiedPanel"
+            class="control-group gray-box"
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 16px;
+              padding: 12px;
+            "
+          >
             <div
               class="group-header-row"
               style="
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
                 border-bottom: 1px solid var(--border-color);
                 padding-bottom: 8px;
-                margin-bottom: 10px;
+                cursor: pointer;
               "
             >
-              <div style="flex-grow: 1; overflow: hidden">
+              <div>
                 <span
                   style="
-                    font-size: 10px;
+                    display: block;
+                    font-size: 0.7em;
                     color: var(--text-muted);
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
+                    margin-bottom: 2px;
                   "
-                  >Active Project</span
+                  >Active Session</span
                 >
                 <h3
                   id="projectNameDisplay"
                   style="
-                    margin: 2px 0 0 0;
+                    margin: 0;
                     font-size: 1.1em;
+                    line-height: 1.2;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    max-width: 180px;
                   "
                 >
                   Default Project
                 </h3>
               </div>
-              <div class="button-row-sm" style="flex-shrink: 0">
+              <div style="display: flex; gap: 6px">
                 <button
                   class="btn-icon"
                   onclick="editProjectName()"
                   title="Rename Project"
+                  style="
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
                 >
-                  <i class="fas fa-pen"></i>
+                  <i class="fas fa-pen" style="font-size: 0.8em"></i>
                 </button>
                 <button
                   class="btn-icon"
                   onclick="resetProject()"
                   title="New Project"
+                  style="
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
                 >
-                  <i class="fas fa-plus"></i>
+                  <i class="fas fa-plus" style="font-size: 0.8em"></i>
                 </button>
               </div>
             </div>
 
             <div id="librarySlot"></div>
 
-            <hr
+            <div
+              id="historySlot"
               style="
-                border: 0;
                 border-top: 1px solid var(--border-color);
-                margin: 12px 0;
+                padding-top: 12px;
               "
-            />
-
-            <div id="historySlot">
-              <div
+            >
+              <h4
                 style="
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  margin-bottom: 5px;
+                  margin: 0 0 8px 0;
+                  font-size: 0.85em;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                  color: var(--text-muted);
                 "
               >
-                <h4
-                  style="margin: 0; font-size: 0.9em; color: var(--text-muted)"
-                >
-                  Session Timeline
-                </h4>
-              </div>
+                Session Timeline
+              </h4>
               <div
                 id="projectHistoryList"
-                class="history-list"
-                style="max-height: 250px; overflow-y: auto"
+                class="history-list custom-scrollbar"
+                style="max-height: 180px; overflow-y: auto"
               ></div>
 
-              <div style="margin-top: 8px">
+              <div style="margin-top: 10px">
                 <button
                   id="btnReplayProject"
                   class="btn btn-sm btn-primary"
-                  style="width: 100%"
+                  style="
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                  "
                   onclick="replayProjectHistory()"
                 >
                   <i class="fas fa-play"></i> Replay Steps
