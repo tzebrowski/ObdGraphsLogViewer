@@ -3212,3 +3212,150 @@ body.analyzer-active .view-switcher-container {
   border-left: 3px solid #4285f4;
   margin-bottom: 8px;
 }
+
+.pm-library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.pm-library-title {
+  margin: 0;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.pm-library-count {
+  opacity: 0.6;
+}
+
+.pm-btn-purge {
+  font-size: 0.8em;
+  color: var(--brand-red);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.pm-library-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pm-library-empty {
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  text-align: center;
+  font-style: italic;
+}
+
+.pm-library-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.pm-library-item.pm-active {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.pm-col-left {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.pm-col-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pm-icon {
+  color: var(--text-muted);
+  margin-right: 10px;
+  font-size: 1.1em;
+  width: 20px;
+  text-align: center;
+}
+
+.pm-library-item.pm-active .pm-icon {
+  color: #4caf50;
+}
+
+.pm-info {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pm-name {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pm-meta {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.pm-add-btn {
+  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.1);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  margin-right: 8px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pm-add-btn i {
+  pointer-events: none;
+}
+
+.pm-del-btn {
+  color: var(--text-muted);
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pm-del-btn i {
+  pointer-events: none;
+}
+
+.pm-status-loaded {
+  font-size: 0.75em;
+  font-weight: bold;
+  color: #4caf50;
+  margin-right: 8px;
+}

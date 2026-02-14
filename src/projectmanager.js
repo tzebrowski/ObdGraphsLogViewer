@@ -14,7 +14,6 @@ class ProjectManager {
     this.#isReplaying = false;
     this.#libraryContainer = null;
 
-    // Initialize DB, then restore session, then render library
     dbManager.init().then(async () => {
       await this.#hydrateActiveFiles();
       this.renderLibrary();
@@ -24,45 +23,36 @@ class ProjectManager {
       this.logAction(data.type, data.description, data.payload, data.fileIndex);
     });
 
-    // Listen for file parsing to update the library list automatically
     messenger.on('dataprocessor:batch-load-completed', () =>
       this.renderLibrary()
     );
   }
 
-  /**
-   * Initialize the Library UI container (Call this from main.js)
-   */
   initLibraryUI(containerId) {
     this.#libraryContainer = document.getElementById(containerId);
     this.renderLibrary();
   }
 
-  // =================================================================
-  // LIBRARY & STORAGE LOGIC
-  // =================================================================
-
   async renderLibrary() {
     if (!this.#libraryContainer) return;
 
     const allStoredFiles = await dbManager.getAllFiles();
-    // Sort: Newest First
     allStoredFiles.sort((a, b) => b.addedAt - a.addedAt);
 
     this.#libraryContainer.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding: 0 4px;">
-        <h4 style="margin:0; font-size:0.85em; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">
-          Library <span style="opacity:0.6;">(${allStoredFiles.length})</span>
+      <div class="pm-library-header">
+        <h4 class="pm-library-title">
+          Library <span class="pm-library-count">(${allStoredFiles.length})</span>
         </h4>
-        <button id="lib-purge-btn" class="btn-icon-text" style="font-size:0.8em; color:var(--brand-red); background:transparent; border:none; cursor:pointer;">
+        <button id="lib-purge-btn" class="btn-icon-text pm-btn-purge">
           <i class="fas fa-trash-alt"></i> Purge
         </button>
       </div>
       
-      <div class="library-list custom-scrollbar" style="max-height: 220px; overflow-y: auto; padding-right:2px;">
+      <div class="pm-library-list custom-scrollbar">
         ${
           allStoredFiles.length === 0
-            ? '<div style="padding:20px; color:var(--text-muted); font-size:0.9em; text-align:center; font-style:italic;">No logs saved in library.</div>'
+            ? '<div class="pm-library-empty">No logs saved in library.</div>'
             : allStoredFiles
                 .map((file) => this.#generateLibraryRow(file))
                 .join('')
@@ -74,62 +64,44 @@ class ProjectManager {
   }
 
   #generateLibraryRow(file) {
-    // Check if file is currently loaded in RAM (AppState)
     const isActive = AppState.files.some((f) => f.dbId === file.id);
     const date = new Date(file.addedAt).toLocaleDateString();
     const duration = file.duration ? (file.duration / 60).toFixed(1) : '0.0';
 
-    // Styles for the row
-    const rowStyle = `
-      display: flex; 
-      align-items: center; 
-      justify-content: space-between;
-      padding: 8px 10px; 
-      margin-bottom: 6px; 
-      background: ${isActive ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 255, 255, 0.03)'}; 
-      border: 1px solid ${isActive ? 'rgba(76, 175, 80, 0.3)' : 'var(--border-color)'}; 
-      border-radius: 6px;
-      transition: all 0.2s ease;
-    `;
-
-    // Icon based on status
-    const iconColor = isActive ? '#4caf50' : 'var(--text-muted)';
+    const rowClass = isActive ? 'pm-library-item pm-active' : 'pm-library-item';
     const iconClass = isActive ? 'fa-chart-line' : 'fa-file-alt';
 
-    // Action button (Load or Loaded Indicator)
     let actionBtnHtml = '';
     if (isActive) {
-      actionBtnHtml = `<span style="font-size:0.75em; font-weight:bold; color:#4caf50; margin-right:8px;"><i class="fas fa-check"></i> Loaded</span>`;
+      actionBtnHtml = `<span class="pm-status-loaded"><i class="fas fa-check"></i> Loaded</span>`;
     } else {
       actionBtnHtml = `
-            <button class="lib-add-btn btn-icon" data-id="${file.id}" title="Load into Project" 
-                    style="color:var(--text-color); background:rgba(255,255,255,0.1); width:24px; height:24px; border-radius:4px; margin-right:8px; border:none; cursor:pointer;">
-                <i class="fas fa-plus" style="pointer-events:none;"></i>
+            <button class="pm-add-btn btn-icon" data-id="${file.id}" title="Load into Project">
+                <i class="fas fa-plus"></i>
             </button>`;
     }
 
     return `
-      <div class="library-item" style="${rowStyle}">
+      <div class="${rowClass}">
         
-        <div style="display:flex; align-items:center; flex-grow:1; overflow:hidden;">
-            <div style="color:${iconColor}; margin-right:10px; font-size:1.1em; width:20px; text-align:center;">
+        <div class="pm-col-left">
+            <div class="pm-icon">
                 <i class="fas ${iconClass}"></i>
             </div>
-            <div style="overflow:hidden; display:flex; flex-direction:column;">
-                <span style="font-size:0.9em; font-weight:500; color:var(--text-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${file.name}">
+            <div class="pm-info">
+                <span class="pm-name" title="${file.name}">
                     ${file.name}
                 </span>
-                <span style="font-size:0.75em; color:var(--text-muted); margin-top:2px;">
+                <span class="pm-meta">
                     ${date} • ${duration} min • ${(file.size || 0).toLocaleString()} pts
                 </span>
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; flex-shrink:0;">
+        <div class="pm-col-right">
             ${actionBtnHtml}
-            <button class="lib-del-btn btn-icon" data-id="${file.id}" title="Delete Permanently"
-                    style="color:var(--text-muted); background:transparent; width:24px; height:24px; border:none; cursor:pointer; opacity:0.6;">
-                <i class="fas fa-times" style="pointer-events:none;"></i>
+            <button class="pm-del-btn btn-icon" data-id="${file.id}" title="Delete Permanently">
+                <i class="fas fa-times"></i>
             </button>
         </div>
 
@@ -138,23 +110,20 @@ class ProjectManager {
   }
 
   #attachLibraryListeners() {
-    // "Open" Button
-    this.#libraryContainer.querySelectorAll('.lib-add-btn').forEach((btn) => {
+    this.#libraryContainer.querySelectorAll('.pm-add-btn').forEach((btn) => {
       btn.onclick = async (e) => {
         const id = parseInt(e.target.dataset.id);
         await this.loadFromLibrary(id);
       };
     });
 
-    // "Delete" Button (X)
-    this.#libraryContainer.querySelectorAll('.lib-del-btn').forEach((btn) => {
+    this.#libraryContainer.querySelectorAll('.pm-del-btn').forEach((btn) => {
       btn.onclick = async (e) => {
         e.stopPropagation();
         if (confirm('Permanently delete this log?')) {
           const id = parseInt(e.target.dataset.id);
           await dbManager.deleteFile(id);
 
-          // Also remove from active project if it's there
           const activeIndex = AppState.files.findIndex((f) => f.dbId === id);
           if (activeIndex !== -1) {
             messenger.emit(EVENTS.FILE_REMOVED, { index: activeIndex });
@@ -165,7 +134,6 @@ class ProjectManager {
       };
     });
 
-    // "Purge All" Button
     const purgeBtn = document.getElementById('lib-purge-btn');
     if (purgeBtn) {
       purgeBtn.onclick = async () => {
@@ -181,9 +149,6 @@ class ProjectManager {
     }
   }
 
-  /**
-   * Loads a file from IndexedDB into the Active Workspace (RAM)
-   */
   async loadFromLibrary(dbId) {
     messenger.emit('ui:set-loading', { message: 'Loading from Library...' });
 
@@ -205,18 +170,13 @@ class ProjectManager {
 
       AppState.files.push(fileEntry);
 
-      // Update internal project state
       this.registerFile(fileEntry);
 
-      // Refresh UI components
       messenger.emit('dataprocessor:batch-load-completed', {});
       this.renderLibrary();
     }
   }
 
-  /**
-   * Restores session on page reload
-   */
   async #hydrateActiveFiles() {
     const activeResources = this.#currentProject.resources.filter(
       (r) => r.isActive
@@ -251,10 +211,6 @@ class ProjectManager {
     }
   }
 
-  // =================================================================
-  // STANDARD PROJECT LOGIC
-  // =================================================================
-
   registerFile(file) {
     const existingResource = this.#findResource(file.name, file.size);
 
@@ -263,9 +219,8 @@ class ProjectManager {
       existingResource.dbId = file.dbId;
       existingResource.lastAccessed = Date.now();
 
-      // Update history if applicable
       let newFileIndex = AppState.files.findIndex((f) => f.name === file.name);
-      if (newFileIndex === -1) newFileIndex = AppState.files.length; // Approximate
+      if (newFileIndex === -1) newFileIndex = AppState.files.length;
 
       if (newFileIndex !== -1) {
         this.#currentProject.history.forEach((item) => {
@@ -288,7 +243,7 @@ class ProjectManager {
     }
 
     this.#saveToStorage();
-    this.renderLibrary(); // Ensure library shows "Active" status
+    this.renderLibrary();
   }
 
   onFileRemoved(removedIndex) {
@@ -300,7 +255,7 @@ class ProjectManager {
     const resource = this.#findResource(fileToRemove.name, fileToRemove.size);
 
     if (resource) {
-      resource.isActive = false; // Just mark inactive, don't delete from DB
+      resource.isActive = false;
     }
 
     this.#currentProject.history.forEach((item) => {
@@ -315,10 +270,8 @@ class ProjectManager {
     });
 
     this.#saveToStorage();
-    this.renderLibrary(); // Update UI to show "Open" button again
+    this.renderLibrary();
   }
-
-  // --- Helpers & Standard Methods ---
 
   #createEmptyProject() {
     return {

@@ -55,9 +55,6 @@ describe('ProjectManager Module', () => {
     // Mock confirm dialogs to always say "Yes"
     global.confirm = jest.fn(() => true);
 
-    // Reset project state by creating a fresh instance or resetting via method
-    projectManager.resetProject();
-
     // --- FIX: Properly mock localStorage with Jest functions ---
     const store = {};
     Object.defineProperty(global, 'localStorage', {
@@ -74,7 +71,11 @@ describe('ProjectManager Module', () => {
         }),
       },
       writable: true,
+      configurable: true, // Allow re-definition
     });
+
+    // Reset project state by creating a fresh instance or resetting via method
+    projectManager.resetProject();
   });
 
   afterEach(() => {
@@ -158,10 +159,10 @@ describe('ProjectManager Module', () => {
       await projectManager.renderLibrary();
 
       // Check Sort Order (Newest First)
-      // --- FIX: Use textContent instead of innerText for JSDOM stability ---
-      const names = Array.from(
-        container.querySelectorAll('.library-item span[title]')
-      ).map((el) => el.textContent.trim());
+      // --- FIX: Use new .pm-name selector ---
+      const names = Array.from(container.querySelectorAll('.pm-name')).map(
+        (el) => el.textContent.trim()
+      );
 
       expect(names[0]).toBe('file1.json');
       expect(names[1]).toBe('file2.json');
@@ -179,7 +180,8 @@ describe('ProjectManager Module', () => {
 
       await projectManager.renderLibrary();
 
-      const loadBtn = container.querySelector('.lib-add-btn');
+      // --- FIX: Use new .pm-add-btn selector ---
+      const loadBtn = container.querySelector('.pm-add-btn');
       loadBtn.click();
 
       // Verify Loading started
@@ -210,7 +212,8 @@ describe('ProjectManager Module', () => {
       ]);
       await projectManager.renderLibrary();
 
-      const delBtn = container.querySelector('.lib-del-btn');
+      // --- FIX: Use new .pm-del-btn selector ---
+      const delBtn = container.querySelector('.pm-del-btn');
       delBtn.click();
 
       // Verify Confirmation
