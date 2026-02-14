@@ -124,7 +124,7 @@ class MathChannels {
       UI.renderSignalList();
     }
   }
-  
+
   openModal() {
     if (AppState.files.length === 0) {
       Alert.showAlert('Please load a log file first.');
