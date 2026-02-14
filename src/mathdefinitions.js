@@ -16,7 +16,6 @@ export const MATH_DEFINITIONS = [
     autoLoad: {
       enabled: true,
       targetName: 'GPS Trip Distance (Auto)',
-      inputs: ['Latitude', 'Longitude'],
     },
 
     customProcess: (signals) => {
@@ -143,7 +142,6 @@ export const MATH_DEFINITIONS = [
     autoLoad: {
       enabled: true,
       targetName: 'GPS Speed (Auto)',
-      inputs: ['Latitude', 'Longitude'],
     },
 
     customProcess: (signals) => {
@@ -214,9 +212,13 @@ export const MATH_DEFINITIONS = [
         name: 'price',
         label: 'Fuel Price (per Liter)',
         isConstant: true,
-        defaultValue: 1.5,
+        defaultValue: 6.5,
       },
     ],
+    autoLoad: {
+      enabled: true,
+      targetName: 'Trip Costs (Auto)',
+    },
     customProcess: (signals, constants) => {
       const source = signals[0];
       const capacity = constants[0];
