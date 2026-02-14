@@ -3261,15 +3261,15 @@ body.analyzer-active .view-switcher-container {
   justify-content: space-between;
   padding: 8px 10px;
   margin-bottom: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(255 255 255 / 3%);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   transition: all 0.2s ease;
 }
 
 .pm-library-item.pm-active {
-  background: rgba(76, 175, 80, 0.1);
-  border-color: rgba(76, 175, 80, 0.3);
+  background: rgb(76 175 80 / 10%);
+  border-color: rgb(76 175 80 / 30%);
 }
 
 .pm-col-left {
@@ -3320,7 +3320,7 @@ body.analyzer-active .view-switcher-container {
 
 .pm-add-btn {
   color: var(--text-color);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
   width: 24px;
   height: 24px;
   border-radius: 4px;
