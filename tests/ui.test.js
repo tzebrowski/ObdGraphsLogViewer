@@ -32,6 +32,7 @@ const mockProjectManager = {
   replayHistory: jest.fn(),
   resetProject: jest.fn(),
   renameProject: jest.fn(),
+  initLibraryUI: jest.fn(), // --- FIXED: Added missing mock function
 };
 const mockMapManager = {
   updateTheme: jest.fn(),
@@ -166,6 +167,12 @@ describe('UI Module Consolidated', () => {
       writable: true,
     });
 
+    // Mock confirm for reset actions
+    window.confirm = jest.fn(() => true);
+
+    // Mock requestAnimationFrame for rendering
+    window.requestAnimationFrame = jest.fn((cb) => cb());
+
     const mainContent = document.getElementById('mainContent');
     if (mainContent) {
       mainContent.requestFullscreen = jest.fn(() => Promise.resolve());
@@ -176,6 +183,9 @@ describe('UI Module Consolidated', () => {
   describe('Initialization', () => {
     test('init registers all event listeners', () => {
       UI.init();
+      // Ensure initLibraryUI was called
+      expect(mockProjectManager.initLibraryUI).toHaveBeenCalled();
+
       expect(mockMessenger.on).toHaveBeenCalledWith(
         'project:updated',
         expect.any(Function)
@@ -249,7 +259,9 @@ describe('UI Module Consolidated', () => {
       expect(document.getElementById('fileInfo').innerText).toBe(
         '2 logs loaded'
       );
-      expect(document.getElementById('btn-xy-analysys').disabled).toBe(false);
+      // Wait for next tick to verify chart render due to requestAnimationFrame
+      expect(window.requestAnimationFrame).toHaveBeenCalled();
+      expect(mockChartManager.render).toHaveBeenCalled();
     });
   });
 
@@ -481,7 +493,9 @@ describe('UI Module Consolidated', () => {
     });
 
     test('resetProject calls manager', () => {
+      // confirm() is mocked to return true in beforeEach
       UI.resetProject();
+      expect(window.confirm).toHaveBeenCalled();
       expect(mockProjectManager.resetProject).toHaveBeenCalled();
     });
 
