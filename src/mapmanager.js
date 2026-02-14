@@ -4,13 +4,15 @@ import { messenger } from './bus.js';
 import { Preferences } from './preferences.js';
 import { signalRegistry } from './signalregistry.js';
 
-const TILES_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILES_LIGHT =
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 const TILES_DARK =
   'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 export class LinearInterpolator {
   constructor(data) {
     this.data = data;
+    this.lastIndex = 0;
   }
 
   getValueAt(time) {
@@ -22,11 +24,18 @@ export class LinearInterpolator {
     if (t >= this.data[this.data.length - 1].x)
       return parseFloat(this.data[this.data.length - 1].y);
 
-    const idx = this.data.findIndex((p) => p.x >= t);
-    if (idx <= 0) return parseFloat(this.data[0].y);
+    let i = this.lastIndex;
+    if (this.data[i].x > t) i = 0;
 
-    const p1 = this.data[idx - 1];
-    const p2 = this.data[idx];
+    while (i < this.data.length - 1 && this.data[i + 1].x < t) {
+      i++;
+    }
+    this.lastIndex = i;
+
+    const p1 = this.data[i];
+    const p2 = this.data[i + 1];
+
+    if (!p1 || !p2) return parseFloat(this.data[0].y);
 
     const y1 = parseFloat(p1.y);
     const y2 = parseFloat(p2.y);
@@ -44,12 +53,14 @@ export class LinearInterpolator {
 class MapManager {
   #contexts = new Map();
   #isReady = false;
+  #activeColorSignal = null;
 
   constructor() {}
 
   reset() {
     this.clearAllMaps();
     this.#isReady = false;
+    this.#activeColorSignal = null;
   }
 
   init() {
@@ -66,6 +77,14 @@ class MapManager {
         this.reset();
       }
     });
+  }
+
+  setColorMetric(signalName) {
+    this.#activeColorSignal = signalName;
+    this.#contexts.forEach((ctx, fileIndex) => {
+      this.loadRoute(fileIndex);
+    });
+    this.loadOverlayMap();
   }
 
   updateTheme(theme) {
@@ -95,7 +114,6 @@ class MapManager {
     }
   }
 
-  // --- REFACTORED: Unified Data Processing ---
   #processGpsData(file) {
     const { latKey, lonKey } = this.#detectGpsSignals(file);
     if (!latKey || !lonKey) return null;
@@ -103,11 +121,59 @@ class MapManager {
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
+    let valueData = null;
+    let minVal = 0;
+    let maxVal = 100;
+    let usedSignalName = this.#activeColorSignal;
+    let heatmapMeta = null;
+
+    if (!usedSignalName) {
+      if (file.signals['Math: GPS Speed (Auto)']) {
+        usedSignalName = 'Math: GPS Speed (Auto)';
+      } else if (file.signals['Math: GPS Speed']) {
+        usedSignalName = 'Math: GPS Speed';
+      } else {
+        usedSignalName =
+          signalRegistry.findSignal('GPS Speed', file.availableSignals) ||
+          signalRegistry.findSignal('Vehicle Speed', file.availableSignals);
+      }
+    }
+
+    if (usedSignalName && file.signals[usedSignalName]) {
+      valueData = file.signals[usedSignalName];
+      let min = Infinity;
+      let max = -Infinity;
+      for (let i = 0; i < valueData.length; i++) {
+        const v = parseFloat(valueData[i].y);
+        if (!isNaN(v)) {
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      }
+      if (min === Infinity) {
+        min = 0;
+        max = 100;
+      }
+      minVal = min;
+      maxVal = max;
+      if (maxVal - minVal < 1) {
+        maxVal = minVal + 10;
+      }
+      heatmapMeta = {
+        name: usedSignalName,
+        min: minVal,
+        max: maxVal,
+      };
+    }
+
+    const valInterpolator = valueData
+      ? new LinearInterpolator(valueData)
+      : null;
     const latInterpolator = new LinearInterpolator(latData);
     const lonInterpolator = new LinearInterpolator(lonData);
 
     const routePoints = [];
-    const step = Math.max(1, Math.ceil(latData.length / 2000));
+    const step = Math.max(1, Math.ceil(latData.length / 3000));
 
     for (let i = 0; i < latData.length; i += step) {
       const p = latData[i];
@@ -115,7 +181,14 @@ class MapManager {
       const lon = parseFloat(lonInterpolator.getValueAt(p.x));
 
       if (this.#isValidGps(lat, lon)) {
-        routePoints.push([lat, lon]);
+        let color = this.#getRouteColor(0);
+
+        if (valInterpolator) {
+          const val = parseFloat(valInterpolator.getValueAt(p.x));
+          color = this.#getValueColor(val, minVal, maxVal);
+        }
+
+        routePoints.push({ lat, lon, color });
       }
     }
 
@@ -125,49 +198,88 @@ class MapManager {
       routePoints,
       latInterpolator,
       lonInterpolator,
-      latData, // Return raw data for stats/bounds calculation
+      valInterpolator,
+      latData,
+      isHeatmap: !!valInterpolator,
+      heatmapMeta,
     };
   }
 
-  // --- REFACTORED: Unified Visual Creation ---
   #addRouteVisuals(mapInstance, routePoints, fileIndex, options = {}) {
-    const { isOverlay = false } = options;
+    const { isOverlay = false, isHeatmap = false } = options;
+    const layerGroup = L.layerGroup().addTo(mapInstance);
+    const latLngs = routePoints.map((p) => [p.lat, p.lon]);
 
-    const routeLayer = L.polyline(routePoints, {
-      color: this.#getRouteColor(fileIndex),
-      weight: isOverlay ? 3 : 4,
-      opacity: 0.8,
-    }).addTo(mapInstance);
+    L.polyline(latLngs, {
+      color: '#000000',
+      weight: isOverlay ? 6 : 9,
+      opacity: 0.6,
+      lineCap: 'round',
+      lineJoin: 'round',
+      interactive: false,
+    }).addTo(layerGroup);
 
+    const weight = isOverlay ? 4 : 6;
+
+    if (isHeatmap) {
+      for (let i = 0; i < routePoints.length - 1; i++) {
+        const p1 = routePoints[i];
+        const p2 = routePoints[i + 1];
+
+        L.polyline(
+          [
+            [p1.lat, p1.lon],
+            [p2.lat, p2.lon],
+          ],
+          {
+            color: p1.color,
+            weight: weight,
+            opacity: 1.0,
+            lineCap: 'butt',
+            interactive: false,
+          }
+        ).addTo(layerGroup);
+      }
+    } else {
+      const line = L.polyline(latLngs, {
+        color: this.#getRouteColor(fileIndex),
+        weight: weight,
+        opacity: 1.0,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(layerGroup);
+
+      if (!isOverlay) {
+        line.on('click', (e) =>
+          this.#handleMapInteraction(fileIndex, e.latlng)
+        );
+      }
+    }
+
+    const startPoint = [routePoints[0].lat, routePoints[0].lon];
     const arrowIcon = L.divIcon({
       className: 'gps-marker-icon',
       html: `
-        <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block;">
-            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" style="transform-origin: center; display: block; filter: drop-shadow(0px 0px 3px rgba(0,0,0,0.5));">
+            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" 
+                  fill="${this.#getMarkerColor(fileIndex)}" stroke="white" stroke-width="2"/>
         </svg>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
 
-    // Handle AutoPan logic based on mode
-    const positionMarker = L.marker(routePoints[0], {
+    const positionMarker = L.marker(startPoint, {
       icon: arrowIcon,
       draggable: true,
-      autoPan: !isOverlay, // Enable autoPan only in single view
+      autoPan: !isOverlay,
+      zIndexOffset: 1000,
     }).addTo(mapInstance);
 
-    // Common Event Listeners
     positionMarker.on('drag', (e) => {
       this.#handleMapInteraction(fileIndex, e.target.getLatLng());
     });
 
-    if (!isOverlay) {
-      routeLayer.on('click', (e) => {
-        this.#handleMapInteraction(fileIndex, e.latlng);
-      });
-    }
-
-    return { routeLayer, positionMarker };
+    return { routeLayer: layerGroup, positionMarker };
   }
 
   loadOverlayMap() {
@@ -178,15 +290,14 @@ class MapManager {
     const mapContainer = document.getElementById(containerId);
     if (!mapContainer) return;
 
-    // Initialize Shared Map
     const mapInstance = L.map(containerId, { zoomControl: false });
     L.control.zoom({ position: 'topright' }).addTo(mapInstance);
 
     const isDark = Preferences.prefs.darkTheme;
     const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
-    const tileLayer = L.tileLayer(tileUrl, {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(mapInstance);
+    const tileLayer = L.tileLayer(tileUrl, { attribution: '© CartoDB' }).addTo(
+      mapInstance
+    );
 
     const allBounds = L.latLngBounds([]);
     let hasValidRoute = false;
@@ -195,28 +306,26 @@ class MapManager {
       const processed = this.#processGpsData(file);
       if (!processed) return;
 
-      const { routePoints, latInterpolator, lonInterpolator } = processed;
+      const { routePoints, isHeatmap } = processed;
       hasValidRoute = true;
 
-      // Use Helper to add visuals
       const visuals = this.#addRouteVisuals(
         mapInstance,
         routePoints,
         fileIndex,
-        {
-          isOverlay: true,
-        }
+        { isOverlay: true, isHeatmap }
       );
 
-      allBounds.extend(visuals.routeLayer.getBounds());
+      routePoints.forEach((p) => allBounds.extend([p.lat, p.lon]));
 
       this.#contexts.set(fileIndex, {
         map: mapInstance,
         tileLayer,
         routeLayer: visuals.routeLayer,
         positionMarker: visuals.positionMarker,
-        latInterpolator,
-        lonInterpolator,
+        latInterpolator: processed.latInterpolator,
+        lonInterpolator: processed.lonInterpolator,
+        valInterpolator: processed.valInterpolator,
         infoControl: null,
       });
     });
@@ -236,8 +345,15 @@ class MapManager {
     const processed = this.#processGpsData(file);
     if (!processed) return;
 
-    const { routePoints, latInterpolator, lonInterpolator, latData } =
-      processed;
+    const {
+      routePoints,
+      latInterpolator,
+      lonInterpolator,
+      valInterpolator,
+      latData,
+      isHeatmap,
+      heatmapMeta,
+    } = processed;
 
     const mapDivId = `embedded-map-${fileIndex}`;
     const mapContainer = document.getElementById(mapDivId);
@@ -245,7 +361,6 @@ class MapManager {
 
     mapContainer.classList.add('active');
 
-    // Create Map Instance if needed
     if (!this.#contexts.has(fileIndex)) {
       const mapInstance = L.map(mapDivId, { zoomControl: false }).setView(
         [0, 0],
@@ -256,16 +371,17 @@ class MapManager {
       const isDark = Preferences.prefs.darkTheme;
       const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
       const tileLayer = L.tileLayer(tileUrl, {
-        attribution: '© OpenStreetMap contributors',
+        attribution: '© CartoDB',
       }).addTo(mapInstance);
 
       this.#contexts.set(fileIndex, {
         map: mapInstance,
-        tileLayer: tileLayer,
+        tileLayer,
         routeLayer: null,
         positionMarker: null,
         latInterpolator: null,
         lonInterpolator: null,
+        valInterpolator: null,
         infoControl: null,
       });
     }
@@ -273,27 +389,30 @@ class MapManager {
     const ctx = this.#contexts.get(fileIndex);
     ctx.latInterpolator = latInterpolator;
     ctx.lonInterpolator = lonInterpolator;
+    ctx.valInterpolator = valInterpolator;
 
-    // Clean old layers
-    if (ctx.routeLayer) ctx.map.removeLayer(ctx.routeLayer);
+    if (ctx.routeLayer) {
+      ctx.routeLayer.clearLayers();
+      ctx.routeLayer.remove();
+    }
     if (ctx.positionMarker) ctx.map.removeLayer(ctx.positionMarker);
 
-    // Use Helper to add visuals
     const visuals = this.#addRouteVisuals(ctx.map, routePoints, fileIndex, {
       isOverlay: false,
+      isHeatmap: isHeatmap,
     });
 
     ctx.routeLayer = visuals.routeLayer;
     ctx.positionMarker = visuals.positionMarker;
 
-    // Stats and Bounds (Specific to Single View)
     const stats = this.#calculateStats(latData, ctx.lonInterpolator);
-    this.#updateInfoControl(ctx, stats);
+    this.#updateInfoControl(ctx, stats, heatmapMeta, fileIndex);
 
     requestAnimationFrame(() => {
-      if (ctx.map && ctx.routeLayer) {
+      if (ctx.map) {
         ctx.map.invalidateSize();
-        const bounds = ctx.routeLayer.getBounds();
+        const latLngs = routePoints.map((p) => [p.lat, p.lon]);
+        const bounds = L.latLngBounds(latLngs);
         if (bounds.isValid()) {
           ctx.map.fitBounds(bounds, { padding: [10, 10] });
         }
@@ -301,21 +420,39 @@ class MapManager {
     });
   }
 
+  #getValueColor(value, min, max) {
+    if (isNaN(value)) return '#888';
+    let ratio = (value - min) / (max - min);
+    ratio = Math.max(0, Math.min(1, ratio));
+    const hue = ((1 - ratio) * 120).toFixed(0);
+    return `hsl(${hue}, 100%, 50%)`;
+  }
+
   syncPosition(time) {
     if (!this.#isReady || this.#contexts.size === 0) return;
 
-    this.#contexts.forEach((ctx) => {
+    this.#contexts.forEach((ctx, fileIndex) => {
       if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
 
       const lat = ctx.latInterpolator.getValueAt(time);
       const lon = ctx.lonInterpolator.getValueAt(time);
-      const nextLat = ctx.latInterpolator.getValueAt(time + 1000);
-      const nextLon = ctx.lonInterpolator.getValueAt(time + 1000);
+
+      if (ctx.valInterpolator) {
+        const currentVal = ctx.valInterpolator.getValueAt(time);
+        const valEl = document.getElementById(`map-legend-val-${fileIndex}`);
+        if (valEl && currentVal !== null) {
+          valEl.innerText = currentVal.toFixed(1);
+        }
+      }
 
       if (this.#isValidGps(lat, lon)) {
+        const nextLat = ctx.latInterpolator.getValueAt(time + 1000);
+        const nextLon = ctx.lonInterpolator.getValueAt(time + 1000);
+
         if (ctx.positionMarker) {
           ctx.positionMarker.setLatLng([lat, lon]);
         }
+
         if (this.#isValidGps(nextLat, nextLon)) {
           if (
             Math.abs(nextLat - lat) > 0.00005 ||
@@ -331,47 +468,38 @@ class MapManager {
 
   syncOverlayPosition(relativeTime) {
     const baseStart = AppState.files[0].startTime;
-
     this.#contexts.forEach((ctx, fileIdx) => {
       const file = AppState.files[fileIdx];
       if (!file) return;
-
       if (
-        ctx.positionMarker &&
-        ctx.positionMarker.dragging &&
-        ctx.positionMarker.dragging.enabled()
-      ) {
-        if (
-          ctx.positionMarker.getElement() &&
-          ctx.positionMarker
-            .getElement()
-            .classList.contains('leaflet-drag-target')
-        ) {
-          return;
-        }
-      }
+        ctx.positionMarker?.dragging?.enabled() &&
+        ctx.positionMarker
+          .getElement()
+          ?.classList.contains('leaflet-drag-target')
+      )
+        return;
 
       const absTime = relativeTime - baseStart + file.startTime;
-
       if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
 
       const lat = ctx.latInterpolator.getValueAt(absTime);
       const lon = ctx.lonInterpolator.getValueAt(absTime);
-      const nextLat = ctx.latInterpolator.getValueAt(absTime + 1000);
-      const nextLon = ctx.lonInterpolator.getValueAt(absTime + 1000);
+
+      if (ctx.valInterpolator) {
+        const currentVal = ctx.valInterpolator.getValueAt(absTime);
+        const valEl = document.getElementById(`map-legend-val-${fileIdx}`);
+        if (valEl && currentVal !== null)
+          valEl.innerText = currentVal.toFixed(1);
+      }
 
       if (this.#isValidGps(lat, lon)) {
-        if (ctx.positionMarker) {
-          ctx.positionMarker.setLatLng([lat, lon]);
-        }
+        if (ctx.positionMarker) ctx.positionMarker.setLatLng([lat, lon]);
+        const nextLat = ctx.latInterpolator.getValueAt(absTime + 1000);
+        const nextLon = ctx.lonInterpolator.getValueAt(absTime + 1000);
+
         if (this.#isValidGps(nextLat, nextLon)) {
-          if (
-            Math.abs(nextLat - lat) > 0.00005 ||
-            Math.abs(nextLon - lon) > 0.00005
-          ) {
-            const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
-            this.#rotateMarker(ctx.positionMarker, angle);
-          }
+          const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
+          this.#rotateMarker(ctx.positionMarker, angle);
         }
       }
     });
@@ -379,28 +507,16 @@ class MapManager {
 
   syncMapBounds(start, end, fileIndex) {
     if (!this.#isReady || this.#contexts.size === 0) return;
-
     const bounds = L.latLngBounds([]);
     let hasPoints = false;
-
     const processFile = (idx, tStart, tEnd) => {
       const file = AppState.files[idx];
       const ctx = this.#contexts.get(idx);
-
       if (!file || !ctx || !ctx.latInterpolator || !ctx.lonInterpolator) return;
-
       const { latKey } = this.#detectGpsSignals(file);
       if (!latKey) return;
-
       const latData = file.signals[latKey];
-
-      if (ctx.routeLayer && tEnd - tStart > file.duration * 1000 * 0.9) {
-        bounds.extend(ctx.routeLayer.getBounds());
-        hasPoints = true;
-        return;
-      }
-
-      for (let i = 0; i < latData.length; i += 5) {
+      for (let i = 0; i < latData.length; i += 10) {
         const p = latData[i];
         if (p.x >= tStart && p.x <= tEnd) {
           const lat = parseFloat(p.y);
@@ -416,29 +532,20 @@ class MapManager {
     if (fileIndex !== null && fileIndex !== undefined) {
       processFile(fileIndex, start, end);
       const ctx = this.#contexts.get(fileIndex);
-      if (hasPoints && ctx && ctx.map) {
-        ctx.map.fitBounds(bounds, {
-          padding: [20, 20],
-          animate: true,
-          duration: 0.5,
-        });
-      }
+      if (hasPoints && ctx?.map)
+        ctx.map.fitBounds(bounds, { padding: [20, 20], animate: true });
     } else {
       const baseStart = AppState.files[0].startTime;
       AppState.files.forEach((file, idx) => {
-        const fileStartAbs = start - baseStart + file.startTime;
-        const fileEndAbs = end - baseStart + file.startTime;
-        processFile(idx, fileStartAbs, fileEndAbs);
+        processFile(
+          idx,
+          start - baseStart + file.startTime,
+          end - baseStart + file.startTime
+        );
       });
-
       const ctx = this.#contexts.get(0);
-      if (hasPoints && ctx && ctx.map) {
-        ctx.map.fitBounds(bounds, {
-          padding: [20, 20],
-          animate: true,
-          duration: 0.5,
-        });
-      }
+      if (hasPoints && ctx?.map)
+        ctx.map.fitBounds(bounds, { padding: [20, 20], animate: true });
     }
   }
 
@@ -447,53 +554,39 @@ class MapManager {
     this.#contexts.forEach((ctx) => {
       if (ctx.map) uniqueMaps.add(ctx.map);
     });
-
-    uniqueMaps.forEach((mapInstance) => {
-      mapInstance.remove();
-    });
-
+    uniqueMaps.forEach((mapInstance) => mapInstance.remove());
     this.#contexts.clear();
   }
 
-  // --- PRIVATE HELPERS ---
-
   #handleMapInteraction(fileIndex, latlng) {
     const time = this.#findNearestTime(fileIndex, latlng);
-    if (time !== null) {
-      messenger.emit(EVENTS.MAP_SELECTED, { time, fileIndex });
-    }
+    if (time !== null) messenger.emit(EVENTS.MAP_SELECTED, { time, fileIndex });
   }
 
   #findNearestTime(fileIndex, latlng) {
     const file = AppState.files[fileIndex];
     const latData = file.signals[this.#detectGpsSignals(file).latKey];
     if (!latData) return null;
-
     let minFormatDist = Infinity;
     let closestTime = null;
-
     latData.forEach((p) => {
       const lat = parseFloat(p.y);
       const lon = parseFloat(
         this.#contexts.get(fileIndex).lonInterpolator.getValueAt(p.x)
       );
-
       const d = Math.pow(lat - latlng.lat, 2) + Math.pow(lon - latlng.lng, 2);
       if (d < minFormatDist) {
         minFormatDist = d;
         closestTime = p.x;
       }
     });
-
     return closestTime;
   }
 
   #detectGpsSignals(file) {
     const signals = file.availableSignals || [];
-
     let latKey = signalRegistry.findSignal('Latitude', signals);
     let lonKey = signalRegistry.findSignal('Longitude', signals);
-
     return { latKey, lonKey };
   }
 
@@ -511,34 +604,26 @@ class MapManager {
   #calculateStats(latData, lonInterpolator) {
     if (!latData || latData.length < 2)
       return { dist: '0.00', avg: '0.0', max: '0.0' };
-
-    const firstTime = parseFloat(latData[0].x);
-    const lastTime = parseFloat(latData[latData.length - 1].x);
-    const avgStep = (lastTime - firstTime) / latData.length;
-    const isSeconds = avgStep < 10;
-    const timeMult = isSeconds ? 1000 : 1;
-
     let totalDistKm = 0;
     let maxSpeedKmh = 0;
-    const SMOOTHING_FACTOR = 0.5;
-    let currentSmoothedSpeed = 0;
     const validPoints = [];
+    const timeMult =
+      (parseFloat(latData[latData.length - 1].x) - parseFloat(latData[0].x)) /
+        latData.length <
+      10
+        ? 1000
+        : 1;
 
     for (let i = 0; i < latData.length; i++) {
       const p = latData[i];
       const lat = parseFloat(p.y);
-      const rawTime = parseFloat(p.x);
-      const lon = parseFloat(lonInterpolator.getValueAt(rawTime));
-
-      if (this.#isValidGps(lat, lon) && !isNaN(rawTime)) {
-        validPoints.push({ x: rawTime * timeMult, y: lat, lon: lon });
-      }
+      const lon = parseFloat(lonInterpolator.getValueAt(p.x));
+      if (this.#isValidGps(lat, lon))
+        validPoints.push({ x: p.x * timeMult, y: lat, lon });
     }
-
     if (validPoints.length < 2) return { dist: '0.00', avg: '0.0', max: '0.0' };
 
     let lastP = validPoints[0];
-
     for (let i = 1; i < validPoints.length; i++) {
       const p = validPoints[i];
       const dist = this.#getDistanceFromLatLonInKm(
@@ -548,41 +633,28 @@ class MapManager {
         p.lon
       );
       const timeDiffHours = (p.x - lastP.x) / 3600000;
-
       if (dist > 0.0005) {
         totalDistKm += dist;
         lastP = p;
       }
-
       if (timeDiffHours > 0.00005) {
-        const instantSpeed = dist / timeDiffHours;
-        if (instantSpeed < 300) {
-          if (currentSmoothedSpeed === 0) currentSmoothedSpeed = instantSpeed;
-          else {
-            currentSmoothedSpeed =
-              currentSmoothedSpeed * SMOOTHING_FACTOR +
-              instantSpeed * (1 - SMOOTHING_FACTOR);
-          }
-          if (currentSmoothedSpeed > maxSpeedKmh) {
-            maxSpeedKmh = currentSmoothedSpeed;
-          }
-        }
+        const speed = dist / timeDiffHours;
+        if (speed < 300 && speed > maxSpeedKmh) maxSpeedKmh = speed;
       }
     }
-
     const totalTimeHours =
       (validPoints[validPoints.length - 1].x - validPoints[0].x) / 3600000;
-    const avgSpeedKmh =
-      totalTimeHours > 0.001 ? totalDistKm / totalTimeHours : 0;
-
     return {
       dist: totalDistKm.toFixed(2),
-      avg: avgSpeedKmh.toFixed(1),
+      avg:
+        totalTimeHours > 0.001
+          ? (totalDistKm / totalTimeHours).toFixed(1)
+          : '0.0',
       max: maxSpeedKmh.toFixed(1),
     };
   }
 
-  #updateInfoControl(ctx, stats) {
+  #updateInfoControl(ctx, stats, heatmapMeta = null, fileIndex = 0) {
     if (!ctx.map) return;
     if (ctx.infoControl) ctx.map.removeControl(ctx.infoControl);
 
@@ -590,18 +662,39 @@ class MapManager {
       onAdd: function () {
         const div = L.DomUtil.create('div', 'info-legend');
         div.style.cssText =
-          'background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:6px; font-size: 1em;';
+          'background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:4px; font-size: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.5); min-width: 180px; font-family: monospace; z-index: 1000; line-height: 1.3; pointer-events: none;';
+
+        let heatmapHtml = '';
+        if (heatmapMeta) {
+          heatmapHtml = `
+            <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #555;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                    <div style="font-weight:bold; font-size:1.1em; color:#ddd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 120px;" title="${heatmapMeta.name}">${heatmapMeta.name}</div>
+                    <div style="font-weight:bold; font-size:1.1em; color:#4f9;" id="map-legend-val-${fileIndex}">--</div>
+                </div>
+                
+                <div style="height:8px; border-radius:2px; background: linear-gradient(to right, hsl(120,100%,40%), hsl(60,100%,50%), hsl(0,100%,50%)); margin-bottom: 2px; border: 1px solid #444;"></div>
+                
+                <div style="display:flex; justify-content:space-between; font-size:1.0em; font-weight:bold; color:#eee;">
+                    <span>${heatmapMeta.min.toFixed(0)}</span>
+                    <span>${heatmapMeta.max.toFixed(0)}</span>
+                </div>
+            </div>
+            `;
+        }
+
         div.innerHTML = `
-           <div style="font-weight:bold; border-bottom:1px solid #aaa; margin-bottom:4px;">Stats</div>
-           <div><b>Dist:</b> ${stats.dist} km</div>
-           <div><b>Avg:</b> ${stats.avg} km/h</div>
-           <div><b>Max:</b> ${stats.max} km/h</div>
+           ${heatmapHtml}
+           <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center;">
+             <div style="color:#aaa;">Dist:</div> <div style="text-align:right;">${stats.dist} km</div>
+             <div style="color:#aaa;">Avg:</div> <div style="text-align:right;">${stats.avg} <span style="font-size:0.9em; color:#888;">km/h</span></div>
+             <div style="color:#aaa;">Max:</div> <div style="text-align:right;">${stats.max} <span style="font-size:0.9em; color:#888;">km/h</span></div>
+           </div>
         `;
         return div;
       },
     });
-
-    ctx.infoControl = new InfoControl({ position: 'bottomleft' });
+    ctx.infoControl = new InfoControl({ position: 'topleft' });
     ctx.infoControl.addTo(ctx.map);
   }
 
@@ -615,8 +708,7 @@ class MapManager {
         Math.cos(this.#deg2rad(lat2)) *
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   #deg2rad(deg) {
@@ -625,9 +717,9 @@ class MapManager {
 
   #rotateMarker(marker, angle) {
     if (!marker) return;
-    const markerEl = marker.getElement();
-    if (markerEl) {
-      const svg = markerEl.querySelector('svg');
+    const el = marker.getElement();
+    if (el) {
+      const svg = el.querySelector('svg');
       if (svg) svg.style.transform = `rotate(${angle}deg)`;
     }
   }
@@ -637,17 +729,13 @@ class MapManager {
     const startLngRad = this.#toRadians(startLng);
     const destLatRad = this.#toRadians(destLat);
     const destLngRad = this.#toRadians(destLng);
-
     const y = Math.sin(destLngRad - startLngRad) * Math.cos(destLatRad);
     const x =
       Math.cos(startLatRad) * Math.sin(destLatRad) -
       Math.sin(startLatRad) *
         Math.cos(destLatRad) *
         Math.cos(destLngRad - startLngRad);
-
-    let brng = Math.atan2(y, x);
-    brng = this.#toDegrees(brng);
-    return (brng + 360) % 360;
+    return (this.#toDegrees(Math.atan2(y, x)) + 360) % 360;
   }
 
   #toRadians(deg) {
