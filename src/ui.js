@@ -18,6 +18,9 @@ export const UI = {
     UI.initSidebarSectionsCollapse();
     UI.initMobileUI();
 
+    // Initialize merged Library/Project UI in the specific slot
+    projectManager.initLibraryUI('librarySlot');
+
     UI.updateDataLoadedState(false);
 
     messenger.on('project:updated', () => {
@@ -38,12 +41,21 @@ export const UI = {
 
     messenger.on('dataprocessor:batch-load-completed', (event) => {
       UI.renderSignalList();
+
+      // 1. Reveal the container first
       UI.updateDataLoadedState(true);
       UI.setLoading(false);
 
       const fileInfo = DOM.get('fileInfo');
       if (fileInfo) {
         fileInfo.innerText = `${AppState.files.length} logs loaded`;
+      }
+
+      // 2. Wait for DOM reflow before rendering chart.
+      if (AppState.files.length > 0) {
+        requestAnimationFrame(() => {
+          ChartManager.render();
+        });
       }
     });
 
@@ -55,7 +67,9 @@ export const UI = {
   },
 
   resetProject() {
-    projectManager.resetProject();
+    if (confirm('Start a new project? This will clear the current history.')) {
+      projectManager.resetProject();
+    }
   },
 
   editProjectName() {
@@ -144,11 +158,6 @@ export const UI = {
     const list = document.getElementById('projectHistoryList');
     const replayBtn = document.getElementById('btnReplayProject');
 
-    const historyContainer = document.getElementById('projectHistoryContainer');
-    if (historyContainer) {
-      historyContainer.style.display = 'block';
-    }
-
     const nameDisplay = document.getElementById('projectNameDisplay');
     if (nameDisplay) {
       nameDisplay.innerText = projectManager.getProjectName();
@@ -209,7 +218,7 @@ export const UI = {
 
       html += `
         <div class="history-group">
-            <div class="history-group-header" onclick="toggleHistoryGroup(this)">
+            <div class="history-group-header" onclick="UI.toggleHistoryGroup(this)">
                 <div class="history-header-title">
                     <i class="fas fa-chevron-down toggle-icon history-toggle-icon"></i>
                     <i class="fas fa-file-alt history-file-icon"></i> 
@@ -315,6 +324,11 @@ export const UI = {
 
       if (header) {
         const group = header.closest('.control-group');
+
+        // Prevent collapse when clicking buttons inside header
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+          return;
+        }
 
         if (group) {
           if (
