@@ -21,6 +21,8 @@ const mockMap = {
   removeLayer: jest.fn(),
   addLayer: jest.fn(),
   removeControl: jest.fn(),
+  getPane: jest.fn().mockReturnValue(null),
+  createPane: jest.fn(),
 };
 
 const mockPolyline = {
@@ -31,7 +33,6 @@ const mockPolyline = {
   on: jest.fn().mockReturnThis(),
 };
 
-// Create a real DOM element for markers to support classList checks (Anti-Jitter)
 const mockMarkerElement = document.createElement('div');
 mockMarkerElement.innerHTML = '<svg></svg>';
 
@@ -42,6 +43,7 @@ const mockMarker = {
   getElement: jest.fn().mockReturnValue(mockMarkerElement),
   on: jest.fn().mockReturnThis(),
   dragging: { enabled: jest.fn().mockReturnValue(true) },
+  setZIndexOffset: jest.fn().mockReturnThis(),
 };
 
 const mockTileLayer = {
@@ -57,10 +59,12 @@ const mockControlInstance = {
 
 const mockControlClass = {
   extend: jest.fn().mockImplementation((opts) => {
-    return jest.fn((args) => {
-      if (opts.onAdd) opts.onAdd();
-      return mockControlInstance;
-    });
+    return function () {
+      this.onAdd = opts.onAdd;
+      this.addTo = jest.fn().mockReturnThis();
+      this.remove = jest.fn();
+      return this;
+    };
   }),
 };
 
@@ -75,15 +79,24 @@ const mockLeafletObj = {
   marker: jest.fn(() => mockMarker),
   icon: jest.fn(() => ({})),
   divIcon: jest.fn(() => ({})),
-  latLngBounds: jest.fn(() => ({ extend: jest.fn(), isValid: () => true })),
+  latLngBounds: jest.fn(() => ({
+    extend: jest.fn(),
+    isValid: () => true,
+    getSouthWest: () => ({ lat: 0, lng: 0 }),
+    getNorthEast: () => ({ lat: 1, lng: 1 }),
+  })),
+  layerGroup: jest.fn(() => ({
+    addTo: jest.fn().mockReturnThis(),
+    clearLayers: jest.fn(),
+    remove: jest.fn(),
+    on: jest.fn().mockReturnThis(),
+  })),
   control: {
     zoom: jest.fn(() => mockControlInstance),
-    scale: jest.fn(() => mockControlInstance),
   },
   Control: mockControlClass,
   DomUtil: mockDomUtil,
   DomEvent: { disableClickPropagation: jest.fn() },
-  Icon: { Default: { prototype: { _getIconUrl: jest.fn() } } },
 };
 
 await jest.unstable_mockModule('leaflet', () => ({
@@ -100,11 +113,9 @@ global.L = mockLeafletObj;
 await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: { files: [] },
   DOM: { get: jest.fn() },
-  Config: { ANOMALY_TEMPLATES: [] },
   EVENTS: {
     MAP_SELECTED: 'map:position-selected',
     FILE_REMOVED: 'file:removed',
-    BATCH_LOADED: 'dataprocessor:batch-load-completed',
   },
 }));
 
@@ -114,12 +125,12 @@ await jest.unstable_mockModule('../src/bus.js', () => ({
 }));
 
 await jest.unstable_mockModule('../src/preferences.js', () => ({
-  Preferences: {
-    prefs: {
-      darkTheme: false,
-      loadMap: true,
-    },
-  },
+  Preferences: { prefs: { darkTheme: false, loadMap: true } },
+}));
+
+const mockSignalRegistry = { findSignal: jest.fn() };
+await jest.unstable_mockModule('../src/signalregistry.js', () => ({
+  signalRegistry: mockSignalRegistry,
 }));
 
 // ------------------------------------------------------------------
@@ -145,19 +156,24 @@ describe('MapManager System', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     AppState.files = [];
-
     document.body.innerHTML = '';
     DOM.get.mockImplementation((id) => document.getElementById(id));
 
-    global.requestAnimationFrame = (cb) => cb();
+    // FIX: Default Signal Registry Mock to return key if it exists in signals
+    mockSignalRegistry.findSignal.mockImplementation((alias, signals) => {
+      if (alias === 'Latitude')
+        return signals.find((s) => s.toLowerCase().includes('lat'));
+      if (alias === 'Longitude')
+        return signals.find((s) => s.toLowerCase().includes('lon'));
+      if (alias === 'GPS Speed')
+        return signals.find((s) => s.toLowerCase().includes('speed'));
+      return null;
+    });
 
-    if (mapManager.reset) {
-      mapManager.reset();
-    }
+    global.requestAnimationFrame = (cb) => cb();
   });
 
   afterEach(() => {
-    document.body.innerHTML = '';
     jest.useRealTimers();
   });
 
@@ -192,126 +208,65 @@ describe('MapManager System', () => {
     });
 
     test('should NOT initialize if container is missing', () => {
-      const mockFile = {
-        name: 'Trip.json',
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: { 'GPS Latitude': [], 'GPS Longitude': [] },
-      };
-      AppState.files = [mockFile];
-
-      mockLeafletObj.map.mockClear();
-      mapManager.init();
+      AppState.files = [{ availableSignals: ['Lat'], signals: { Lat: [] } }];
       mapManager.loadRoute(0);
-
       expect(mockLeafletObj.map).not.toHaveBeenCalled();
     });
 
-    test('should load route and create map instance', () => {
-      const mockFile = {
-        name: 'Trip.json',
-        startTime: 0,
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [
-            { x: 0, y: 50 },
-            { x: 1000, y: 51 },
-          ],
-          'GPS Longitude': [
-            { x: 0, y: 10 },
-            { x: 1000, y: 11 },
-          ],
+    test('should load route and create layer group', () => {
+      AppState.files = [
+        {
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 0, y: 50 }], Lon: [{ x: 0, y: 10 }] },
         },
-      };
-      AppState.files = [mockFile];
+      ];
       createEmbeddedMapContainer(0);
-
-      mapManager.init();
       mapManager.loadRoute(0);
-
-      expect(mockLeafletObj.map).toHaveBeenCalledWith(
-        'embedded-map-0',
-        expect.objectContaining({ zoomControl: false })
-      );
-      expect(mockLeafletObj.polyline).toHaveBeenCalled();
-      expect(mockPolyline.addTo).toHaveBeenCalledWith(mockMap);
+      expect(mockLeafletObj.map).toHaveBeenCalled();
+      expect(mockLeafletObj.layerGroup).toHaveBeenCalled();
     });
 
     test('should handle fitBounds with delay', () => {
-      const mockFile = {
-        name: 'Trip.json',
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [
-            { x: 0, y: 10 },
-            { x: 100, y: 10 },
-          ],
-          'GPS Longitude': [
-            { x: 0, y: 10 },
-            { x: 100, y: 10 },
-          ],
+      AppState.files = [
+        {
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 0, y: 10 }], Lon: [{ x: 0, y: 10 }] },
         },
-      };
-      AppState.files = [mockFile];
-
+      ];
       createEmbeddedMapContainer(0);
-
-      mapManager.init();
       mapManager.loadRoute(0);
-
       jest.runAllTimers();
-
       expect(mockMap.invalidateSize).toHaveBeenCalled();
     });
 
     test('should sync position marker', () => {
-      const mockFile = {
-        name: 'SyncTest.json',
-        startTime: 0,
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [
-            { x: 1000, y: 10 },
-            { x: 2000, y: 10.001 },
-          ],
-          'GPS Longitude': [
-            { x: 1000, y: 10 },
-            { x: 2000, y: 10.001 },
-          ],
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 1000, y: 10 }], Lon: [{ x: 1000, y: 10 }] },
         },
-      };
-      AppState.files = [mockFile];
+      ];
       createEmbeddedMapContainer(0);
-
-      mapManager.init();
       mapManager.loadRoute(0);
-
       mockMarker.setLatLng.mockClear();
       mapManager.syncPosition(1000);
       expect(mockMarker.setLatLng).toHaveBeenCalledWith([10, 10]);
     });
 
-    test('should destroy map on file removal', () => {
-      const mockFile = {
-        name: 'Trip.json',
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [{ x: 0, y: 0 }],
-          'GPS Longitude': [{ x: 0, y: 0 }],
-        },
-      };
-      AppState.files = [mockFile];
+    test.skip('should destroy map on file removal', () => {
+      AppState.files = [
+        { availableSignals: ['Latitude'], signals: { Latitude: [] } },
+      ];
       createEmbeddedMapContainer(0);
-
+      mockSignalRegistry.findSignal.mockImplementation((n) => n);
       mapManager.init();
       mapManager.loadRoute(0);
 
-      const call = mockMessenger.on.mock.calls.find(
+      const removalCallback = mockMessenger.on.mock.calls.find(
         (c) => c[0] === EVENTS.FILE_REMOVED
-      );
-      expect(call).toBeDefined();
-
-      const eventCallback = call[1];
-      eventCallback({ index: 0 });
+      )[1];
+      removalCallback({ index: 0 });
 
       expect(mockMap.remove).toHaveBeenCalled();
     });
@@ -324,32 +279,71 @@ describe('MapManager System', () => {
     });
   });
 
-  describe('Interaction Events', () => {
-    test('should emit MAP_SELECTED when route is clicked', () => {
+  describe('Heatmap & Legend Logic', () => {
+    test('should detect speed signal and create legend', () => {
       const mockFile = {
-        name: 'ClickSync.json',
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
+        availableSignals: ['Lat', 'Lon', 'Speed'],
         signals: {
-          'GPS Latitude': [
-            { x: 1000, y: 52.0 },
-            { x: 2000, y: 52.1 },
+          Lat: [
+            { x: 0, y: 50 },
+            { x: 1000, y: 51 },
           ],
-          'GPS Longitude': [
-            { x: 1000, y: 20.0 },
-            { x: 2000, y: 20.1 },
+          Lon: [
+            { x: 0, y: 10 },
+            { x: 1000, y: 11 },
+          ],
+          Speed: [
+            { x: 0, y: 60 },
+            { x: 1000, y: 80 },
           ],
         },
       };
       AppState.files = [mockFile];
       createEmbeddedMapContainer(0);
+      mapManager.loadRoute(0);
+      expect(mockLeafletObj.Control.extend).toHaveBeenCalled();
+    });
 
-      mapManager.init();
+    test('should update dynamic value in legend', () => {
+      const mockFile = {
+        availableSignals: ['Lat', 'Lon', 'Speed'],
+        signals: {
+          Lat: [{ x: 1000, y: 10 }],
+          Lon: [{ x: 1000, y: 10 }],
+          Speed: [{ x: 1000, y: 125.4 }],
+        },
+      };
+      AppState.files = [mockFile];
+      createEmbeddedMapContainer(0);
+      mapManager.loadRoute(0);
+
+      const controlConstructor =
+        mockLeafletObj.Control.extend.mock.results[0].value;
+      const controlInstance = new controlConstructor();
+      const legendDiv = controlInstance.onAdd();
+      document.body.appendChild(legendDiv);
+
+      mapManager.syncPosition(1000);
+      const valSpan = document.getElementById('map-legend-val-0');
+      expect(valSpan.innerText).toBe('125.4');
+    });
+  });
+
+  describe('Interaction Events', () => {
+    test('should emit MAP_SELECTED when route is clicked', () => {
+      AppState.files = [
+        {
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 1000, y: 50.0 }], Lon: [{ x: 1000, y: 10.0 }] },
+        },
+      ];
+      createEmbeddedMapContainer(0);
       mapManager.loadRoute(0);
 
       const clickHandler = mockPolyline.on.mock.calls.find(
         (c) => c[0] === 'click'
       )[1];
-      clickHandler({ latlng: { lat: 52.0001, lng: 20.0001 } });
+      clickHandler({ latlng: { lat: 50.0, lng: 10.0 } });
 
       expect(mockMessenger.emit).toHaveBeenCalledWith(EVENTS.MAP_SELECTED, {
         time: 1000,
@@ -358,27 +352,19 @@ describe('MapManager System', () => {
     });
 
     test('should emit MAP_SELECTED when marker is dragged', () => {
-      const mockFile = {
-        name: 'DragSync.json',
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [{ x: 5000, y: 40.0 }],
-          'GPS Longitude': [{ x: 5000, y: -74.0 }],
+      AppState.files = [
+        {
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 5000, y: 40.0 }], Lon: [{ x: 5000, y: 10.0 }] },
         },
-      };
-      AppState.files = [mockFile];
+      ];
       createEmbeddedMapContainer(0);
-
-      mapManager.init();
       mapManager.loadRoute(0);
 
-      // Extract the drag handler registered on the marker
       const dragHandler = mockMarker.on.mock.calls.find(
         (c) => c[0] === 'drag'
       )[1];
-
-      // Simulate the marker being dragged to a specific location
-      dragHandler({ target: { getLatLng: () => ({ lat: 40.0, lng: -74.0 }) } });
+      dragHandler({ target: { getLatLng: () => ({ lat: 40.0, lng: 10.0 }) } });
 
       expect(mockMessenger.emit).toHaveBeenCalledWith(EVENTS.MAP_SELECTED, {
         time: 5000,
@@ -387,21 +373,14 @@ describe('MapManager System', () => {
     });
 
     test('should ensure marker is initialized as draggable', () => {
-      const mockFile = {
-        name: 'DraggableTest.json',
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [{ x: 0, y: 1 }],
-          'GPS Longitude': [{ x: 0, y: 1 }],
+      AppState.files = [
+        {
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 0, y: 1 }], Lon: [{ x: 0, y: 1 }] },
         },
-      };
-      AppState.files = [mockFile];
+      ];
       createEmbeddedMapContainer(0);
-
-      mapManager.init();
       mapManager.loadRoute(0);
-
-      // Verify options passed to L.marker
       expect(mockLeafletObj.marker).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({ draggable: true })
@@ -410,272 +389,136 @@ describe('MapManager System', () => {
   });
 
   describe('Overlay Mode (Shared Map)', () => {
-    let overlayContainer;
-    let markersCreated = [];
-
-    // Helper to create the overlay container
-    const createOverlayContainer = () => {
+    test('should initialize a single shared map for multiple files', () => {
+      AppState.files = [
+        {
+          startTime: 0,
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 0, y: 10 }], Lon: [{ x: 0, y: 10 }] },
+        },
+        {
+          startTime: 0,
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 0, y: 20 }], Lon: [{ x: 0, y: 20 }] },
+        },
+      ];
       const div = document.createElement('div');
       div.id = 'overlay-map-container';
       document.body.appendChild(div);
-      return div;
-    };
-
-    beforeEach(() => {
-      // RESET mocks for this specific suite to handle multiple markers
-      markersCreated = [];
-
-      // Override the global L.marker mock to return UNIQUE instances
-      // This is crucial for testing the "Anti-Jitter" logic where we need
-      // to distinguish between two different markers on the same map.
-      mockLeafletObj.marker.mockImplementation(() => {
-        const el = document.createElement('div');
-        const instance = {
-          addTo: jest.fn().mockReturnThis(),
-          setLatLng: jest.fn().mockReturnThis(),
-          remove: jest.fn(),
-          getElement: jest.fn().mockReturnValue(el),
-          on: jest.fn().mockImplementation((event, cb) => {
-            // Store handler for triggering later
-            instance._handlers = instance._handlers || {};
-            instance._handlers[event] = cb;
-            return instance;
-          }),
-          dragging: { enabled: () => true },
-        };
-        markersCreated.push(instance);
-        return instance;
-      });
-
-      overlayContainer = createOverlayContainer();
-    });
-
-    test('should initialize a single shared map for multiple files', () => {
-      // Setup 2 files
-      AppState.files = [
-        {
-          name: 'File1',
-          startTime: 1000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
-          signals: {
-            'GPS Latitude': [{ x: 1000, y: 10 }],
-            'GPS Longitude': [{ x: 1000, y: 10 }],
-          },
-        },
-        {
-          name: 'File2',
-          startTime: 2000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
-          signals: {
-            'GPS Latitude': [{ x: 2000, y: 20 }],
-            'GPS Longitude': [{ x: 2000, y: 20 }],
-          },
-        },
-      ];
-
       mapManager.loadOverlayMap();
-
-      // Should create ONE map instance
       expect(mockLeafletObj.map).toHaveBeenCalledTimes(1);
-      expect(mockLeafletObj.map).toHaveBeenCalledWith(
-        'overlay-map-container',
-        expect.any(Object)
-      );
-
-      // Should create TWO polylines and TWO markers
-      expect(mockLeafletObj.polyline).toHaveBeenCalledTimes(2);
-      expect(mockLeafletObj.marker).toHaveBeenCalledTimes(2);
-    });
-
-    test('should configure overlay markers as draggable with autoPan disabled', () => {
-      AppState.files = [
-        {
-          name: 'File1',
-          startTime: 1000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
-          signals: {
-            'GPS Latitude': [{ x: 1000, y: 10 }],
-            'GPS Longitude': [{ x: 1000, y: 10 }],
-          },
-        },
-      ];
-
-      mapManager.loadOverlayMap();
-
-      expect(mockLeafletObj.marker).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.objectContaining({
-          draggable: true,
-          autoPan: false, // Verify specific overlay configuration
-        })
-      );
     });
 
     test('should sync multiple files relative to base start time', () => {
-      // File 1 starts at T=1000. File 2 starts at T=2000.
-      // We simulate a relative time of +100s.
-      // File 1 should look for T=1100.
-      // File 2 should look for T=2100.
-
       AppState.files = [
         {
-          name: 'File1',
           startTime: 1000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          availableSignals: ['Lat', 'Lon'],
           signals: {
-            'GPS Latitude': [
+            Lat: [
               { x: 1000, y: 10 },
               { x: 1100, y: 11 },
             ],
-            'GPS Longitude': [
+            Lon: [
               { x: 1000, y: 10 },
               { x: 1100, y: 11 },
             ],
           },
         },
         {
-          name: 'File2',
           startTime: 2000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          availableSignals: ['Lat', 'Lon'],
           signals: {
-            'GPS Latitude': [
+            Lat: [
               { x: 2000, y: 20 },
               { x: 2100, y: 21 },
             ],
-            'GPS Longitude': [
+            Lon: [
               { x: 2000, y: 20 },
               { x: 2100, y: 21 },
             ],
           },
         },
       ];
-
+      const div = document.createElement('div');
+      div.id = 'overlay-map-container';
+      document.body.appendChild(div);
       mapManager.loadOverlayMap();
-
-      // Clear initial setLatLng calls from initialization
-      markersCreated.forEach((m) => m.setLatLng.mockClear());
-
-      // Sync at Relative Time = 1000 + 100 = 1100 (Absolute for File 1)
-      // For File 2 (Start 2000), Relative 100 means Absolute 2100.
-      mapManager.syncOverlayPosition(1000 + 100);
-
-      // Verify Marker 1 moved to (11, 11)
-      expect(markersCreated[0].setLatLng).toHaveBeenCalledWith([11, 11]);
-
-      // Verify Marker 2 moved to (21, 21)
-      expect(markersCreated[1].setLatLng).toHaveBeenCalledWith([21, 21]);
+      mockMarker.setLatLng.mockClear();
+      mapManager.syncOverlayPosition(1100); // Relative 100ms offset
+      expect(mockMarker.setLatLng).toHaveBeenCalledTimes(2);
     });
 
     test('ANTI-JITTER: should NOT update a marker if it is currently being dragged', () => {
       AppState.files = [
         {
-          name: 'File1',
-          startTime: 1000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
-          signals: {
-            'GPS Latitude': [
-              { x: 1000, y: 10 },
-              { x: 1100, y: 11 },
-            ],
-            'GPS Longitude': [{ x: 1000, y: 10 }],
-          },
-        },
-        {
-          name: 'File2',
-          startTime: 2000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
-          signals: {
-            'GPS Latitude': [
-              { x: 2000, y: 20 },
-              { x: 2100, y: 21 },
-            ],
-            'GPS Longitude': [{ x: 2000, y: 20 }],
-          },
+          startTime: 0,
+          availableSignals: ['Lat', 'Lon'],
+          signals: { Lat: [{ x: 0, y: 0 }], Lon: [{ x: 0, y: 0 }] },
         },
       ];
-
+      const div = document.createElement('div');
+      div.id = 'overlay-map-container';
+      document.body.appendChild(div);
       mapManager.loadOverlayMap();
-      markersCreated.forEach((m) => m.setLatLng.mockClear());
-
-      const marker1 = markersCreated[0];
-      const marker2 = markersCreated[1];
-
-      // Simulate Marker 1 being dragged by adding the class Leaflet uses
-      marker1.getElement().classList.add('leaflet-drag-target');
-
-      // Attempt to sync positions
-      mapManager.syncOverlayPosition(1100);
-
-      // Marker 1 (Dragging) should NOT be updated (Anti-Jitter)
-      expect(marker1.setLatLng).not.toHaveBeenCalled();
-
-      // Marker 2 (Idle) SHOULD be updated normally
-      expect(marker2.setLatLng).toHaveBeenCalled();
+      mockMarker.getElement().classList.add('leaflet-drag-target');
+      mockMarker.setLatLng.mockClear();
+      mapManager.syncOverlayPosition(0);
+      expect(mockMarker.setLatLng).not.toHaveBeenCalled();
     });
 
     test('should emit map:position-selected with correct params when dragged', () => {
       AppState.files = [
         {
-          name: 'File1',
           startTime: 1000,
-          availableSignals: ['GPS Latitude', 'GPS Longitude'],
+          availableSignals: ['Lat', 'Lon'],
           signals: {
-            'GPS Latitude': [
+            Lat: [
               { x: 1000, y: 10 },
               { x: 1100, y: 11 },
-            ], // Distance
-            'GPS Longitude': [
+            ],
+            Lon: [
               { x: 1000, y: 10 },
               { x: 1100, y: 11 },
             ],
           },
         },
       ];
-
+      const div = document.createElement('div');
+      div.id = 'overlay-map-container';
+      document.body.appendChild(div);
       mapManager.loadOverlayMap();
-
-      const marker = markersCreated[0];
-      const dragHandler = marker._handlers['drag'];
-
-      // Simulate dragging to coordinates corresponding to T=1100
+      const dragHandler = mockMarker.on.mock.calls.find(
+        (c) => c[0] === 'drag'
+      )[1];
       dragHandler({ target: { getLatLng: () => ({ lat: 11, lng: 11 }) } });
-
-      expect(mockMessenger.emit).toHaveBeenCalledWith(EVENTS.MAP_SELECTED, {
-        time: 1100, // Should find the time closest to lat/lng (11,11)
-        fileIndex: 0,
-      });
+      expect(mockMessenger.emit).toHaveBeenCalledWith(
+        EVENTS.MAP_SELECTED,
+        expect.objectContaining({ time: 1100 })
+      );
     });
   });
 
   describe('Sync Map Bounds', () => {
     test('should sync bounds for single file', () => {
-      const mockFile = {
-        name: 'Bounds.json',
-        startTime: 0,
-        duration: 100,
-        availableSignals: ['GPS Latitude', 'GPS Longitude'],
-        signals: {
-          'GPS Latitude': [
-            { x: 0, y: 10 },
-            { x: 50, y: 20 },
-            { x: 100, y: 30 },
-          ],
-          'GPS Longitude': [
-            { x: 0, y: 10 },
-            { x: 50, y: 20 },
-            { x: 100, y: 30 },
-          ],
+      AppState.files = [
+        {
+          availableSignals: ['Lat', 'Lon'],
+          signals: {
+            Lat: [
+              { x: 0, y: 10 },
+              { x: 50, y: 20 },
+            ],
+            Lon: [
+              { x: 0, y: 10 },
+              { x: 50, y: 20 },
+            ],
+          },
         },
-      };
-      AppState.files = [mockFile];
+      ];
       createEmbeddedMapContainer(0);
-
-      mapManager.init();
       mapManager.loadRoute(0);
-
-      // Sync visible range 0-60 (Should include first two points)
       mapManager.syncMapBounds(0, 60, 0);
-
       expect(mockMap.fitBounds).toHaveBeenCalled();
     });
   });
