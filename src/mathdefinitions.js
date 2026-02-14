@@ -9,8 +9,8 @@ export const MATH_DEFINITIONS = [
     description:
       'Calculates total distance traveled based on GPS path (Haversine method).',
     inputs: [
-      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
-      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+      { name: 'Latitude', label: 'Latitude Signal' },
+      { name: 'Longitude', label: 'Longitude Signal' },
     ],
 
     autoLoad: {
@@ -68,8 +68,8 @@ export const MATH_DEFINITIONS = [
     description:
       'Estimates longitudinal G-Force derived from GPS Speed changes.',
     inputs: [
-      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
-      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+      { name: 'Latitude', label: 'Latitude Signal' },
+      { name: 'Longitude', label: 'Longitude Signal' },
     ],
     customProcess: (signals) => {
       const latSig = signals[0];
@@ -136,8 +136,8 @@ export const MATH_DEFINITIONS = [
     description:
       'Calculates vehicle speed based on GPS coordinates (Latitude/Longitude) and time delta.',
     inputs: [
-      { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
-      { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
+      { name: 'Latitude', label: 'Latitude Signal' },
+      { name: 'Longitude', label: 'Longitude Signal' },
     ],
 
     autoLoad: {
@@ -201,7 +201,7 @@ export const MATH_DEFINITIONS = [
       'Calculates cost by measuring the actual drop in fuel level. Warning: Subject to "fuel slosh" noise.',
     inputs: [
       {
-        name: signalRegistry.mappings['Fuel Level'],
+        name: 'Fuel Level',
         label: 'Fuel Level (%)',
       },
       {
@@ -253,7 +253,7 @@ export const MATH_DEFINITIONS = [
       'Calculates current fuel volume in liters based on tank percentage (clamped to 100%).',
     inputs: [
       {
-        name: signalRegistry.mappings['Fuel Level'],
+        name: 'Fuel Level',
         label: 'Fuel Level (%)',
       },
       {
@@ -277,7 +277,7 @@ export const MATH_DEFINITIONS = [
       'Stable range estimate using your known Average Consumption (e.g., 10 L/100km).',
     inputs: [
       {
-        name: signalRegistry.mappings['Fuel Level'],
+        name: 'Fuel Level',
         label: 'Fuel Level (%)',
       },
       {
@@ -287,7 +287,7 @@ export const MATH_DEFINITIONS = [
         defaultValue: 58,
       },
       {
-        name: signalRegistry.mappings['Fuel Consumption'],
+        name: 'Fuel Consumption',
         label: 'Known Avg Cons. (L/100km)',
         isConstant: true,
         defaultValue: 10.5, // Changed to a more realistic daily average
@@ -313,11 +313,11 @@ export const MATH_DEFINITIONS = [
       'Real-time range estimate using "Current Consumption" signal. Shows how range drops during acceleration.',
     inputs: [
       {
-        name: signalRegistry.mappings['Fuel Level'],
+        name: 'Fuel Level',
         label: 'Fuel Level (%)',
       },
       {
-        name: signalRegistry.mappings['Fuel Consumption'],
+        name: 'Fuel Consumption',
         label: 'Current Cons. Signal',
       },
       {
@@ -345,7 +345,7 @@ export const MATH_DEFINITIONS = [
       'Calculates distance traveled since the start of the log: Current Odometer - Initial Odometer.',
     inputs: [
       {
-        name: signalRegistry.mappings.Distance || 'Distance',
+        name: 'Distance',
         label: 'Odometer Signal',
       },
     ],
@@ -370,11 +370,11 @@ export const MATH_DEFINITIONS = [
       'Calculates HP from Torque and RPM. Formula: (Torque * RPM) / 7127. Use Factor=10 if Torque is in daNm.',
     inputs: [
       {
-        name: signalRegistry.mappings.Torque,
+        name: 'Torque',
         label: 'Torque (Nm or daNm)',
       },
       {
-        name: signalRegistry.mappings['Engine Speed'],
+        name: 'Engine Speed',
         label: 'Engine RPM',
       },
       {
@@ -395,7 +395,7 @@ export const MATH_DEFINITIONS = [
       'Estimates Engine Power based on Air Mass Flow (kg/h). Formula: (MAF / 3.6) * Factor.',
     inputs: [
       {
-        name: signalRegistry.mappings.MAF,
+        name: 'MAF',
         label: 'Air Mass Flow (kg/h)',
       },
       {
@@ -416,7 +416,7 @@ export const MATH_DEFINITIONS = [
       'Estimates Engine Power based on Air Mass Flow (g/s). Formula: MAF * Factor.',
     inputs: [
       {
-        name: signalRegistry.mappings.MAF,
+        name: 'MAF',
         label: 'Air Mass Flow (g/s)',
       },
       {
@@ -437,7 +437,7 @@ export const MATH_DEFINITIONS = [
       'Calculates acceleration (derivative of speed). Useful for 0-100km/h analysis.',
     inputs: [
       {
-        name: signalRegistry.mappings['Vehicle Speed'],
+        name: 'Vehicle Speed',
         label: 'Speed (km/h)',
       },
     ],
@@ -464,11 +464,11 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates Turbo Boost Pressure: MAP - Barometric Pressure.',
     inputs: [
       {
-        name: signalRegistry.mappings['Intake Manifold Pressure'],
+        name: 'Intake Manifold Pressure',
         label: 'Intake Manifold Pressure',
       },
       {
-        name: signalRegistry.mappings['Atmospheric Pressure'],
+        name: 'Atmospheric Pressure',
         label: 'Atmospheric Pressure',
       },
     ],
@@ -482,11 +482,11 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates AFR deviation: Commanded AFR - Measured AFR.',
     inputs: [
       {
-        name: signalRegistry.mappings['AFR Commanded'],
+        name: 'AFR Commanded',
         label: 'AFR Commanded',
       },
       {
-        name: signalRegistry.mappings['AFR Measured'],
+        name: 'AFR Measured',
         label: 'AFR Measured',
       },
     ],
@@ -500,11 +500,11 @@ export const MATH_DEFINITIONS = [
     description: 'Calculates Turbo Pressure Ratio: MAP / Barometric Pressure.',
     inputs: [
       {
-        name: signalRegistry.mappings['Intake Manifold Pressure'],
+        name: 'Intake Manifold Pressure',
         label: 'Intake Manifold Pressure',
       },
       {
-        name: signalRegistry.mappings['Atmospheric Pressure'],
+        name: 'Atmospheric Pressure',
         label: 'Atmospheric Pressure',
       },
     ],
