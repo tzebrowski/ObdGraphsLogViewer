@@ -48,6 +48,81 @@ class MathChannels {
 
   constructor() {
     this.#definitions = MATH_DEFINITIONS;
+    this.#initAutoExecution();
+  }
+
+  #initAutoExecution() {
+    messenger.on('dataprocessor:batch-load-completed', () => {
+      this.executeAutoMath();
+    });
+  }
+
+  executeAutoMath() {
+    let createdCount = 0;
+
+    AppState.files.forEach((file, fileIdx) => {
+      this.#definitions.forEach((def) => {
+        if (!def.autoLoad || !def.autoLoad.enabled) return;
+
+        const targetName = def.autoLoad.targetName || def.name;
+        const finalName = `Math: ${targetName}`;
+
+        if (file.signals[finalName]) return;
+
+        const resolvedInputs = [];
+        let canCreate = true;
+
+        for (const inputDef of def.inputs) {
+          if (inputDef.isConstant) {
+            if (inputDef.defaultValue !== undefined) {
+              resolvedInputs.push(inputDef.defaultValue);
+            } else {
+              canCreate = false;
+              break;
+            }
+          } else {
+            const candidates = Array.isArray(inputDef.name)
+              ? inputDef.name
+              : [inputDef.name];
+
+            let match = null;
+            for (const candidate of candidates) {
+              match = signalRegistry.findSignal(
+                candidate,
+                file.availableSignals
+              );
+              if (match) break;
+            }
+
+            if (match) {
+              resolvedInputs.push(match);
+            } else {
+              canCreate = false;
+              break;
+            }
+          }
+        }
+
+        if (canCreate) {
+          try {
+            this.createChannel(fileIdx, def.id, resolvedInputs, targetName, {
+              isAuto: true,
+              smooth: false,
+            });
+            createdCount++;
+            console.log(
+              `[AutoMath] Created "${targetName}" for file ${file.name}`
+            );
+          } catch (e) {
+            console.warn(`[AutoMath] Failed to create ${targetName}`, e);
+          }
+        }
+      });
+    });
+
+    if (createdCount > 0 && typeof UI.renderSignalList === 'function') {
+      UI.renderSignalList();
+    }
   }
 
   openModal() {
@@ -117,17 +192,14 @@ class MathChannels {
   }
 
   #resolveSignalName(file, inputDef, requestedName) {
-    // 1. If the exact requested name exists, use it immediately
     if (file.signals[requestedName]) return requestedName;
 
-    // 2. If the definition provides canonical names or aliases, try to resolve via Registry
     if (inputDef.name) {
       const candidates = Array.isArray(inputDef.name)
         ? inputDef.name
         : [inputDef.name];
 
       for (const candidate of candidates) {
-        // Use SignalRegistry to find the best match in the file's available signals
         const match = signalRegistry.findSignal(
           candidate,
           file.availableSignals
@@ -135,8 +207,6 @@ class MathChannels {
         if (match && file.signals[match]) return match;
       }
     }
-
-    // 3. Fallback: Return the requested name (likely to fail if not found, but preserves intent)
     return requestedName;
   }
 
