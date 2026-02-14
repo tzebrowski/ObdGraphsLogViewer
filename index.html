@@ -297,43 +297,99 @@
             <div id="fileInfo" class="status-text-subtle"></div>
           </div>
 
-          <div id="projectHistoryContainer" class="control-group gray-box">
-            <div class="group-header-row">
-              <h3 id="projectNameDisplay">Project History</h3>
-              <button
-                class="btn-icon btn-rename-project"
-                onclick="
-                  event.stopPropagation();
-                  editProjectName();
-                "
-                title="Rename Project"
-              >
-                <i class="fas fa-pen"></i>
-              </button>
+          <div id="projectUnifiedPanel" class="control-group gray-box">
+            <div
+              class="group-header-row"
+              style="
+                border-bottom: 1px solid var(--border-color);
+                padding-bottom: 8px;
+                margin-bottom: 10px;
+              "
+            >
+              <div style="flex-grow: 1; overflow: hidden">
+                <span
+                  style="
+                    font-size: 10px;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                  "
+                  >Active Project</span
+                >
+                <h3
+                  id="projectNameDisplay"
+                  style="
+                    margin: 2px 0 0 0;
+                    font-size: 1.1em;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                  "
+                >
+                  Default Project
+                </h3>
+              </div>
+              <div class="button-row-sm" style="flex-shrink: 0">
+                <button
+                  class="btn-icon"
+                  onclick="editProjectName()"
+                  title="Rename Project"
+                >
+                  <i class="fas fa-pen"></i>
+                </button>
+                <button
+                  class="btn-icon"
+                  onclick="resetProject()"
+                  title="New Project"
+                >
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
             </div>
 
-            <p class="section-description">Timeline of analysis steps.</p>
+            <div id="librarySlot"></div>
 
-            <div id="projectHistoryList" class="history-list"></div>
+            <hr
+              style="
+                border: 0;
+                border-top: 1px solid var(--border-color);
+                margin: 12px 0;
+              "
+            />
 
-            <div class="flex-row-gap-5">
-              <button
-                id="btnReplayProject"
-                class="btn btn-sm btn-primary flex-1"
-                onclick="replayProjectHistory()"
+            <div id="historySlot">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 5px;
+                "
               >
-                <i class="fas fa-play"></i> Replay All
-              </button>
-              <button
-                class="btn btn-sm"
-                onclick="resetProject()"
-                title="Clear History"
-              >
-                <i class="fas fa-trash"></i>
-              </button>
+                <h4
+                  style="margin: 0; font-size: 0.9em; color: var(--text-muted)"
+                >
+                  Session Timeline
+                </h4>
+              </div>
+              <div
+                id="projectHistoryList"
+                class="history-list"
+                style="max-height: 250px; overflow-y: auto"
+              ></div>
+
+              <div style="margin-top: 8px">
+                <button
+                  id="btnReplayProject"
+                  class="btn btn-sm btn-primary"
+                  style="width: 100%"
+                  onclick="replayProjectHistory()"
+                >
+                  <i class="fas fa-play"></i> Replay Steps
+                </button>
+              </div>
             </div>
           </div>
-
           <div class="control-group gray-box">
             <h3>Anomaly Scanner</h3>
             <p class="section-description">

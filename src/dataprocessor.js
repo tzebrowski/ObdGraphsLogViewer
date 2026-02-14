@@ -3,6 +3,7 @@ import { Config, AppState, DOM } from './config.js';
 import { Alert } from './alert.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
+import { dbManager } from './dbmanager.js';
 
 /**
  * DataProcessor Module
@@ -40,7 +41,6 @@ class DataProcessor {
       Config.ANOMALY_TEMPLATES = providedTemplates;
     } catch (error) {
       console.error('Config Loader:', error);
-      // Fallback to safe state
       try {
         Config.ANOMALY_TEMPLATES = {};
       } catch (e) {
@@ -69,17 +69,16 @@ class DataProcessor {
     files.forEach((file) => {
       const reader = new FileReader();
 
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           let rawData;
           if (file.name.endsWith('.csv')) {
             const parsedCSV = this.#parseCSV(e.target.result);
-            // Normalize "Wide" CSVs (exported from app) to "Long" format
             rawData = this.#normalizeWideCSV(parsedCSV);
           } else {
             rawData = JSON.parse(e.target.result);
           }
-          this.#process(rawData, file.name);
+          await this.#process(rawData, file.name);
         } catch (err) {
           const msg = `Error parsing ${file.name}: ${err.message}`;
           console.error(msg);
@@ -100,8 +99,8 @@ class DataProcessor {
    * @param {Array} data - Array of {s, t, v} points
    * @param {string} fileName - Source file identifier
    */
-  process(data, fileName) {
-    const result = this.#process(data, fileName);
+  async process(data, fileName) {
+    const result = await this.#process(data, fileName);
     this.#finalizeBatchLoad();
     return result;
   }
@@ -110,17 +109,15 @@ class DataProcessor {
    * Processes raw telemetry array into a structured log entry.
    * @private
    */
-  #process(data, fileName) {
+  async #process(data, fileName) {
     try {
       if (!Array.isArray(data)) throw new Error('Input data must be an array');
 
       let telemetryPoints = data;
       let fileMetadata = {};
 
-      // Check if the first element is a metadata block
       if (data.length > 0 && data[0].metadata) {
         fileMetadata = data[0].metadata;
-        // The rest of the array is the actual telemetry data
         telemetryPoints = data.slice(1);
       }
 
@@ -134,7 +131,7 @@ class DataProcessor {
       // Detect schema based on the first actual data point
       const schema = this.#detectSchema(telemetryPoints[0]);
 
-      // CHANGED: Use flatMap to handle 1-to-many expansion (e.g. Object -> Multiple Signals)
+      // Use flatMap to handle 1-to-many expansion (e.g. Object -> Multiple Signals)
       const processedPoints = telemetryPoints.flatMap((item) =>
         this.#applyMappingAndCleaning(item, schema)
       );
@@ -145,10 +142,33 @@ class DataProcessor {
       result.metadata = fileMetadata;
       result.size = telemetryPoints.length;
 
-      AppState.files.push(result);
+      // --- CHANGED: Check for duplicates in Library before saving ---
+      const allLibraryFiles = await dbManager.getAllFiles();
+      const existingFile = allLibraryFiles.find(
+        (f) => f.name === fileName && f.size === result.size
+      );
 
+      if (existingFile) {
+        console.log(
+          `File '${fileName}' already exists in library (ID: ${existingFile.id}). Skipping DB save.`
+        );
+        result.dbId = existingFile.id;
+      } else {
+        const dbId = await dbManager.saveTelemetry(result);
+        result.dbId = dbId;
+      }
+
+      const isAlreadyInSession = AppState.files.some(
+        (f) => f.dbId === result.dbId
+      );
+      if (!isAlreadyInSession) {
+        AppState.files.push(result);
+      }
+
+      // Register with project manager (it handles its own duplicate checks for resources)
       projectManager.registerFile({
         name: fileName,
+        dbId: result.dbId,
         size: result.size,
         metadata: result.metadata,
       });
@@ -265,7 +285,7 @@ class DataProcessor {
 
     const keys = Object.keys(rows[0]);
 
-    // 1. If it already has the standard columns, return as is.
+    // If it already has the standard columns, return as is.
     if (
       keys.includes('SensorName') &&
       (keys.includes('Time_ms') || keys.includes('time'))
@@ -273,7 +293,7 @@ class DataProcessor {
       return rows;
     }
 
-    // 2. Detect Time Column
+    // Detect Time Column
     const timeKey = keys.find((k) => k.toLowerCase().includes('time'));
     if (!timeKey) return rows;
 

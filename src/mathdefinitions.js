@@ -292,7 +292,7 @@ export const MATH_DEFINITIONS = [
         name: 'Fuel Consumption',
         label: 'Known Avg Cons. (L/100km)',
         isConstant: true,
-        defaultValue: 10.5, // Changed to a more realistic daily average
+        defaultValue: 10.5,
       },
     ],
     formula: (values) => {
