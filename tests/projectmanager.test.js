@@ -43,6 +43,7 @@ Object.defineProperty(global, 'crypto', {
 // ------------------------------------------------------------------
 
 jest.unstable_mockModule('../src/config.js', () => ({
+  EVENTS: [],
   AppState: {
     files: [], // This array will be mutated in tests
   },
