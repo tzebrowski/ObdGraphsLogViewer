@@ -12,6 +12,13 @@ export const MATH_DEFINITIONS = [
       { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
       { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
     ],
+
+    autoLoad: {
+      enabled: true,
+      targetName: 'GPS Trip Distance (Auto)',
+      inputs: ['Latitude', 'Longitude'],
+    },
+
     customProcess: (signals) => {
       const latSig = signals[0];
       const lonSig = signals[1];
@@ -132,6 +139,13 @@ export const MATH_DEFINITIONS = [
       { name: signalRegistry.mappings['Latitude'], label: 'Latitude Signal' },
       { name: signalRegistry.mappings['Longitude'], label: 'Longitude Signal' },
     ],
+
+    autoLoad: {
+      enabled: true,
+      targetName: 'GPS Speed (Auto)',
+      inputs: ['Latitude', 'Longitude'],
+    },
+
     customProcess: (signals) => {
       const latSig = signals[0];
       const lonSig = signals[1];

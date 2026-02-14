@@ -48,6 +48,7 @@ class MathChannels {
 
   constructor() {
     this.#definitions = MATH_DEFINITIONS;
+    this.#initAutoExecution();
   }
 
   openModal() {
@@ -116,11 +117,75 @@ class MathChannels {
     return this.#finalizeChannel(file, resultData, finalName, unit);
   }
 
+  #initAutoExecution() {
+    messenger.on('dataprocessor:batch-load-completed', () => {
+      // Optional: Check a preference like "Preferences.prefs.autoCalcMath"
+      this.#executeAutoMath();
+    });
+  }
+
+  #executeAutoMath() {
+    let createdCount = 0;
+
+    AppState.files.forEach((file, fileIdx) => {
+      this.#definitions.forEach((def) => {
+        if (!def.autoLoad || !def.autoLoad.enabled) return;
+
+        const { targetName, inputs: requiredCanonicalSignals } = def.autoLoad;
+        const finalName = `Math: ${targetName}`;
+
+        if (file.signals[finalName]) return;
+
+        const resolvedInputs = [];
+        let allSignalsFound = true;
+
+        for (const canonicalName of requiredCanonicalSignals) {
+          if (!isNaN(parseFloat(canonicalName))) {
+            resolvedInputs.push(canonicalName);
+            continue;
+          }
+
+          const match = signalRegistry.findSignal(
+            canonicalName,
+            file.availableSignals
+          );
+
+          if (match) {
+            resolvedInputs.push(match);
+          } else {
+            allSignalsFound = false;
+            break;
+          }
+        }
+
+        if (allSignalsFound) {
+          try {
+            this.createChannel(
+              fileIdx,
+              def.id,
+              resolvedInputs,
+              targetName,
+              { isAuto: true, smooth: false } // Default options for auto-channels
+            );
+            createdCount++;
+            console.log(
+              `[AutoMath] Created "${targetName}" for file ${file.name}`
+            );
+          } catch (e) {
+            console.warn(`[AutoMath] Failed to create ${targetName}`, e);
+          }
+        }
+      });
+    });
+
+    if (createdCount > 0 && typeof UI.renderSignalList === 'function') {
+      UI.renderSignalList();
+    }
+  }
+
   #resolveSignalName(file, inputDef, requestedName) {
-    // 1. If the exact requested name exists, use it immediately
     if (file.signals[requestedName]) return requestedName;
 
-    // 2. If the definition provides canonical names or aliases, try to resolve via Registry
     if (inputDef.name) {
       const candidates = Array.isArray(inputDef.name)
         ? inputDef.name
