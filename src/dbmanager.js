@@ -5,8 +5,21 @@ class DBManager {
   #db = null;
   #DB_NAME = 'GiuliaTelemetryDB';
   #VERSION = 1;
+  #isSupported = false;
+
+  constructor() {
+    // Check if environment supports IndexedDB
+    this.#isSupported = typeof indexedDB !== 'undefined';
+  }
 
   async init() {
+    if (!this.#isSupported) {
+      console.warn(
+        'DBManager: IndexedDB is not available in this environment.'
+      );
+      return Promise.resolve();
+    }
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.#DB_NAME, this.#VERSION);
 
@@ -39,7 +52,9 @@ class DBManager {
    * Returns the new DB ID.
    */
   async saveTelemetry(fileObj) {
+    if (!this.#isSupported) return null;
     if (!this.#db) await this.init();
+    if (!this.#db) return null; // Safety check if init failed or still unsupported
 
     return new Promise((resolve, reject) => {
       const transaction = this.#db.transaction(
@@ -76,34 +91,48 @@ class DBManager {
   }
 
   async getAllFiles() {
+    if (!this.#isSupported) return [];
     if (!this.#db) await this.init();
+    if (!this.#db) return [];
+
     return new Promise((resolve) => {
       const transaction = this.#db.transaction('files', 'readonly');
       const store = transaction.objectStore('files');
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve([]);
     });
   }
 
   async getFileSignals(fileId) {
+    if (!this.#isSupported) return null;
     if (!this.#db) await this.init();
+    if (!this.#db) return null;
+
     return new Promise((resolve) => {
       const transaction = this.#db.transaction('signals', 'readonly');
       const store = transaction.objectStore('signals');
       const request = store.get(fileId);
       request.onsuccess = () => resolve(request.result?.data || null);
+      request.onerror = () => resolve(null);
     });
   }
 
   async deleteFile(fileId) {
+    if (!this.#isSupported) return;
     if (!this.#db) await this.init();
+    if (!this.#db) return;
+
     const transaction = this.#db.transaction(['files', 'signals'], 'readwrite');
     transaction.objectStore('files').delete(fileId);
     transaction.objectStore('signals').delete(fileId);
   }
 
   async clearAll() {
+    if (!this.#isSupported) return;
     if (!this.#db) await this.init();
+    if (!this.#db) return;
+
     const transaction = this.#db.transaction(['files', 'signals'], 'readwrite');
     transaction.objectStore('files').clear();
     transaction.objectStore('signals').clear();
