@@ -4,7 +4,6 @@ import { messenger } from './bus.js';
 import { Preferences } from './preferences.js';
 import { signalRegistry } from './signalregistry.js';
 
-// Using CartoDB Voyager for high contrast and clean look
 const TILES_LIGHT =
   'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 const TILES_DARK =
@@ -81,7 +80,6 @@ class MapManager {
   }
 
   setColorMetric(signalName) {
-    console.log(`[MapManager] Color metric set to: ${signalName || 'Auto'}`);
     this.#activeColorSignal = signalName;
     this.#contexts.forEach((ctx, fileIndex) => {
       this.loadRoute(fileIndex);
@@ -107,6 +105,7 @@ class MapManager {
   #removeMapContext(fileIndex) {
     if (this.#contexts.has(fileIndex)) {
       this.#contexts.delete(fileIndex);
+
       const container = document.getElementById(`embedded-map-${fileIndex}`);
       if (container) {
         container.classList.remove('active');
@@ -122,14 +121,12 @@ class MapManager {
     const latData = file.signals[latKey];
     const lonData = file.signals[lonKey];
 
-    // --- HEATMAP DATA PREP ---
     let valueData = null;
     let minVal = 0;
     let maxVal = 100;
     let usedSignalName = this.#activeColorSignal;
     let heatmapMeta = null;
 
-    // 1. Auto-Detection Priority:
     if (!usedSignalName) {
       if (file.signals['Math: GPS Speed (Auto)']) {
         usedSignalName = 'Math: GPS Speed (Auto)';
@@ -142,10 +139,8 @@ class MapManager {
       }
     }
 
-    // 2. Load Data & Calculate Min/Max
     if (usedSignalName && file.signals[usedSignalName]) {
       valueData = file.signals[usedSignalName];
-
       let min = Infinity;
       let max = -Infinity;
       for (let i = 0; i < valueData.length; i++) {
@@ -155,19 +150,15 @@ class MapManager {
           if (v > max) max = v;
         }
       }
-
       if (min === Infinity) {
         min = 0;
         max = 100;
       }
-
       minVal = min;
       maxVal = max;
-
       if (maxVal - minVal < 1) {
         maxVal = minVal + 10;
       }
-
       heatmapMeta = {
         name: usedSignalName,
         min: minVal,
@@ -207,6 +198,7 @@ class MapManager {
       routePoints,
       latInterpolator,
       lonInterpolator,
+      valInterpolator,
       latData,
       isHeatmap: !!valInterpolator,
       heatmapMeta,
@@ -215,12 +207,9 @@ class MapManager {
 
   #addRouteVisuals(mapInstance, routePoints, fileIndex, options = {}) {
     const { isOverlay = false, isHeatmap = false } = options;
-
     const layerGroup = L.layerGroup().addTo(mapInstance);
-
     const latLngs = routePoints.map((p) => [p.lat, p.lon]);
 
-    // 1. Backing Line (Black Border)
     L.polyline(latLngs, {
       color: '#000000',
       weight: isOverlay ? 6 : 9,
@@ -230,7 +219,6 @@ class MapManager {
       interactive: false,
     }).addTo(layerGroup);
 
-    // 2. Colored Path
     const weight = isOverlay ? 4 : 6;
 
     if (isHeatmap) {
@@ -268,7 +256,6 @@ class MapManager {
       }
     }
 
-    // 3. Marker
     const startPoint = [routePoints[0].lat, routePoints[0].lon];
     const arrowIcon = L.divIcon({
       className: 'gps-marker-icon',
@@ -304,14 +291,13 @@ class MapManager {
     if (!mapContainer) return;
 
     const mapInstance = L.map(containerId, { zoomControl: false });
-
     L.control.zoom({ position: 'topright' }).addTo(mapInstance);
 
     const isDark = Preferences.prefs.darkTheme;
     const tileUrl = isDark ? TILES_DARK : TILES_LIGHT;
-    const tileLayer = L.tileLayer(tileUrl, {
-      attribution: '© CartoDB',
-    }).addTo(mapInstance);
+    const tileLayer = L.tileLayer(tileUrl, { attribution: '© CartoDB' }).addTo(
+      mapInstance
+    );
 
     const allBounds = L.latLngBounds([]);
     let hasValidRoute = false;
@@ -339,6 +325,7 @@ class MapManager {
         positionMarker: visuals.positionMarker,
         latInterpolator: processed.latInterpolator,
         lonInterpolator: processed.lonInterpolator,
+        valInterpolator: processed.valInterpolator,
         infoControl: null,
       });
     });
@@ -362,6 +349,7 @@ class MapManager {
       routePoints,
       latInterpolator,
       lonInterpolator,
+      valInterpolator,
       latData,
       isHeatmap,
       heatmapMeta,
@@ -378,7 +366,6 @@ class MapManager {
         [0, 0],
         2
       );
-
       L.control.zoom({ position: 'topright' }).addTo(mapInstance);
 
       const isDark = Preferences.prefs.darkTheme;
@@ -389,11 +376,12 @@ class MapManager {
 
       this.#contexts.set(fileIndex, {
         map: mapInstance,
-        tileLayer: tileLayer,
+        tileLayer,
         routeLayer: null,
         positionMarker: null,
         latInterpolator: null,
         lonInterpolator: null,
+        valInterpolator: null,
         infoControl: null,
       });
     }
@@ -401,6 +389,7 @@ class MapManager {
     const ctx = this.#contexts.get(fileIndex);
     ctx.latInterpolator = latInterpolator;
     ctx.lonInterpolator = lonInterpolator;
+    ctx.valInterpolator = valInterpolator;
 
     if (ctx.routeLayer) {
       ctx.routeLayer.clearLayers();
@@ -417,7 +406,7 @@ class MapManager {
     ctx.positionMarker = visuals.positionMarker;
 
     const stats = this.#calculateStats(latData, ctx.lonInterpolator);
-    this.#updateInfoControl(ctx, stats, heatmapMeta);
+    this.#updateInfoControl(ctx, stats, heatmapMeta, fileIndex);
 
     requestAnimationFrame(() => {
       if (ctx.map) {
@@ -431,8 +420,6 @@ class MapManager {
     });
   }
 
-  // --- Helpers ---
-
   #getValueColor(value, min, max) {
     if (isNaN(value)) return '#888';
     let ratio = (value - min) / (max - min);
@@ -444,18 +431,28 @@ class MapManager {
   syncPosition(time) {
     if (!this.#isReady || this.#contexts.size === 0) return;
 
-    this.#contexts.forEach((ctx) => {
+    this.#contexts.forEach((ctx, fileIndex) => {
       if (!ctx.latInterpolator || !ctx.lonInterpolator) return;
 
       const lat = ctx.latInterpolator.getValueAt(time);
       const lon = ctx.lonInterpolator.getValueAt(time);
-      const nextLat = ctx.latInterpolator.getValueAt(time + 1000);
-      const nextLon = ctx.lonInterpolator.getValueAt(time + 1000);
+
+      if (ctx.valInterpolator) {
+        const currentVal = ctx.valInterpolator.getValueAt(time);
+        const valEl = document.getElementById(`map-legend-val-${fileIndex}`);
+        if (valEl && currentVal !== null) {
+          valEl.innerText = currentVal.toFixed(1);
+        }
+      }
 
       if (this.#isValidGps(lat, lon)) {
+        const nextLat = ctx.latInterpolator.getValueAt(time + 1000);
+        const nextLon = ctx.lonInterpolator.getValueAt(time + 1000);
+
         if (ctx.positionMarker) {
           ctx.positionMarker.setLatLng([lat, lon]);
         }
+
         if (this.#isValidGps(nextLat, nextLon)) {
           if (
             Math.abs(nextLat - lat) > 0.00005 ||
@@ -487,11 +484,19 @@ class MapManager {
 
       const lat = ctx.latInterpolator.getValueAt(absTime);
       const lon = ctx.lonInterpolator.getValueAt(absTime);
-      const nextLat = ctx.latInterpolator.getValueAt(absTime + 1000);
-      const nextLon = ctx.lonInterpolator.getValueAt(absTime + 1000);
+
+      if (ctx.valInterpolator) {
+        const currentVal = ctx.valInterpolator.getValueAt(absTime);
+        const valEl = document.getElementById(`map-legend-val-${fileIdx}`);
+        if (valEl && currentVal !== null)
+          valEl.innerText = currentVal.toFixed(1);
+      }
 
       if (this.#isValidGps(lat, lon)) {
         if (ctx.positionMarker) ctx.positionMarker.setLatLng([lat, lon]);
+        const nextLat = ctx.latInterpolator.getValueAt(absTime + 1000);
+        const nextLon = ctx.lonInterpolator.getValueAt(absTime + 1000);
+
         if (this.#isValidGps(nextLat, nextLon)) {
           const angle = this.#calculateBearing(lat, lon, nextLat, nextLon);
           this.#rotateMarker(ctx.positionMarker, angle);
@@ -649,24 +654,26 @@ class MapManager {
     };
   }
 
-  #updateInfoControl(ctx, stats, heatmapMeta = null) {
+  #updateInfoControl(ctx, stats, heatmapMeta = null, fileIndex = 0) {
     if (!ctx.map) return;
     if (ctx.infoControl) ctx.map.removeControl(ctx.infoControl);
 
     const InfoControl = L.Control.extend({
       onAdd: function () {
         const div = L.DomUtil.create('div', 'info-legend');
-        // REFACTORED CSS: Smaller box (180px), Bigger Font (12px), Tighter padding
         div.style.cssText =
-          'background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:4px; font-size: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.5); min-width: 180px; font-family: monospace; z-index: 1000; line-height: 1.3;';
+          'background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:4px; font-size: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.5); min-width: 180px; font-family: monospace; z-index: 1000; line-height: 1.3; pointer-events: none;';
 
         let heatmapHtml = '';
         if (heatmapMeta) {
           heatmapHtml = `
             <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #555;">
-                <div style="font-weight:bold; margin-bottom:2px; font-size:1.1em; color:#ddd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${heatmapMeta.name}">${heatmapMeta.name}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                    <div style="font-weight:bold; font-size:1.1em; color:#ddd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 120px;" title="${heatmapMeta.name}">${heatmapMeta.name}</div>
+                    <div style="font-weight:bold; font-size:1.1em; color:#4f9;" id="map-legend-val-${fileIndex}">--</div>
+                </div>
                 
-                <div style="height:10px; border-radius:3px; background: linear-gradient(to right, hsl(120,100%,40%), hsl(60,100%,50%), hsl(0,100%,50%)); margin-bottom: 2px; border: 1px solid #444;"></div>
+                <div style="height:8px; border-radius:2px; background: linear-gradient(to right, hsl(120,100%,40%), hsl(60,100%,50%), hsl(0,100%,50%)); margin-bottom: 2px; border: 1px solid #444;"></div>
                 
                 <div style="display:flex; justify-content:space-between; font-size:1.0em; font-weight:bold; color:#eee;">
                     <span>${heatmapMeta.min.toFixed(0)}</span>
@@ -687,7 +694,7 @@ class MapManager {
         return div;
       },
     });
-    ctx.infoControl = new InfoControl({ position: 'bottomleft' });
+    ctx.infoControl = new InfoControl({ position: 'topleft' });
     ctx.infoControl.addTo(ctx.map);
   }
 
