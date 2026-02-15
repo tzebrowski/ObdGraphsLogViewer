@@ -8,6 +8,7 @@ import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 import { mapManager } from './mapmanager.js';
 import { signalRegistry } from './signalregistry.js';
+import { telemetryAnalyzer } from './telemetryanalyzer.js';
 
 export const UI = {
   STORAGE_KEY: 'sidebar_collapsed_states',
@@ -17,6 +18,7 @@ export const UI = {
     UI.initVersionInfo();
     UI.initSidebarSectionsCollapse();
     UI.initMobileUI();
+    UI.setupMainTabs();
 
     // Initialize merged Library/Project UI in the specific slot
     projectManager.initLibraryUI('librarySlot');
@@ -42,7 +44,6 @@ export const UI = {
     messenger.on('dataprocessor:batch-load-completed', (event) => {
       UI.renderSignalList();
 
-      // 1. Reveal the container first
       UI.updateDataLoadedState(true);
       UI.setLoading(false);
 
@@ -51,7 +52,6 @@ export const UI = {
         fileInfo.innerText = `${AppState.files.length} logs loaded`;
       }
 
-      // 2. Wait for DOM reflow before rendering chart.
       if (AppState.files.length > 0) {
         requestAnimationFrame(() => {
           ChartManager.render();
@@ -105,6 +105,147 @@ export const UI = {
       scanResults: document.getElementById('scanResults'),
       scanCount: document.getElementById('scanCount'),
     };
+  },
+
+  setupMainTabs() {
+    const tabs = document.querySelectorAll('.main-tab-btn');
+    const containers = {
+      graph: document.getElementById('chartContainer'),
+      report: document.getElementById('report-container'),
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const targetId = tab.dataset.target;
+
+        Object.keys(containers).forEach((key) => {
+          const el = containers[key];
+          if (!el) return;
+
+          if (key === targetId) {
+            el.classList.remove('hidden');
+            el.style.display = 'block';
+            el.classList.add('active');
+          } else {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+            el.classList.remove('active');
+          }
+        });
+
+        if (targetId === 'report') {
+          this.renderReportView();
+        }
+      });
+    });
+  },
+
+  renderReportView() {
+    const container = document.getElementById('report-container');
+    if (!container) return;
+
+    if (AppState.files.length === 0) {
+      container.innerHTML =
+        '<div class="ui-report-empty">No log loaded. Please select a trip from the Library.</div>';
+      return;
+    }
+
+    const fileIndex = 0;
+    const file = AppState.files[fileIndex];
+    const stats = telemetryAnalyzer.analyze(file);
+
+    if (!stats) {
+      container.innerHTML =
+        '<div class="ui-report-empty">Could not analyze data.</div>';
+      return;
+    }
+
+    const fmt = (val, dec = 1) =>
+      val !== null && val !== undefined && !isNaN(val)
+        ? val.toFixed(dec)
+        : '--';
+    const fmtTime = (sec) => {
+      if (!sec) return '0s';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}m ${s}s`;
+    };
+
+    container.innerHTML = `
+      <div class="pm-report-grid ui-report-grid">
+          
+          <div class="pm-card ui-report-card">
+            <div class="ui-card-title">Performance</div>
+            
+            <div class="ui-stat-row-end">
+                <span class="ui-stat-label">0-100 km/h</span>
+                <span class="ui-val-xl-red">${stats.zeroToSixty ? fmt(stats.zeroToSixty, 2) + '<small>s</small>' : '--'}</span>
+            </div>
+             <div class="ui-stat-row-end">
+                <span class="ui-stat-label">Max Speed</span>
+                <span class="ui-val-lg">${fmt(stats.maxSpeed, 0)} <small>km/h</small></span>
+            </div>
+          </div>
+
+          <div class="pm-card ui-report-card">
+            <div class="ui-card-title">Trip Info</div>
+            
+            <div class="ui-stat-row-center">
+                <span class="ui-stat-label-muted">Distance</span>
+                <span class="ui-val-md">${fmt(stats.distanceKm, 1)} km</span>
+            </div>
+            <div class="ui-stat-row-center">
+                <span class="ui-stat-label-muted">Duration</span>
+                <span class="ui-val-md">${fmtTime(stats.duration)}</span>
+            </div>
+          </div>
+
+          <div class="pm-card ui-report-card">
+            <div class="ui-card-title">Engine Peaks</div>
+            
+            <div class="ui-grid-2col">
+                <div>
+                    <div class="ui-val-stat-green">${fmt(stats.maxBoost, 2)}</div>
+                    <div class="ui-stat-sublabel">Boost (bar)</div>
+                </div>
+                <div>
+                     <div class="ui-val-md">${fmt(stats.maxRPM, 0)}</div>
+                     <div class="ui-stat-sublabel">RPM</div>
+                </div>
+                <div>
+                     <div class="ui-val-stat-orange">${fmt(stats.maxOilTemp, 0)}°</div>
+                     <div class="ui-stat-sublabel">Oil Temp</div>
+                </div>
+                <div>
+                     <div class="ui-val-stat-blue">${fmt(stats.maxCoolantTemp, 0)}°</div>
+                     <div class="ui-stat-sublabel">Coolant</div>
+                </div>
+            </div>
+          </div>
+
+          <div class="pm-card ui-report-card">
+            <div class="ui-card-title">Efficiency</div>
+            
+            <div style="margin-bottom:10px;">
+                <div class="ui-efficiency-row">
+                    <span>Idle Time</span>
+                    <span>${fmt(stats.idlePercentage, 0)}%</span>
+                </div>
+                <div class="ui-progress-track">
+                    <div class="ui-progress-fill" style="width:${Math.min(100, stats.idlePercentage)}%;"></div>
+                </div>
+            </div>
+            
+            <div class="ui-avg-speed-container">
+                Avg Speed: <b class="ui-text-highlight">${fmt(stats.avgSpeed, 0)} km/h</b>
+            </div>
+          </div>
+
+      </div>
+    `;
   },
 
   populateXYSelectors() {
@@ -515,21 +656,20 @@ export const UI = {
 
     if (!AppState.files || AppState.files.length === 0) {
       container.innerHTML =
-        '<div style="padding:10px; color:#666;">No signals available. Load a file first.</div>';
+        '<div class="ui-signal-empty">No signals available. Load a file first.</div>';
       return;
     }
 
     const isCustomEnabled = Preferences.prefs.useCustomPalette;
 
     const searchHtml = `
-      <div class="signal-search-wrapper" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10; padding: 10px 5px; border-bottom: 1px solid var(--border-color);">
-        <div style="position: relative; display: flex; align-items: center;">
-          <i class="fas fa-search" style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.9em;"></i>
+      <div class="signal-search-wrapper ui-search-wrapper">
+        <div class="ui-search-box">
+          <i class="fas fa-search ui-search-icon"></i>
           <input type="text" id="signalSearchInput" placeholder="Search signals..." 
-                style="width: 100%; padding: 8px 30px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9em; box-sizing: border-box;">
-          <i class="fas fa-times-circle" id="clearSignalSearch" 
-            style="position: absolute; right: 10px; color: var(--text-muted); cursor: pointer; display: none;" 
-            title="Clear filter" onclick="clearSignalFilter()"></i>
+                class="ui-search-input">
+          <i class="fas fa-times-circle ui-search-clear" id="clearSignalSearch" 
+             title="Clear filter" onclick="clearSignalFilter()"></i>
         </div>
       </div>
       <div id="signalListContent"></div>
@@ -545,16 +685,15 @@ export const UI = {
       fileGroup.className = 'file-group-container';
 
       const fileHeader = document.createElement('div');
-      fileHeader.className = 'file-meta-header';
-      fileHeader.style.cssText = `padding: 8px 5px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--sidebar-bg);`;
+      fileHeader.className = 'file-meta-header ui-file-header';
 
       fileHeader.innerHTML = `
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <i class="fas fa-trash-alt" style="color: var(--brand-red); cursor: pointer;" title="Remove log" onclick="event.stopPropagation(); removeChart(${fileIdx})"></i>
+        <span class="ui-header-group">
+          <i class="fas fa-trash-alt ui-delete-icon" title="Remove log" onclick="event.stopPropagation(); removeChart(${fileIdx})"></i>
           <i class="fas fa-chevron-down toggle-icon" id="icon-f${fileIdx}"></i>
           <i class="fas fa-file-alt"></i> ${file.name}
         </span>
-        <div class="button-row-sm" style="display: flex; gap: 4px;">
+        <div class="button-row-sm ui-btn-group-sm">
           <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, true)">All</button>
           <button class="btn btn-sm" onclick="event.stopPropagation(); toggleFileSignals(${fileIdx}, false)">None</button>
         </div>
@@ -562,7 +701,7 @@ export const UI = {
 
       const signalListContainer = document.createElement('div');
       signalListContainer.id = `sig-list-f${fileIdx}`;
-      signalListContainer.style.paddingLeft = '10px';
+      signalListContainer.className = 'ui-signal-sublist';
 
       fileHeader.onclick = () => {
         const isHidden = signalListContainer.style.display === 'none';
@@ -616,23 +755,21 @@ export const UI = {
         const uniqueId = `chk-f${fileIdx}-s${sigIdx}`;
 
         const signalItem = document.createElement('div');
-        signalItem.className = 'signal-item';
+        signalItem.className = 'signal-item ui-signal-item';
         signalItem.setAttribute('data-signal-name', signal.toLowerCase());
-        signalItem.style.cssText =
-          'display: flex; align-items: center; gap: 8px; padding: 2px 5px;';
 
-        const pickerStyle = `width: 18px; height: 18px; border: none; padding: 0; background: none; cursor: ${isCustomEnabled ? 'pointer' : 'default'}; opacity: ${isCustomEnabled ? '1' : '0.4'};`;
+        const pickerClass = `signal-color-picker ui-color-picker ${isCustomEnabled ? 'ui-color-picker-active' : 'ui-color-picker-disabled'}`;
 
-        const labelStyle = isMath
-          ? 'font-size: 0.85em; flex-grow: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #01804f; font-weight: bold;'
-          : 'font-size: 0.85em; flex-grow: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+        const labelClass = isMath
+          ? 'ui-signal-label ui-signal-label-math'
+          : 'ui-signal-label';
 
         signalItem.innerHTML = `
-          <input type="color" value="${color}" class="signal-color-picker" 
-                 style="${pickerStyle}" ${isCustomEnabled ? '' : 'disabled'}
+          <input type="color" value="${color}" class="${pickerClass}"
+                 ${isCustomEnabled ? '' : 'disabled'}
                  data-signal-key="${signalKey}">
           <input type="checkbox" id="${uniqueId}" data-key="${signal}" data-file-idx="${fileIdx}" ${isChecked ? 'checked' : ''}>
-          <label for="${uniqueId}" style="${labelStyle}">${signal}</label>
+          <label for="${uniqueId}" class="${labelClass}">${signal}</label>
         `;
 
         const picker = signalItem.querySelector('.signal-color-picker');
