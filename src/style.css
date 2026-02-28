@@ -1388,6 +1388,36 @@ footer {
     padding: 12px 20px !important;
     box-sizing: border-box;
   }
+
+  .top-nav {
+    height: auto !important;
+    padding: 12px 0 !important;
+  }
+
+  .nav-container {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    padding: 0 10px !important;
+  }
+
+  .integrated-toolbar,
+  .view-switcher-container {
+    width: 100% !important;
+    margin-right: 0 !important;
+    justify-content: center !important;
+  }
+
+  .nav-links {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-left: 0 !important;
+  }
+
+  .desktop-label {
+    display: none !important;
+  }
 }
 
 #chartContainer.has-data .chart-card-compact {
