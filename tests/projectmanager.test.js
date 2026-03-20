@@ -22,6 +22,13 @@ const mockDbManager = {
 const mockAppState = { files: [] };
 const mockEvents = { FILE_REMOVED: 'file:removed' };
 
+// Mock Preferences for the new load strategy
+const mockPreferences = {
+  prefs: {
+    rememberFiles: false, // Default for tests
+  },
+};
+
 // Apply mocks
 await jest.unstable_mockModule('../src/bus.js', () => ({
   messenger: mockMessenger,
@@ -36,6 +43,28 @@ await jest.unstable_mockModule('../src/config.js', () => ({
   AppState: mockAppState,
   EVENTS: mockEvents,
 }));
+await jest.unstable_mockModule('../src/preferences.js', () => ({
+  Preferences: mockPreferences,
+}));
+
+// Setup localStorage globally before any imports happen
+const store = {};
+Object.defineProperty(global, 'localStorage', {
+  value: {
+    getItem: jest.fn((key) => store[key] || null),
+    setItem: jest.fn((key, val) => {
+      store[key] = val.toString();
+    }),
+    removeItem: jest.fn((key) => {
+      delete store[key];
+    }),
+    clear: jest.fn(() => {
+      for (const key in store) delete store[key];
+    }),
+  },
+  writable: true,
+  configurable: true,
+});
 
 // 2. Import the module
 const { projectManager } = await import('../src/projectmanager.js');
@@ -46,6 +75,7 @@ describe('ProjectManager Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAppState.files = [];
+    mockPreferences.prefs.rememberFiles = false; // Reset preference
 
     // Setup generic DOM container for UI tests
     container = document.createElement('div');
@@ -55,24 +85,8 @@ describe('ProjectManager Module', () => {
     // Mock confirm dialogs to always say "Yes"
     global.confirm = jest.fn(() => true);
 
-    // --- FIX: Properly mock localStorage with Jest functions ---
-    const store = {};
-    Object.defineProperty(global, 'localStorage', {
-      value: {
-        getItem: jest.fn((key) => store[key] || null),
-        setItem: jest.fn((key, val) => {
-          store[key] = val.toString();
-        }),
-        removeItem: jest.fn((key) => {
-          delete store[key];
-        }),
-        clear: jest.fn(() => {
-          for (const key in store) delete store[key];
-        }),
-      },
-      writable: true,
-      configurable: true, // Allow re-definition
-    });
+    // Clear local storage mock store
+    global.localStorage.clear();
 
     // Reset project state by creating a fresh instance or resetting via method
     projectManager.resetProject();
@@ -94,47 +108,79 @@ describe('ProjectManager Module', () => {
       // Wait for async render
       await new Promise(process.nextTick);
 
-      // --- FIX: Check for content more flexibly due to HTML tags ---
       expect(container.textContent).toContain('Library');
       expect(container.textContent).toContain('(1)');
       expect(container.textContent).toContain('log.json');
     });
 
-    test('constructor hydrates active files from DB on startup', async () => {
-      // 1. Manually seed localStorage with a project that has an ACTIVE resource
+    test('loadFromStorage respects rememberFiles = false (sets resources inactive)', async () => {
+      // Seed localStorage with an active project
       const savedProject = {
         id: 'p1',
         name: 'Saved Proj',
         resources: [
-          {
-            fileId: 'r1',
-            dbId: 99,
-            fileName: 'old.json',
-            isActive: true,
-            addedAt: 100,
-          },
+          { fileId: 'r1', dbId: 99, fileName: 'old.json', isActive: true },
         ],
         history: [],
       };
+      global.localStorage.setItem(
+        'current_project',
+        JSON.stringify(savedProject)
+      );
 
-      // Now this works because getItem is a jest.fn()
-      global.localStorage.getItem.mockReturnValue(JSON.stringify(savedProject));
+      mockPreferences.prefs.rememberFiles = false;
 
-      // 2. Mock DB responses for hydration
-      mockDbManager.getAllFiles.mockResolvedValue([
-        { id: 99, name: 'old.json', size: 100 },
-      ]);
-      mockDbManager.getFileSignals.mockResolvedValue({ RPM: [] });
+      // To test the private #loadFromStorage, we can isolate the module and re-import it
+      // so the constructor runs again with the seeded localStorage and Preferences
+      let isolatedManager;
+      await jest.isolateModulesAsync(async () => {
+        const module = await import('../src/projectmanager.js');
+        isolatedManager = module.projectManager;
+      });
 
-      // Note: Constructor logic runs on import. We can't re-run it easily in ES modules without
-      // complex reloading. However, we can simulate the "loadFromLibrary" effect which uses similar paths.
-      // For this test, we verify the mocks are set up correctly for when the logic DOES run.
+      isolatedManager.init();
+
+      const resources = isolatedManager.getResources();
+      expect(resources).toHaveLength(1);
+      // Because rememberFiles is false, isActive should be forcefully set to false
+      expect(resources[0].isActive).toBe(false);
+    });
+
+    test('loadFromStorage respects rememberFiles = true (keeps resources active)', async () => {
+      // Seed localStorage with an active project
+      const savedProject = {
+        id: 'p1',
+        name: 'Saved Proj',
+        resources: [
+          { fileId: 'r1', dbId: 99, fileName: 'old.json', isActive: true },
+        ],
+        history: [],
+      };
+      global.localStorage.setItem(
+        'current_project',
+        JSON.stringify(savedProject)
+      );
+
+      mockPreferences.prefs.rememberFiles = true;
+
+      // Re-import to trigger constructor
+      let isolatedManager;
+      await jest.isolateModulesAsync(async () => {
+        const module = await import('../src/projectmanager.js');
+        isolatedManager = module.projectManager;
+      });
+
+      isolatedManager.init();
+
+      const resources = isolatedManager.getResources();
+      expect(resources).toHaveLength(1);
+      // Because rememberFiles is true, it should leave the saved state alone
+      expect(resources[0].isActive).toBe(true);
     });
   });
 
   describe('Library Rendering (UI)', () => {
     beforeEach(async () => {
-      // Initialize UI for these tests
       projectManager.initLibraryUI('librarySlot');
     });
 
@@ -146,20 +192,16 @@ describe('ProjectManager Module', () => {
     });
 
     test('Renders file list with correct "Loaded" status', async () => {
-      // DB has 2 files
       const dbFiles = [
         { id: 1, name: 'file1.json', addedAt: 2000, duration: 60, size: 100 },
-        { id: 2, name: 'file2.json', addedAt: 1000, duration: 120, size: 200 }, // Older
+        { id: 2, name: 'file2.json', addedAt: 1000, duration: 120, size: 200 },
       ];
       mockDbManager.getAllFiles.mockResolvedValue(dbFiles);
 
-      // AppState has file1 loaded
       mockAppState.files = [{ dbId: 1, name: 'file1.json' }];
 
       await projectManager.renderLibrary();
 
-      // Check Sort Order (Newest First)
-      // --- FIX: Use new .pm-name selector ---
       const names = Array.from(container.querySelectorAll('.pm-name')).map(
         (el) => el.textContent.trim()
       );
@@ -167,9 +209,8 @@ describe('ProjectManager Module', () => {
       expect(names[0]).toBe('file1.json');
       expect(names[1]).toBe('file2.json');
 
-      // Check Status
-      expect(container.innerHTML).toContain('Loaded'); // file1
-      expect(container.innerHTML).toContain('fa-plus'); // file2 (Open button icon)
+      expect(container.innerHTML).toContain('Loaded');
+      expect(container.innerHTML).toContain('fa-plus');
     });
 
     test('Load button triggers loadFromLibrary', async () => {
@@ -180,27 +221,20 @@ describe('ProjectManager Module', () => {
 
       await projectManager.renderLibrary();
 
-      // --- FIX: Use new .pm-add-btn selector ---
       const loadBtn = container.querySelector('.pm-add-btn');
       loadBtn.click();
 
-      // Verify Loading started
       expect(mockMessenger.emit).toHaveBeenCalledWith(
         'ui:set-loading',
         expect.any(Object)
       );
 
-      // Wait for async promises
       await new Promise(process.nextTick);
 
-      // Verify DB fetch
       expect(mockDbManager.getFileSignals).toHaveBeenCalledWith(10);
-
-      // Verify AppState update
       expect(mockAppState.files).toHaveLength(1);
       expect(mockAppState.files[0].name).toBe('click_me.json');
 
-      // Verify Project Registry update
       const resources = projectManager.getResources();
       expect(resources[0].fileName).toBe('click_me.json');
       expect(resources[0].isActive).toBe(true);
@@ -212,23 +246,15 @@ describe('ProjectManager Module', () => {
       ]);
       await projectManager.renderLibrary();
 
-      // --- FIX: Use new .pm-del-btn selector ---
       const delBtn = container.querySelector('.pm-del-btn');
       delBtn.click();
 
-      // Verify Confirmation
       expect(global.confirm).toHaveBeenCalled();
-
-      // Verify DB Delete
       expect(mockDbManager.deleteFile).toHaveBeenCalledWith(5);
-
-      // Verify UI Refresh
-      // (renderLibrary is called again inside the click handler)
-      expect(mockDbManager.getAllFiles).toHaveBeenCalledTimes(2); // Initial + After delete
+      expect(mockDbManager.getAllFiles).toHaveBeenCalledTimes(2);
     });
 
     test('Purge button clears all data', async () => {
-      // Mock window.location.reload
       const originalLocation = window.location;
       delete window.location;
       window.location = { reload: jest.fn() };
@@ -241,7 +267,6 @@ describe('ProjectManager Module', () => {
       expect(global.confirm).toHaveBeenCalled();
       expect(mockDbManager.clearAll).toHaveBeenCalled();
 
-      // Restore
       window.location = originalLocation;
     });
   });
@@ -259,24 +284,19 @@ describe('ProjectManager Module', () => {
     });
 
     test('registerFile updates existing resource (re-opening file)', () => {
-      // 1. Add file initially
       projectManager.registerFile({ name: 'reuse.json', size: 500, dbId: 1 });
 
-      // 2. Simulate closing it (isActive = false) - internal state logic
-      // We manually toggle it to test the reactivation logic
       const res = projectManager.getResources()[0];
       res.isActive = false;
 
-      // 3. Re-register same file
       projectManager.registerFile({ name: 'reuse.json', size: 500, dbId: 1 });
 
       const updatedRes = projectManager.getResources();
-      expect(updatedRes).toHaveLength(1); // Should not add duplicate
+      expect(updatedRes).toHaveLength(1);
       expect(updatedRes[0].isActive).toBe(true);
     });
 
     test('onFileRemoved marks resource inactive and archives history', () => {
-      // Setup: 2 files, 1 action in history for file index 0
       mockAppState.files = [
         { name: 'f1.json', size: 10 },
         { name: 'f2.json', size: 20 },
@@ -287,16 +307,12 @@ describe('ProjectManager Module', () => {
 
       projectManager.logAction('TEST_ACTION', 'Did something', {}, 0);
 
-      // Action: Remove file at index 0
       projectManager.onFileRemoved(0);
 
       const res = projectManager.getResources();
       const history = projectManager.getHistory();
 
-      // Resource check
       expect(res.find((r) => r.fileName === 'f1.json').isActive).toBe(false);
-
-      // History check
       expect(history[0].targetFileIndex).toBe(-1);
       expect(history[0].description).toContain('(Archived)');
     });
@@ -304,7 +320,6 @@ describe('ProjectManager Module', () => {
     test('renameProject updates project name', () => {
       projectManager.renameProject('Super Run');
       expect(projectManager.getProjectName()).toBe('Super Run');
-      // --- FIX: Now checks against the Jest spy ---
       expect(global.localStorage.setItem).toHaveBeenCalled();
     });
 
@@ -332,10 +347,8 @@ describe('ProjectManager Module', () => {
     });
 
     test('replayHistory executes MATH actions', async () => {
-      // Setup state for replay
       mockAppState.files = [{ name: 'log.json' }];
 
-      // Inject history directly into current project
       projectManager.registerFile({ name: 'log.json', size: 100 });
       projectManager.logAction(
         'CREATE_MATH_CHANNEL',
@@ -349,7 +362,6 @@ describe('ProjectManager Module', () => {
         0
       );
 
-      // Execute Replay
       await projectManager.replayHistory();
 
       expect(mockMathChannels.createChannel).toHaveBeenCalledWith(
@@ -366,11 +378,10 @@ describe('ProjectManager Module', () => {
     });
 
     test('replayHistory skips actions for closed files (index -1)', async () => {
-      projectManager.logAction('TEST', 'Archived Action', {}, -1); // Index -1 manually set
+      projectManager.logAction('TEST', 'Archived Action', {}, -1);
 
       await projectManager.replayHistory();
 
-      // Should handle gracefully without error
       expect(mockMathChannels.createChannel).not.toHaveBeenCalled();
     });
   });

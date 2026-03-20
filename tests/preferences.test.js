@@ -1,19 +1,23 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
-import { Preferences } from '../src/preferences.js';
-import { UI } from '../src/ui.js';
+await jest.unstable_mockModule('../src/ui.js', () => ({
+  UI: {
+    setTheme: jest.fn(),
+  },
+}));
 
-UI.setTheme = jest.fn();
+const { Preferences } = await import('../src/preferences.js');
+const { UI } = await import('../src/ui.js');
 
 describe('Preferences Module', () => {
   beforeEach(() => {
-    // 2. Set up the DOM structure expected by Preferences
     document.body.innerHTML = `
       <div class="preferences-list">
         <input type="checkbox" id="pref-persistence" />
         <input type="checkbox" id="pref-performance" />
         <input type="checkbox" id="pref-theme-dark" />
         <input type="checkbox" id="pref-custom-palette" />
+        <input type="checkbox" id="pref-remember-files" />
       </div>
     `;
     localStorage.clear();
@@ -41,7 +45,6 @@ describe('Preferences Module', () => {
   });
 
   test('init sets theme and attaches listeners', () => {
-    // 1. Setup localStorage so loadPreferences() sees the dark theme as active
     localStorage.setItem(
       Preferences.PREFS_KEY,
       JSON.stringify({
@@ -52,15 +55,11 @@ describe('Preferences Module', () => {
 
     const themeToggle = document.getElementById('pref-theme-dark');
 
-    // 2. Run init
     Preferences.init();
 
-    // Now it should be checked because loadPreferences() set it
     expect(themeToggle.checked).toBe(true);
-    // And UI.setTheme should be called with 'dark'
     expect(UI.setTheme).toHaveBeenCalledWith('dark');
 
-    // 3. Test the toggle listener
     themeToggle.checked = false;
     themeToggle.dispatchEvent(new Event('change'));
 
