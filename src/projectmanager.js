@@ -2,6 +2,7 @@ import { AppState, EVENTS } from './config.js';
 import { mathChannels } from './mathchannels.js';
 import { messenger } from './bus.js';
 import { dbManager } from './dbmanager.js';
+import { Preferences } from './preferences.js';
 
 class ProjectManager {
   #currentProject;
@@ -13,7 +14,9 @@ class ProjectManager {
       this.#loadFromStorage() || this.#createEmptyProject();
     this.#isReplaying = false;
     this.#libraryContainer = null;
+  }
 
+  init() {
     dbManager.init().then(async () => {
       await this.#hydrateActiveFiles();
       this.renderLibrary();
@@ -185,6 +188,8 @@ class ProjectManager {
 
     messenger.emit('ui:set-loading', { message: 'Restoring Session...' });
 
+    let actuallyLoaded = false;
+
     for (const res of activeResources) {
       if (res.dbId && !AppState.files.some((f) => f.dbId === res.dbId)) {
         const signals = await dbManager.getFileSignals(res.dbId);
@@ -202,13 +207,26 @@ class ProjectManager {
             size: meta.size,
             metadata: meta.metadata,
           });
+          actuallyLoaded = true;
+        } else {
+          res.isActive = false;
         }
       }
     }
 
-    if (AppState.files.length > 0) {
+    if (actuallyLoaded) {
       messenger.emit('dataprocessor:batch-load-completed', {});
+
+      requestAnimationFrame(() => {
+        this.replayHistory();
+      });
+    } else {
+      messenger.emit('dataprocessor:batch-load-completed', {});
+      messenger.emit('ui:updateDataLoadedState', { status: false });
     }
+    messenger.emit('dataprocessor:batch-load-completed', {});
+
+    this.#saveToStorage();
   }
 
   registerFile(file) {
@@ -284,19 +302,23 @@ class ProjectManager {
   }
 
   #loadFromStorage() {
-    const data = localStorage.getItem('current_project');
-    if (data) {
-      const project = JSON.parse(data);
+    if (Preferences.prefs.rememberFiles) {
+      const data = localStorage.getItem('current_project');
+      return data ? JSON.parse(data) : null;
+    } else {
+      const data = localStorage.getItem('current_project');
+      if (data) {
+        const project = JSON.parse(data);
 
-      if (project && project.resources) {
-        project.resources.forEach((resource) => {
-          resource.isActive = false;
-        });
+        if (project && project.resources) {
+          project.resources.forEach((resource) => {
+            resource.isActive = false;
+          });
+        }
+
+        return project;
       }
-
-      return project;
     }
-    return null;
   }
 
   #saveToStorage() {

@@ -13,6 +13,7 @@ import { PaletteManager } from './palettemanager.js';
 import { xyAnalysis } from './xyanalysis.js';
 import { Histogram } from './histogram.js';
 import { mathChannels } from './mathchannels.js';
+import { projectManager } from './projectmanager.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
@@ -29,6 +30,7 @@ window.onload = async function () {
   PaletteManager.init();
   xyAnalysis.init();
   Histogram.init();
+  projectManager.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {
