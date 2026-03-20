@@ -285,7 +285,18 @@ class ProjectManager {
 
   #loadFromStorage() {
     const data = localStorage.getItem('current_project');
-    return data ? JSON.parse(data) : null;
+    if (data) {
+      const project = JSON.parse(data);
+
+      if (project && project.resources) {
+        project.resources.forEach((resource) => {
+          resource.isActive = false;
+        });
+      }
+
+      return project;
+    }
+    return null;
   }
 
   #saveToStorage() {
