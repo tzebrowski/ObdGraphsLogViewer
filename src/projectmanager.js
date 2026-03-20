@@ -10,13 +10,15 @@ class ProjectManager {
   #libraryContainer;
 
   constructor() {
-    this.#currentProject =
-      this.#loadFromStorage() || this.#createEmptyProject();
     this.#isReplaying = false;
     this.#libraryContainer = null;
+    this.#currentProject = this.#createEmptyProject();
   }
 
   init() {
+    this.#currentProject =
+      this.#loadFromStorage() || this.#createEmptyProject();
+
     dbManager.init().then(async () => {
       await this.#hydrateActiveFiles();
       this.renderLibrary();
