@@ -74,7 +74,13 @@ class DataProcessor {
           let rawData;
           if (file.name.endsWith('.csv')) {
             const parsedCSV = this.#parseCSV(e.target.result);
-            rawData = this.#normalizeWideCSV(parsedCSV);
+
+            // NEW: Explicitly route AlfaOBD files
+            if (this.#isAlfaOBD(parsedCSV)) {
+              rawData = this.#normalizeAlfaOBD(parsedCSV);
+            } else {
+              rawData = this.#normalizeWideCSV(parsedCSV);
+            }
           } else {
             rawData = JSON.parse(e.target.result);
           }
@@ -178,6 +184,70 @@ class DataProcessor {
       console.error('Error occured during file processing', error);
       messenger.emit('ui:updateDataLoadedState', { status: false });
     }
+  }
+
+  /**
+   * Detects if the parsed CSV matches the AlfaOBD log format.
+   * @private
+   */
+  #isAlfaOBD(rows) {
+    if (!rows || rows.length === 0) return false;
+
+    const keys = Object.keys(rows[0]);
+    // AlfaOBD files specifically use a 'Time' column formatted as 'HH:MM:SS.mmm'
+    const hasTimeColumn = keys.includes('Time');
+    const firstTimeValue = rows[0]['Time'];
+
+    return (
+      hasTimeColumn &&
+      typeof firstTimeValue === 'string' &&
+      firstTimeValue.includes(':')
+    );
+  }
+
+  /**
+   * Explicit normalizer for AlfaOBD Wide CSVs.
+   * Converts 'HH:MM:SS.mmm' to absolute milliseconds and flattens data.
+   * @private
+   */
+  #normalizeAlfaOBD(rows) {
+    const normalized = [];
+    if (!rows || rows.length === 0) return normalized;
+
+    const keys = Object.keys(rows[0]);
+    const timeKey = 'Time';
+    const signalKeys = keys.filter((k) => k !== timeKey);
+
+    rows.forEach((row) => {
+      const rawTime = row[timeKey];
+      if (!rawTime) return;
+
+      // Parse HH:MM:SS.mmm into milliseconds
+      const parts = rawTime.split(':');
+      if (parts.length !== 3) return;
+
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      const seconds = parseFloat(parts[2]);
+
+      if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return;
+
+      const timestampMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
+
+      // Flatten the wide row into Long Format
+      signalKeys.forEach((sigKey) => {
+        const val = row[sigKey];
+        if (val !== '' && val !== null && val !== undefined) {
+          normalized.push({
+            SensorName: sigKey,
+            Time_ms: timestampMs,
+            Reading: val,
+          });
+        }
+      });
+    });
+
+    return normalized;
   }
 
   /**
