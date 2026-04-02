@@ -714,4 +714,110 @@ describe('DataProcessor: Nested Object Support', () => {
     expect(result.availableSignals).toContain('GPS-Lat');
     expect(result.availableSignals).toContain('GPS-Lon');
   });
+
+  describe('DataProcessor: AlfaOBD CSV Handling', () => {
+    beforeEach(() => {
+      AppState.files = [];
+      jest.clearAllMocks();
+
+      document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+
+      DOM.get = jest.fn((id) => document.getElementById(id));
+      dbManager.getAllFiles = jest.fn().mockResolvedValue([]);
+      dbManager.saveTelemetry = jest.fn().mockResolvedValue(1);
+      projectManager.registerFile = jest.fn();
+    });
+
+    test('should detect and parse AlfaOBD HH:MM:SS.mmm timestamps into milliseconds', (done) => {
+      // Math verification for 13:48:35.666
+      // 13 hours = 46,800 sec | 48 min = 2,880 sec | 35.666 sec
+      // Total seconds: 49715.666 -> * 1000 = 49715666 milliseconds
+      const alfaOBD_CSV = `Time,Engine speed rpm,Spark advance °
+13:48:35.666,1584,5.938
+13:48:37.223,1858,14.938`;
+
+      const event = {
+        target: {
+          files: [
+            new File([alfaOBD_CSV], 'alfaobd_log.csv', {
+              type: 'text/csv',
+            }),
+          ],
+        },
+      };
+
+      dataProcessor.handleLocalFile(event);
+
+      setTimeout(() => {
+        try {
+          expect(messenger.emit).toHaveBeenCalledWith(
+            expect.stringContaining('ui:set-loading'),
+            { message: 'Parsing 1 Files...' }
+          );
+
+          expect(AppState.files.length).toBe(1);
+          const file = AppState.files[0];
+
+          // 1. Verify Signals were correctly extracted
+          expect(file.availableSignals).toEqual(
+            expect.arrayContaining(['Engine speed rpm', 'Spark advance °'])
+          );
+
+          // 2. Verify Absolute Milliseconds Conversion
+          const rpmSignal = file.signals['Engine speed rpm'];
+
+          expect(rpmSignal[0].x).toBe(49715666); // 13:48:35.666
+          expect(rpmSignal[0].y).toBe(1584);
+
+          expect(rpmSignal[1].x).toBe(49717223); // 13:48:37.223
+          expect(rpmSignal[1].y).toBe(1858);
+
+          done();
+        } catch (error) {
+          done(error);
+        }
+      }, 50);
+    });
+
+    test('should gracefully skip AlfaOBD rows with badly formatted or missing time', (done) => {
+      const alfaOBD_CSV = `Time,Engine speed rpm
+13:48:35.666,1584
+invalid_time_string,2000
+13:48:37.223,1858
+13:48,2200`; // Missing seconds entirely (parts.length === 2)
+
+      const event = {
+        target: {
+          files: [
+            new File([alfaOBD_CSV], 'alfaobd_corrupt.csv', {
+              type: 'text/csv',
+            }),
+          ],
+        },
+      };
+
+      dataProcessor.handleLocalFile(event);
+
+      setTimeout(() => {
+        try {
+          const file = AppState.files[0];
+          const rpmSignal = file.signals['Engine speed rpm'];
+
+          // Should have skipped 'invalid_time_string' and '13:48' (since parts.length !== 3)
+          expect(rpmSignal.length).toBe(2);
+
+          // Ensure only the valid timestamps made it through
+          expect(rpmSignal[0].x).toBe(49715666); // 13:48:35.666
+          expect(rpmSignal[1].x).toBe(49717223); // 13:48:37.223
+
+          done();
+        } catch (error) {
+          done(error);
+        }
+      }, 50);
+    });
+  });
 });
