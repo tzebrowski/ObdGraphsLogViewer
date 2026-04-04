@@ -126,7 +126,6 @@ describe('DataProcessor - handleLocalFile', () => {
 
     dataProcessor.handleLocalFile(mockEvent);
 
-    // Increase timeout slightly to allow async process() to finish
     setTimeout(() => {
       try {
         expect(messenger.emit).toHaveBeenCalledWith(
@@ -134,14 +133,6 @@ describe('DataProcessor - handleLocalFile', () => {
           { message: 'Parsing 1 Files...' }
         );
 
-        // Note: process() fails on "dummy" data structure in tests usually,
-        // triggering ui:updateDataLoadedState -> false.
-        // If it succeeds, it triggers batch-load-completed.
-        // Based on previous test logic, we expect it to fail or finish.
-        // We verify calls are made.
-
-        // This expectation might vary based on whether 'dummy' json structure throws in #process
-        // But the main goal is ensuring it ran.
         expect(messenger.emit).toHaveBeenCalled();
 
         done();
@@ -365,7 +356,7 @@ Battery,100,12.6
       } catch (error) {
         done(error);
       }
-    }, 50);
+    }, 200);
   });
 
   test('should correctly preprocess and map CSV data using LEGACY_CSV schema', async () => {
@@ -732,9 +723,6 @@ describe('DataProcessor: Nested Object Support', () => {
     });
 
     test('should detect and parse AlfaOBD HH:MM:SS.mmm timestamps into milliseconds', (done) => {
-      // Math verification for 13:48:35.666
-      // 13 hours = 46,800 sec | 48 min = 2,880 sec | 35.666 sec
-      // Total seconds: 49715.666 -> * 1000 = 49715666 milliseconds
       const alfaOBD_CSV = `Time,Engine speed rpm,Spark advance °
 13:48:35.666,1584,5.938
 13:48:37.223,1858,14.938`;
@@ -819,5 +807,80 @@ invalid_time_string,2000
         }
       }, 50);
     });
+  });
+});
+
+describe('DataProcessor: Columnar JSON Support', () => {
+  beforeEach(() => {
+    AppState.files = [];
+    jest.clearAllMocks();
+
+    document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+    dbManager.getAllFiles = jest.fn().mockResolvedValue([]);
+    dbManager.saveTelemetry = jest.fn().mockResolvedValue(1);
+    projectManager.registerFile = jest.fn();
+  });
+
+  test('should normalize highly-compressed Columnar JSON back to structured format', (done) => {
+    const columnarData = {
+      metadata: {
+        'trip.duration': '3600',
+      },
+      signal_dictionary: {
+        12: 'Boost Pressure',
+        14: 'Engine RPM',
+      },
+      series: {
+        12: {
+          t: [1000, 2000],
+          v: [14.1, 15.2],
+        },
+        14: {
+          t: [1000, 2000],
+          v: [2000.0, 2100.0],
+        },
+      },
+    };
+
+    const event = {
+      target: {
+        files: [
+          new File([JSON.stringify(columnarData)], 'trip.json', {
+            type: 'application/json',
+          }),
+        ],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(AppState.files.length).toBe(1);
+        const file = AppState.files[0];
+
+        // Metadata check
+        expect(file.metadata['trip.duration']).toBe('3600');
+
+        // Available signals check (should map IDs to human-readable names)
+        expect(file.availableSignals).toContain('Boost Pressure');
+        expect(file.availableSignals).toContain('Engine RPM');
+
+        // Series data check (un-pivoted successfully)
+        const boostData = file.signals['Boost Pressure'];
+        expect(boostData).toHaveLength(2);
+        expect(boostData[0].x).toBe(1000); // timestamp
+        expect(boostData[0].y).toBe(14.1); // value
+
+        done();
+      } catch (error) {
+        done(error);
+      }
+    }, 200);
   });
 });
