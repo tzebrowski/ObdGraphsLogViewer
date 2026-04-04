@@ -10,7 +10,7 @@
     "dev": "vite",
     "format": "prettier --write .",
     "check": "prettier --check .",
-    "start": "electron .",
+    "start": "electron . --no-sandbox",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },

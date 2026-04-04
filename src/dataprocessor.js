@@ -30,7 +30,6 @@ class DataProcessor {
 
   /**
    * Initializes anomaly detection templates.
-   * @param {Object} providedTemplates - Template definitions (defaults to templates.json)
    */
   async loadConfiguration(providedTemplates = templates) {
     try {
@@ -51,14 +50,9 @@ class DataProcessor {
 
   // --- Local File Handling ---
 
-  /**
-   * Orchestrates the reading of multiple local files from a file input event.
-   */
   handleLocalFile(event) {
     const files = Array.from(event.target.files);
-    if (files.length === 0) {
-      return;
-    }
+    if (files.length === 0) return;
 
     messenger.emit('ui:set-loading', {
       message: `Parsing ${files.length} Files...`,
@@ -68,28 +62,21 @@ class DataProcessor {
 
     files.forEach(async (file) => {
       try {
-        // Extracted file reading logic to handle .gz streams and standard text
         const fileText = await this.#readFileContent(file);
 
         let rawData;
         if (file.name.includes('.csv')) {
           const parsedCSV = this.#parseCSV(fileText);
-
           if (this.#isAlfaOBD(parsedCSV)) {
             rawData = this.#normalizeAlfaOBD(parsedCSV);
           } else {
             rawData = this.#normalizeWideCSV(parsedCSV);
           }
         } else {
-          const parsedJSON = JSON.parse(fileText);
-
-          // Support for the highly compressed Columnar JSON format
-          if (this.#isColumnarJSON(parsedJSON)) {
-            rawData = this.#normalizeColumnarJSON(parsedJSON);
-          } else {
-            rawData = parsedJSON; // Legacy flat array format
-          }
+          // Pass the raw JSON straight to process; it will detect columnar internally
+          rawData = JSON.parse(fileText);
         }
+
         await this.#process(rawData, file.name);
       } catch (err) {
         const msg = `Error parsing ${file.name}: ${err.message}`;
@@ -102,12 +89,6 @@ class DataProcessor {
     });
   }
 
-  /**
-   * Reads a file and automatically decompresses it if it's a .gz archive.
-   * Uses FileReader for standard files to ensure maximum compatibility in JSDOM tests.
-   * @param {File} file
-   * @private
-   */
   async #readFileContent(file) {
     if (file.name.endsWith('.gz')) {
       const ds = new DecompressionStream('gzip');
@@ -115,8 +96,6 @@ class DataProcessor {
       return await new Response(decompressedStream).text();
     }
 
-    // Wrap traditional FileReader in a Promise for standard JSON/CSV files.
-    // This executes extremely fast and prevents JSDOM async timeouts.
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
@@ -135,14 +114,22 @@ class DataProcessor {
 
   async #process(data, fileName) {
     try {
-      if (!Array.isArray(data)) throw new Error('Input data must be an array');
+      let telemetryData = data;
 
-      let telemetryPoints = data;
+      // Auto-detect and unpack the highly compressed columnar format
+      if (this.#isColumnarJSON(telemetryData)) {
+        telemetryData = this.#normalizeColumnarJSON(telemetryData);
+      }
+
+      if (!Array.isArray(telemetryData))
+        throw new Error('Input data must be an array');
+
+      let telemetryPoints = telemetryData;
       let fileMetadata = {};
 
-      if (data.length > 0 && data[0].metadata) {
-        fileMetadata = data[0].metadata;
-        telemetryPoints = data.slice(1);
+      if (telemetryData.length > 0 && telemetryData[0].metadata) {
+        fileMetadata = telemetryData[0].metadata;
+        telemetryPoints = telemetryData.slice(1);
       }
 
       if (telemetryPoints.length === 0) {
@@ -198,10 +185,6 @@ class DataProcessor {
     }
   }
 
-  /**
-   * Detects if the parsed JSON is the highly compressed Columnar/Series format.
-   * @private
-   */
   #isColumnarJSON(data) {
     return (
       data &&
@@ -211,11 +194,6 @@ class DataProcessor {
     );
   }
 
-  /**
-   * Un-pivots the Columnar JSON format back into a flat array of points.
-   * Resolves raw signal IDs to their human-readable names using the dictionary.
-   * @private
-   */
   #normalizeColumnarJSON(data) {
     const normalized = [];
 
