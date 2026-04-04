@@ -231,9 +231,7 @@ class DriveManager {
         const fileText = await new Response(decompressedStream).text();
 
         dataToProcess = JSON.parse(fileText);
-      }
-      
-      else {
+      } else {
         const response = await gapi.client.drive.files.get({
           fileId: id,
           alt: 'media',
