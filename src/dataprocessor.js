@@ -30,7 +30,6 @@ class DataProcessor {
 
   /**
    * Initializes anomaly detection templates.
-   * @param {Object} providedTemplates - Template definitions (defaults to templates.json)
    */
   async loadConfiguration(providedTemplates = templates) {
     try {
@@ -51,14 +50,9 @@ class DataProcessor {
 
   // --- Local File Handling ---
 
-  /**
-   * Orchestrates the reading of multiple local files from a file input event.
-   */
   handleLocalFile(event) {
     const files = Array.from(event.target.files);
-    if (files.length === 0) {
-      return;
-    }
+    if (files.length === 0) return;
 
     messenger.emit('ui:set-loading', {
       message: `Parsing ${files.length} Files...`,
@@ -66,89 +60,95 @@ class DataProcessor {
 
     let loadedCount = 0;
 
-    files.forEach((file) => {
-      const reader = new FileReader();
+    files.forEach(async (file) => {
+      try {
+        const fileText = await this.#readFileContent(file);
 
-      reader.onload = async (e) => {
-        try {
-          let rawData;
-          if (file.name.endsWith('.csv')) {
-            const parsedCSV = this.#parseCSV(e.target.result);
-
-            // NEW: Explicitly route AlfaOBD files
-            if (this.#isAlfaOBD(parsedCSV)) {
-              rawData = this.#normalizeAlfaOBD(parsedCSV);
-            } else {
-              rawData = this.#normalizeWideCSV(parsedCSV);
-            }
+        let rawData;
+        if (file.name.includes('.csv')) {
+          const parsedCSV = this.#parseCSV(fileText);
+          if (this.#isAlfaOBD(parsedCSV)) {
+            rawData = this.#normalizeAlfaOBD(parsedCSV);
           } else {
-            rawData = JSON.parse(e.target.result);
+            rawData = this.#normalizeWideCSV(parsedCSV);
           }
-          await this.#process(rawData, file.name);
-        } catch (err) {
-          const msg = `Error parsing ${file.name}: ${err.message}`;
-          console.error(msg);
-          Alert.showAlert(msg);
-        } finally {
-          loadedCount++;
-          if (loadedCount === files.length) this.#finalizeBatchLoad();
+        } else {
+          // Pass the raw JSON straight to process; it will detect columnar internally
+          rawData = JSON.parse(fileText);
         }
-      };
+
+        await this.#process(rawData, file.name);
+      } catch (err) {
+        const msg = `Error parsing ${file.name}: ${err.message}`;
+        console.error(msg);
+        Alert.showAlert(msg);
+      } finally {
+        loadedCount++;
+        if (loadedCount === files.length) this.#finalizeBatchLoad();
+      }
+    });
+  }
+
+  async #readFileContent(file) {
+    if (file.name.endsWith('.gz')) {
+      const ds = new DecompressionStream('gzip');
+      const decompressedStream = file.stream().pipeThrough(ds);
+      return await new Response(decompressedStream).text();
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsText(file);
     });
   }
 
   // --- Data Transformation & State Sync ---
 
-  /**
-   * Processes raw telemetry array into a structured log entry.
-   * @param {Array} data - Array of {s, t, v} points
-   * @param {string} fileName - Source file identifier
-   */
   async process(data, fileName) {
     const result = await this.#process(data, fileName);
     this.#finalizeBatchLoad();
     return result;
   }
 
-  /**
-   * Processes raw telemetry array into a structured log entry.
-   * @private
-   */
   async #process(data, fileName) {
     try {
-      if (!Array.isArray(data)) throw new Error('Input data must be an array');
+      let telemetryData = data;
 
-      let telemetryPoints = data;
-      let fileMetadata = {};
-
-      if (data.length > 0 && data[0].metadata) {
-        fileMetadata = data[0].metadata;
-        telemetryPoints = data.slice(1);
+      // Auto-detect and unpack the highly compressed columnar format
+      if (this.#isColumnarJSON(telemetryData)) {
+        telemetryData = this.#normalizeColumnarJSON(telemetryData);
       }
 
-      // If there are no data points after removing metadata, handle gracefully
+      if (!Array.isArray(telemetryData))
+        throw new Error('Input data must be an array');
+
+      let telemetryPoints = telemetryData;
+      let fileMetadata = {};
+
+      if (telemetryData.length > 0 && telemetryData[0].metadata) {
+        fileMetadata = telemetryData[0].metadata;
+        telemetryPoints = telemetryData.slice(1);
+      }
+
       if (telemetryPoints.length === 0) {
         console.warn(
           'Preprocessing: File contains metadata but no telemetry points.'
         );
       }
 
-      // Detect schema based on the first actual data point
       const schema = this.#detectSchema(telemetryPoints[0]);
 
-      // Use flatMap to handle 1-to-many expansion (e.g. Object -> Multiple Signals)
       const processedPoints = telemetryPoints.flatMap((item) =>
         this.#applyMappingAndCleaning(item, schema)
       );
 
       const result = this.#transformRawData(processedPoints, fileName);
 
-      // Attach the extracted metadata to the result object
       result.metadata = fileMetadata;
       result.size = telemetryPoints.length;
 
-      // --- CHANGED: Check for duplicates in Library before saving ---
       const allLibraryFiles = await dbManager.getAllFiles();
       const existingFile = allLibraryFiles.find(
         (f) => f.name === fileName && f.size === result.size
@@ -156,7 +156,7 @@ class DataProcessor {
 
       if (existingFile) {
         console.log(
-          `File '${fileName}' already exists in library (ID: ${existingFile.id}). Skipping DB save.`
+          `File '${fileName}' already exists in library. Skipping DB save.`
         );
         result.dbId = existingFile.id;
       } else {
@@ -171,7 +171,6 @@ class DataProcessor {
         AppState.files.push(result);
       }
 
-      // Register with project manager (it handles its own duplicate checks for resources)
       projectManager.registerFile({
         name: fileName,
         dbId: result.dbId,
@@ -186,15 +185,46 @@ class DataProcessor {
     }
   }
 
-  /**
-   * Detects if the parsed CSV matches the AlfaOBD log format.
-   * @private
-   */
+  #isColumnarJSON(data) {
+    return (
+      data &&
+      typeof data === 'object' &&
+      !Array.isArray(data) &&
+      'series' in data
+    );
+  }
+
+  #normalizeColumnarJSON(data) {
+    const normalized = [];
+
+    if (data.metadata) {
+      normalized.push({ metadata: data.metadata });
+    }
+
+    const dictionary = data.signal_dictionary || {};
+    const series = data.series || {};
+
+    for (const [signalId, vectors] of Object.entries(series)) {
+      const signalName = dictionary[signalId] || signalId;
+      const times = vectors.t || [];
+      const values = vectors.v || [];
+
+      const length = Math.min(times.length, values.length);
+      for (let i = 0; i < length; i++) {
+        normalized.push({
+          s: signalName,
+          t: times[i],
+          v: values[i],
+        });
+      }
+    }
+
+    return normalized;
+  }
+
   #isAlfaOBD(rows) {
     if (!rows || rows.length === 0) return false;
-
     const keys = Object.keys(rows[0]);
-    // AlfaOBD files specifically use a 'Time' column formatted as 'HH:MM:SS.mmm'
     const hasTimeColumn = keys.includes('Time');
     const firstTimeValue = rows[0]['Time'];
 
@@ -205,11 +235,6 @@ class DataProcessor {
     );
   }
 
-  /**
-   * Explicit normalizer for AlfaOBD Wide CSVs.
-   * Converts 'HH:MM:SS.mmm' to absolute milliseconds and flattens data.
-   * @private
-   */
   #normalizeAlfaOBD(rows) {
     const normalized = [];
     if (!rows || rows.length === 0) return normalized;
@@ -222,7 +247,6 @@ class DataProcessor {
       const rawTime = row[timeKey];
       if (!rawTime) return;
 
-      // Parse HH:MM:SS.mmm into milliseconds
       const parts = rawTime.split(':');
       if (parts.length !== 3) return;
 
@@ -234,7 +258,6 @@ class DataProcessor {
 
       const timestampMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
 
-      // Flatten the wide row into Long Format
       signalKeys.forEach((sigKey) => {
         const val = row[sigKey];
         if (val !== '' && val !== null && val !== undefined) {
@@ -250,52 +273,33 @@ class DataProcessor {
     return normalized;
   }
 
-  /**
-   * Determines which schema to use based on the keys present in the first data point.
-   * @private
-   */
   #detectSchema(samplePoint) {
     if (!samplePoint) return this.SCHEMA_REGISTRY.JSON;
-
     if ('SensorName' in samplePoint) return this.SCHEMA_REGISTRY.CSV;
-
     return this.SCHEMA_REGISTRY.JSON;
   }
 
-  /**
-   * Combines key mapping, object flattening, and data sanitization.
-   * Returns an array of points to support 1-to-many mapping.
-   * @private
-   */
   #applyMappingAndCleaning(rawPoint, schema) {
     try {
       const baseSignal = rawPoint[schema.signal];
       const timestamp = Number(rawPoint[schema.timestamp]);
       const rawValue = rawPoint[schema.value];
 
-      // Validate Timestamp
       if (isNaN(timestamp)) return [];
 
-      // Clean base signal name
       let prefix = '';
       if (typeof baseSignal === 'string') {
         prefix = baseSignal.replace(/\n/g, ' ').trim();
       }
 
-      // Supports GPS, Accelerometer, or any complex object structure
       if (typeof rawValue === 'object' && rawValue !== null) {
         const derivedPoints = [];
 
         for (const [key, val] of Object.entries(rawValue)) {
           const numVal = Number(val);
-
-          // Strict check: we only want to graph numbers
           if (isNaN(numVal)) continue;
 
-          // Format Key: "latitude" -> "Latitude"
           const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
-
-          // Construct Composite Signal Name: "GPS" + "Latitude" -> "GPS Latitude"
           const finalSignal = prefix
             ? `${prefix}-${formattedKey}`
             : formattedKey;
@@ -310,9 +314,7 @@ class DataProcessor {
       }
 
       const numValue = Number(rawValue);
-      if (isNaN(numValue)) {
-        return [];
-      }
+      if (isNaN(numValue)) return [];
 
       return [
         {
@@ -327,10 +329,6 @@ class DataProcessor {
     }
   }
 
-  /**
-   * Simple CSV to Object parser (Helper)
-   * @private
-   */
   #parseCSV(csvText) {
     const lines = csvText.split('\n').filter((line) => line.trim());
     if (lines.length === 0) return [];
@@ -346,16 +344,11 @@ class DataProcessor {
     });
   }
 
-  /**
-   * Converts Wide Format (Time, Sig1, Sig2...) to Long Format (SensorName, Time_ms, Reading)
-   * @private
-   */
   #normalizeWideCSV(rows) {
     if (!rows || rows.length === 0) return rows;
 
     const keys = Object.keys(rows[0]);
 
-    // If it already has the standard columns, return as is.
     if (
       keys.includes('SensorName') &&
       (keys.includes('Time_ms') || keys.includes('time'))
@@ -363,7 +356,6 @@ class DataProcessor {
       return rows;
     }
 
-    // Detect Time Column
     const timeKey = keys.find((k) => k.toLowerCase().includes('time'));
     if (!timeKey) return rows;
 
@@ -391,10 +383,6 @@ class DataProcessor {
     return normalized;
   }
 
-  /**
-   * Transforms raw telemetry points into a structured file entry.
-   * @private
-   */
   #transformRawData(data, fileName) {
     const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
     const signals = {};
@@ -425,10 +413,6 @@ class DataProcessor {
     };
   }
 
-  /**
-   * Handles cleanup tasks after a batch of files has been parsed.
-   * @private
-   */
   #finalizeBatchLoad() {
     messenger.emit('dataprocessor:batch-load-completed', {});
     const input = DOM.get('fileInput');
