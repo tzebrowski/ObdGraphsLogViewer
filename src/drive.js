@@ -518,18 +518,16 @@ class DriveManager {
   }
 
   getFileMetadata(fileName) {
-    // Robust regex handles both legacy .json and the new .json.gz / .json.json.gz
-    const match = fileName.match(/-(\d+)-(\d+)(?:\.json|\.gz)+$/);
+    const match = fileName.match(/-(\d+)-(\d+)(?:\.jsonl|\.json|\.gz)+$/);
     if (!match) return { date: 'Unknown', length: '?' };
 
     const date = new Date(parseInt(match[1]));
 
-    // Restored backward compatibility: return standard ISO string
     return { date: date.toISOString(), length: match[2] };
   }
 
   extractTimestamp(fileName) {
-    const match = fileName.match(/-(\d+)-(\d+)(?:\.json|\.gz)+$/);
+    const match = fileName.match(/-(\d+)-(\d+)(?:\.jsonl|\.json|\.gz)+$/);
     return match ? parseInt(match[1]) : 0;
   }
 
