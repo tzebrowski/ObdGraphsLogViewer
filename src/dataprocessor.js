@@ -49,7 +49,6 @@ class DataProcessor {
     }
   }
 
-
   handleLocalFile(event) {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;

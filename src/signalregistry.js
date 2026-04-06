@@ -70,8 +70,6 @@ class SignalRegistry {
     }
   }
 
-  
-
   /**
    * Retrieve metadata for charting (units, min, max limits).
    */
@@ -159,7 +157,6 @@ class SignalRegistry {
     return rawSignalName;
   }
 
-
   #mergeMetadata(data) {
     let loadedPids = 0;
     let metricsArray = [];
@@ -231,7 +228,6 @@ class SignalRegistry {
       `SignalRegistry: Successfully mapped ${loadedPids} remote metrics to canonical names.`
     );
   }
-
 }
 
 export const signalRegistry = new SignalRegistry();
