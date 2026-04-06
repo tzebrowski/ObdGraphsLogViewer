@@ -14,6 +14,7 @@ import { xyAnalysis } from './xyanalysis.js';
 import { Histogram } from './histogram.js';
 import { mathChannels } from './mathchannels.js';
 import { projectManager } from './projectmanager.js';
+import { signalRegistry } from './signalregistry.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
@@ -31,6 +32,7 @@ window.onload = async function () {
   xyAnalysis.init();
   Histogram.init();
   projectManager.init();
+  signalRegistry.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {

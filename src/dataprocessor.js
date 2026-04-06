@@ -4,6 +4,7 @@ import { Alert } from './alert.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 import { dbManager } from './dbmanager.js';
+import { signalRegistry } from './signalregistry.js';
 
 /**
  * DataProcessor Module
@@ -48,7 +49,6 @@ class DataProcessor {
     }
   }
 
-  // --- Local File Handling ---
 
   handleLocalFile(event) {
     const files = Array.from(event.target.files);
@@ -204,12 +204,26 @@ class DataProcessor {
     const dictionary = data.signal_dictionary || {};
     const series = data.series || {};
 
+    // Pre-compute canonical names from the dictionary to avoid lookups in the loop
+    const mappedDictionary = {};
+    for (const [id, rawLocalizedName] of Object.entries(dictionary)) {
+      const nameFromId = signalRegistry.getCanonicalByPid(id);
+
+      mappedDictionary[id] =
+        nameFromId ||
+        signalRegistry.getCanonicalKey(rawLocalizedName) ||
+        rawLocalizedName;
+    }
+
+    // Iterate through the series
     for (const [signalId, vectors] of Object.entries(series)) {
-      const signalName = dictionary[signalId] || signalId;
+      const signalName = mappedDictionary[signalId] || signalId;
+
       const times = vectors.t || [];
       const values = vectors.v || [];
 
       const length = Math.min(times.length, values.length);
+
       for (let i = 0; i < length; i++) {
         normalized.push({
           s: signalName,
