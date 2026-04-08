@@ -8,6 +8,7 @@ class ProjectManager {
   #currentProject;
   #isReplaying;
   #libraryContainer;
+  #hydrationPromise;
 
   constructor() {
     this.#isReplaying = false;
@@ -19,7 +20,7 @@ class ProjectManager {
     this.#currentProject =
       this.#loadFromStorage() || this.#createEmptyProject();
 
-    dbManager.init().then(async () => {
+    this.#hydrationPromise = dbManager.init().then(async () => {
       await this.#hydrateActiveFiles();
       this.renderLibrary();
     });
@@ -36,6 +37,14 @@ class ProjectManager {
   initLibraryUI(containerId) {
     this.#libraryContainer = document.getElementById(containerId);
     this.renderLibrary();
+
+    if (this.#hydrationPromise) {
+      this.#hydrationPromise.then(() => {
+        if (AppState.files.length > 0) {
+          messenger.emit('dataprocessor:batch-load-completed', {});
+        }
+      });
+    }
   }
 
   async renderLibrary() {

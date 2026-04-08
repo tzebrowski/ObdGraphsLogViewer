@@ -103,6 +103,31 @@
           >
             <i class="fas fa-chart-bar"></i>
           </button>
+
+          <div
+            style="
+              width: 1px;
+              height: 24px;
+              background: rgba(255, 255, 255, 0.2);
+              margin: 0 8px;
+            "
+          ></div>
+
+          <button
+            class="view-btn main-tab-btn active"
+            data-target="graph"
+            title="Graph View"
+          >
+            <i class="fas fa-chart-line"></i>
+          </button>
+
+          <button
+            class="view-btn main-tab-btn"
+            data-target="report"
+            title="Report View"
+          >
+            <i class="fas fa-clipboard-list"></i>
+          </button>
         </div>
 
         <div class="nav-links">
@@ -609,7 +634,12 @@
                     <i class="fas fa-folder-open"></i> Open Log Source
                   </button>
                   <button class="btn" onclick="loadSampleData(false)">
-                    <i class="fas fa-vial"></i> Load Sample Trip
+                    <i class="fas fa-vial"></i> Load Sample Trip (Giulietta 1.75
+                    TBI)
+                  </button>
+                  <button class="btn" onclick="loadSampleData(false)">
+                    <i class="fas fa-vial"></i> Load Sample Trip (Giulia 2.0
+                    GME)
                   </button>
                 </div>
               </div>
@@ -617,7 +647,11 @@
           </div>
 
           <div id="mapContainer" class="map-view-container hidden"></div>
-
+          <div
+            id="report-container"
+            class="main-view-container"
+            style="display: none"
+          ></div>
           <div id="dropZone" class="drop-zone">
             <div class="drop-zone-content">
               <i class="fas fa-file-upload"></i>
