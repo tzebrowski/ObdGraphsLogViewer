@@ -30,10 +30,7 @@ class SignalRegistry {
   /**
    * Fetches metadata from multiple ObdMetrics definitions and merges them.
    */
-  async init(
-    urls = [
-    ]
-  ) {
+  async init(urls = []) {
     try {
       // Ensure we are working with an array
       const urlList = Array.isArray(urls) ? urls : [urls];
