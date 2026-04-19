@@ -32,8 +32,6 @@ class SignalRegistry {
    */
   async init(
     urls = [
-      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/giulia_2.0_gme.json',
-      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/alfa.json',
     ]
   ) {
     try {
