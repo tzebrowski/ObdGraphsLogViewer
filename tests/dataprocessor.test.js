@@ -868,10 +868,10 @@ describe('DataProcessor: Columnar JSON Support', () => {
         expect(file.metadata['trip.duration']).toBe('3600');
 
         // Available signals check (should map IDs to human-readable names)
-        expect(file.availableSignals).toContain('Boost');
+        expect(file.availableSignals).toContain('Boost Pressure');
 
         // Series data check (un-pivoted successfully)
-        const boostData = file.signals['Boost'];
+        const boostData = file.signals['Boost Pressure'];
         expect(boostData).toHaveLength(2);
         expect(boostData[0].x).toBe(1000); // timestamp
         expect(boostData[0].y).toBe(14.1); // value

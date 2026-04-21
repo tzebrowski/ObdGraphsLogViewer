@@ -6,32 +6,18 @@ import { projectManager } from './projectmanager.js';
 import { dbManager } from './dbmanager.js';
 import { signalRegistry } from './signalregistry.js';
 
-/**
- * DataProcessor Module
- * Handles telemetry data parsing, chronological sorting, and state synchronization.
- */
 class DataProcessor {
   SCHEMA_REGISTRY = {
     JSON: { signal: 's', timestamp: 't', value: 'v' },
-    CSV: {
-      signal: 'SensorName',
-      timestamp: 'Time_ms',
-      value: 'Reading',
-    },
+    CSV: { signal: 'SensorName', timestamp: 'Time_ms', value: 'Reading' },
   };
 
-  SCHEMA = {
-    timeKey: 'x',
-    valueKey: 'y',
-  };
+  SCHEMA = { timeKey: 'x', valueKey: 'y' };
 
   constructor() {
     this.handleLocalFile = this.handleLocalFile.bind(this);
   }
 
-  /**
-   * Initializes anomaly detection templates.
-   */
   async loadConfiguration(providedTemplates = templates) {
     try {
       if (!providedTemplates) {
@@ -43,9 +29,7 @@ class DataProcessor {
       console.error('Config Loader:', error);
       try {
         Config.ANOMALY_TEMPLATES = {};
-      } catch (e) {
-        /* ignore */
-      }
+      } catch (e) {}
     }
   }
 
@@ -62,7 +46,6 @@ class DataProcessor {
     files.forEach(async (file) => {
       try {
         const fileText = await this.#readFileContent(file);
-
         let rawData;
         if (file.name.includes('.csv')) {
           const parsedCSV = this.#parseCSV(fileText);
@@ -72,10 +55,8 @@ class DataProcessor {
             rawData = this.#normalizeWideCSV(parsedCSV);
           }
         } else {
-          // Pass the raw JSON straight to process; it will detect columnar internally
           rawData = JSON.parse(fileText);
         }
-
         await this.#process(rawData, file.name);
       } catch (err) {
         const msg = `Error parsing ${file.name}: ${err.message}`;
@@ -94,7 +75,6 @@ class DataProcessor {
       const decompressedStream = file.stream().pipeThrough(ds);
       return await new Response(decompressedStream).text();
     }
-
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
@@ -102,8 +82,6 @@ class DataProcessor {
       reader.readAsText(file);
     });
   }
-
-  // --- Data Transformation & State Sync ---
 
   async process(data, fileName) {
     const result = await this.#process(data, fileName);
@@ -115,7 +93,6 @@ class DataProcessor {
     try {
       let telemetryData = data;
 
-      // Auto-detect and unpack the highly compressed columnar format
       if (this.#isColumnarJSON(telemetryData)) {
         telemetryData = this.#normalizeColumnarJSON(telemetryData);
       }
@@ -138,11 +115,9 @@ class DataProcessor {
       }
 
       const schema = this.#detectSchema(telemetryPoints[0]);
-
       const processedPoints = telemetryPoints.flatMap((item) =>
         this.#applyMappingAndCleaning(item, schema)
       );
-
       const result = this.#transformRawData(processedPoints, fileName);
 
       result.metadata = fileMetadata;
@@ -159,14 +134,10 @@ class DataProcessor {
         );
         result.dbId = existingFile.id;
       } else {
-        const dbId = await dbManager.saveTelemetry(result);
-        result.dbId = dbId;
+        result.dbId = await dbManager.saveTelemetry(result);
       }
 
-      const isAlreadyInSession = AppState.files.some(
-        (f) => f.dbId === result.dbId
-      );
-      if (!isAlreadyInSession) {
+      if (!AppState.files.some((f) => f.dbId === result.dbId)) {
         AppState.files.push(result);
       }
 
@@ -176,7 +147,6 @@ class DataProcessor {
         size: result.size,
         metadata: result.metadata,
       });
-
       return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
@@ -195,43 +165,27 @@ class DataProcessor {
 
   #normalizeColumnarJSON(data) {
     const normalized = [];
-
-    if (data.metadata) {
-      normalized.push({ metadata: data.metadata });
-    }
+    if (data.metadata) normalized.push({ metadata: data.metadata });
 
     const dictionary = data.signal_dictionary || {};
     const series = data.series || {};
-
-    // Pre-compute canonical names from the dictionary to avoid lookups in the loop
     const mappedDictionary = {};
-    for (const [id, rawLocalizedName] of Object.entries(dictionary)) {
-      const nameFromId = signalRegistry.getCanonicalByPid(id);
 
+    for (const [id, rawLocalizedName] of Object.entries(dictionary)) {
       mappedDictionary[id] =
-        nameFromId ||
-        signalRegistry.getCanonicalKey(rawLocalizedName) ||
-        rawLocalizedName;
+        signalRegistry.getCanonicalByPid(id) || rawLocalizedName || `PID ${id}`;
     }
 
-    // Iterate through the series
     for (const [signalId, vectors] of Object.entries(series)) {
-      const signalName = mappedDictionary[signalId] || signalId;
-
+      const signalName = mappedDictionary[signalId];
       const times = vectors.t || [];
       const values = vectors.v || [];
-
       const length = Math.min(times.length, values.length);
 
       for (let i = 0; i < length; i++) {
-        normalized.push({
-          s: signalName,
-          t: times[i],
-          v: values[i],
-        });
+        normalized.push({ s: signalName, t: times[i], v: values[i] });
       }
     }
-
     return normalized;
   }
 
@@ -240,7 +194,6 @@ class DataProcessor {
     const keys = Object.keys(rows[0]);
     const hasTimeColumn = keys.includes('Time');
     const firstTimeValue = rows[0]['Time'];
-
     return (
       hasTimeColumn &&
       typeof firstTimeValue === 'string' &&
@@ -251,7 +204,6 @@ class DataProcessor {
   #normalizeAlfaOBD(rows) {
     const normalized = [];
     if (!rows || rows.length === 0) return normalized;
-
     const keys = Object.keys(rows[0]);
     const timeKey = 'Time';
     const signalKeys = keys.filter((k) => k !== timeKey);
@@ -259,14 +211,12 @@ class DataProcessor {
     rows.forEach((row) => {
       const rawTime = row[timeKey];
       if (!rawTime) return;
-
       const parts = rawTime.split(':');
       if (parts.length !== 3) return;
 
       const hours = parseInt(parts[0], 10);
       const minutes = parseInt(parts[1], 10);
       const seconds = parseFloat(parts[2]);
-
       if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return;
 
       const timestampMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
@@ -282,7 +232,6 @@ class DataProcessor {
         }
       });
     });
-
     return normalized;
   }
 
@@ -301,24 +250,17 @@ class DataProcessor {
       if (isNaN(timestamp)) return [];
 
       let prefix = '';
-      if (typeof baseSignal === 'string') {
+      if (typeof baseSignal === 'string')
         prefix = baseSignal.replace(/\n/g, ' ').trim();
-      }
 
       if (typeof rawValue === 'object' && rawValue !== null) {
         const derivedPoints = [];
-
         for (const [key, val] of Object.entries(rawValue)) {
           const numVal = Number(val);
           if (isNaN(numVal)) continue;
-
           const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
-          const finalSignal = prefix
-            ? `${prefix}-${formattedKey}`
-            : formattedKey;
-
           derivedPoints.push({
-            signal: finalSignal,
+            signal: prefix ? `${prefix}-${formattedKey}` : formattedKey,
             timestamp: timestamp,
             value: numVal,
           });
@@ -345,9 +287,7 @@ class DataProcessor {
   #parseCSV(csvText) {
     const lines = csvText.split('\n').filter((line) => line.trim());
     if (lines.length === 0) return [];
-
     const headers = lines[0].split(',').map((h) => h.trim());
-
     return lines.slice(1).map((line) => {
       const values = line.split(',');
       return headers.reduce((obj, header, i) => {
@@ -359,15 +299,12 @@ class DataProcessor {
 
   #normalizeWideCSV(rows) {
     if (!rows || rows.length === 0) return rows;
-
     const keys = Object.keys(rows[0]);
-
     if (
       keys.includes('SensorName') &&
       (keys.includes('Time_ms') || keys.includes('time'))
-    ) {
+    )
       return rows;
-    }
 
     const timeKey = keys.find((k) => k.toLowerCase().includes('time'));
     if (!timeKey) return rows;
@@ -380,7 +317,6 @@ class DataProcessor {
       if (isNaN(timeVal)) return;
 
       const timestampMs = timeKey.includes('(s)') ? timeVal * 1000 : timeVal;
-
       signalKeys.forEach((sigKey) => {
         const val = row[sigKey];
         if (val !== '' && val !== null && val !== undefined) {
@@ -392,7 +328,6 @@ class DataProcessor {
         }
       });
     });
-
     return normalized;
   }
 
@@ -406,12 +341,7 @@ class DataProcessor {
 
     sorted.forEach((p) => {
       if (!signals[p.signal]) signals[p.signal] = [];
-
-      signals[p.signal].push({
-        [timeKey]: p.timestamp,
-        [valueKey]: p.value,
-      });
-
+      signals[p.signal].push({ [timeKey]: p.timestamp, [valueKey]: p.value });
       if (p.timestamp < minT) minT = p.timestamp;
       if (p.timestamp > maxT) maxT = p.timestamp;
     });
