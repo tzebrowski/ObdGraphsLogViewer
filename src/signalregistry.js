@@ -32,19 +32,58 @@ class SignalRegistry {
   ) {
     try {
       const urlList = Array.isArray(urls) ? urls : [urls];
+      const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+
       const fetchPromises = urlList.map(async (url) => {
+        const cacheKey = `obd_dict_${url}`;
+        const cachedData = localStorage.getItem(cacheKey);
+
+        if (cachedData) {
+          try {
+            const parsedCache = JSON.parse(cachedData);
+            if (Date.now() - parsedCache.timestamp < CACHE_TTL) {
+              this.#mergeMetadata(parsedCache.data);
+              const fileName = url.substring(url.lastIndexOf('/') + 1);
+              console.log(
+                `SignalRegistry: Loaded metadata from cache (${fileName})`
+              );
+              return;
+            }
+          } catch (e) {
+            localStorage.removeItem(cacheKey);
+          }
+        }
+
         try {
           const response = await fetch(url);
           if (!response.ok)
             throw new Error(`HTTP error! status: ${response.status}`);
           const data = await response.json();
+
+          try {
+            localStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                timestamp: Date.now(),
+                data: data,
+              })
+            );
+          } catch (cacheErr) {
+            console.warn(
+              'SignalRegistry: LocalStorage cache full or unavailable.'
+            );
+          }
+
           this.#mergeMetadata(data);
           const fileName = url.substring(url.lastIndexOf('/') + 1);
-          console.log(`SignalRegistry: Loaded metadata from ${fileName}`);
+          console.log(
+            `SignalRegistry: Loaded metadata from network (${fileName})`
+          );
         } catch (err) {
           console.error(`SignalRegistry: Failed to load from ${url}`, err);
         }
       });
+
       await Promise.all(fetchPromises);
       console.log(
         `SignalRegistry: All remote metadata loaded successfully. Total PIDs mapped: ${Object.keys(this.pidMap).length}`
