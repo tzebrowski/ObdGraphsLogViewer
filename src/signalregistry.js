@@ -1,15 +1,44 @@
 import signalConfig from './signals.json';
 
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 class SignalRegistry {
   constructor() {
     this.mappings = {};
     this.metadata = {};
     this.pidMap = {};
     this.defaultSignals = [];
-    this._initLocal();
+    this.#initLocal();
   }
 
-  _initLocal() {
+  /**
+   * Orchestrates the fetching and merging of all remote dictionaries.
+   */
+  async init(
+    urls = [
+      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/mode01.json',
+      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/giulia_2.0_gme.json',
+      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/alfa.json',
+      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/rfhub_module.json',
+    ]
+  ) {
+    try {
+      const urlList = Array.isArray(urls) ? urls : [urls];
+
+      await Promise.all(urlList.map((url) => this.#loadDictionary(url)));
+
+      console.log(
+        `SignalRegistry: All remote metadata loaded successfully. Total PIDs mapped: ${Object.keys(this.pidMap).length}`
+      );
+    } catch (error) {
+      console.error(
+        'SignalRegistry: Critical error fetching remote metadata.',
+        error
+      );
+    }
+  }
+
+  #initLocal() {
     signalConfig.forEach((entry) => {
       this.mappings[entry.name] = entry.aliases || [];
       if (entry.default) {
@@ -24,75 +53,78 @@ class SignalRegistry {
     });
   }
 
-  async init(
-    urls = [
-      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/giulia_2.0_gme.json',
-      'https://raw.githubusercontent.com/tzebrowski/ObdMetrics/v11.x/src/main/resources/alfa.json',
-    ]
-  ) {
+  /**
+   * Coordinates loading a single dictionary (Cache vs Network).
+   */
+  async #loadDictionary(url) {
+    const fileName = url.substring(url.lastIndexOf('/') + 1);
+    let data = this.#getFromCache(url);
+
+    if (data) {
+      console.log(`SignalRegistry: Loaded metadata from cache (${fileName})`);
+    } else {
+      data = await this.#fetchAndCache(url);
+      if (data) {
+        console.log(
+          `SignalRegistry: Loaded metadata from network (${fileName})`
+        );
+      }
+    }
+
+    if (data) {
+      this.#mergeMetadata(data);
+    }
+  }
+
+  /**
+   * Handles local storage retrieval and TTL validation.
+   */
+  #getFromCache(url) {
+    const cacheKey = `obd_dict_${url}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    if (!cachedData) return null;
+
     try {
-      const urlList = Array.isArray(urls) ? urls : [urls];
-      const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+      const parsedCache = JSON.parse(cachedData);
+      if (Date.now() - parsedCache.timestamp < CACHE_TTL) {
+        return parsedCache.data;
+      }
+      // Cache expired
+      localStorage.removeItem(cacheKey);
+    } catch (e) {
+      // Cache corrupted
+      localStorage.removeItem(cacheKey);
+    }
 
-      const fetchPromises = urlList.map(async (url) => {
-        const cacheKey = `obd_dict_${url}`;
-        const cachedData = localStorage.getItem(cacheKey);
+    return null;
+  }
 
-        if (cachedData) {
-          try {
-            const parsedCache = JSON.parse(cachedData);
-            if (Date.now() - parsedCache.timestamp < CACHE_TTL) {
-              this.#mergeMetadata(parsedCache.data);
-              const fileName = url.substring(url.lastIndexOf('/') + 1);
-              console.log(
-                `SignalRegistry: Loaded metadata from cache (${fileName})`
-              );
-              return;
-            }
-          } catch (e) {
-            localStorage.removeItem(cacheKey);
-          }
-        }
+  /**
+   * Handles network fetching and local storage writing.
+   */
+  async #fetchAndCache(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
-        try {
-          const response = await fetch(url);
-          if (!response.ok)
-            throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
+      const data = await response.json();
+      const cacheKey = `obd_dict_${url}`;
 
-          try {
-            localStorage.setItem(
-              cacheKey,
-              JSON.stringify({
-                timestamp: Date.now(),
-                data: data,
-              })
-            );
-          } catch (cacheErr) {
-            console.warn(
-              'SignalRegistry: LocalStorage cache full or unavailable.'
-            );
-          }
+      try {
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({ timestamp: Date.now(), data })
+        );
+      } catch (cacheErr) {
+        console.warn('SignalRegistry: LocalStorage cache full or unavailable.');
+      }
 
-          this.#mergeMetadata(data);
-          const fileName = url.substring(url.lastIndexOf('/') + 1);
-          console.log(
-            `SignalRegistry: Loaded metadata from network (${fileName})`
-          );
-        } catch (err) {
-          console.error(`SignalRegistry: Failed to load from ${url}`, err);
-        }
-      });
-
-      await Promise.all(fetchPromises);
-      console.log(
-        `SignalRegistry: All remote metadata loaded successfully. Total PIDs mapped: ${Object.keys(this.pidMap).length}`
-      );
-    } catch (error) {
-      console.error(
-        'SignalRegistry: Critical error fetching remote metadata.',
-        error
-      );
+      return data;
+    } catch (err) {
+      console.error(`SignalRegistry: Failed to load from ${url}`, err);
+      return null;
     }
   }
 
