@@ -127,9 +127,9 @@ body.docs-body.dark-theme .feature-card {
 .sidebar {
   overflow: hidden auto !important;
   display: block !important;
-  min-width: 290px;
+  min-width: 350px;
   max-width: 600px;
-  width: 290px;
+  width: 350px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
   box-shadow: 2px 0 5px #0000000d;
@@ -1250,7 +1250,7 @@ footer {
     top: 0;
     left: 0;
     min-width: 220px;
-    width: 300px !important;
+    width: 290px !important;
     height: 100vh !important;
     margin-left: -300px !important;
     padding: 15px 10px !important;
@@ -1849,7 +1849,7 @@ body.analyzer-active {
 input[type='number'],
 input[type='text'] {
   border-radius: var(--btn-radius) !important;
-  padding: 10px !important;
+  padding: 10px;
   border: 1px solid var(--border-color);
 }
 
@@ -3137,7 +3137,7 @@ body.analyzer-active .view-switcher-container {
 
 .drv-search-input {
   width: 100%;
-  padding: 8px 30px;
+  padding: 8px 30px 8px 38px !important;
   border-radius: 6px;
   border: 1px solid var(--border-color);
   font-size: 0.9em;
