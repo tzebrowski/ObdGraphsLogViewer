@@ -3136,7 +3136,7 @@ body.analyzer-active .view-switcher-container {
 }
 
 .drv-search-input {
-  width: 100%; 
+  width: 100%;
   padding: 8px 30px 8px 38px !important;
   border-radius: 6px;
   border: 1px solid var(--border-color);
