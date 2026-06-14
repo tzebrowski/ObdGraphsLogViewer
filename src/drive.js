@@ -154,13 +154,12 @@ class DriveManager {
         const res = await gapi.client.drive.files.list({
           pageSize: 100,
           fields: 'nextPageToken, files(id, name, size, modifiedTime)',
-          q: `'${folderId}' in parents and name contains '.json' and trashed=false`,
+          q: `'${folderId}' in parents and (name contains '.json' or name contains '.gz' or name contains '.jsonl') and trashed=false`,
           orderBy: 'modifiedTime desc',
           pageToken: pageToken,
         });
 
         const files = res.result.files || [];
-
         const processedFiles = files.map((f) => ({
           file: f,
           meta: this.getFileMetadata(f.name),
@@ -199,25 +198,62 @@ class DriveManager {
     localStorage.setItem('recent_logs', JSON.stringify(recent));
 
     const currentToken = ++this.activeLoadToken;
-    UI.setLoading(true, 'Fetching from Drive...', () => {
+    UI.setLoading(true, 'Downloading from Drive...', () => {
       this.activeLoadToken++;
       UI.setLoading(false);
     });
 
     try {
-      const response = await gapi.client.drive.files.get({
-        fileId: id,
-        alt: 'media',
-      });
-      if (currentToken !== this.activeLoadToken) return;
-      dataProcessor.process(response.result, fileName);
-    } catch (error) {
-      if (currentToken === this.activeLoadToken)
-        Alert.showAlert(
-          `Drive Error: ${error.result?.error?.message || error.message}`
+      let dataToProcess;
+
+      if (fileName.endsWith('.gz')) {
+        const tokenObj = gapi.client.getToken();
+        if (!tokenObj)
+          throw new Error(
+            'No active Google session found. Please sign in again.'
+          );
+
+        const response = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+          {
+            headers: { Authorization: `Bearer ${tokenObj.access_token}` },
+          }
         );
+
+        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+        const blob = await response.blob();
+
+        if (currentToken !== this.activeLoadToken) return;
+
+        const ds = new DecompressionStream('gzip');
+        const decompressedStream = blob.stream().pipeThrough(ds);
+        const fileText = await new Response(decompressedStream).text();
+
+        dataToProcess = JSON.parse(fileText);
+      } else {
+        const response = await gapi.client.drive.files.get({
+          fileId: id,
+          alt: 'media',
+        });
+
+        if (currentToken !== this.activeLoadToken) return;
+
+        // Handle GAPI optionally parsing JSON strings automatically
+        dataToProcess =
+          typeof response.result === 'string'
+            ? JSON.parse(response.result)
+            : response.result;
+      }
+
+      dataProcessor.process(dataToProcess, fileName);
+    } catch (error) {
+      if (currentToken === this.activeLoadToken) {
+        Alert.showAlert(`Drive Error: ${error.message}`);
+      }
     } finally {
-      if (currentToken === this.activeLoadToken) UI.setLoading(false);
+      if (currentToken === this.activeLoadToken) {
+        UI.setLoading(false);
+      }
     }
   }
 
@@ -481,14 +517,16 @@ class DriveManager {
   }
 
   getFileMetadata(fileName) {
-    const match = fileName.match(/-(\d+)-(\d+)\.json$/);
+    const match = fileName.match(/-(\d+)-(\d+)(?:\.[a-zA-Z0-9]+)+$/);
     if (!match) return { date: 'Unknown', length: '?' };
+
     const date = new Date(parseInt(match[1]));
+
     return { date: date.toISOString(), length: match[2] };
   }
 
   extractTimestamp(fileName) {
-    const match = fileName.match(/-(\d+)-(\d+)\.json$/);
+    const match = fileName.match(/-(\d+)-(\d+)(?:\.[a-zA-Z0-9]+)+$/);
     return match ? parseInt(match[1]) : 0;
   }
 

@@ -19,6 +19,7 @@ export const Preferences = {
     'pref-show-area-fills': 'showAreaFills',
     'pref-smooth-lines': 'smoothLines',
     'pref-load-map': 'loadMap',
+    'pref-remember-files': 'rememberFiles',
   },
 
   defaultPrefs: {
@@ -29,6 +30,7 @@ export const Preferences = {
     showAreaFills: true,
     smoothLines: false,
     loadMap: false,
+    rememberFiles: true,
   },
 
   get prefs() {

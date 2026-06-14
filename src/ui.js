@@ -41,7 +41,7 @@ export const UI = {
       UI.setLoading(true, event.message);
     });
 
-    messenger.on('dataprocessor:batch-load-completed', (event) => {
+    messenger.on('dataprocessor:batch-load-completed', () => {
       UI.renderSignalList();
 
       UI.updateDataLoadedState(true);

@@ -4,34 +4,20 @@ import { Alert } from './alert.js';
 import { messenger } from './bus.js';
 import { projectManager } from './projectmanager.js';
 import { dbManager } from './dbmanager.js';
+import { signalRegistry } from './signalregistry.js';
 
-/**
- * DataProcessor Module
- * Handles telemetry data parsing, chronological sorting, and state synchronization.
- */
 class DataProcessor {
   SCHEMA_REGISTRY = {
     JSON: { signal: 's', timestamp: 't', value: 'v' },
-    CSV: {
-      signal: 'SensorName',
-      timestamp: 'Time_ms',
-      value: 'Reading',
-    },
+    CSV: { signal: 'SensorName', timestamp: 'Time_ms', value: 'Reading' },
   };
 
-  SCHEMA = {
-    timeKey: 'x',
-    valueKey: 'y',
-  };
+  SCHEMA = { timeKey: 'x', valueKey: 'y' };
 
   constructor() {
     this.handleLocalFile = this.handleLocalFile.bind(this);
   }
 
-  /**
-   * Initializes anomaly detection templates.
-   * @param {Object} providedTemplates - Template definitions (defaults to templates.json)
-   */
   async loadConfiguration(providedTemplates = templates) {
     try {
       if (!providedTemplates) {
@@ -43,22 +29,13 @@ class DataProcessor {
       console.error('Config Loader:', error);
       try {
         Config.ANOMALY_TEMPLATES = {};
-      } catch (e) {
-        /* ignore */
-      }
+      } catch (e) {}
     }
   }
 
-  // --- Local File Handling ---
-
-  /**
-   * Orchestrates the reading of multiple local files from a file input event.
-   */
   handleLocalFile(event) {
     const files = Array.from(event.target.files);
-    if (files.length === 0) {
-      return;
-    }
+    if (files.length === 0) return;
 
     messenger.emit('ui:set-loading', {
       message: `Parsing ${files.length} Files...`,
@@ -66,83 +43,86 @@ class DataProcessor {
 
     let loadedCount = 0;
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-
-      reader.onload = async (e) => {
-        try {
-          let rawData;
-          if (file.name.endsWith('.csv')) {
-            const parsedCSV = this.#parseCSV(e.target.result);
-            rawData = this.#normalizeWideCSV(parsedCSV);
+    files.forEach(async (file) => {
+      try {
+        const fileText = await this.#readFileContent(file);
+        let rawData;
+        if (file.name.includes('.csv')) {
+          const parsedCSV = this.#parseCSV(fileText);
+          if (this.#isAlfaOBD(parsedCSV)) {
+            rawData = this.#normalizeAlfaOBD(parsedCSV);
           } else {
-            rawData = JSON.parse(e.target.result);
+            rawData = this.#normalizeWideCSV(parsedCSV);
           }
-          await this.#process(rawData, file.name);
-        } catch (err) {
-          const msg = `Error parsing ${file.name}: ${err.message}`;
-          console.error(msg);
-          Alert.showAlert(msg);
-        } finally {
-          loadedCount++;
-          if (loadedCount === files.length) this.#finalizeBatchLoad();
+        } else {
+          rawData = JSON.parse(fileText);
         }
-      };
+        await this.#process(rawData, file.name);
+      } catch (err) {
+        const msg = `Error parsing ${file.name}: ${err.message}`;
+        console.error(msg);
+        Alert.showAlert(msg);
+      } finally {
+        loadedCount++;
+        if (loadedCount === files.length) this.#finalizeBatchLoad();
+      }
+    });
+  }
+
+  async #readFileContent(file) {
+    if (file.name.endsWith('.gz')) {
+      const ds = new DecompressionStream('gzip');
+      const decompressedStream = file.stream().pipeThrough(ds);
+      return await new Response(decompressedStream).text();
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsText(file);
     });
   }
 
-  // --- Data Transformation & State Sync ---
-
-  /**
-   * Processes raw telemetry array into a structured log entry.
-   * @param {Array} data - Array of {s, t, v} points
-   * @param {string} fileName - Source file identifier
-   */
   async process(data, fileName) {
     const result = await this.#process(data, fileName);
     this.#finalizeBatchLoad();
     return result;
   }
 
-  /**
-   * Processes raw telemetry array into a structured log entry.
-   * @private
-   */
   async #process(data, fileName) {
     try {
-      if (!Array.isArray(data)) throw new Error('Input data must be an array');
+      let telemetryData = data;
 
-      let telemetryPoints = data;
-      let fileMetadata = {};
-
-      if (data.length > 0 && data[0].metadata) {
-        fileMetadata = data[0].metadata;
-        telemetryPoints = data.slice(1);
+      if (this.#isColumnarJSON(telemetryData)) {
+        telemetryData = this.#normalizeColumnarJSON(telemetryData);
       }
 
-      // If there are no data points after removing metadata, handle gracefully
+      if (!Array.isArray(telemetryData))
+        throw new Error('Input data must be an array');
+
+      let telemetryPoints = telemetryData;
+      let fileMetadata = {};
+
+      if (telemetryData.length > 0 && telemetryData[0].metadata) {
+        fileMetadata = telemetryData[0].metadata;
+        telemetryPoints = telemetryData.slice(1);
+      }
+
       if (telemetryPoints.length === 0) {
         console.warn(
           'Preprocessing: File contains metadata but no telemetry points.'
         );
       }
 
-      // Detect schema based on the first actual data point
       const schema = this.#detectSchema(telemetryPoints[0]);
-
-      // Use flatMap to handle 1-to-many expansion (e.g. Object -> Multiple Signals)
       const processedPoints = telemetryPoints.flatMap((item) =>
         this.#applyMappingAndCleaning(item, schema)
       );
-
       const result = this.#transformRawData(processedPoints, fileName);
 
-      // Attach the extracted metadata to the result object
       result.metadata = fileMetadata;
       result.size = telemetryPoints.length;
 
-      // --- CHANGED: Check for duplicates in Library before saving ---
       const allLibraryFiles = await dbManager.getAllFiles();
       const existingFile = allLibraryFiles.find(
         (f) => f.name === fileName && f.size === result.size
@@ -150,29 +130,23 @@ class DataProcessor {
 
       if (existingFile) {
         console.log(
-          `File '${fileName}' already exists in library (ID: ${existingFile.id}). Skipping DB save.`
+          `File '${fileName}' already exists in library. Skipping DB save.`
         );
         result.dbId = existingFile.id;
       } else {
-        const dbId = await dbManager.saveTelemetry(result);
-        result.dbId = dbId;
+        result.dbId = await dbManager.saveTelemetry(result);
       }
 
-      const isAlreadyInSession = AppState.files.some(
-        (f) => f.dbId === result.dbId
-      );
-      if (!isAlreadyInSession) {
+      if (!AppState.files.some((f) => f.dbId === result.dbId)) {
         AppState.files.push(result);
       }
 
-      // Register with project manager (it handles its own duplicate checks for resources)
       projectManager.registerFile({
         name: fileName,
         dbId: result.dbId,
         size: result.size,
         metadata: result.metadata,
       });
-
       return result;
     } catch (error) {
       console.error('Error occured during file processing', error);
@@ -180,58 +154,113 @@ class DataProcessor {
     }
   }
 
-  /**
-   * Determines which schema to use based on the keys present in the first data point.
-   * @private
-   */
+  #isColumnarJSON(data) {
+    return (
+      data &&
+      typeof data === 'object' &&
+      !Array.isArray(data) &&
+      'series' in data
+    );
+  }
+
+  #normalizeColumnarJSON(data) {
+    const normalized = [];
+    if (data.metadata) normalized.push({ metadata: data.metadata });
+
+    const dictionary = data.signal_dictionary || {};
+    const series = data.series || {};
+    const mappedDictionary = {};
+
+    for (const [id, rawLocalizedName] of Object.entries(dictionary)) {
+      mappedDictionary[id] =
+        signalRegistry.getCanonicalByPid(id) || rawLocalizedName || `PID ${id}`;
+    }
+
+    for (const [signalId, vectors] of Object.entries(series)) {
+      const signalName = mappedDictionary[signalId];
+      const times = vectors.t || [];
+      const values = vectors.v || [];
+      const length = Math.min(times.length, values.length);
+
+      for (let i = 0; i < length; i++) {
+        normalized.push({ s: signalName, t: times[i], v: values[i] });
+      }
+    }
+    return normalized;
+  }
+
+  #isAlfaOBD(rows) {
+    if (!rows || rows.length === 0) return false;
+    const keys = Object.keys(rows[0]);
+    const hasTimeColumn = keys.includes('Time');
+    const firstTimeValue = rows[0]['Time'];
+    return (
+      hasTimeColumn &&
+      typeof firstTimeValue === 'string' &&
+      firstTimeValue.includes(':')
+    );
+  }
+
+  #normalizeAlfaOBD(rows) {
+    const normalized = [];
+    if (!rows || rows.length === 0) return normalized;
+    const keys = Object.keys(rows[0]);
+    const timeKey = 'Time';
+    const signalKeys = keys.filter((k) => k !== timeKey);
+
+    rows.forEach((row) => {
+      const rawTime = row[timeKey];
+      if (!rawTime) return;
+      const parts = rawTime.split(':');
+      if (parts.length !== 3) return;
+
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      const seconds = parseFloat(parts[2]);
+      if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return;
+
+      const timestampMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
+
+      signalKeys.forEach((sigKey) => {
+        const val = row[sigKey];
+        if (val !== '' && val !== null && val !== undefined) {
+          normalized.push({
+            SensorName: sigKey,
+            Time_ms: timestampMs,
+            Reading: val,
+          });
+        }
+      });
+    });
+    return normalized;
+  }
+
   #detectSchema(samplePoint) {
     if (!samplePoint) return this.SCHEMA_REGISTRY.JSON;
-
     if ('SensorName' in samplePoint) return this.SCHEMA_REGISTRY.CSV;
-
     return this.SCHEMA_REGISTRY.JSON;
   }
 
-  /**
-   * Combines key mapping, object flattening, and data sanitization.
-   * Returns an array of points to support 1-to-many mapping.
-   * @private
-   */
   #applyMappingAndCleaning(rawPoint, schema) {
     try {
       const baseSignal = rawPoint[schema.signal];
       const timestamp = Number(rawPoint[schema.timestamp]);
       const rawValue = rawPoint[schema.value];
 
-      // Validate Timestamp
       if (isNaN(timestamp)) return [];
 
-      // Clean base signal name
       let prefix = '';
-      if (typeof baseSignal === 'string') {
+      if (typeof baseSignal === 'string')
         prefix = baseSignal.replace(/\n/g, ' ').trim();
-      }
 
-      // Supports GPS, Accelerometer, or any complex object structure
       if (typeof rawValue === 'object' && rawValue !== null) {
         const derivedPoints = [];
-
         for (const [key, val] of Object.entries(rawValue)) {
           const numVal = Number(val);
-
-          // Strict check: we only want to graph numbers
           if (isNaN(numVal)) continue;
-
-          // Format Key: "latitude" -> "Latitude"
           const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
-
-          // Construct Composite Signal Name: "GPS" + "Latitude" -> "GPS Latitude"
-          const finalSignal = prefix
-            ? `${prefix}-${formattedKey}`
-            : formattedKey;
-
           derivedPoints.push({
-            signal: finalSignal,
+            signal: prefix ? `${prefix}-${formattedKey}` : formattedKey,
             timestamp: timestamp,
             value: numVal,
           });
@@ -240,9 +269,7 @@ class DataProcessor {
       }
 
       const numValue = Number(rawValue);
-      if (isNaN(numValue)) {
-        return [];
-      }
+      if (isNaN(numValue)) return [];
 
       return [
         {
@@ -257,16 +284,10 @@ class DataProcessor {
     }
   }
 
-  /**
-   * Simple CSV to Object parser (Helper)
-   * @private
-   */
   #parseCSV(csvText) {
     const lines = csvText.split('\n').filter((line) => line.trim());
     if (lines.length === 0) return [];
-
     const headers = lines[0].split(',').map((h) => h.trim());
-
     return lines.slice(1).map((line) => {
       const values = line.split(',');
       return headers.reduce((obj, header, i) => {
@@ -276,24 +297,15 @@ class DataProcessor {
     });
   }
 
-  /**
-   * Converts Wide Format (Time, Sig1, Sig2...) to Long Format (SensorName, Time_ms, Reading)
-   * @private
-   */
   #normalizeWideCSV(rows) {
     if (!rows || rows.length === 0) return rows;
-
     const keys = Object.keys(rows[0]);
-
-    // If it already has the standard columns, return as is.
     if (
       keys.includes('SensorName') &&
       (keys.includes('Time_ms') || keys.includes('time'))
-    ) {
+    )
       return rows;
-    }
 
-    // Detect Time Column
     const timeKey = keys.find((k) => k.toLowerCase().includes('time'));
     if (!timeKey) return rows;
 
@@ -305,7 +317,6 @@ class DataProcessor {
       if (isNaN(timeVal)) return;
 
       const timestampMs = timeKey.includes('(s)') ? timeVal * 1000 : timeVal;
-
       signalKeys.forEach((sigKey) => {
         const val = row[sigKey];
         if (val !== '' && val !== null && val !== undefined) {
@@ -317,14 +328,9 @@ class DataProcessor {
         }
       });
     });
-
     return normalized;
   }
 
-  /**
-   * Transforms raw telemetry points into a structured file entry.
-   * @private
-   */
   #transformRawData(data, fileName) {
     const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
     const signals = {};
@@ -335,12 +341,7 @@ class DataProcessor {
 
     sorted.forEach((p) => {
       if (!signals[p.signal]) signals[p.signal] = [];
-
-      signals[p.signal].push({
-        [timeKey]: p.timestamp,
-        [valueKey]: p.value,
-      });
-
+      signals[p.signal].push({ [timeKey]: p.timestamp, [valueKey]: p.value });
       if (p.timestamp < minT) minT = p.timestamp;
       if (p.timestamp > maxT) maxT = p.timestamp;
     });
@@ -355,10 +356,6 @@ class DataProcessor {
     };
   }
 
-  /**
-   * Handles cleanup tasks after a batch of files has been parsed.
-   * @private
-   */
   #finalizeBatchLoad() {
     messenger.emit('dataprocessor:batch-load-completed', {});
     const input = DOM.get('fileInput');

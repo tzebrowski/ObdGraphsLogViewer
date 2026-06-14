@@ -308,7 +308,7 @@
               type="file"
               id="fileInput"
               class="hidden"
-              accept=".csv,.json,application/json,text/plain"
+              accept=".csv,.json,.gz,application/json,text/plain,application/gzip"
             />
 
             <div id="driveList" class="drive-list-modern">
@@ -502,6 +502,17 @@
                 </div>
                 <label class="switch">
                   <input type="checkbox" id="pref-load-map" checked />
+                  <span class="slider-round"></span>
+                </label>
+              </div>
+
+              <div class="pref-item">
+                <div class="pref-info">
+                  <span class="pref-title">Remember active files</span>
+                  <span class="pref-desc">Remember recently viewed files.</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pref-remember-files" checked />
                   <span class="slider-round"></span>
                 </label>
               </div>

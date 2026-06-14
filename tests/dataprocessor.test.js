@@ -126,7 +126,6 @@ describe('DataProcessor - handleLocalFile', () => {
 
     dataProcessor.handleLocalFile(mockEvent);
 
-    // Increase timeout slightly to allow async process() to finish
     setTimeout(() => {
       try {
         expect(messenger.emit).toHaveBeenCalledWith(
@@ -134,14 +133,6 @@ describe('DataProcessor - handleLocalFile', () => {
           { message: 'Parsing 1 Files...' }
         );
 
-        // Note: process() fails on "dummy" data structure in tests usually,
-        // triggering ui:updateDataLoadedState -> false.
-        // If it succeeds, it triggers batch-load-completed.
-        // Based on previous test logic, we expect it to fail or finish.
-        // We verify calls are made.
-
-        // This expectation might vary based on whether 'dummy' json structure throws in #process
-        // But the main goal is ensuring it ran.
         expect(messenger.emit).toHaveBeenCalled();
 
         done();
@@ -365,7 +356,7 @@ Battery,100,12.6
       } catch (error) {
         done(error);
       }
-    }, 50);
+    }, 200);
   });
 
   test('should correctly preprocess and map CSV data using LEGACY_CSV schema', async () => {
@@ -713,5 +704,182 @@ describe('DataProcessor: Nested Object Support', () => {
     expect(result.availableSignals).toContain('RPM');
     expect(result.availableSignals).toContain('GPS-Lat');
     expect(result.availableSignals).toContain('GPS-Lon');
+  });
+
+  describe('DataProcessor: AlfaOBD CSV Handling', () => {
+    beforeEach(() => {
+      AppState.files = [];
+      jest.clearAllMocks();
+
+      document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+
+      DOM.get = jest.fn((id) => document.getElementById(id));
+      dbManager.getAllFiles = jest.fn().mockResolvedValue([]);
+      dbManager.saveTelemetry = jest.fn().mockResolvedValue(1);
+      projectManager.registerFile = jest.fn();
+    });
+
+    test('should detect and parse AlfaOBD HH:MM:SS.mmm timestamps into milliseconds', (done) => {
+      const alfaOBD_CSV = `Time,Engine speed rpm,Spark advance °
+13:48:35.666,1584,5.938
+13:48:37.223,1858,14.938`;
+
+      const event = {
+        target: {
+          files: [
+            new File([alfaOBD_CSV], 'alfaobd_log.csv', {
+              type: 'text/csv',
+            }),
+          ],
+        },
+      };
+
+      dataProcessor.handleLocalFile(event);
+
+      setTimeout(() => {
+        try {
+          expect(messenger.emit).toHaveBeenCalledWith(
+            expect.stringContaining('ui:set-loading'),
+            { message: 'Parsing 1 Files...' }
+          );
+
+          expect(AppState.files.length).toBe(1);
+          const file = AppState.files[0];
+
+          // 1. Verify Signals were correctly extracted
+          expect(file.availableSignals).toEqual(
+            expect.arrayContaining(['Engine speed rpm', 'Spark advance °'])
+          );
+
+          // 2. Verify Absolute Milliseconds Conversion
+          const rpmSignal = file.signals['Engine speed rpm'];
+
+          expect(rpmSignal[0].x).toBe(49715666); // 13:48:35.666
+          expect(rpmSignal[0].y).toBe(1584);
+
+          expect(rpmSignal[1].x).toBe(49717223); // 13:48:37.223
+          expect(rpmSignal[1].y).toBe(1858);
+
+          done();
+        } catch (error) {
+          done(error);
+        }
+      }, 50);
+    });
+
+    test('should gracefully skip AlfaOBD rows with badly formatted or missing time', (done) => {
+      const alfaOBD_CSV = `Time,Engine speed rpm
+13:48:35.666,1584
+invalid_time_string,2000
+13:48:37.223,1858
+13:48,2200`; // Missing seconds entirely (parts.length === 2)
+
+      const event = {
+        target: {
+          files: [
+            new File([alfaOBD_CSV], 'alfaobd_corrupt.csv', {
+              type: 'text/csv',
+            }),
+          ],
+        },
+      };
+
+      dataProcessor.handleLocalFile(event);
+
+      setTimeout(() => {
+        try {
+          const file = AppState.files[0];
+          const rpmSignal = file.signals['Engine speed rpm'];
+
+          // Should have skipped 'invalid_time_string' and '13:48' (since parts.length !== 3)
+          expect(rpmSignal.length).toBe(2);
+
+          // Ensure only the valid timestamps made it through
+          expect(rpmSignal[0].x).toBe(49715666); // 13:48:35.666
+          expect(rpmSignal[1].x).toBe(49717223); // 13:48:37.223
+
+          done();
+        } catch (error) {
+          done(error);
+        }
+      }, 50);
+    });
+  });
+});
+
+describe('DataProcessor: Columnar JSON Support', () => {
+  beforeEach(() => {
+    AppState.files = [];
+    jest.clearAllMocks();
+
+    document.body.innerHTML = `
+      <div id="chartContainer"></div>
+      <div id="fileInfo"></div>
+    `;
+
+    DOM.get = jest.fn((id) => document.getElementById(id));
+    dbManager.getAllFiles = jest.fn().mockResolvedValue([]);
+    dbManager.saveTelemetry = jest.fn().mockResolvedValue(1);
+    projectManager.registerFile = jest.fn();
+  });
+
+  test('should normalize highly-compressed Columnar JSON back to structured format', (done) => {
+    const columnarData = {
+      metadata: {
+        'trip.duration': '3600',
+      },
+      signal_dictionary: {
+        12: 'Boost Pressure',
+        14: 'Engine RPM',
+      },
+      series: {
+        12: {
+          t: [1000, 2000],
+          v: [14.1, 15.2],
+        },
+        14: {
+          t: [1000, 2000],
+          v: [2000.0, 2100.0],
+        },
+      },
+    };
+
+    const event = {
+      target: {
+        files: [
+          new File([JSON.stringify(columnarData)], 'trip.json', {
+            type: 'application/json',
+          }),
+        ],
+      },
+    };
+
+    dataProcessor.handleLocalFile(event);
+
+    setTimeout(() => {
+      try {
+        expect(AppState.files.length).toBe(1);
+        const file = AppState.files[0];
+
+        // Metadata check
+        expect(file.metadata['trip.duration']).toBe('3600');
+
+        // Available signals check (should map IDs to human-readable names)
+        expect(file.availableSignals).toContain('Boost Pressure');
+
+        // Series data check (un-pivoted successfully)
+        const boostData = file.signals['Boost Pressure'];
+        expect(boostData).toHaveLength(2);
+        expect(boostData[0].x).toBe(1000); // timestamp
+        expect(boostData[0].y).toBe(14.1); // value
+
+        done();
+      } catch (error) {
+        done(error);
+      }
+    }, 200);
   });
 });

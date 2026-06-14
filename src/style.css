@@ -131,10 +131,9 @@ body.docs-body.dark-theme .feature-card {
 .sidebar {
   overflow: hidden auto !important;
   display: block !important;
-  min-width: 290px;
+  min-width: 350px;
   max-width: 600px;
-  width: 290px;
-  background: #f8f9fa;
+  width: 350px;
   background: var(--sidebar-bg);
   border-right: 1px solid #ddd;
   border-right: 1px solid var(--border-color);
@@ -1327,7 +1326,7 @@ footer {
     top: 0;
     left: 0;
     min-width: 220px;
-    width: 300px !important;
+    width: 290px !important;
     height: 100vh !important;
     margin-left: -300px !important;
     padding: 15px 10px !important;
@@ -1460,6 +1459,36 @@ footer {
     width: 100%;
     padding: 12px 20px !important;
     box-sizing: border-box;
+  }
+
+  .top-nav {
+    height: auto !important;
+    padding: 12px 0 !important;
+  }
+
+  .nav-container {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    padding: 0 10px !important;
+  }
+
+  .integrated-toolbar,
+  .view-switcher-container {
+    width: 100% !important;
+    margin-right: 0 !important;
+    justify-content: center !important;
+  }
+
+  .nav-links {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-left: 0 !important;
+  }
+
+  .desktop-label {
+    display: none !important;
   }
 }
 
@@ -1918,8 +1947,7 @@ input[type='number'],
 input[type='text'] {
   border-radius: 8px !important;
   border-radius: var(--btn-radius) !important;
-  padding: 10px !important;
-  border: 1px solid #ddd;
+  padding: 10px;
   border: 1px solid var(--border-color);
 }
 
@@ -3182,7 +3210,7 @@ body.analyzer-active .view-switcher-container {
 
 .drv-search-input {
   width: 100%;
-  padding: 8px 30px;
+  padding: 8px 30px 8px 38px !important;
   border-radius: 6px;
   border: 1px solid #ddd;
   border: 1px solid var(--border-color);
