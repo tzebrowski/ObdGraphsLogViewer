@@ -48,11 +48,15 @@ class DataProcessor {
         const fileText = await this.#readFileContent(file);
         let rawData;
         if (file.name.includes('.csv')) {
-          const parsedCSV = this.#parseCSV(fileText);
-          if (this.#isAlfaOBD(parsedCSV)) {
-            rawData = this.#normalizeAlfaOBD(parsedCSV);
+          if (this.#isMultiecuscan(fileText)) {
+            rawData = this.#normalizeMultiecuscan(fileText);
           } else {
-            rawData = this.#normalizeWideCSV(parsedCSV);
+            const parsedCSV = this.#parseCSV(fileText);
+            if (this.#isAlfaOBD(parsedCSV)) {
+              rawData = this.#normalizeAlfaOBD(parsedCSV);
+            } else {
+              rawData = this.#normalizeWideCSV(parsedCSV);
+            }
           }
         } else {
           rawData = JSON.parse(fileText);
@@ -189,6 +193,59 @@ class DataProcessor {
     return normalized;
   }
 
+  #isMultiecuscan(fileText) {
+    if (!fileText) return false;
+    const firstLine = fileText.split('\n')[0];
+    return firstLine.includes('Czas') && firstLine.includes('\t');
+  }
+
+  #normalizeMultiecuscan(fileText) {
+    const lines = fileText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (lines.length < 3) return [];
+
+    const headers = lines[0]
+      .split('\t')
+      .map((h) => h.replace(/^"|"$/g, '').trim());
+    const timeIndex = headers.indexOf('Czas');
+    if (timeIndex === -1) return [];
+
+    const normalized = [];
+
+    for (let i = 2; i < lines.length; i++) {
+      const columns = lines[i]
+        .split('\t')
+        .map((c) => c.replace(/^"|"$/g, '').trim());
+      if (columns.length !== headers.length) continue;
+
+      const timeRaw = columns[timeIndex].replace(',', '.');
+      const timeVal = parseFloat(timeRaw);
+      if (isNaN(timeVal)) continue;
+
+      const timestampMs = timeVal * 1000;
+
+      headers.forEach((header, colIndex) => {
+        if (colIndex === timeIndex) return;
+
+        const rawVal = columns[colIndex];
+        if (rawVal === '' || rawVal === undefined || rawVal === null) return;
+
+        const cleanVal = parseFloat(rawVal.replace(',', '.'));
+        if (isNaN(cleanVal)) return;
+
+        normalized.push({
+          SensorName: header,
+          Time_ms: timestampMs,
+          Reading: cleanVal,
+        });
+      });
+    }
+
+    return normalized;
+  }
+
   #isAlfaOBD(rows) {
     if (!rows || rows.length === 0) return false;
     const keys = Object.keys(rows[0]);
@@ -197,7 +254,7 @@ class DataProcessor {
     return (
       hasTimeColumn &&
       typeof firstTimeValue === 'string' &&
-      firstTimeValue.includes(':')
+      firstTimeValue.includes(':') // Semicolon removed from inside the expression
     );
   }
 
