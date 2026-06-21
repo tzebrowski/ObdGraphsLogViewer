@@ -883,3 +883,43 @@ describe('DataProcessor: Columnar JSON Support', () => {
     }, 200);
   });
 });
+
+describe('Multiecuscan CSV Parsing', () => {
+  test('should detect and cleanly parse tab-separated European Multiecuscan formats', async () => {
+    const mesData =
+      `"Czas"\t"Prędkość pojazdu"\t"Obroty silnika"\n` +
+      `"s"\t"km/h"\t"obr/min"\n` +
+      `0,00\t49,1000\t1265,0000\n` +
+      `2,77\t47,9000\t1235,0000`;
+
+    const file = new File([mesData], 'giulia_2.csv', { type: 'text/csv' });
+    const event = { target: { files: [file] } };
+
+    let resolveProcessing;
+    const processingPromise = new Promise((resolve) => {
+      resolveProcessing = resolve;
+    });
+
+    dbManager.saveTelemetry.mockImplementation((result) => {
+      if (result.name === 'giulia_2.csv') {
+        resolveProcessing(result);
+      }
+      return Promise.resolve('mock-db-id-123');
+    });
+
+    dataProcessor.handleLocalFile(event);
+
+    const savedData = await processingPromise;
+
+    expect(savedData.name).toBe('giulia_2.csv');
+    expect(savedData.availableSignals).toEqual([
+      'Obroty silnika',
+      'Prędkość pojazdu',
+    ]);
+    expect(savedData.signals['Obroty silnika'][1]).toEqual({
+      x: 2770,
+      y: 1235,
+    });
+    expect(savedData.signals['Prędkość pojazdu'][0]).toEqual({ x: 0, y: 49.1 });
+  });
+});

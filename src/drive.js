@@ -15,25 +15,31 @@ class DriveManager {
       filters: { term: '', start: null, end: null },
       pagination: {
         currentPage: 1,
-        itemsPerPage: 10,
+        itemsPerPage: 50,
       },
     };
 
     this.TEMPLATES = {
       searchInterface: () => `
         <div class="drv-search-container">
-          <div class="drv-search-box">
-            <i class="fas fa-search drv-search-icon"></i>
-            <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
-            <i class="fas fa-times-circle drv-clear-icon" id="clearDriveSearchText" title="Clear search"></i>
+          <div class="month-header drv-search-header" style="cursor: pointer; margin-top: 0; margin-bottom: 5px;">
+            <span><i class="fas fa-filter drv-icon-margin"></i> Filters & Search</span>
+            <i class="fas fa-chevron-right toggle-icon"></i>
           </div>
-          <div class="drv-date-filters">
-            <input type="date" id="driveDateStart" class="drv-date-input">
-            <span>to</span>
-            <input type="date" id="driveDateEnd" class="drv-date-input">
-            <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
+          <div class="drv-search-content drv-hidden" style="display: none; flex-direction: column; gap: 8px;">
+            <div class="drv-search-box">
+              <i class="fas fa-search drv-search-icon"></i>
+              <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
+              <i class="fas fa-times-circle drv-clear-icon" id="clearDriveSearchText" title="Clear search"></i>
+            </div>
+            <div class="drv-date-filters">
+              <input type="date" id="driveDateStart" class="drv-date-input">
+              <span>to</span>
+              <input type="date" id="driveDateEnd" class="drv-date-input">
+              <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
+            </div>
           </div>
-          <div class="drv-controls-row">
+          <div class="drv-controls-row" style="margin-top: 8px;">
             <div id="driveResultCount" class="drv-result-count"></div>
             <button id="driveSortToggle" class="btn btn-sm drv-sort-btn">
               <i class="fas fa-sort-amount-down"></i> Newest
@@ -48,8 +54,8 @@ class DriveManager {
           <div class="file-card-body">
             <div class="file-name-title">${file.name}</div>
             <div class="file-card-meta-grid">
-              <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
-              <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
+              <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${this.formatDate(meta?.date)}</span></div>
+              <div class="meta-item"><i class="fas fa-history"></i> <span>${this.formatDuration(meta?.length)}</span></div>
               <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
             </div>
           </div>
@@ -62,13 +68,16 @@ class DriveManager {
         <div class="month-list drv-hidden"></div>
       `,
       recentSectionHeader: () => `
-        <div class="month-header drv-recent-header">
+        <div class="month-header drv-recent-header" style="cursor: pointer;">
           <span><i class="fas fa-history drv-icon-margin"></i> Recently Viewed</span>
-          <span id="clearRecentHistory" class="drv-clear-history" title="Clear History">
-            <i class="fas fa-trash-alt"></i> Clear
-          </span>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span id="clearRecentHistory" class="drv-clear-history" title="Clear History">
+              <i class="fas fa-trash-alt"></i> Clear
+            </span>
+            <i class="fas fa-chevron-right toggle-icon"></i>
+          </div>
         </div>
-        <div class="recent-list-container"></div>
+        <div class="recent-list-container drv-hidden"></div>
       `,
       sortBtnContent: (order) => `
         <i class="fas fa-sort-amount-${order === 'desc' ? 'down' : 'up'}"></i> 
@@ -88,6 +97,37 @@ class DriveManager {
         </div>
       `,
     };
+  }
+
+  formatDuration(seconds) {
+    if (!seconds || isNaN(seconds)) return 'N/A';
+    const sec = parseInt(seconds, 10);
+    if (sec < 60) return `${sec}s`;
+
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+
+    if (m < 60) return `${m}m ${s}s`;
+
+    const h = Math.floor(m / 60);
+    const remainingM = m % 60;
+    return `${h}h ${remainingM}m`;
+  }
+
+  formatDate(isoString) {
+    if (!isoString || isoString === 'Unknown') return 'N/A';
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return isoString;
+    }
   }
 
   async findFolderId(name, parentId = 'root') {
@@ -197,6 +237,21 @@ class DriveManager {
     recent = [id, ...recent.filter((i) => i !== id)].slice(0, 3);
     localStorage.setItem('recent_logs', JSON.stringify(recent));
 
+    const container = document.getElementById('driveFileContainer');
+    if (container) {
+      const oldRecent = container.querySelector('.recent-section');
+      if (oldRecent) oldRecent.remove();
+
+      const isFiltering =
+        this._state.filters.term ||
+        this._state.filters.start ||
+        this._state.filters.end;
+
+      if (!isFiltering) {
+        this.renderRecentSection(container, true);
+      }
+    }
+
     const currentToken = ++this.activeLoadToken;
     UI.setLoading(true, 'Downloading from Drive...', () => {
       this.activeLoadToken++;
@@ -238,7 +293,6 @@ class DriveManager {
 
         if (currentToken !== this.activeLoadToken) return;
 
-        // Handle GAPI optionally parsing JSON strings automatically
         dataToProcess =
           typeof response.result === 'string'
             ? JSON.parse(response.result)
@@ -265,6 +319,25 @@ class DriveManager {
       end: document.getElementById('driveDateEnd'),
       sortBtn: document.getElementById('driveSortToggle'),
     };
+
+    const searchHeader = document.querySelector('.drv-search-header');
+    const searchContent = document.querySelector('.drv-search-content');
+    if (searchHeader && searchContent) {
+      searchHeader.onclick = () => {
+        const isHidden = searchContent.style.display === 'none';
+        if (isHidden) {
+          searchContent.style.display = 'flex';
+          searchContent.classList.remove('drv-hidden');
+          searchHeader.querySelector('.toggle-icon').className =
+            'fas fa-chevron-down toggle-icon';
+        } else {
+          searchContent.style.display = 'none';
+          searchContent.classList.add('drv-hidden');
+          searchHeader.querySelector('.toggle-icon').className =
+            'fas fa-chevron-right toggle-icon';
+        }
+      };
+    }
 
     const safeAddEvent = (id, event, handler) => {
       const el = document.getElementById(id);
@@ -370,7 +443,8 @@ class DriveManager {
       this._state.filters.term ||
       this._state.filters.start ||
       this._state.filters.end;
-    if (!isFiltering && this._state.pagination.currentPage === 1) {
+
+    if (!isFiltering) {
       this.renderRecentSection(container);
     }
 
@@ -425,7 +499,7 @@ class DriveManager {
     });
   }
 
-  renderRecentSection(container) {
+  renderRecentSection(container, prepend = false) {
     const recentIds = JSON.parse(localStorage.getItem('recent_logs') || '[]');
     if (recentIds.length === 0) return;
 
@@ -438,7 +512,24 @@ class DriveManager {
     const section = document.createElement('div');
     section.className = 'recent-section';
     section.innerHTML = this.TEMPLATES.recentSectionHeader();
+
     const list = section.querySelector('.recent-list-container') || section;
+    const header = section.querySelector('.drv-recent-header');
+
+    header.onclick = () => {
+      const isHidden =
+        list.classList.contains('drv-hidden') || list.style.display === 'none';
+      if (isHidden) {
+        list.classList.remove('drv-hidden');
+        list.style.display = 'block';
+        header.querySelector('.toggle-icon').className =
+          'fas fa-chevron-down toggle-icon';
+      } else {
+        list.style.display = 'none';
+        header.querySelector('.toggle-icon').className =
+          'fas fa-chevron-right toggle-icon';
+      }
+    };
 
     recentItems.forEach((item) => {
       const tempDiv = document.createElement('div');
@@ -448,7 +539,11 @@ class DriveManager {
       list.appendChild(card);
     });
 
-    container.appendChild(section);
+    if (prepend) {
+      container.prepend(section);
+    } else {
+      container.appendChild(section);
+    }
 
     document
       .getElementById('clearRecentHistory')
