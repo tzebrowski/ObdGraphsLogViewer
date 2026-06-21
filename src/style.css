@@ -1470,7 +1470,7 @@ a {
 .features {
   padding: 80px 20px;
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0 auto 60px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 40px;
@@ -6807,10 +6807,42 @@ body.analyzer-active .view-switcher-container {
 }
 
 @media (width <= 768px) {
+  body.analyzer-active .footer {
+    position: static;
+    width: 100%;
+    margin-top: 35px;
+    padding-top: 20px;
+    background: transparent;
+  }
+
   .footer {
     position: static;
     width: 100%;
     margin-top: 35px;
     padding-top: 20px;
   }
+}
+
+.footer {
+  display: none;
+}
+
+body.analyzer-active .footer {
+  display: block;
+  position: fixed;
+  bottom: 0;
+  left: 350px;
+  right: 0;
+  z-index: 2900;
+  padding: 5px 15px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border-color);
+  font-size: 0.85em;
+  color: #7f8c8d;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+body.analyzer-active .sidebar.collapsed ~ .footer {
+  left: 60px;
 }
