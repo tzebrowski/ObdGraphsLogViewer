@@ -1756,7 +1756,7 @@ body.analyzer-active {
 }
 
 #driveList {
-  max-height: 450px !important;
+  max-height: calc(100vh - 180px) !important;
   overflow-y: auto;
   background: var(--sidebar-bg);
 }
@@ -5148,7 +5148,7 @@ body.analyzer-active {
 }
 
 #driveList {
-  max-height: 450px !important;
+  max-height: calc(100vh - 180px) !important;
   overflow-y: auto;
   background: var(--sidebar-bg);
 }
