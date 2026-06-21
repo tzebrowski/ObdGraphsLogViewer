@@ -48,7 +48,15 @@ class DriveManager {
         </div>
         <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
       `,
-      topControls: (current, totalPages, start, end, totalItems, sortOrder, pageSize) => `
+      topControls: (
+        current,
+        totalPages,
+        start,
+        end,
+        totalItems,
+        sortOrder,
+        pageSize
+      ) => `
         <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); margin-bottom: 4px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;">
@@ -59,7 +67,9 @@ class DriveManager {
               ${sortOrder === 'desc' ? 'Newest' : 'Oldest'}
             </button>
           </div>
-          ${totalItems > 0 ? `
+          ${
+            totalItems > 0
+              ? `
           <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em;">
             <div style="display: flex; align-items: center; gap: 5px;">
               <span style="color: var(--text-muted);">Show:</span>
@@ -76,7 +86,9 @@ class DriveManager {
               <button id="nextPageBtn" class="btn btn-sm" style="padding: 2px 8px;" ${current === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5"' : ''}><i class="fas fa-chevron-right"></i></button>
             </div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
       `,
       fileCard: (file, meta) => `
@@ -117,12 +129,12 @@ class DriveManager {
     if (!seconds || isNaN(seconds)) return 'N/A';
     const sec = parseInt(seconds, 10);
     if (sec < 60) return `${sec}s`;
-    
+
     const m = Math.floor(sec / 60);
     const s = sec % 60;
-    
+
     if (m < 60) return `${m}m ${s}s`;
-    
+
     const h = Math.floor(m / 60);
     const remainingM = m % 60;
     return `${h}h ${remainingM}m`;
@@ -132,12 +144,12 @@ class DriveManager {
     if (!isoString || isoString === 'Unknown') return 'N/A';
     try {
       const d = new Date(isoString);
-      return d.toLocaleString('en-US', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return d.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
       return isoString;
@@ -196,8 +208,7 @@ class DriveManager {
     const listEl = document.getElementById('driveFileContainer');
     if (!listEl) return;
 
-    listEl.innerHTML =
-      '<div class="status-msg">Searching for logs...</div>';
+    listEl.innerHTML = '<div class="status-msg">Searching for logs...</div>';
     this.fileData = [];
 
     let pageToken = null;
@@ -330,7 +341,7 @@ class DriveManager {
       text: document.getElementById('driveSearchInput'),
       clearText: document.getElementById('clearDriveSearchText'),
       start: document.getElementById('driveDateStart'),
-      end: document.getElementById('driveDateEnd')
+      end: document.getElementById('driveDateEnd'),
     };
 
     const searchHeader = document.querySelector('.drv-search-header');
@@ -341,11 +352,13 @@ class DriveManager {
         if (isHidden) {
           searchContent.style.display = 'flex';
           searchContent.classList.remove('drv-hidden');
-          searchHeader.querySelector('.toggle-icon').className = 'fas fa-chevron-down toggle-icon';
+          searchHeader.querySelector('.toggle-icon').className =
+            'fas fa-chevron-down toggle-icon';
         } else {
           searchContent.style.display = 'none';
           searchContent.classList.add('drv-hidden');
-          searchHeader.querySelector('.toggle-icon').className = 'fas fa-chevron-right toggle-icon';
+          searchHeader.querySelector('.toggle-icon').className =
+            'fas fa-chevron-right toggle-icon';
         }
       };
     }
@@ -391,7 +404,10 @@ class DriveManager {
 
       const clearDatesBtn = document.getElementById('clearDriveFilters');
       if (clearDatesBtn) {
-        clearDatesBtn.style.display = (this._state.filters.start || this._state.filters.end) ? 'block' : 'none';
+        clearDatesBtn.style.display =
+          this._state.filters.start || this._state.filters.end
+            ? 'block'
+            : 'none';
       }
 
       this._state.pagination.currentPage = 1;
@@ -450,8 +466,11 @@ class DriveManager {
     const slot = document.getElementById('driveTopControlsSlot');
     if (slot) {
       const start = filtered.length === 0 ? 0 : startIdx + 1;
-      const end = Math.min(this._state.pagination.currentPage * itemsPerPage, filtered.length);
-      
+      const end = Math.min(
+        this._state.pagination.currentPage * itemsPerPage,
+        filtered.length
+      );
+
       slot.innerHTML = this.TEMPLATES.topControls(
         this._state.pagination.currentPage,
         totalPages,
@@ -463,7 +482,8 @@ class DriveManager {
       );
 
       slot.querySelector('#driveSortToggle')?.addEventListener('click', () => {
-        this._state.sortOrder = this._state.sortOrder === 'desc' ? 'asc' : 'desc';
+        this._state.sortOrder =
+          this._state.sortOrder === 'desc' ? 'asc' : 'desc';
         this.refreshUI();
       });
 
@@ -567,7 +587,8 @@ class DriveManager {
     const header = section.querySelector('.drv-recent-header');
 
     header.onclick = () => {
-      const isHidden = list.classList.contains('drv-hidden') || list.style.display === 'none';
+      const isHidden =
+        list.classList.contains('drv-hidden') || list.style.display === 'none';
       if (isHidden) {
         list.classList.remove('drv-hidden');
         list.style.display = 'block';

@@ -39,7 +39,7 @@ jobs:
         run: npx eslint src --ext .js
 
       - name: Run Stylelint
-        run: npx stylelint "**/*.css" --config stylelint.config.mjs
+        run: npx stylelint "**/*.css" --config stylelint.config.mjs --ignore-pattern "coverage/**"
 
       - name: Run Prettier Check
         run: npx prettier --check .

@@ -3390,8 +3390,6 @@ body.analyzer-active .view-switcher-container {
   margin-right: 8px;
 }
 
-
-
 @keyframes spin {
   0% {
     transform: rotate(0);
@@ -6748,7 +6746,8 @@ body.analyzer-active .view-switcher-container {
   margin-right: 8px;
 }
 
-.pm-add-btn, .pm-del-btn {
+.pm-add-btn,
+.pm-del-btn {
   width: 34px !important;
   height: 34px !important;
   margin-left: 6px;
@@ -6764,10 +6763,11 @@ body.analyzer-active .view-switcher-container {
 
 .pm-add-btn {
   color: var(--text-color);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
 }
 
-.pm-add-btn i, .pm-del-btn i {
+.pm-add-btn i,
+.pm-del-btn i {
   pointer-events: none;
 }
 
@@ -6777,17 +6777,15 @@ body.analyzer-active .view-switcher-container {
 }
 
 .pm-add-btn:hover {
-  background: rgba(76, 175, 80, 0.15) !important;
+  background: rgb(76 175 80 / 15%) !important;
   color: #4caf50 !important;
 }
 
 .pm-del-btn:hover {
-  background: rgba(227, 24, 55, 0.1) !important;
+  background: rgb(227 24 55 / 10%) !important;
   opacity: 1 !important;
   color: var(--brand-red) !important;
 }
-
-
 
 .footer {
   position: fixed;
