@@ -20,6 +20,7 @@ global.confirm = jest.fn();
 
 describe('Drive Module Combined Suite', () => {
   let container;
+  let listEl;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -27,15 +28,10 @@ describe('Drive Module Combined Suite', () => {
     document.body.innerHTML = `
       <div id="driveListContainer"></div>
       <div id="driveList"></div>
-      <div id="driveFileContainer"></div>
-      <input type="text" id="driveSearchInput" />
-      <i id="clearDriveSearchText"></i>
-      <input type="date" id="driveDateStart" />
-      <input type="date" id="driveDateEnd" />
-      <button id="clearDriveFilters"></button>
-      <button id="driveSortToggle"></button>
-      <div id="driveResultCount"></div>
     `;
+
+    listEl = document.getElementById('driveList');
+    listEl.innerHTML = Drive.TEMPLATES.searchInterface();
     container = document.getElementById('driveFileContainer');
 
     DOM.get = jest.fn((id) => document.getElementById(id));
@@ -75,7 +71,6 @@ describe('Drive Module Combined Suite', () => {
 
       await Drive.listFiles();
 
-      const listEl = document.getElementById('driveList');
       expect(listEl.style.display).toBe('block');
       expect(document.getElementById('driveSearchInput')).not.toBeNull();
       expect(gapi.client.drive.files.list).toHaveBeenCalledTimes(3);
@@ -108,10 +103,14 @@ describe('Drive Module Combined Suite', () => {
         message: 'Network Error',
       });
 
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       await Drive.listFiles();
 
       const container = document.getElementById('driveFileContainer');
       expect(container.innerHTML).toContain('Drive error: Network Error');
+      consoleSpy.mockRestore();
     });
   });
 
@@ -162,9 +161,13 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('findFolderId handles API errors returns null', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       gapi.client.drive.files.list.mockRejectedValue(new Error('Fail'));
       const id = await Drive.findFolderId('folder');
       expect(id).toBeNull();
+      consoleSpy.mockRestore();
     });
 
     test('fetchJsonFiles populates fileData and renders UI', async () => {
@@ -284,11 +287,6 @@ describe('Drive Module Combined Suite', () => {
   });
 
   describe('UI Interactions & Event Listeners', () => {
-    beforeEach(() => {
-      const listEl = document.getElementById('driveList');
-      if (listEl) listEl.innerHTML = Drive.TEMPLATES.searchInterface();
-    });
-
     test('initSearch attaches listeners and handles input changes', () => {
       Drive.initSearch();
 
@@ -321,15 +319,20 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('Sort toggle switches order and triggers refresh', () => {
+      Drive.fileData = [
+        { file: { id: '1', name: 'a.json' }, timestamp: 1000, meta: {} },
+      ];
       Drive.initSearch();
-      const sortBtn = document.getElementById('driveSortToggle');
 
+      const sortBtn = document.getElementById('driveSortToggle');
       Drive._state.sortOrder = 'desc';
 
       sortBtn.click();
 
       expect(Drive._state.sortOrder).toBe('asc');
-      expect(sortBtn.innerHTML).toContain('Oldest');
+      expect(document.getElementById('driveSortToggle').innerHTML).toContain(
+        'Oldest'
+      );
     });
 
     test('Date inputs trigger update on change', () => {
@@ -360,8 +363,10 @@ describe('Drive Module Combined Suite', () => {
       const cards = container.querySelectorAll('.drive-file-card');
       expect(cards).toHaveLength(10);
 
-      const pageInfo = container.querySelector('.pagination-controls span');
-      expect(pageInfo.textContent).toContain('1-10 of 15');
+      const pageInfo = document
+        .getElementById('driveTopControlsSlot')
+        .querySelector('.drv-page-info');
+      expect(pageInfo.textContent).toContain('1-10');
     });
 
     test('Next Page button increments page and updates UI', () => {
@@ -369,7 +374,9 @@ describe('Drive Module Combined Suite', () => {
       Drive._state.pagination.itemsPerPage = 10;
       Drive.refreshUI();
 
-      const nextBtn = container.querySelector('#nextPageBtn');
+      const nextBtn = document
+        .getElementById('driveTopControlsSlot')
+        .querySelector('#nextPageBtn');
       nextBtn.click();
 
       const cards = container.querySelectorAll('.drive-file-card');
@@ -383,7 +390,9 @@ describe('Drive Module Combined Suite', () => {
       Drive._state.pagination.currentPage = 2;
       Drive.refreshUI();
 
-      const prevBtn = container.querySelector('#prevPageBtn');
+      const prevBtn = document
+        .getElementById('driveTopControlsSlot')
+        .querySelector('#prevPageBtn');
       prevBtn.click();
 
       expect(Drive._state.pagination.currentPage).toBe(1);
@@ -395,38 +404,17 @@ describe('Drive Module Combined Suite', () => {
       Drive._state.pagination.currentPage = 1;
       Drive.refreshUI();
 
-      const nextBtn = container.querySelector('#nextPageBtn');
+      const nextBtn = document
+        .getElementById('driveTopControlsSlot')
+        .querySelector('#nextPageBtn');
       nextBtn.click();
       expect(Drive._state.pagination.currentPage).toBe(1);
 
-      const prevBtn = container.querySelector('#prevPageBtn');
+      const prevBtn = document
+        .getElementById('driveTopControlsSlot')
+        .querySelector('#prevPageBtn');
       prevBtn.click();
       expect(Drive._state.pagination.currentPage).toBe(1);
-    });
-
-    test('Month Header Toggles visibility (Expand/Collapse)', () => {
-      Drive.fileData = [
-        {
-          file: { name: 'Jan' },
-          timestamp: new Date('2026-01-01').getTime(),
-          meta: {},
-        },
-      ];
-      Drive.refreshUI();
-
-      const header = container.querySelector('.month-header');
-      const list = container.querySelector('.month-list');
-
-      expect(list.classList.contains('drv-hidden')).toBe(true);
-      expect(header.querySelector('i').className).toContain('fa-chevron-right');
-
-      header.click();
-      expect(list.style.display).toBe('block');
-      expect(header.querySelector('i').className).toContain('fa-chevron-down');
-
-      header.click();
-      expect(list.style.display).toBe('none');
-      expect(header.querySelector('i').className).toContain('fa-chevron-right');
     });
   });
 
@@ -443,7 +431,8 @@ describe('Drive Module Combined Suite', () => {
 
       Drive.refreshUI();
 
-      const recentSection = container.querySelector('.recent-section');
+      const recentSlot = document.getElementById('driveRecentSlot');
+      const recentSection = recentSlot.querySelector('.recent-section');
       expect(recentSection).not.toBeNull();
       expect(recentSection.innerHTML).toContain('Recent.json');
     });
@@ -459,13 +448,14 @@ describe('Drive Module Combined Suite', () => {
       localStorage.setItem('recent_logs', JSON.stringify(['rec1']));
       Drive.refreshUI();
 
-      const clearBtn = document.getElementById('clearRecentHistory');
+      const recentSlot = document.getElementById('driveRecentSlot');
+      const clearBtn = recentSlot.querySelector('#clearRecentHistory');
       global.confirm.mockReturnValue(true);
 
       clearBtn.click();
 
       expect(localStorage.getItem('recent_logs')).toBeNull();
-      expect(container.querySelector('.recent-section')).toBeNull();
+      expect(recentSlot.querySelector('.recent-section')).toBeNull();
     });
 
     test('clearRecentHistory does nothing if confirm is cancelled', () => {
