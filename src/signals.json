@@ -1,5 +1,17 @@
 [
   {
+    "name": "Engine Coolant Temp",
+    "default": false,
+    "aliases": ["Engine Coolant Temp"]
+  },
+
+  {
+    "name": "Oil Temp",
+    "default": false,
+    "aliases": ["Estimated Oil Temp", "Engine Oil Temperature"]
+  },
+
+  {
     "name": "Fuel Level",
     "default": false,
     "aliases": ["Fuel Level"]
