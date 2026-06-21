@@ -12,7 +12,7 @@ class DriveManager {
 
     this._state = {
       sortOrder: 'desc',
-      filters: { term: '', start: null, end: null },
+      filters: { term: '', start: null, end: null, selectedMonth: '' },
       pagination: {
         currentPage: 1,
         itemsPerPage: 50,
@@ -25,7 +25,7 @@ class DriveManager {
           <div class="month-header drv-search-header" style="cursor: pointer; margin-top: 0; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
             <span><i class="fas fa-filter drv-icon-margin"></i> Filters & Search</span>
             <div style="display: flex; align-items: center; gap: 12px;">
-              <span id="clearDriveFilters" class="drv-clear-history" title="Clear Date Range" style="display: none; color: var(--brand-red);">
+              <span id="clearDriveFilters" class="drv-clear-history" title="Clear Filters" style="display: none; color: var(--brand-red);">
                 <i class="fas fa-calendar-times"></i> Clear
               </span>
               <i class="fas fa-chevron-right toggle-icon"></i>
@@ -37,10 +37,15 @@ class DriveManager {
               <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
               <i class="fas fa-times-circle drv-clear-icon" id="clearDriveSearchText" title="Clear search"></i>
             </div>
-            <div class="drv-date-filters">
-              <input type="date" id="driveDateStart" class="drv-date-input">
-              <span>to</span>
-              <input type="date" id="driveDateEnd" class="drv-date-input">
+            <div class="drv-date-filters" style="display: flex; flex-direction: column; gap: 8px;">
+              <select id="driveMonthFilter" class="template-select" style="width: 100%; cursor: pointer;">
+                <option value="">-- All Months --</option>
+              </select>
+              <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
+                <input type="date" id="driveDateStart" class="drv-date-input" style="flex: 1;">
+                <span style="color: var(--text-muted);">to</span>
+                <input type="date" id="driveDateEnd" class="drv-date-input" style="flex: 1;">
+              </div>
             </div>
           </div>
           <div id="driveRecentSlot"></div>
@@ -246,10 +251,39 @@ class DriveManager {
         return;
       }
 
+      this.populateMonthFilterDropdown();
       this.initSearch();
     } catch (error) {
       this.handleApiError(error, listEl);
     }
+  }
+
+  populateMonthFilterDropdown() {
+    const select = document.getElementById('driveMonthFilter');
+    if (!select) return;
+
+    const monthsSet = new Set();
+    this.fileData.forEach((item) => {
+      const dateObj = new Date(item.timestamp);
+      if (!isNaN(dateObj.getTime())) {
+        const monthYear = dateObj.toLocaleString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        });
+        monthsSet.add(monthYear);
+      }
+    });
+
+    const sortedMonths = Array.from(monthsSet).sort((a, b) => {
+      return new Date(b) - new Date(a);
+    });
+
+    sortedMonths.forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      select.appendChild(opt);
+    });
   }
 
   async loadFile(fileName, id, element) {
@@ -269,6 +303,7 @@ class DriveManager {
 
       const isFiltering =
         this._state.filters.term ||
+        this._state.filters.selectedMonth ||
         this._state.filters.start ||
         this._state.filters.end;
 
@@ -337,13 +372,6 @@ class DriveManager {
   }
 
   initSearch() {
-    const inputs = {
-      text: document.getElementById('driveSearchInput'),
-      clearText: document.getElementById('clearDriveSearchText'),
-      start: document.getElementById('driveDateStart'),
-      end: document.getElementById('driveDateEnd'),
-    };
-
     const searchHeader = document.querySelector('.drv-search-header');
     const searchContent = document.querySelector('.drv-search-content');
     if (searchHeader && searchContent) {
@@ -378,6 +406,7 @@ class DriveManager {
             .getElementById('driveSearchInput')
             ?.value.toLowerCase()
             .trim() || '',
+        selectedMonth: document.getElementById('driveMonthFilter')?.value || '',
         start: document.getElementById('driveDateStart')?.value
           ? new Date(document.getElementById('driveDateStart').value).setHours(
               0,
@@ -397,17 +426,20 @@ class DriveManager {
       };
 
       const clearTextBtn = document.getElementById('clearDriveSearchText');
-      if (clearTextBtn)
+      if (clearTextBtn) {
         clearTextBtn.style.display = this._state.filters.term
           ? 'block'
           : 'none';
+      }
 
-      const clearDatesBtn = document.getElementById('clearDriveFilters');
-      if (clearDatesBtn) {
-        clearDatesBtn.style.display =
-          this._state.filters.start || this._state.filters.end
-            ? 'block'
-            : 'none';
+      const clearFiltersBtn = document.getElementById('clearDriveFilters');
+      if (clearFiltersBtn) {
+        const hasActiveFilters =
+          this._state.filters.term ||
+          this._state.filters.selectedMonth ||
+          this._state.filters.start ||
+          this._state.filters.end;
+        clearFiltersBtn.style.display = hasActiveFilters ? 'block' : 'none';
       }
 
       this._state.pagination.currentPage = 1;
@@ -424,16 +456,21 @@ class DriveManager {
 
     safeAddEvent('clearDriveFilters', 'click', (e) => {
       e.stopPropagation();
+      const input = document.getElementById('driveSearchInput');
+      const select = document.getElementById('driveMonthFilter');
       const start = document.getElementById('driveDateStart');
       const end = document.getElementById('driveDateEnd');
+      if (input) input.value = '';
+      if (select) select.value = '';
       if (start) start.value = '';
       if (end) end.value = '';
       updateHandler(true);
     });
 
-    ['driveSearchInput', 'driveDateStart', 'driveDateEnd'].forEach((id) =>
-      safeAddEvent(id, 'input', () => updateHandler(id !== 'driveSearchInput'))
-    );
+    safeAddEvent('driveSearchInput', 'input', () => updateHandler(false));
+    safeAddEvent('driveMonthFilter', 'change', () => updateHandler(true));
+    safeAddEvent('driveDateStart', 'input', () => updateHandler(true));
+    safeAddEvent('driveDateEnd', 'input', () => updateHandler(true));
 
     this.refreshUI();
   }
@@ -513,6 +550,7 @@ class DriveManager {
       recentSlot.innerHTML = '';
       const isFiltering =
         this._state.filters.term ||
+        this._state.filters.selectedMonth ||
         this._state.filters.start ||
         this._state.filters.end;
 
@@ -526,15 +564,25 @@ class DriveManager {
   }
 
   _applyFilters(item) {
-    const { term, start, end } = this._state.filters;
+    const { term, selectedMonth, start, end } = this._state.filters;
     const fileDate = item.timestamp;
     const name = item.file.name.toLowerCase();
 
     const matchesText = name.includes(term);
-    const matchesDate =
+    const matchesDateRange =
       (!start || fileDate >= start) && (!end || fileDate <= end);
 
-    return matchesText && matchesDate;
+    let matchesMonth = true;
+    if (selectedMonth) {
+      const dateObj = new Date(item.timestamp);
+      const itemMonthYear = dateObj.toLocaleString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
+      matchesMonth = itemMonthYear === selectedMonth;
+    }
+
+    return matchesText && matchesDateRange && matchesMonth;
   }
 
   renderGroupedCards(container, items) {
