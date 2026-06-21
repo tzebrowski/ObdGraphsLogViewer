@@ -54,8 +54,8 @@ class DriveManager {
           <div class="file-card-body">
             <div class="file-name-title">${file.name}</div>
             <div class="file-card-meta-grid">
-              <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${meta?.date || 'N/A'}</span></div>
-              <div class="meta-item"><i class="fas fa-history"></i> <span>${meta?.length || 'N/A'}s</span></div>
+              <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${this.formatDate(meta?.date)}</span></div>
+              <div class="meta-item"><i class="fas fa-history"></i> <span>${this.formatDuration(meta?.length)}</span></div>
               <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
             </div>
           </div>
@@ -97,6 +97,37 @@ class DriveManager {
         </div>
       `,
     };
+  }
+
+  formatDuration(seconds) {
+    if (!seconds || isNaN(seconds)) return 'N/A';
+    const sec = parseInt(seconds, 10);
+    if (sec < 60) return `${sec}s`;
+
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+
+    if (m < 60) return `${m}m ${s}s`;
+
+    const h = Math.floor(m / 60);
+    const remainingM = m % 60;
+    return `${h}h ${remainingM}m`;
+  }
+
+  formatDate(isoString) {
+    if (!isoString || isoString === 'Unknown') return 'N/A';
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return isoString;
+    }
   }
 
   async findFolderId(name, parentId = 'root') {
