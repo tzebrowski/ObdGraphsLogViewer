@@ -22,11 +22,16 @@ class DriveManager {
     this.TEMPLATES = {
       searchInterface: () => `
         <div class="drv-search-container">
-          <div class="month-header drv-search-header" style="cursor: pointer; margin-top: 0; margin-bottom: 5px;">
+          <div class="month-header drv-search-header" style="cursor: pointer; margin-top: 0; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
             <span><i class="fas fa-filter drv-icon-margin"></i> Filters & Search</span>
-            <i class="fas fa-chevron-right toggle-icon"></i>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="clearDriveFilters" class="drv-clear-history" title="Clear Date Range" style="display: none; color: var(--brand-red);">
+                <i class="fas fa-calendar-times"></i> Clear
+              </span>
+              <i class="fas fa-chevron-right toggle-icon"></i>
+            </div>
           </div>
-          <div class="drv-search-content drv-hidden" style="display: none; flex-direction: column; gap: 8px;">
+          <div class="drv-search-content drv-hidden" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 8px;">
             <div class="drv-search-box">
               <i class="fas fa-search drv-search-icon"></i>
               <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
@@ -36,17 +41,55 @@ class DriveManager {
               <input type="date" id="driveDateStart" class="drv-date-input">
               <span>to</span>
               <input type="date" id="driveDateEnd" class="drv-date-input">
-              <button id="clearDriveFilters" class="btn-icon" title="Clear Date Range"><i class="fas fa-calendar-times"></i></button>
             </div>
           </div>
-          <div class="drv-controls-row" style="margin-top: 8px;">
-            <div id="driveResultCount" class="drv-result-count"></div>
-            <button id="driveSortToggle" class="btn btn-sm drv-sort-btn">
-              <i class="fas fa-sort-amount-down"></i> Newest
-            </button>
-          </div>
+          <div id="driveRecentSlot"></div>
+          <div id="driveTopControlsSlot"></div>
         </div>
         <div id="driveFileContainer" class="status-msg">Searching for logs...</div>
+      `,
+      topControls: (
+        current,
+        totalPages,
+        start,
+        end,
+        totalItems,
+        sortOrder,
+        pageSize
+      ) => `
+        <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); margin-bottom: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 0.75em; color: var(--text-muted); font-weight: bold;">
+              Found ${totalItems} logs
+            </div>
+            <button id="driveSortToggle" class="btn btn-sm drv-sort-btn">
+              <i class="fas fa-sort-amount-${sortOrder === 'desc' ? 'down' : 'up'}"></i> 
+              ${sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+            </button>
+          </div>
+          ${
+            totalItems > 0
+              ? `
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <span style="color: var(--text-muted);">Show:</span>
+              <select id="drivePageSize" style="padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); cursor: pointer;">
+                <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+                <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+                <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button id="prevPageBtn" class="btn btn-sm" style="padding: 2px 8px;" ${current === 1 ? 'disabled style="opacity:0.5"' : ''}><i class="fas fa-chevron-left"></i></button>
+              <span class="drv-page-info">${start}-${end}</span>
+              <button id="nextPageBtn" class="btn btn-sm" style="padding: 2px 8px;" ${current === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5"' : ''}><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+          `
+              : ''
+          }
+        </div>
       `,
       fileCard: (file, meta) => `
         <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
@@ -62,13 +105,13 @@ class DriveManager {
         </div>
       `,
       monthGroup: (monthYear) => `
-        <div class="month-header drv-month-header">
-          <span>${monthYear}</span> <i class="fas fa-chevron-right toggle-icon"></i>
+        <div class="drv-month-separator" style="padding: 4px 12px; font-size: 0.75em; font-weight: bold; color: var(--text-muted); border-bottom: 1px solid var(--border-color); margin: 15px 0 5px 0; text-transform: uppercase;">
+          <span>${monthYear}</span>
         </div>
-        <div class="month-list drv-hidden"></div>
+        <div class="month-list"></div>
       `,
       recentSectionHeader: () => `
-        <div class="month-header drv-recent-header" style="cursor: pointer;">
+        <div class="month-header drv-recent-header" style="cursor: pointer; margin-bottom: 5px;">
           <span><i class="fas fa-history drv-icon-margin"></i> Recently Viewed</span>
           <div style="display: flex; align-items: center; gap: 12px;">
             <span id="clearRecentHistory" class="drv-clear-history" title="Clear History">
@@ -78,23 +121,6 @@ class DriveManager {
           </div>
         </div>
         <div class="recent-list-container drv-hidden"></div>
-      `,
-      sortBtnContent: (order) => `
-        <i class="fas fa-sort-amount-${order === 'desc' ? 'down' : 'up'}"></i> 
-        ${order === 'desc' ? 'Newest' : 'Oldest'}
-      `,
-      paginationControls: (current, total, start, end, totalItems) => `
-        <div class="pagination-controls drv-pagination">
-          <button id="prevPageBtn" class="btn btn-sm" ${current === 1 ? 'disabled style="opacity:0.5"' : ''}>
-             <i class="fas fa-chevron-left"></i> Prev
-          </button>
-          <span class="drv-page-info">
-             ${start}-${end} of ${totalItems}
-          </span>
-          <button id="nextPageBtn" class="btn btn-sm" ${current === total ? 'disabled style="opacity:0.5"' : ''}>
-             Next <i class="fas fa-chevron-right"></i>
-          </button>
-        </div>
       `,
     };
   }
@@ -182,8 +208,7 @@ class DriveManager {
     const listEl = document.getElementById('driveFileContainer');
     if (!listEl) return;
 
-    listEl.innerHTML =
-      '<div class="status-msg">Fetching all logs from Drive...</div>';
+    listEl.innerHTML = '<div class="status-msg">Searching for logs...</div>';
     this.fileData = [];
 
     let pageToken = null;
@@ -237,9 +262,9 @@ class DriveManager {
     recent = [id, ...recent.filter((i) => i !== id)].slice(0, 3);
     localStorage.setItem('recent_logs', JSON.stringify(recent));
 
-    const container = document.getElementById('driveFileContainer');
-    if (container) {
-      const oldRecent = container.querySelector('.recent-section');
+    const slot = document.getElementById('driveRecentSlot');
+    if (slot) {
+      const oldRecent = slot.querySelector('.recent-section');
       if (oldRecent) oldRecent.remove();
 
       const isFiltering =
@@ -248,7 +273,7 @@ class DriveManager {
         this._state.filters.end;
 
       if (!isFiltering) {
-        this.renderRecentSection(container, true);
+        this.renderRecentSection(slot, true);
       }
     }
 
@@ -317,7 +342,6 @@ class DriveManager {
       clearText: document.getElementById('clearDriveSearchText'),
       start: document.getElementById('driveDateStart'),
       end: document.getElementById('driveDateEnd'),
-      sortBtn: document.getElementById('driveSortToggle'),
     };
 
     const searchHeader = document.querySelector('.drv-search-header');
@@ -378,6 +402,14 @@ class DriveManager {
           ? 'block'
           : 'none';
 
+      const clearDatesBtn = document.getElementById('clearDriveFilters');
+      if (clearDatesBtn) {
+        clearDatesBtn.style.display =
+          this._state.filters.start || this._state.filters.end
+            ? 'block'
+            : 'none';
+      }
+
       this._state.pagination.currentPage = 1;
 
       if (immediate) this.refreshUI();
@@ -390,7 +422,8 @@ class DriveManager {
       updateHandler(true);
     });
 
-    safeAddEvent('clearDriveFilters', 'click', () => {
+    safeAddEvent('clearDriveFilters', 'click', (e) => {
+      e.stopPropagation();
       const start = document.getElementById('driveDateStart');
       const end = document.getElementById('driveDateEnd');
       if (start) start.value = '';
@@ -401,13 +434,6 @@ class DriveManager {
     ['driveSearchInput', 'driveDateStart', 'driveDateEnd'].forEach((id) =>
       safeAddEvent(id, 'input', () => updateHandler(id !== 'driveSearchInput'))
     );
-
-    safeAddEvent('driveSortToggle', 'click', (e) => {
-      const btn = e.currentTarget;
-      this._state.sortOrder = this._state.sortOrder === 'desc' ? 'asc' : 'desc';
-      btn.innerHTML = this.TEMPLATES.sortBtnContent(this._state.sortOrder);
-      this.refreshUI();
-    });
 
     this.refreshUI();
   }
@@ -437,22 +463,66 @@ class DriveManager {
     const startIdx = (this._state.pagination.currentPage - 1) * itemsPerPage;
     const paginatedItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
-    container.innerHTML = '';
+    const slot = document.getElementById('driveTopControlsSlot');
+    if (slot) {
+      const start = filtered.length === 0 ? 0 : startIdx + 1;
+      const end = Math.min(
+        this._state.pagination.currentPage * itemsPerPage,
+        filtered.length
+      );
 
-    const isFiltering =
-      this._state.filters.term ||
-      this._state.filters.start ||
-      this._state.filters.end;
+      slot.innerHTML = this.TEMPLATES.topControls(
+        this._state.pagination.currentPage,
+        totalPages,
+        start,
+        end,
+        filtered.length,
+        this._state.sortOrder,
+        itemsPerPage
+      );
 
-    if (!isFiltering) {
-      this.renderRecentSection(container);
+      slot.querySelector('#driveSortToggle')?.addEventListener('click', () => {
+        this._state.sortOrder =
+          this._state.sortOrder === 'desc' ? 'asc' : 'desc';
+        this.refreshUI();
+      });
+
+      slot.querySelector('#drivePageSize')?.addEventListener('change', (e) => {
+        this._state.pagination.itemsPerPage = parseInt(e.target.value, 10);
+        this._state.pagination.currentPage = 1;
+        this.refreshUI();
+      });
+
+      slot.querySelector('#prevPageBtn')?.addEventListener('click', () => {
+        if (this._state.pagination.currentPage > 1) {
+          this._state.pagination.currentPage--;
+          this.refreshUI();
+        }
+      });
+
+      slot.querySelector('#nextPageBtn')?.addEventListener('click', () => {
+        if (this._state.pagination.currentPage < totalPages) {
+          this._state.pagination.currentPage++;
+          this.refreshUI();
+        }
+      });
     }
 
-    this.renderGroupedCards(container, paginatedItems);
-    this.renderPaginationControls(container, filtered.length, totalPages);
+    const recentSlot = document.getElementById('driveRecentSlot');
+    if (recentSlot) {
+      recentSlot.innerHTML = '';
+      const isFiltering =
+        this._state.filters.term ||
+        this._state.filters.start ||
+        this._state.filters.end;
 
-    const countEl = document.getElementById('driveResultCount');
-    if (countEl) countEl.innerText = `Found ${filtered.length} logs`;
+      if (!isFiltering) {
+        this.renderRecentSection(recentSlot);
+      }
+    }
+
+    container.innerHTML = '';
+    this.renderGroupedCards(container, paginatedItems);
   }
 
   _applyFilters(item) {
@@ -553,61 +623,10 @@ class DriveManager {
       });
   }
 
-  renderPaginationControls(container, totalItems, totalPages) {
-    if (totalItems === 0) return;
-
-    const { currentPage, itemsPerPage } = this._state.pagination;
-    const start = (currentPage - 1) * itemsPerPage + 1;
-    const end = Math.min(currentPage * itemsPerPage, totalItems);
-
-    const navDiv = document.createElement('div');
-    navDiv.innerHTML = this.TEMPLATES.paginationControls(
-      currentPage,
-      totalPages,
-      start,
-      end,
-      totalItems
-    );
-    container.appendChild(navDiv);
-
-    navDiv.querySelector('#prevPageBtn')?.addEventListener('click', () => {
-      if (currentPage > 1) {
-        this._state.pagination.currentPage--;
-        this.refreshUI();
-      }
-    });
-
-    navDiv.querySelector('#nextPageBtn')?.addEventListener('click', () => {
-      if (currentPage < totalPages) {
-        this._state.pagination.currentPage++;
-        this.refreshUI();
-      }
-    });
-  }
-
   createMonthGroup(monthYear) {
     const group = document.createElement('div');
     group.className = 'month-group';
     group.innerHTML = this.TEMPLATES.monthGroup(monthYear);
-
-    const header = group.querySelector('.month-header');
-    const list = group.querySelector('.month-list');
-
-    header.onclick = () => {
-      const isHidden =
-        list.classList.contains('drv-hidden') || list.style.display === 'none';
-
-      if (isHidden) {
-        list.classList.remove('drv-hidden');
-        list.style.display = 'block';
-        header.querySelector('.toggle-icon').className =
-          'fas fa-chevron-down toggle-icon';
-      } else {
-        list.style.display = 'none';
-        header.querySelector('.toggle-icon').className =
-          'fas fa-chevron-right toggle-icon';
-      }
-    };
     return group;
   }
 
