@@ -457,13 +457,17 @@ export const UI = {
   toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.querySelector('.sidebar-backdrop');
+    const footer = document.querySelector('.footer');
+
     if (!sidebar) return;
 
     if (window.innerWidth <= 768) {
       sidebar.classList.toggle('active');
       if (backdrop) backdrop.classList.toggle('active');
+      if (footer) footer.classList.toggle('active');
     } else {
       sidebar.classList.toggle('collapsed');
+      if (footer) footer.classList.toggle('collapsed');
     }
   },
 
