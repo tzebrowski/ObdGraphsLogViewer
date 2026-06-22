@@ -140,7 +140,7 @@ body.docs-body.dark-theme .feature-card {
 }
 
 .sidebar.collapsed {
-  margin-left: -290px;
+  margin-left: -350px;
 }
 
 .sidebar h2 {
@@ -3532,7 +3532,7 @@ body.docs-body.dark-theme .feature-card {
 }
 
 .sidebar.collapsed {
-  margin-left: -290px;
+  margin-left: -350px;
 }
 
 .sidebar h2 {
@@ -6845,4 +6845,29 @@ body.analyzer-active .footer {
 
 body.analyzer-active .sidebar.collapsed ~ .footer {
   left: 60px;
+}
+
+body.analyzer-active .footer {
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
+}
+
+/* Desktop: Slide the footer down off the screen when collapsed */
+body.analyzer-active .footer.collapsed {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none; /* Prevents clicking the invisible area */
+}
+
+/* Mobile: Ensure it hides cleanly when the menu is closed, and shows when active */
+@media (width <= 768px) {
+  body.analyzer-active .footer {
+    display: none; /* Hide by default on mobile unless sidebar is active */
+  }
+
+  body.analyzer-active .footer.active {
+    display: block;
+    animation: slideUp 0.3s ease forwards;
+  }
 }
