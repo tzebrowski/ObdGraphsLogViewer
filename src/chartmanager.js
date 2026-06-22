@@ -32,6 +32,7 @@ export const ChartManager = {
   _rafId: null,
 
   init() {
+    console.log("🚀 ChartManager zainicjowany - WERSJA 4 (Test Cache)");
     window.Hammer = Hammer;
 
     Tooltip.positioners.topRightCorner = function (_elements, _eventPosition) {
@@ -240,7 +241,7 @@ export const ChartManager = {
     csvContent += 'Time (s),' + visibleSignals.join(',') + '\n';
 
     if (visibleSignals.length === 0) {
-      alert('No signals visible to export.');
+      alert('Brak sygnałów do wyeksportowania.');
       return;
     }
 
@@ -368,11 +369,11 @@ export const ChartManager = {
       emptyState.innerHTML = `
           <div class="empty-state-content">
             <i class="fas fa-chart-area empty-icon"></i>
-            <h3>No Telemetry Loaded</h3>
-            <p>Start by scanning your Google Drive or uploading a local JSON trip log.</p>
+            <h3>Brak załadowanej telemetrii</h3>
+            <p>Załaduj pliki JSON z dysku Google lub lokalnie.</p>
             <div class="empty-state-actions">
-              <button class="btn btn-primary mobile-only-btn" onclick="toggleSidebar()"><i class="fas fa-folder-open"></i> Open Log Source</button>
-              <button class="btn" onclick="loadSampleData(false)"><i class="fas fa-vial"></i> Load Sample Trip</button>
+              <button class="btn btn-primary mobile-only-btn" onclick="toggleSidebar()"><i class="fas fa-folder-open"></i> Otwórz Menu</button>
+              <button class="btn" onclick="loadSampleData(false)"><i class="fas fa-vial"></i> Przykładowy Log</button>
             </div>
           </div>
         `;
@@ -803,7 +804,6 @@ export const ChartManager = {
     };
   },
 
-  // --- REFACTORED: Decomposed Chart Options ---
   _getChartOptions(file) {
     return {
       responsive: true,
@@ -905,6 +905,12 @@ export const ChartManager = {
       pan: {
         enabled: true,
         mode: 'x',
+        onPanStart: (ctx) => {
+          const e = ctx.event;
+          if (e && (e.shiftKey || (e.srcEvent && e.srcEvent.shiftKey))) {
+            return false;
+          }
+        },
         onPan: ({ chart }) => {
           const idx = AppState.chartInstances.indexOf(chart);
           if (!isOverlay) this._updateLocalSliderUI(idx);
@@ -924,6 +930,12 @@ export const ChartManager = {
         wheel: { enabled: true },
         pinch: { enabled: true },
         mode: 'x',
+        onZoomStart: (ctx) => {
+          const e = ctx.event;
+          if (e && (e.shiftKey || (e.srcEvent && e.srcEvent.shiftKey))) {
+            return false; // Blokuje zoom z rolki w trakcie zaznaczania Shiftem
+          }
+        },
         onZoom: ({ chart }) => {
           const idx = AppState.chartInstances.indexOf(chart);
           if (!isOverlay) this._updateLocalSliderUI(idx);
@@ -944,44 +956,119 @@ export const ChartManager = {
   },
 
   _attachMouseListeners(canvas, index) {
-    canvas.addEventListener('mousemove', (e) => {
-      const chart = AppState.chartInstances[index];
-      if (!chart) return;
+    let isSelecting = false;
+    let selectionStartMs = null;
 
-      const newValue = chart.scales.x.getValueForPixel(e.offsetX);
-      this.hoverValue = newValue;
-      this.activeChartIndex = index;
-
-      if (this._rafId) {
-        cancelAnimationFrame(this._rafId);
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.shiftKey) {
+        e.preventDefault();
+        const chart = AppState.chartInstances[index];
+        if (!chart) return;
+        isSelecting = true;
+        selectionStartMs = chart.scales.x.getValueForPixel(e.offsetX);
       }
-      this._rafId = requestAnimationFrame(() => {
-        chart.draw();
-        this._syncTooltip(chart, newValue);
-        this._rafId = null;
-      });
     });
 
-    canvas.addEventListener('mouseleave', () => {
+    canvas.addEventListener('pointermove', (e) => {
       const chart = AppState.chartInstances[index];
       if (!chart) return;
+      const newValue = chart.scales.x.getValueForPixel(e.offsetX);
+
+      if (isSelecting) {
+        const file = AppState.files[index];
+        AppState.activeHighlight = {
+          start: (Math.min(selectionStartMs, newValue) - file.startTime) / 1000,
+          end: (Math.max(selectionStartMs, newValue) - file.startTime) / 1000,
+          targetIndex: index
+        };
+        
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = requestAnimationFrame(() => {
+          chart.draw();
+          this._rafId = null;
+        });
+      } else {
+        this.hoverValue = newValue;
+        this.activeChartIndex = index;
+
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = requestAnimationFrame(() => {
+          chart.draw();
+          this._syncTooltip(chart, newValue);
+          this._rafId = null;
+        });
+      }
     });
 
-    canvas.addEventListener('dblclick', (e) => {
-      const chart = AppState.chartInstances[index];
-      const file = AppState.files[index];
+    canvas.addEventListener('pointerup', (e) => {
+      if (isSelecting) {
+        isSelecting = false;
+        
+        const chart = AppState.chartInstances[index];
+        const file = AppState.files[index];
+        const selectionEndMs = chart.scales.x.getValueForPixel(e.offsetX);
 
-      const clickVal = chart.scales.x.getValueForPixel(e.offsetX);
-      const relTime = (clickVal - file.startTime) / 1000;
+        const startRel = (Math.min(selectionStartMs, selectionEndMs) - file.startTime) / 1000;
+        const endRel = (Math.max(selectionStartMs, selectionEndMs) - file.startTime) / 1000;
 
-      const text = prompt(`Add annotation at ${relTime.toFixed(1)}s:`, '');
-      if (text) {
-        if (!file.annotations) file.annotations = [];
-        file.annotations.push({
-          time: relTime,
-          text: text,
+        AppState.activeHighlight = null;
+
+        if (endRel - startRel > 0.05) {
+          setTimeout(() => {
+            const label = prompt('Zaznaczono obszar. Podaj nazwę:', 'Anomalia');
+            if (label !== null) {
+              if (!file.highlights) file.highlights = [];
+              file.highlights.push({
+                start: startRel,
+                end: endRel,
+                label: label,
+                color: 'rgba(0, 150, 255, 0.15)'
+              });
+              chart.draw();
+            }
+          }, 10);
+        }
+        
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = requestAnimationFrame(() => {
+          chart.draw();
+          this._rafId = null;
         });
-        chart.draw();
+      }
+    });
+
+    canvas.addEventListener('pointerleave', () => {
+      if (isSelecting) {
+        isSelecting = false;
+        AppState.activeHighlight = null;
+        const chart = AppState.chartInstances[index];
+        if (chart) {
+          if (this._rafId) cancelAnimationFrame(this._rafId);
+          this._rafId = requestAnimationFrame(() => {
+            chart.draw();
+            this._rafId = null;
+          });
+        }
+      }
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (e.altKey) {
+        const chart = AppState.chartInstances[index];
+        const file = AppState.files[index];
+
+        const clickVal = chart.scales.x.getValueForPixel(e.offsetX);
+        const relTime = (clickVal - file.startTime) / 1000;
+
+        const text = prompt(`Dodaj znacznik (Alt+Click) dla ${relTime.toFixed(2)}s:`, '');
+        if (text) {
+          if (!file.annotations) file.annotations = [];
+          file.annotations.push({
+            time: relTime,
+            text: text,
+          });
+          chart.draw();
+        }
       }
     });
   },
@@ -1098,25 +1185,38 @@ export const ChartManager = {
 
       const file = AppState.files[chartIdx];
 
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(left, top, right - left, bottom - top);
+      ctx.clip();
+
       if (file && AppState.activeHighlight?.targetIndex === chartIdx) {
-        const pxStart = x.getPixelForValue(
-          file.startTime + AppState.activeHighlight.start * 1000
-        );
-        const pxEnd = x.getPixelForValue(
-          file.startTime + AppState.activeHighlight.end * 1000
-        );
+        const pxStart = x.getPixelForValue(file.startTime + AppState.activeHighlight.start * 1000);
+        const pxEnd = x.getPixelForValue(file.startTime + AppState.activeHighlight.end * 1000);
         if (!isNaN(pxStart) && !isNaN(pxEnd)) {
-          ctx.save();
-          ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
-          ctx.fillRect(
-            Math.max(pxStart, left),
-            top,
-            Math.min(pxEnd, right) - Math.max(pxStart, left),
-            bottom - top
-          );
-          ctx.restore();
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+          ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
         }
       }
+
+      if (file && file.highlights && file.highlights.length > 0) {
+        file.highlights.forEach((hl) => {
+          const pxStart = x.getPixelForValue(file.startTime + hl.start * 1000);
+          const pxEnd = x.getPixelForValue(file.startTime + hl.end * 1000);
+          
+          if (!isNaN(pxStart) && !isNaN(pxEnd)) {
+            ctx.fillStyle = hl.color || 'rgba(0, 150, 255, 0.15)';
+            ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
+            
+            if (hl.label) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+              ctx.font = 'bold 11px Arial';
+              ctx.fillText(hl.label, pxStart + 5, top + 15);
+            }
+          }
+        });
+      }
+      ctx.restore();
 
       if (file && file.annotations && file.annotations.length > 0) {
         ctx.save();
@@ -1166,21 +1266,23 @@ export const ChartManager = {
     \u2190 / \u2192 : Pan Left/Right (Shift for faster)
     + / - : Zoom In / Out
     R : Reset View
-    A : Add Annotation (at cursor position)
+    A : KLAWIATURA: Dodaj znacznik (w miejscu kursora)
     E : Export Visible Data (CSV)
-    L : Toggle Legend Visibility`;
+    L : Toggle Legend Visibility
+    Shift + Drag : Zaznacz Obszar
+    Alt + Click : Dodaj znacznik punktowy`;
   },
 
   _addAnnotationViaKeyboard(index) {
     if (this.hoverValue === null || this.activeChartIndex !== index) {
       alert(
-        'Move your mouse over the chart to select a time for the annotation.'
+        'Najedź kursorem na wykres, aby wstawić znacznik.'
       );
       return;
     }
     const file = AppState.files[index];
     const relTime = (this.hoverValue - file.startTime) / 1000;
-    const text = prompt(`Add annotation at ${relTime.toFixed(2)}s:`, '');
+    const text = prompt(`KLAWIATURA: Dodaj znacznik dla ${relTime.toFixed(2)}s:`, '');
     if (text) {
       if (!file.annotations) file.annotations = [];
       file.annotations.push({ time: relTime, text: text });
