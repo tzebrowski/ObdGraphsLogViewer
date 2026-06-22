@@ -48,6 +48,8 @@ const mockChartInstance = {
     restore: jest.fn(),
     fillRect: jest.fn(),
     beginPath: jest.fn(),
+    rect: jest.fn(),
+    clip: jest.fn(),
     moveTo: jest.fn(),
     lineTo: jest.fn(),
     stroke: jest.fn(),
@@ -436,22 +438,22 @@ describe('ChartManager Complete Suite', () => {
       expect(mockChartInstance.pan).toHaveBeenCalled();
     });
 
-    test('Mousemove updates hoverValue', () => {
+    test('Pointermove updates hoverValue', () => {
       mockChartInstance.scales.x.getValueForPixel.mockReturnValue(1500);
-      const event = new MouseEvent('mousemove', { bubbles: true });
+      const event = new MouseEvent('pointermove', { bubbles: true });
       Object.defineProperty(event, 'offsetX', { value: 100 });
       canvas.dispatchEvent(event);
       expect(ChartManager.hoverValue).toBe(1500);
     });
 
-    test('Double click prompts annotation', () => {
+    test('Alt+click prompts annotation', () => {
       jest.spyOn(window, 'prompt').mockReturnValue('Note');
       mockChartInstance.scales.x.getValueForPixel.mockReturnValue(2000);
       AppState.files = [
         { name: 'f', startTime: 1000, duration: 10, annotations: [] },
       ];
 
-      const event = new MouseEvent('dblclick', { bubbles: true });
+      const event = new MouseEvent('click', { bubbles: true, altKey: true });
       Object.defineProperty(event, 'offsetX', { value: 50 });
       canvas.dispatchEvent(event);
 
@@ -645,7 +647,7 @@ describe('ChartManager Complete Suite', () => {
       AppState.files = [{ startTime: 1000 }];
 
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
-      expect(ctxFillStyleSpy).toHaveBeenCalledWith('rgba(255, 0, 0, 0.08)');
+      expect(ctxFillStyleSpy).toHaveBeenCalledWith('rgba(255, 0, 0, 0.15)');
       expect(mockChartInstance.ctx.fillRect).toHaveBeenCalled();
     });
 
