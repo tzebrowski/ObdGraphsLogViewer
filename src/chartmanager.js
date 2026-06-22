@@ -803,7 +803,6 @@ export const ChartManager = {
     };
   },
 
-  // --- REFACTORED: Decomposed Chart Options ---
   _getChartOptions(file) {
     return {
       responsive: true,
@@ -905,6 +904,12 @@ export const ChartManager = {
       pan: {
         enabled: true,
         mode: 'x',
+        onPanStart: (ctx) => {
+          const e = ctx.event;
+          if (e && (e.shiftKey || (e.srcEvent && e.srcEvent.shiftKey))) {
+            return false;
+          }
+        },
         onPan: ({ chart }) => {
           const idx = AppState.chartInstances.indexOf(chart);
           if (!isOverlay) this._updateLocalSliderUI(idx);
@@ -924,6 +929,12 @@ export const ChartManager = {
         wheel: { enabled: true },
         pinch: { enabled: true },
         mode: 'x',
+        onZoomStart: (ctx) => {
+          const e = ctx.event;
+          if (e && (e.shiftKey || (e.srcEvent && e.srcEvent.shiftKey))) {
+            return false;
+          }
+        },
         onZoom: ({ chart }) => {
           const idx = AppState.chartInstances.indexOf(chart);
           if (!isOverlay) this._updateLocalSliderUI(idx);
@@ -944,44 +955,224 @@ export const ChartManager = {
   },
 
   _attachMouseListeners(canvas, index) {
-    canvas.addEventListener('mousemove', (e) => {
-      const chart = AppState.chartInstances[index];
-      if (!chart) return;
+    let isSelecting = false;
+    let selectionStartMs = null;
 
-      const newValue = chart.scales.x.getValueForPixel(e.offsetX);
-      this.hoverValue = newValue;
-      this.activeChartIndex = index;
-
-      if (this._rafId) {
-        cancelAnimationFrame(this._rafId);
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.shiftKey) {
+        e.preventDefault();
+        const chart = AppState.chartInstances[index];
+        if (!chart) return;
+        isSelecting = true;
+        selectionStartMs = chart.scales.x.getValueForPixel(e.offsetX);
       }
-      this._rafId = requestAnimationFrame(() => {
-        chart.draw();
-        this._syncTooltip(chart, newValue);
-        this._rafId = null;
-      });
     });
 
-    canvas.addEventListener('mouseleave', () => {
+    canvas.addEventListener('pointermove', (e) => {
       const chart = AppState.chartInstances[index];
       if (!chart) return;
+      const newValue = chart.scales.x.getValueForPixel(e.offsetX);
+
+      if (isSelecting) {
+        const file = AppState.files[index];
+        AppState.activeHighlight = {
+          start: (Math.min(selectionStartMs, newValue) - file.startTime) / 1000,
+          end: (Math.max(selectionStartMs, newValue) - file.startTime) / 1000,
+          targetIndex: index,
+        };
+
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = requestAnimationFrame(() => {
+          chart.draw();
+          this._rafId = null;
+        });
+      } else {
+        this.hoverValue = newValue;
+        this.activeChartIndex = index;
+
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = requestAnimationFrame(() => {
+          chart.draw();
+          this._syncTooltip(chart, newValue);
+          this._rafId = null;
+        });
+      }
     });
 
-    canvas.addEventListener('dblclick', (e) => {
-      const chart = AppState.chartInstances[index];
-      const file = AppState.files[index];
+    canvas.addEventListener('pointerup', (e) => {
+      if (isSelecting) {
+        isSelecting = false;
 
-      const clickVal = chart.scales.x.getValueForPixel(e.offsetX);
-      const relTime = (clickVal - file.startTime) / 1000;
+        const chart = AppState.chartInstances[index];
+        const file = AppState.files[index];
+        const selectionEndMs = chart.scales.x.getValueForPixel(e.offsetX);
 
-      const text = prompt(`Add annotation at ${relTime.toFixed(1)}s:`, '');
-      if (text) {
-        if (!file.annotations) file.annotations = [];
-        file.annotations.push({
-          time: relTime,
-          text: text,
+        const startRel =
+          (Math.min(selectionStartMs, selectionEndMs) - file.startTime) / 1000;
+        const endRel =
+          (Math.max(selectionStartMs, selectionEndMs) - file.startTime) / 1000;
+
+        AppState.activeHighlight = null;
+
+        if (endRel - startRel > 0.05) {
+          let statsObj = {};
+          const startAbs = file.startTime + startRel * 1000;
+          const endAbs = file.startTime + endRel * 1000;
+          let statsHtml = '';
+
+          chart.data.datasets.forEach((ds) => {
+            if (!ds.hidden) {
+              const sigName = ds.label;
+              const dataPoints = file.signals[sigName]?.filter(
+                (p) => p.x >= startAbs && p.x <= endAbs
+              );
+              if (dataPoints && dataPoints.length > 0) {
+                const vals = dataPoints.map((p) => parseFloat(p.y));
+                const min = Math.min(...vals);
+                const max = Math.max(...vals);
+                statsHtml += `<li><b>${sigName}:</b> Min: ${min.toFixed(2)}, Max: ${max.toFixed(2)}</li>`;
+                statsObj[sigName] = { min, max };
+              }
+            }
+          });
+
+          const modalId = 'customAnomalyModal';
+          const existing = document.getElementById(modalId);
+          if (existing) existing.remove();
+
+          const durationStr = (endRel - startRel).toFixed(2);
+
+          const modalHtml = `
+            <div id="${modalId}" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:9999;">
+              <div style="background:var(--card-bg, #fff); color:var(--text-color, #333); padding:20px; border-radius:8px; width:450px; max-width:90%; box-shadow:0 4px 20px rgba(0,0,0,0.3); font-family:sans-serif;">
+                <h3 style="margin-top:0; border-bottom:1px solid #ddd; padding-bottom:10px;">Save Highlighted Area</h3>
+                <p style="font-size:0.9em; margin-bottom:15px;">Time: <b>${startRel.toFixed(2)}s - ${endRel.toFixed(2)}s</b> (Duration: ${durationStr}s)</p>
+                
+                <div style="font-size: 0.85em; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px; margin-bottom: 15px; max-height: 120px; overflow-y: auto;">
+                   <p style="margin: 0 0 5px 0;"><b>Calculated Context (visible data):</b></p>
+                   <ul style="margin: 0; padding-left: 20px;">${statsHtml || '<li>No visible data in this range</li>'}</ul>
+                </div>
+
+                <input type="text" id="anoTitle" placeholder="Area title (e.g. Voltage drop)" style="width:100%; margin-bottom:10px; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+                <textarea id="anoDesc" placeholder="Additional description..." style="width:100%; height:60px; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; resize:vertical;"></textarea>
+                
+                <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                   <button id="btnAnoCancel" style="padding:8px 15px; border:none; background:#ccc; color:#333; border-radius:4px; cursor:pointer;">Cancel</button>
+                   <button id="btnAnoSave" style="padding:8px 15px; border:none; background:#007bff; color:#fff; border-radius:4px; cursor:pointer;">Save Highlight</button>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+          document.getElementById('btnAnoCancel').onclick = () => {
+            document.getElementById(modalId).remove();
+            chart.draw();
+          };
+
+          document.getElementById('btnAnoSave').onclick = () => {
+            const title =
+              document.getElementById('anoTitle').value || 'Highlighted Area';
+            const desc = document.getElementById('anoDesc').value;
+
+            if (!file.highlights) file.highlights = [];
+            file.highlights.push({
+              start: startRel,
+              end: endRel,
+              label: title,
+              description: desc,
+              color: 'rgba(255, 165, 0, 0.15)',
+            });
+
+            document.getElementById(modalId).remove();
+            chart.draw();
+          };
+        }
+
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = requestAnimationFrame(() => {
+          chart.draw();
+          this._rafId = null;
         });
-        chart.draw();
+      }
+    });
+
+    canvas.addEventListener('pointerleave', () => {
+      if (isSelecting) {
+        isSelecting = false;
+        AppState.activeHighlight = null;
+        const chart = AppState.chartInstances[index];
+        if (chart) {
+          if (this._rafId) cancelAnimationFrame(this._rafId);
+          this._rafId = requestAnimationFrame(() => {
+            chart.draw();
+            this._rafId = null;
+          });
+        }
+      }
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (e.altKey) {
+        const chart = AppState.chartInstances[index];
+        const file = AppState.files[index];
+
+        const clickVal = chart.scales.x.getValueForPixel(e.offsetX);
+        const relTime = (clickVal - file.startTime) / 1000;
+
+        // 1. Sprawdz czy kliknieto blisko istniejacej adnotacji punktowej (do usuniecia)
+        if (file.annotations && file.annotations.length > 0) {
+          const clickX = e.offsetX;
+          let clickedNoteIdx = -1;
+
+          for (let i = 0; i < file.annotations.length; i++) {
+            const note = file.annotations[i];
+            const noteAbsTime = file.startTime + note.time * 1000;
+            const notePix = chart.scales.x.getPixelForValue(noteAbsTime);
+            if (Math.abs(clickX - notePix) < 15) {
+              clickedNoteIdx = i;
+              break;
+            }
+          }
+
+          if (clickedNoteIdx !== -1) {
+            if (confirm('Delete this point annotation?')) {
+              file.annotations.splice(clickedNoteIdx, 1);
+              chart.draw();
+            }
+            return;
+          }
+        }
+
+        // 2. Sprawdz czy kliknieto wewnatrz podswietlonego obszaru (do usuniecia)
+        if (file.highlights && file.highlights.length > 0) {
+          const clickedHlIdx = file.highlights.findIndex(
+            (hl) => relTime >= hl.start && relTime <= hl.end
+          );
+
+          if (clickedHlIdx !== -1) {
+            if (confirm('Delete this highlighted area?')) {
+              file.highlights.splice(clickedHlIdx, 1);
+              chart.draw();
+            }
+            return;
+          }
+        }
+
+        // 3. Jeśli nie usunieto niczego, standardowo dodaj nowy znacznik
+        const text = prompt(
+          `Add point annotation (Alt+Click) at ${relTime.toFixed(2)}s:`,
+          ''
+        );
+        if (text) {
+          if (!file.annotations) file.annotations = [];
+          file.annotations.push({
+            time: relTime,
+            text: text,
+          });
+          chart.draw();
+        }
       }
     });
   },
@@ -1098,6 +1289,11 @@ export const ChartManager = {
 
       const file = AppState.files[chartIdx];
 
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(left, top, right - left, bottom - top);
+      ctx.clip();
+
       if (file && AppState.activeHighlight?.targetIndex === chartIdx) {
         const pxStart = x.getPixelForValue(
           file.startTime + AppState.activeHighlight.start * 1000
@@ -1106,17 +1302,104 @@ export const ChartManager = {
           file.startTime + AppState.activeHighlight.end * 1000
         );
         if (!isNaN(pxStart) && !isNaN(pxEnd)) {
-          ctx.save();
-          ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
-          ctx.fillRect(
-            Math.max(pxStart, left),
-            top,
-            Math.min(pxEnd, right) - Math.max(pxStart, left),
-            bottom - top
-          );
-          ctx.restore();
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+          ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
         }
       }
+
+      if (file && file.highlights && file.highlights.length > 0) {
+        file.highlights.forEach((hl) => {
+          const pxStart = x.getPixelForValue(file.startTime + hl.start * 1000);
+          const pxEnd = x.getPixelForValue(file.startTime + hl.end * 1000);
+
+          if (!isNaN(pxStart) && !isNaN(pxEnd)) {
+            // Rysowanie tła obszaru
+            ctx.fillStyle = hl.color || 'rgba(255, 165, 0, 0.15)'; // Default orange-ish
+            ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
+
+            // --- KALKULACJA KONTEKSTU W LOCIE ---
+            let statsObj = {};
+            const startAbs = file.startTime + hl.start * 1000;
+            const endAbs = file.startTime + hl.end * 1000;
+
+            chart.data.datasets.forEach((ds) => {
+              if (!ds.hidden) {
+                const sigName = ds.label;
+                const dataPoints = file.signals[sigName]?.filter(
+                  (p) => p.x >= startAbs && p.x <= endAbs
+                );
+                if (dataPoints && dataPoints.length > 0) {
+                  const vals = dataPoints.map((p) => parseFloat(p.y));
+                  const min = Math.min(...vals);
+                  const max = Math.max(...vals);
+                  statsObj[sigName] = { min, max };
+                }
+              }
+            });
+
+            // --- RYSOWANIE POBRANEGO KONTEKSTU Wewnątrz OBSZARU ---
+            let texts = [];
+            const displayLabel = hl.label || 'Highlighted Area';
+            texts.push({ text: displayLabel, font: 'bold 11px Arial' });
+
+            const duration = (hl.end - hl.start).toFixed(2);
+            texts.push({
+              text: `Duration: ${duration}s`,
+              font: 'italic 10px Arial',
+            });
+
+            if (hl.description)
+              texts.push({ text: hl.description, font: 'italic 10px Arial' });
+
+            if (Object.keys(statsObj).length > 0) {
+              for (const [sig, vals] of Object.entries(statsObj)) {
+                texts.push({
+                  text: `${sig}: min ${vals.min.toFixed(1)}, max ${vals.max.toFixed(1)}`,
+                  font: '10px Arial',
+                });
+              }
+            } else {
+              texts.push({
+                text: `No visible data in this range`,
+                font: '10px Arial',
+              });
+            }
+
+            if (texts.length > 0) {
+              const padding = 5;
+              const lineHeight = 14;
+              const boxHeight = texts.length * lineHeight + padding * 2;
+              let maxWidth = 0;
+
+              // Zmierz szerokość tekstów by dopasować czarne tło
+              texts.forEach((t) => {
+                ctx.font = t.font;
+                const w = ctx.measureText(t.text).width;
+                if (w > maxWidth) maxWidth = w;
+              });
+
+              // Rysuj estetyczne, półprzezroczyste czarne tło dla tekstu kontekstu
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+              ctx.fillRect(
+                pxStart + 5,
+                top + 5,
+                maxWidth + padding * 2,
+                boxHeight
+              );
+
+              // Rysuj sam tekst
+              ctx.fillStyle = 'white';
+              let currentY = top + 5 + padding + 9;
+              texts.forEach((t) => {
+                ctx.font = t.font;
+                ctx.fillText(t.text, pxStart + 5 + padding, currentY);
+                currentY += lineHeight;
+              });
+            }
+          }
+        });
+      }
+      ctx.restore();
 
       if (file && file.annotations && file.annotations.length > 0) {
         ctx.save();
@@ -1166,16 +1449,16 @@ export const ChartManager = {
     \u2190 / \u2192 : Pan Left/Right (Shift for faster)
     + / - : Zoom In / Out
     R : Reset View
-    A : Add Annotation (at cursor position)
+    A : KEYBOARD: Add annotation at cursor
     E : Export Visible Data (CSV)
-    L : Toggle Legend Visibility`;
+    L : Toggle Legend Visibility
+    Shift + Drag : Highlight Area
+    Alt + Click : Add / Delete Annotation or Highlight`;
   },
 
   _addAnnotationViaKeyboard(index) {
     if (this.hoverValue === null || this.activeChartIndex !== index) {
-      alert(
-        'Move your mouse over the chart to select a time for the annotation.'
-      );
+      alert('Hover over the chart to add an annotation.');
       return;
     }
     const file = AppState.files[index];
