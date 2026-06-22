@@ -822,10 +822,23 @@ export const ChartManager = {
     return {
       y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
       x: {
-        type: 'time',
-        time: { unit: 'second', displayFormats: { second: 'mm:ss' } },
-        min: file.startTime,
-        max: file.startTime + file.duration * 1000,
+        type: 'linear', // Change this from 'time' to 'linear'
+        title: {
+          display: true,
+          text: 'Trip Duration (mm:ss)',
+        },
+        ticks: {
+          callback: function (value) {
+            const date = new Date(value);
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+
+            return `${month}-${day} ${hours}:${minutes}:${seconds}`;
+          },
+        },
       },
     };
   },
@@ -859,11 +872,21 @@ export const ChartManager = {
           title: (items) => {
             if (!items.length) return '';
             const xVal = items[0].parsed.x;
+
             if (this.viewMode === VIEW_MODES.OVERLAY) {
-              const seconds = (xVal - items[0].chart.scales.x.min) / 1000;
+              const seconds = (xVal - AppState.files[0].startTime) / 1000;
               return `T + ${Math.max(0, seconds).toFixed(2)}s`;
             }
-            return new Date(xVal).toISOString().substring(14, 19);
+
+            const date = new Date(xVal);
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+            const ms = date.getMilliseconds().toString().padStart(3, '0');
+
+            return `${month}-${day} ${hours}:${minutes}:${seconds}.${ms}`;
           },
           label: (context) => {
             const ds = context.dataset;
