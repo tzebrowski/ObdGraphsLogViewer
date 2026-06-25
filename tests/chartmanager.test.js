@@ -526,7 +526,7 @@ describe('ChartManager Complete Suite', () => {
       expect(csv).not.toContain('500.000');
     });
 
-    test('Handles mismatching signal data (holes) with forward fill', () => {
+    test('Handles mismatching signal data (holes)', () => {
       AppState.files[0].signals.Speed = [{ x: 1000, y: 10 }];
       jest.spyOn(document, 'querySelector').mockReturnValue({ checked: true });
 
