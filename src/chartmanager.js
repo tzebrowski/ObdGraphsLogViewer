@@ -228,8 +228,6 @@ export const ChartManager = {
     const minTime = chart.scales.x.min;
     const maxTime = chart.scales.x.max;
 
-    let csvContent = 'data:text/csv;charset=utf-8,';
-
     const visibleSignals = file.availableSignals.filter((sig) => {
       const checkbox = document.querySelector(
         `#signalList input[data-key="${sig}"][data-file-idx="${index}"]`
@@ -237,33 +235,64 @@ export const ChartManager = {
       return checkbox && checkbox.checked;
     });
 
-    csvContent += 'Time (s),' + visibleSignals.join(',') + '\n';
-
     if (visibleSignals.length === 0) {
       alert('No signals visible to export.');
       return;
     }
 
-    const masterSignal = file.signals[visibleSignals[0]];
+    const timeSet = new Set();
+    const dataBySignal = {};
 
-    masterSignal.forEach((point) => {
-      if (point.x >= minTime && point.x <= maxTime) {
-        const relTime = (point.x - file.startTime) / 1000;
-        let row = [relTime.toFixed(3)];
-
-        visibleSignals.forEach((sigKey) => {
-          const sigData = file.signals[sigKey];
-          const valPoint = sigData.find((p) => Math.abs(p.x - point.x) < 100);
-          row.push(valPoint ? parseFloat(valPoint.y).toFixed(3) : '');
-        });
-
-        csvContent += row.join(',') + '\n';
-      }
+    visibleSignals.forEach((sigKey) => {
+      dataBySignal[sigKey] = file.signals[sigKey].filter(
+        (p) => p.x >= minTime && p.x <= maxTime
+      );
+      dataBySignal[sigKey].forEach((p) => timeSet.add(p.x));
     });
 
-    const encodedUri = encodeURI(csvContent);
+    if (timeSet.size === 0) {
+      alert('Brak danych w zaznaczonym przedziale czasu.');
+      return;
+    }
+
+    const sortedTimes = Array.from(timeSet).sort((a, b) => a - b);
+
+    const csvRows = [];
+    csvRows.push('Time (s),' + visibleSignals.join(','));
+
+    const currentIndices = {};
+    const lastKnownValues = {};
+    visibleSignals.forEach((sig) => {
+      currentIndices[sig] = 0;
+      lastKnownValues[sig] = '';
+    });
+
+    sortedTimes.forEach((time) => {
+      const relTime = (time - file.startTime) / 1000;
+      const row = [relTime.toFixed(3)];
+
+      visibleSignals.forEach((sigKey) => {
+        const sigData = dataBySignal[sigKey];
+        let idx = currentIndices[sigKey];
+
+        while (idx < sigData.length && sigData[idx].x <= time) {
+          lastKnownValues[sigKey] = parseFloat(sigData[idx].y).toFixed(3);
+          idx++;
+        }
+        currentIndices[sigKey] = idx;
+
+        row.push(lastKnownValues[sigKey]);
+      });
+
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute(
       'download',
       `${file.name}_export_${Math.round(minTime)}.csv`
@@ -271,6 +300,7 @@ export const ChartManager = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   },
 
   showChartInfo(index) {

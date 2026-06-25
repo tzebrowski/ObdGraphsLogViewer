@@ -463,8 +463,30 @@ describe('ChartManager Complete Suite', () => {
 
   describe('CSV Export Logic', () => {
     let anchorSpy;
+    let capturedCsv = '';
+
+    beforeAll(() => {
+      if (typeof window.URL.createObjectURL === 'undefined') {
+        Object.defineProperty(window.URL, 'createObjectURL', {
+          writable: true,
+          value: jest.fn(() => 'blob:mock-url'),
+        });
+        Object.defineProperty(window.URL, 'revokeObjectURL', {
+          writable: true,
+          value: jest.fn(),
+        });
+      }
+    });
 
     beforeEach(() => {
+      capturedCsv = '';
+
+      global.Blob = class MockBlob {
+        constructor(content) {
+          capturedCsv = content[0];
+        }
+      };
+
       const file = {
         name: 'test.json',
         startTime: 1000,
@@ -497,25 +519,22 @@ describe('ChartManager Complete Suite', () => {
       jest.spyOn(document, 'querySelector').mockReturnValue({ checked: true });
       ChartManager.exportDataRange(0);
 
-      const href = anchorSpy.setAttribute.mock.calls.find(
-        (c) => c[0] === 'href'
-      )[1];
-      const csv = decodeURI(href);
+      const csv = capturedCsv;
 
       expect(csv).toContain('0.000,100.000,10.000');
       expect(csv).toContain('1.000,200.000,20.000');
       expect(csv).not.toContain('500.000');
     });
 
-    test('Handles mismatching signal data (holes)', () => {
+    test('Handles mismatching signal data (holes) with forward fill', () => {
       AppState.files[0].signals.Speed = [{ x: 1000, y: 10 }];
       jest.spyOn(document, 'querySelector').mockReturnValue({ checked: true });
+
       ChartManager.exportDataRange(0);
-      const href = anchorSpy.setAttribute.mock.calls.find(
-        (c) => c[0] === 'href'
-      )[1];
-      const csv = decodeURI(href);
-      expect(csv).toMatch(/1\.000,200\.000,(\r\n|\n|$)/);
+
+      const csv = capturedCsv;
+
+      expect(csv).toMatch(/1\.000,200\.000,10\.000(\r\n|\n|$)/);
     });
   });
 
