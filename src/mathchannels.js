@@ -816,6 +816,7 @@ class MathChannels {
   }
 
   #executeSingle(def, inputs, name, fileIdx, options) {
+    const file = AppState.files[fileIdx];
     const createdName = this.createChannel(
       fileIdx,
       def.id,
@@ -826,9 +827,22 @@ class MathChannels {
     this.#logAction(def.id, inputs, name, fileIdx, options);
     this.closeModal();
     this.#autoSelectSignal(createdName, fileIdx);
+
+    if (def.autoEnableSignals && file) {
+      // Clear out all other signals first
+      if (typeof UI.toggleFileSignals === 'function') {
+        UI.toggleFileSignals(fileIdx, false);
+      }
+
+      def.autoEnableSignals.forEach((sig) => {
+        const match = signalRegistry.findSignal(sig, file.availableSignals);
+        if (match) this.#autoSelectSignal(match, fileIdx);
+      });
+    }
   }
 
   #executeBatch(def, inputs, fileIdx, options) {
+    const file = AppState.files[fileIdx];
     const sourceString = inputs[0];
     const sources = sourceString
       .split(',')
@@ -847,6 +861,18 @@ class MathChannels {
     });
 
     this.closeModal();
+
+    if (def.autoEnableSignals && file) {
+      // Clear out all other signals first
+      if (typeof UI.toggleFileSignals === 'function') {
+        UI.toggleFileSignals(fileIdx, false);
+      }
+
+      def.autoEnableSignals.forEach((sig) => {
+        const match = signalRegistry.findSignal(sig, file.availableSignals);
+        if (match) this.#autoSelectSignal(match, fileIdx);
+      });
+    }
   }
 
   #logAction(formulaId, inputs, name, fileIdx, options) {
@@ -865,7 +891,7 @@ class MathChannels {
         `input[data-key="${name}"][data-file-idx="${fileIdx}"]`
       );
 
-      if (cb) {
+      if (cb && !cb.checked) {
         cb.checked = true;
         cb.dispatchEvent(new Event('change', { bubbles: true }));
       }

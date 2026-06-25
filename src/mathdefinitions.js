@@ -854,6 +854,17 @@ export const MATH_DEFINITIONS = [
     isBatch: true,
     singleVariantId: 'filtered_single',
     preSelectAllSources: true,
+    autoEnableSignals: [
+      'Math: Filtered: Intake Manifold Pressure Measured',
+      'Math: Filtered: Intake Manifold Pressure Target',
+      'Math: Filtered: Spark Advance',
+      'Math: Filtered: Air Mass Flow Target',
+      'Math: Filtered: Air Mass Flow Measured',
+      'Math: Filtered: Over Boost Measured',
+      'Math: Filtered: Over Boost Target',
+      'Math: Filtered: Engine Rpm',
+      'Math: Filtered: Engine Speed', // Added as a safe fallback mapping
+    ],
     inputs: [
       {
         name: 'sources',
