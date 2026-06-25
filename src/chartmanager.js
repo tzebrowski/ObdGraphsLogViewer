@@ -256,15 +256,12 @@ export const ChartManager = {
     }
 
     const sortedTimes = Array.from(timeSet).sort((a, b) => a - b);
-
     const csvRows = [];
     csvRows.push('Time (s),' + visibleSignals.join(','));
 
     const currentIndices = {};
-    const lastKnownValues = {};
     visibleSignals.forEach((sig) => {
       currentIndices[sig] = 0;
-      lastKnownValues[sig] = '';
     });
 
     sortedTimes.forEach((time) => {
@@ -273,15 +270,39 @@ export const ChartManager = {
 
       visibleSignals.forEach((sigKey) => {
         const sigData = dataBySignal[sigKey];
+
+        if (sigData.length === 0) {
+          row.push('');
+          return;
+        }
+
         let idx = currentIndices[sigKey];
 
-        while (idx < sigData.length && sigData[idx].x <= time) {
-          lastKnownValues[sigKey] = parseFloat(sigData[idx].y).toFixed(3);
+        while (idx < sigData.length - 1 && sigData[idx].x < time) {
           idx++;
         }
         currentIndices[sigKey] = idx;
 
-        row.push(lastKnownValues[sigKey]);
+        let interpolatedValue;
+
+        if (sigData[idx].x === time) {
+          interpolatedValue = parseFloat(sigData[idx].y);
+        } else if (time <= sigData[0].x) {
+          interpolatedValue = parseFloat(sigData[0].y);
+        } else if (time >= sigData[sigData.length - 1].x) {
+          interpolatedValue = parseFloat(sigData[sigData.length - 1].y);
+        } else {
+          const p0 = sigData[idx - 1];
+          const p1 = sigData[idx];
+
+          const timeRange = p1.x - p0.x;
+          const valueRange = parseFloat(p1.y) - parseFloat(p0.y);
+          const fraction = (time - p0.x) / timeRange;
+
+          interpolatedValue = parseFloat(p0.y) + valueRange * fraction;
+        }
+
+        row.push(interpolatedValue.toFixed(3));
       });
 
       csvRows.push(row.join(','));
