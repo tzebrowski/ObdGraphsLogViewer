@@ -516,7 +516,8 @@ class MathChannels {
           idx,
           file.availableSignals,
           input.name,
-          input.isMulti
+          input.isMulti,
+          definition
         );
       }
 
@@ -581,7 +582,13 @@ class MathChannels {
     container.appendChild(wrapper);
   }
 
-  #createSearchableSelect(idx, signals, inputFilterName, isMulti = false) {
+  #createSearchableSelect(
+    idx,
+    signals,
+    inputFilterName,
+    isMulti = false,
+    definition = null
+  ) {
     const wrapper = document.createElement('div');
     wrapper.className = 'searchable-select-wrapper';
 
@@ -591,6 +598,10 @@ class MathChannels {
     input.className = 'searchable-input template-select';
     input.placeholder = isMulti ? 'Click to add...' : 'Search Signal...';
     input.autocomplete = 'off';
+
+    if (isMulti && definition?.preSelectAllSources && idx === 0) {
+      input.value = signals.join(', ') + ', ';
+    }
 
     const resultsList = document.createElement('div');
     resultsList.className = 'search-results-list';

@@ -843,4 +843,51 @@ export const MATH_DEFINITIONS = [
     ],
     formula: (values) => values[0] * values[1],
   },
+  // --- GAS PEDAL FILTERING ---
+  {
+    id: 'gas_pedal_filter_batch',
+    name: 'Gas Pedal Filter (> 60%)',
+    unit: 'Match Source',
+    category: 'Technical',
+    description:
+      'Automatically creates filtered channels for ALL log signals, passing through data only when the Gas Pedal input is greater than 60%. Otherwise outputs 0.',
+    isBatch: true,
+    singleVariantId: 'filtered_single',
+    preSelectAllSources: true,
+    inputs: [
+      {
+        name: 'sources',
+        label: 'Signals to Filter',
+        isMulti: true,
+      },
+      {
+        name: [
+          'Gas Pedal Position',
+          'Gas Pedal',
+          'Accelerator Pedal Position',
+          'Pedal',
+        ],
+        label: 'Gas Pedal Signal',
+      },
+      {
+        name: 'thresh',
+        label: 'Threshold',
+        isConstant: true,
+        defaultValue: 60,
+      },
+      {
+        name: 'mode',
+        label: 'Mode',
+        isConstant: true,
+        defaultValue: '1',
+      },
+      {
+        name: 'fallback',
+        label: 'Fallback Value',
+        isConstant: true,
+        defaultValue: 0,
+      },
+    ],
+    formula: () => 0,
+  },
 ];
