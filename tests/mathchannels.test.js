@@ -399,7 +399,7 @@ describe('MathChannels', () => {
 
       const container = document.getElementById('mathInputsContainer');
       const inputs = container.querySelectorAll('input');
-      expect(inputs.length).toBe(4);
+      expect(inputs.length).toBe(5);
 
       const labels = container.querySelectorAll('.math-label-small');
       expect(labels[0].textContent).toBe('Source Signal');

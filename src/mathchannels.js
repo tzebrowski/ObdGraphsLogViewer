@@ -473,7 +473,8 @@ class MathChannels {
     }
     container.appendChild(inputsWrapper);
     this.#renderInputs(inputsWrapper, definition, targetFileIndex);
-    this.#renderPostProcessingUI(container);
+
+    this.#renderPostProcessingUI(container, definition);
 
     this.#validateForm();
   }
@@ -559,24 +560,48 @@ class MathChannels {
     return el;
   }
 
-  #renderPostProcessingUI(container) {
+  #renderPostProcessingUI(container, definition) {
     const wrapper = document.createElement('div');
     wrapper.className = 'math-post-processing';
+
+    const defaultAutoEnable = definition.autoEnableSignals
+      ? definition.autoEnableSignals.join(',\n')
+      : '';
+    const isolateChecked =
+      definition.autoEnableSignals && definition.autoEnableSignals.length > 0
+        ? 'checked'
+        : '';
+
     wrapper.innerHTML = `
         <label class="math-section-label">Post-Processing</label>
         <div class="math-checkbox-container">
             <input type="checkbox" id="math-opt-smooth"> <span>Apply Smoothing</span>
         </div>
-        <div style="margin-bottom:5px">
+        <div style="margin-bottom:15px">
             <label class="math-label-small">Window (Samples)</label>
             <input type="number" id="math-opt-window" value="5" class="template-select" style="width:100%" disabled>
         </div>
+        
+        <label class="math-section-label">Chart Visibility</label>
+        <div class="math-checkbox-container">
+            <input type="checkbox" id="math-opt-isolate" ${isolateChecked}> <span>Isolate specific signals on chart</span>
+        </div>
+        <div style="margin-bottom:5px">
+            <label class="math-label-small">Signals to Show (comma-separated)</label>
+            <textarea id="math-opt-autoenable" class="template-select" style="width:100%; height:75px; resize:vertical; font-size:0.85em;" ${isolateChecked ? '' : 'disabled'}>${defaultAutoEnable}</textarea>
+        </div>
     `;
 
-    const check = wrapper.querySelector('#math-opt-smooth');
-    const input = wrapper.querySelector('#math-opt-window');
-    check.onchange = () => {
-      input.disabled = !check.checked;
+    const checkSmooth = wrapper.querySelector('#math-opt-smooth');
+    const inputWindow = wrapper.querySelector('#math-opt-window');
+    checkSmooth.onchange = () => {
+      inputWindow.disabled = !checkSmooth.checked;
+    };
+
+    const checkIsolate = wrapper.querySelector('#math-opt-isolate');
+    const inputAutoEnable = wrapper.querySelector('#math-opt-autoenable');
+    checkIsolate.onchange = () => {
+      inputAutoEnable.disabled = !checkIsolate.checked;
     };
 
     container.appendChild(wrapper);
@@ -786,12 +811,15 @@ class MathChannels {
       document.getElementById('mathTargetFile')?.value || '0',
       10
     );
+
     const options = {
       smooth: document.getElementById('math-opt-smooth').checked,
       smoothWindow: parseInt(
         document.getElementById('math-opt-window').value,
         10
       ),
+      isolate: document.getElementById('math-opt-isolate').checked,
+      autoEnableText: document.getElementById('math-opt-autoenable').value,
     };
 
     try {
@@ -828,13 +856,16 @@ class MathChannels {
     this.closeModal();
     this.#autoSelectSignal(createdName, fileIdx);
 
-    if (def.autoEnableSignals && file) {
-      // Clear out all other signals first
+    if (options.isolate && file) {
       if (typeof UI.toggleFileSignals === 'function') {
         UI.toggleFileSignals(fileIdx, false);
       }
 
-      def.autoEnableSignals.forEach((sig) => {
+      const signalsToEnable = options.autoEnableText
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s);
+      signalsToEnable.forEach((sig) => {
         const match = signalRegistry.findSignal(sig, file.availableSignals);
         if (match) this.#autoSelectSignal(match, fileIdx);
       });
@@ -862,12 +893,16 @@ class MathChannels {
 
     this.closeModal();
 
-    if (def.autoEnableSignals && file) {
+    if (options.isolate && file) {
       if (typeof UI.toggleFileSignals === 'function') {
         UI.toggleFileSignals(fileIdx, false);
       }
 
-      def.autoEnableSignals.forEach((sig) => {
+      const signalsToEnable = options.autoEnableText
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s);
+      signalsToEnable.forEach((sig) => {
         const match = signalRegistry.findSignal(sig, file.availableSignals);
         if (match) this.#autoSelectSignal(match, fileIdx);
       });
