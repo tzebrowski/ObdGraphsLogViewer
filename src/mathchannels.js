@@ -863,7 +863,6 @@ class MathChannels {
     this.closeModal();
 
     if (def.autoEnableSignals && file) {
-      // Clear out all other signals first
       if (typeof UI.toggleFileSignals === 'function') {
         UI.toggleFileSignals(fileIdx, false);
       }

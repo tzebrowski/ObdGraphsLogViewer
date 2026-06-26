@@ -863,7 +863,10 @@ export const MATH_DEFINITIONS = [
       'Math: Filtered: Over Boost Measured',
       'Math: Filtered: Over Boost Target',
       'Math: Filtered: Engine Rpm',
-      'Math: Filtered: Engine Speed', // Added as a safe fallback mapping
+      'Math: Filtered: Engine Speed', 
+      'Math: Filtered: 02 Sensor Integrator', 
+      'Math: Filtered: Throttle position',
+      'Math: Filtered: Gas Pedal Position'
     ],
     inputs: [
       {
