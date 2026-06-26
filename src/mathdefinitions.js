@@ -843,4 +843,65 @@ export const MATH_DEFINITIONS = [
     ],
     formula: (values) => values[0] * values[1],
   },
+  // --- GAS PEDAL FILTERING ---
+  {
+    id: 'gas_pedal_filter_batch',
+    name: 'Gas Pedal Filter (> 60%)',
+    unit: 'Match Source',
+    category: 'Technical',
+    description:
+      'Automatically creates filtered channels for ALL log signals, passing through data only when the Gas Pedal input is greater than 60%. Otherwise outputs 0.',
+    isBatch: true,
+    singleVariantId: 'filtered_single',
+    preSelectAllSources: true,
+    autoEnableSignals: [
+      'Math: Filtered: Intake Manifold Pressure Measured',
+      'Math: Filtered: Intake Manifold Pressure Target',
+      'Math: Filtered: Spark Advance',
+      'Math: Filtered: Air Mass Flow Target',
+      'Math: Filtered: Air Mass Flow Measured',
+      'Math: Filtered: Over Boost Measured',
+      'Math: Filtered: Over Boost Target',
+      'Math: Filtered: Engine Rpm',
+      'Math: Filtered: Engine Speed',
+      'Math: Filtered: 02 Sensor Integrator',
+      'Math: Filtered: Throttle position',
+      'Math: Filtered: Gas Pedal Position',
+    ],
+    inputs: [
+      {
+        name: 'sources',
+        label: 'Signals to Filter',
+        isMulti: true,
+      },
+      {
+        name: [
+          'Gas Pedal Position',
+          'Gas Pedal',
+          'Accelerator Pedal Position',
+          'Pedal',
+        ],
+        label: 'Gas Pedal Signal',
+      },
+      {
+        name: 'thresh',
+        label: 'Threshold',
+        isConstant: true,
+        defaultValue: 60,
+      },
+      {
+        name: 'mode',
+        label: 'Mode',
+        isConstant: true,
+        defaultValue: '1',
+      },
+      {
+        name: 'fallback',
+        label: 'Fallback Value',
+        isConstant: true,
+        defaultValue: 0,
+      },
+    ],
+    formula: () => 0,
+  },
 ];

@@ -516,7 +516,8 @@ class MathChannels {
           idx,
           file.availableSignals,
           input.name,
-          input.isMulti
+          input.isMulti,
+          definition
         );
       }
 
@@ -581,7 +582,13 @@ class MathChannels {
     container.appendChild(wrapper);
   }
 
-  #createSearchableSelect(idx, signals, inputFilterName, isMulti = false) {
+  #createSearchableSelect(
+    idx,
+    signals,
+    inputFilterName,
+    isMulti = false,
+    definition = null
+  ) {
     const wrapper = document.createElement('div');
     wrapper.className = 'searchable-select-wrapper';
 
@@ -591,6 +598,10 @@ class MathChannels {
     input.className = 'searchable-input template-select';
     input.placeholder = isMulti ? 'Click to add...' : 'Search Signal...';
     input.autocomplete = 'off';
+
+    if (isMulti && definition?.preSelectAllSources && idx === 0) {
+      input.value = signals.join(', ') + ', ';
+    }
 
     const resultsList = document.createElement('div');
     resultsList.className = 'search-results-list';
@@ -805,6 +816,7 @@ class MathChannels {
   }
 
   #executeSingle(def, inputs, name, fileIdx, options) {
+    const file = AppState.files[fileIdx];
     const createdName = this.createChannel(
       fileIdx,
       def.id,
@@ -815,9 +827,22 @@ class MathChannels {
     this.#logAction(def.id, inputs, name, fileIdx, options);
     this.closeModal();
     this.#autoSelectSignal(createdName, fileIdx);
+
+    if (def.autoEnableSignals && file) {
+      // Clear out all other signals first
+      if (typeof UI.toggleFileSignals === 'function') {
+        UI.toggleFileSignals(fileIdx, false);
+      }
+
+      def.autoEnableSignals.forEach((sig) => {
+        const match = signalRegistry.findSignal(sig, file.availableSignals);
+        if (match) this.#autoSelectSignal(match, fileIdx);
+      });
+    }
   }
 
   #executeBatch(def, inputs, fileIdx, options) {
+    const file = AppState.files[fileIdx];
     const sourceString = inputs[0];
     const sources = sourceString
       .split(',')
@@ -836,6 +861,17 @@ class MathChannels {
     });
 
     this.closeModal();
+
+    if (def.autoEnableSignals && file) {
+      if (typeof UI.toggleFileSignals === 'function') {
+        UI.toggleFileSignals(fileIdx, false);
+      }
+
+      def.autoEnableSignals.forEach((sig) => {
+        const match = signalRegistry.findSignal(sig, file.availableSignals);
+        if (match) this.#autoSelectSignal(match, fileIdx);
+      });
+    }
   }
 
   #logAction(formulaId, inputs, name, fileIdx, options) {
@@ -854,7 +890,7 @@ class MathChannels {
         `input[data-key="${name}"][data-file-idx="${fileIdx}"]`
       );
 
-      if (cb) {
+      if (cb && !cb.checked) {
         cb.checked = true;
         cb.dispatchEvent(new Event('change', { bubbles: true }));
       }
