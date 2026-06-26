@@ -461,22 +461,34 @@ class MathChannels {
     if (AppState.files.length === 0) return;
 
     let targetFileIndex = 0;
-    const inputsWrapper = document.createElement('div');
-    inputsWrapper.id = 'mathFormulaInputs';
 
     if (AppState.files.length > 1) {
       this.#renderFileSelector(container, (idx) => {
         targetFileIndex = idx;
-        this.#renderInputs(inputsWrapper, definition, targetFileIndex);
-        this.#validateForm();
+        updateUIForFile(targetFileIndex);
       });
     }
+
+    const inputsWrapper = document.createElement('div');
+    inputsWrapper.id = 'mathFormulaInputs';
     container.appendChild(inputsWrapper);
-    this.#renderInputs(inputsWrapper, definition, targetFileIndex);
 
-    this.#renderPostProcessingUI(container, definition);
+    const postProcWrapper = document.createElement('div');
+    postProcWrapper.id = 'mathFormulaPostProc';
+    container.appendChild(postProcWrapper);
 
-    this.#validateForm();
+    const updateUIForFile = (idx) => {
+      this.#renderInputs(inputsWrapper, definition, idx);
+      postProcWrapper.innerHTML = '';
+      this.#renderPostProcessingUI(
+        postProcWrapper,
+        definition,
+        AppState.files[idx].availableSignals
+      );
+      this.#validateForm();
+    };
+
+    updateUIForFile(targetFileIndex);
   }
 
   #renderFileSelector(container, onSelect) {
@@ -514,11 +526,11 @@ class MathChannels {
         inputEl = this.#createConstantInput(input, idx);
       } else {
         inputEl = this.#createSearchableSelect(
-          idx,
+          `math-input-${idx}`,
           file.availableSignals,
           input.name,
           input.isMulti,
-          definition
+          definition.isBatch && definition.preSelectAllSources && idx === 0
         );
       }
 
@@ -560,13 +572,10 @@ class MathChannels {
     return el;
   }
 
-  #renderPostProcessingUI(container, definition) {
+  #renderPostProcessingUI(container, definition, signals) {
     const wrapper = document.createElement('div');
     wrapper.className = 'math-post-processing';
 
-    const defaultAutoEnable = definition.autoEnableSignals
-      ? definition.autoEnableSignals.join(',\n')
-      : '';
     const isolateChecked =
       definition.autoEnableSignals && definition.autoEnableSignals.length > 0
         ? 'checked'
@@ -586,11 +595,29 @@ class MathChannels {
         <div class="math-checkbox-container">
             <input type="checkbox" id="math-opt-isolate" ${isolateChecked}> <span>Isolate specific signals on chart</span>
         </div>
-        <div style="margin-bottom:5px">
-            <label class="math-label-small">Signals to Show (comma-separated)</label>
-            <textarea id="math-opt-autoenable" class="template-select" style="width:100%; height:75px; resize:vertical; font-size:0.85em;" ${isolateChecked ? '' : 'disabled'}>${defaultAutoEnable}</textarea>
+        <div style="margin-bottom:5px" id="math-autoenable-container">
+            <label class="math-label-small">Signals to Show</label>
         </div>
     `;
+
+    const autoEnableContainer = wrapper.querySelector(
+      '#math-autoenable-container'
+    );
+
+    const searchSelect = this.#createSearchableSelect(
+      'math-opt-autoenable',
+      signals,
+      definition.autoEnableSignals,
+      true,
+      false
+    );
+
+    const autoEnableInput = searchSelect.querySelector('input');
+    if (!isolateChecked) {
+      autoEnableInput.disabled = true;
+    }
+
+    autoEnableContainer.appendChild(searchSelect);
 
     const checkSmooth = wrapper.querySelector('#math-opt-smooth');
     const inputWindow = wrapper.querySelector('#math-opt-window');
@@ -599,51 +626,51 @@ class MathChannels {
     };
 
     const checkIsolate = wrapper.querySelector('#math-opt-isolate');
-    const inputAutoEnable = wrapper.querySelector('#math-opt-autoenable');
     checkIsolate.onchange = () => {
-      inputAutoEnable.disabled = !checkIsolate.checked;
+      autoEnableInput.disabled = !checkIsolate.checked;
     };
 
     container.appendChild(wrapper);
   }
 
   #createSearchableSelect(
-    idx,
+    inputId,
     signals,
     inputFilterName,
     isMulti = false,
-    definition = null
+    preSelectAll = false
   ) {
     const wrapper = document.createElement('div');
     wrapper.className = 'searchable-select-wrapper';
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.id = `math-input-${idx}`;
+    input.id = inputId;
     input.className = 'searchable-input template-select';
     input.placeholder = isMulti ? 'Click to add...' : 'Search Signal...';
     input.autocomplete = 'off';
 
-    if (isMulti && definition?.preSelectAllSources && idx === 0) {
+    if (preSelectAll) {
       input.value = signals.join(', ') + ', ';
+    } else if (inputFilterName) {
+      const candidates = Array.isArray(inputFilterName)
+        ? inputFilterName
+        : [inputFilterName];
+      if (isMulti) {
+        input.value =
+          candidates.join(', ') + (candidates.length > 0 ? ', ' : '');
+      } else {
+        let match = null;
+        for (const candidate of candidates) {
+          match = signalRegistry.findSignal(candidate, signals);
+          if (match) break;
+        }
+        if (match) input.value = match;
+      }
     }
 
     const resultsList = document.createElement('div');
     resultsList.className = 'search-results-list';
-
-    if (!isMulti && inputFilterName) {
-      const candidates = Array.isArray(inputFilterName)
-        ? inputFilterName
-        : [inputFilterName];
-      let match = null;
-
-      for (const candidate of candidates) {
-        match = signalRegistry.findSignal(candidate, signals);
-        if (match) break;
-      }
-
-      if (match) input.value = match;
-    }
 
     const renderOptions = (filterText = '') => {
       resultsList.innerHTML = '';
