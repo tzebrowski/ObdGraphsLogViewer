@@ -25,11 +25,16 @@ export const Analysis = {
 
     messenger.on('analysis:auto-configure', (data) => {
       const container = DOM.get('filtersContainer');
-      if (container) container.innerHTML = '';
+      if (container) {
+        container.innerHTML = '';
+
+        const scannerGroup = container.closest('.control-group');
+        if (scannerGroup) scannerGroup.classList.remove('collapsed');
+      }
 
       this.addFilterRow(data.signal, data.operator, data.value, data.fileIdx);
 
-      setTimeout(() => this.runScan(), 100);
+      setTimeout(() => this.runScan(), 250);
     });
   },
 
@@ -67,10 +72,15 @@ export const Analysis = {
     const fileSelect = div.querySelector('.file-select');
     const sigSelect = div.querySelector('.sig-select');
 
+    if (fileIdx !== undefined) fileSelect.value = fileIdx;
+    if (sigName) sigSelect.value = sigName;
+
     fileSelect.onchange = () => {
       sigSelect.innerHTML =
         '<option value="">Signal...</option>' +
         this._getSignalOptionsHTML(fileSelect.value, sigName);
+
+      if (sigName) sigSelect.value = sigName;
     };
 
     div.querySelector('.remove-row').onclick = () => div.remove();

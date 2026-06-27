@@ -920,9 +920,9 @@ class MathChannels {
 
     if (def.id === 'gas_pedal_filter_batch') {
       messenger.emit('analysis:auto-configure', {
-        signal: inputs[1],
+        signal: String(inputs[1]).trim(),
         operator: '>',
-        value: inputs[2],
+        value: String(inputs[2]).trim(),
         fileIdx: -1,
       });
     }
