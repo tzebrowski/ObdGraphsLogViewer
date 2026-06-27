@@ -167,20 +167,6 @@ class PaletteManagerClass {
     this.#cachedPalette = isDarkMode ? this.#DARK_PALETTE : this.#LIGHT_PALETTE;
     return this.#cachedPalette;
   }
-
-  #generateHashColor(str, palette = null) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    if (palette) {
-      return palette[Math.abs(hash) % palette.length];
-    }
-
-    const c = (hash & 0x00ffffff).toString(16).toUpperCase();
-    return '#' + '00000'.substring(0, 6 - c.length) + c;
-  }
 }
 
 export const PaletteManager = new PaletteManagerClass();
