@@ -22,6 +22,15 @@ export const Analysis = {
       UI.resetScannerUI();
       Analysis.refreshFilterOptions();
     });
+
+    messenger.on('analysis:auto-configure', (data) => {
+      const container = DOM.get('filtersContainer');
+      if (container) container.innerHTML = '';
+
+      this.addFilterRow(data.signal, data.operator, data.value, data.fileIdx);
+
+      setTimeout(() => this.runScan(), 100);
+    });
   },
 
   initTemplates() {
