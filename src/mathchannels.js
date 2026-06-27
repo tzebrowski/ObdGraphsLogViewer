@@ -918,6 +918,15 @@ class MathChannels {
       this.#logAction(targetId, singleInputs, name, fileIdx, options);
     });
 
+    if (def.id === 'gas_pedal_filter_batch') {
+      messenger.emit('analysis:auto-configure', {
+        signal: inputs[1],
+        operator: '>',
+        value: inputs[2],
+        fileIdx: -1,
+      });
+    }
+
     this.closeModal();
 
     if (options.isolate && file) {

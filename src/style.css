@@ -6853,14 +6853,12 @@ body.analyzer-active .footer {
     opacity 0.3s ease;
 }
 
-/* Desktop: Slide the footer down off the screen when collapsed */
 body.analyzer-active .footer.collapsed {
   transform: translateY(100%);
   opacity: 0;
   pointer-events: none; /* Prevents clicking the invisible area */
 }
 
-/* Mobile: Ensure it hides cleanly when the menu is closed, and shows when active */
 @media (width <= 768px) {
   body.analyzer-active .footer {
     display: none; /* Hide by default on mobile unless sidebar is active */
@@ -6870,4 +6868,10 @@ body.analyzer-active .footer.collapsed {
     display: block;
     animation: slideUp 0.3s ease forwards;
   }
+}
+
+#scanResults {
+  max-height: 40vh;
+  overflow-y: auto;
+  min-height: 150px;
 }
