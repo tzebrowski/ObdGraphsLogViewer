@@ -292,14 +292,17 @@ export const UI = {
     const histBtn = document.getElementById('btn-hist');
     const mathBtn = document.getElementById('btn-create-math');
     const overlayBtn = document.getElementById('btn-mode-overlay');
+    const quickFilterBtn = document.getElementById('btn-quick-gas-filter');
 
-    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn].forEach((btn) => {
-      if (btn) {
-        btn.disabled = !hasData;
-        btn.style.opacity = hasData ? '1' : '0.5';
-        btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
+    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn, quickFilterBtn].forEach(
+      (btn) => {
+        if (btn) {
+          btn.disabled = !hasData;
+          btn.style.opacity = hasData ? '1' : '0.5';
+          btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
+        }
       }
-    });
+    );
   },
 
   toggleItem(i) {

@@ -90,3 +90,16 @@ window.openMathModal = () => mathChannels.openModal();
 window.closeMathModal = () => mathChannels.closeModal();
 window.onMathFormulaChange = () => mathChannels.onFormulaChange();
 window.createMathChannel = () => mathChannels.createMathChannel();
+
+window.openQuickGasFilter = () => {
+  window.openMathModal();
+
+  setTimeout(() => {
+    const select = document.getElementById('mathFormulaSelect');
+    if (select) {
+      select.value = 'gas_pedal_filter_batch';
+
+      select.dispatchEvent(new Event('change'));
+    }
+  }, 50);
+};
