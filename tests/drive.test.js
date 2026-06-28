@@ -342,6 +342,23 @@ describe('Drive Module Combined Suite', () => {
       start.value = '2023-01-01';
       start.dispatchEvent(new Event('input'));
     });
+
+    test('Refresh View button triggers listFiles and adds spin animation', () => {
+      const listFilesSpy = jest
+        .spyOn(Drive, 'listFiles')
+        .mockImplementation(() => Promise.resolve());
+      Drive.initSearch();
+
+      const refreshBtn = document.getElementById('driveRefreshBtn');
+      const icon = refreshBtn.querySelector('.fa-sync-alt');
+
+      refreshBtn.click();
+
+      expect(icon.classList.contains('fa-spin')).toBe(true);
+      expect(listFilesSpy).toHaveBeenCalledTimes(1);
+
+      listFilesSpy.mockRestore();
+    });
   });
 
   describe('Pagination & Grouping', () => {
