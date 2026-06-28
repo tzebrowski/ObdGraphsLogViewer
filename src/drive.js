@@ -22,6 +22,12 @@ class DriveManager {
     this.TEMPLATES = {
       searchInterface: () => `
         <div class="drv-search-container">
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 8px; padding: 0 4px;">
+            <button id="driveRefreshBtn" class="btn btn-sm drv-sort-btn">
+              <i class="fas fa-sync-alt"></i> Refresh View
+            </button>
+          </div>
+
           <div class="month-header drv-search-header" style="cursor: pointer; margin-top: 0; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
             <span><i class="fas fa-filter drv-icon-margin"></i> Filters & Search</span>
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -465,6 +471,13 @@ class DriveManager {
       if (start) start.value = '';
       if (end) end.value = '';
       updateHandler(true);
+    });
+
+    safeAddEvent('driveRefreshBtn', 'click', (e) => {
+      e.stopPropagation();
+      const icon = e.currentTarget.querySelector('.fa-sync-alt');
+      if (icon) icon.classList.add('fa-spin');
+      this.listFiles();
     });
 
     safeAddEvent('driveSearchInput', 'input', () => updateHandler(false));
