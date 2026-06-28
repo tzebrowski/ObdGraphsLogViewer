@@ -340,18 +340,56 @@ export const ChartManager = {
     const meta = file.metadata || {};
     const durationFormatted = this.formatDuration(file.duration);
 
+    let totalRealSamples = 0;
+    let realSignalCount = 0;
+
+    if (file.signals) {
+      Object.keys(file.signals).forEach((key) => {
+        if (!key.startsWith('Math:')) {
+          totalRealSamples += file.signals[key].length;
+          realSignalCount++;
+        }
+      });
+    }
+
+    let collectionRateString = 'N/A';
+    if (file.duration > 0 && totalRealSamples > 0) {
+      const totalHz = totalRealSamples / file.duration;
+      const perSignalHz = totalHz / realSignalCount;
+      collectionRateString = `${totalHz.toFixed(1)} req/sec (~${perSignalHz.toFixed(1)} Hz per signal)`;
+    }
+
     let dynamicMetaRows = '';
     if (Object.keys(meta).length > 0) {
-      dynamicMetaRows += `<h5 class="chm-meta-header">Extended Metadata</h5>`;
+      const ignoredKeys = [
+        'duration',
+        'trip.duration',
+        'starttime',
+        'trip.starttime',
+      ];
+      let addedRows = 0;
 
       Object.entries(meta).forEach(([key, value]) => {
+        if (ignoredKeys.includes(key.toLowerCase())) return;
+
         const label = key
           .replace('trip.', '')
           .replace(/([A-Z])/g, ' $1')
           .replace(/^./, (str) => str.toUpperCase());
 
         let displayValue = value;
-        if (
+
+        if (typeof value === 'object' && value !== null) {
+          if (value.min !== undefined && value.max !== undefined) {
+            const unitStr =
+              value.unit && value.unit !== 'Math' ? ` [${value.unit}]` : '';
+            displayValue = `Min: ${value.min.toFixed(2)}, Max: ${value.max.toFixed(2)}${unitStr}`;
+          } else {
+            displayValue = JSON.stringify(value)
+              .replace(/["{}]/g, '')
+              .replace(/:/g, ': ');
+          }
+        } else if (
           key.toLowerCase().includes('time') &&
           !isNaN(value) &&
           value > 1000000000
@@ -360,7 +398,14 @@ export const ChartManager = {
         }
 
         dynamicMetaRows += createRow(label, displayValue);
+        addedRows++;
       });
+
+      if (addedRows > 0) {
+        dynamicMetaRows =
+          `<h5 class="chm-meta-header" style="margin-top:20px; margin-bottom:10px; color:#1c3d72; border-bottom:1px solid #eee; padding-bottom:5px;">Extended Metadata</h5>` +
+          dynamicMetaRows;
+      }
     }
 
     const modalHtml = `
@@ -371,11 +416,15 @@ export const ChartManager = {
             <button class="btn-close" onclick="document.getElementById('metadataModal').remove()">×</button>
           </div>
           <div class="modal-body">
-            <h4 class="chm-modal-title">${file.name}</h4>
+            <h4 class="chm-modal-title chm-truncate" title="${file.name}" style="margin-bottom: 20px;">${file.name}</h4>
+            
             ${createRow('Start Time', new Date(file.startTime).toLocaleString())}
             ${createRow('Duration', durationFormatted)}
             ${createRow('Signals Count', file.availableSignals.length)}
+            ${createRow('Collection Rate', collectionRateString)}
+            
             ${dynamicMetaRows}
+            
             <div class="chm-modal-footer">
                <button class="btn btn-primary" onclick="document.getElementById('metadataModal').remove()">Close</button>
             </div>
