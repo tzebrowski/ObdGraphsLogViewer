@@ -46,7 +46,7 @@ class DriveManager {
           <div class="drv-search-content drv-hidden" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 8px;">
             <div class="drv-search-box">
               <i class="fas fa-search drv-search-icon"></i>
-              <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
+              <input type="text" id="driveSearchInput" placeholder="Search names or tags..." class="drv-search-input">
               <i class="fas fa-times-circle drv-clear-icon" id="clearDriveSearchText" title="Clear search"></i>
             </div>
             <div class="drv-date-filters" style="display: flex; flex-direction: column; gap: 8px;">
@@ -124,7 +124,7 @@ class DriveManager {
               <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
             </div>
             <div class="file-card-tags" style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-              ${tags.map((t) => `<span style="background: rgba(0, 123, 255, 0.15); color: var(--text-color); border: 1px solid rgba(0, 123, 255, 0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 500; text-transform: capitalize;">${t}</span>`).join('')}
+              ${tags.map((t) => `<span class="existing-tag-pill" data-tag="${t}" title="Click to filter by this tag" style="cursor: pointer; background: rgba(0, 123, 255, 0.15); color: var(--text-color); border: 1px solid rgba(0, 123, 255, 0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 500; text-transform: capitalize; transition: background 0.2s;">${t}</span>`).join('')}
               <span class="add-tag-btn" data-id="${file.id}" style="background: transparent; border: 1px dashed var(--text-muted); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; cursor: pointer; transition: color 0.2s;">
                 <i class="fas fa-plus"></i> Tag
               </span>
@@ -244,7 +244,6 @@ class DriveManager {
 
     try {
       while (hasMore) {
-        // Updated API request to include appProperties
         const res = await gapi.client.drive.files.list({
           pageSize: 100,
           fields:
@@ -495,21 +494,6 @@ class DriveManager {
       return el;
     };
 
-    // Attach delegated listener for Tags
-    const handleTagClick = (e) => {
-      const tagBtn = e.target.closest('.add-tag-btn');
-      if (tagBtn) {
-        e.stopPropagation(); // Stop loadFile from firing
-        const fileId = tagBtn.dataset.id;
-        this.promptAddTag(fileId);
-      }
-    };
-
-    const container = document.getElementById('driveFileContainer');
-    const recentSlot = document.getElementById('driveRecentSlot');
-    if (container) container.addEventListener('click', handleTagClick);
-    if (recentSlot) recentSlot.addEventListener('click', handleTagClick);
-
     const debouncedRefresh = debounce(() => this.refreshUI(), 250);
 
     const updateHandler = (immediate = false) => {
@@ -562,6 +546,37 @@ class DriveManager {
       if (immediate) this.refreshUI();
       else debouncedRefresh();
     };
+
+    const handleTagClick = (e) => {
+      const addBtn = e.target.closest('.add-tag-btn');
+      if (addBtn) {
+        e.stopPropagation();
+        const fileId = addBtn.dataset.id;
+        this.promptAddTag(fileId);
+        return;
+      }
+
+      const existingTag = e.target.closest('.existing-tag-pill');
+      if (existingTag) {
+        e.stopPropagation();
+        const tagValue = existingTag.dataset.tag;
+        const tagFilter = document.getElementById('driveTagFilter');
+
+        if (tagFilter) {
+          tagFilter.value = tagValue;
+          updateHandler(true);
+
+          if (searchContent && searchContent.style.display === 'none') {
+            searchHeader.click();
+          }
+        }
+      }
+    };
+
+    const container = document.getElementById('driveFileContainer');
+    const recentSlot = document.getElementById('driveRecentSlot');
+    if (container) container.addEventListener('click', handleTagClick);
+    if (recentSlot) recentSlot.addEventListener('click', handleTagClick);
 
     safeAddEvent('clearDriveSearchText', 'click', () => {
       const input = document.getElementById('driveSearchInput');
@@ -695,7 +710,11 @@ class DriveManager {
     const fileDate = item.timestamp;
     const name = item.file.name.toLowerCase();
 
-    const matchesText = name.includes(term);
+    // Query Text Box matches EITHER the file name OR the tags inside
+    const matchesText =
+      name.includes(term) ||
+      (item.tags && item.tags.some((t) => t.toLowerCase().includes(term)));
+
     const matchesDateRange =
       (!start || fileDate >= start) && (!end || fileDate <= end);
 
