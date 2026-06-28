@@ -3,6 +3,7 @@ import { UI } from './ui.js';
 import { dataProcessor } from './dataprocessor.js';
 import { Alert } from './alert.js';
 import { debounce } from './debounce.js';
+import { messenger } from './bus.js';
 
 class DriveManager {
   constructor() {
@@ -24,6 +25,24 @@ class DriveManager {
         itemsPerPage: 50,
       },
     };
+
+    messenger.on('file:tag-added', async (data) => {
+      await this._syncTagFromChart(data.fileId, data.tag);
+    });
+
+    messenger.on('chart:request-tags', (data) => {
+      const fileItem = this.fileData.find(
+        (f) => f.file.name === data.fileName || f.file.id === data.fileId
+      );
+      if (fileItem && fileItem.tags && fileItem.tags.length > 0) {
+        fileItem.tags.forEach((tag) => {
+          messenger.emit('drive:tag-added', {
+            fileId: data.fileName,
+            tag: tag,
+          });
+        });
+      }
+    });
 
     this.TEMPLATES = {
       searchInterface: () => `
@@ -124,7 +143,7 @@ class DriveManager {
               <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
             </div>
             <div class="file-card-tags" style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-              ${tags.map((t) => `<span class="existing-tag-pill" data-tag="${t}" title="Click to filter by this tag" style="cursor: pointer; background: rgba(0, 123, 255, 0.15); color: var(--text-color); border: 1px solid rgba(0, 123, 255, 0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 500; text-transform: capitalize; transition: background 0.2s;">${t}</span>`).join('')}
+              ${tags.map((t) => `<span class="existing-tag-pill" data-tag="${t}" title="Click to filter by this tag" style="cursor: pointer; ${this._getTagStyle(t)} padding: 2px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 500; text-transform: capitalize; transition: filter 0.2s;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter='none'">${t}</span>`).join('')}
               <span class="add-tag-btn" data-id="${file.id}" style="background: transparent; border: 1px dashed var(--text-muted); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; cursor: pointer; transition: color 0.2s;">
                 <i class="fas fa-plus"></i> Tag
               </span>
@@ -151,6 +170,15 @@ class DriveManager {
         <div class="recent-list-container drv-hidden"></div>
       `,
     };
+  }
+
+  _getTagStyle(tag) {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
   }
 
   formatDuration(seconds) {
@@ -359,24 +387,63 @@ class DriveManager {
     const updatedTags = [...currentTags, tagClean];
     const tagsString = updatedTags.join(',');
 
-    UI.setLoading(true, 'Saving tag to Drive...');
+    fileItem.tags = updatedTags;
+    if (!fileItem.file.appProperties) fileItem.file.appProperties = {};
+    fileItem.file.appProperties.tags = tagsString;
+
+    this.populateDropdowns();
+    this.refreshUI();
+
+    messenger.emit('drive:tag-added', {
+      fileId: fileItem.file.name,
+      tag: tagClean,
+    });
+
     try {
       await gapi.client.drive.files.update({
         fileId: fileId,
         appProperties: { tags: tagsString },
       });
-
-      fileItem.tags = updatedTags;
-      if (!fileItem.file.appProperties) fileItem.file.appProperties = {};
-      fileItem.file.appProperties.tags = tagsString;
-
-      this.populateDropdowns();
-      this.refreshUI();
     } catch (error) {
       console.error('Error saving tag:', error);
-      Alert.showAlert(`Failed to save tag: ${error.message}`);
-    } finally {
-      UI.setLoading(false);
+      fileItem.tags = currentTags;
+      fileItem.file.appProperties.tags = currentTags.join(',');
+      this.populateDropdowns();
+      this.refreshUI();
+      Alert.showAlert(`Failed to save tag to Google Drive: ${error.message}`);
+    }
+  }
+
+  async _syncTagFromChart(fileIdentifier, tag) {
+    const fileItem = this.fileData.find(
+      (f) => f.file.id === fileIdentifier || f.file.name === fileIdentifier
+    );
+    if (!fileItem) return;
+
+    const currentTags = fileItem.tags || [];
+    if (currentTags.includes(tag)) return;
+
+    const updatedTags = [...currentTags, tag];
+    const tagsString = updatedTags.join(',');
+
+    fileItem.tags = updatedTags;
+    if (!fileItem.file.appProperties) fileItem.file.appProperties = {};
+    fileItem.file.appProperties.tags = tagsString;
+
+    this.populateDropdowns();
+    this.refreshUI();
+
+    try {
+      await gapi.client.drive.files.update({
+        fileId: fileItem.file.id,
+        appProperties: { tags: tagsString },
+      });
+    } catch (error) {
+      console.error('Drive API Error syncing tag from chart:', error);
+      fileItem.tags = currentTags;
+      fileItem.file.appProperties.tags = currentTags.join(',');
+      this.populateDropdowns();
+      this.refreshUI();
     }
   }
 
@@ -452,6 +519,11 @@ class DriveManager {
           typeof response.result === 'string'
             ? JSON.parse(response.result)
             : response.result;
+      }
+
+      const fileItem = this.fileData.find((f) => f.file.id === id);
+      if (fileItem && fileItem.tags) {
+        dataToProcess._injectedTags = fileItem.tags;
       }
 
       dataProcessor.process(dataToProcess, fileName);
@@ -710,11 +782,9 @@ class DriveManager {
     const fileDate = item.timestamp;
     const name = item.file.name.toLowerCase();
 
-    // Query Text Box matches EITHER the file name OR the tags inside
     const matchesText =
       name.includes(term) ||
       (item.tags && item.tags.some((t) => t.toLowerCase().includes(term)));
-
     const matchesDateRange =
       (!start || fileDate >= start) && (!end || fileDate <= end);
 
