@@ -5,6 +5,7 @@ import {
   expect,
   beforeEach,
   afterEach,
+  beforeAll,
 } from '@jest/globals';
 
 import { messenger } from '../src/bus.js';
@@ -458,6 +459,126 @@ describe('ChartManager Complete Suite', () => {
       canvas.dispatchEvent(event);
 
       expect(AppState.files[0].annotations).toHaveLength(1);
+    });
+  });
+
+  describe('Tagging Functionality', () => {
+    let canvas;
+
+    beforeEach(() => {
+      AppState.files = [
+        {
+          name: 'log1.json',
+          id: 'file-123',
+          startTime: 1000,
+          duration: 10,
+          availableSignals: ['RPM'],
+          signals: { RPM: [] },
+          tags: ['rain'],
+        },
+      ];
+      AppState.chartInstances = [mockChartInstance];
+
+      // Setup DOM container for tags
+      document.body.innerHTML = `<div id="chart-tags-0"></div>`;
+
+      canvas = document.createElement('canvas');
+      canvas.getContext = jest.fn(() => mockChartInstance.ctx);
+      ChartManager._attachMouseListeners(canvas, 0);
+      ChartManager.initKeyboardControls(canvas, 0);
+    });
+
+    test('_generateTagsHtml creates HTML with dynamic color hash', () => {
+      const html = ChartManager._generateTagsHtml(AppState.files[0]);
+      expect(html).toContain('rain');
+      expect(html).toContain('hsla(');
+    });
+
+    test('_updateChartHeaderTags updates the DOM container', () => {
+      ChartManager._updateChartHeaderTags(0);
+      const domElement = document.getElementById('chart-tags-0');
+      expect(domElement.innerHTML).toContain('rain');
+    });
+
+    test('_promptForTag adds valid tag and emits event', () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Track');
+
+      ChartManager._promptForTag(0);
+
+      expect(promptSpy).toHaveBeenCalled();
+      expect(AppState.files[0].tags).toContain('track');
+      expect(messenger.emit).toHaveBeenCalledWith('file:tag-added', {
+        fileId: 'file-123',
+        tag: 'track',
+        index: 0,
+      });
+      promptSpy.mockRestore();
+    });
+
+    test('_promptForTag handles duplicates gracefully', () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Rain ');
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+      ChartManager._promptForTag(0);
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'This tag is already applied to this log.'
+      );
+      expect(AppState.files[0].tags.filter((t) => t === 'rain').length).toBe(1); // Still only 1 rain tag
+      expect(messenger.emit).not.toHaveBeenCalled();
+
+      promptSpy.mockRestore();
+      alertSpy.mockRestore();
+    });
+
+    test('_promptForTag ignores empty or cancelled inputs', () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('');
+      ChartManager._promptForTag(0);
+      expect(AppState.files[0].tags).toHaveLength(1);
+
+      promptSpy.mockReturnValue(null);
+      ChartManager._promptForTag(0);
+      expect(AppState.files[0].tags).toHaveLength(1);
+
+      promptSpy.mockRestore();
+    });
+
+    test('Keyboard "t" triggers tag prompt', () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('commute');
+
+      canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
+
+      expect(promptSpy).toHaveBeenCalled();
+      expect(AppState.files[0].tags).toContain('commute');
+      promptSpy.mockRestore();
+    });
+
+    test('Shift+Click triggers tag prompt', () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('test');
+
+      const event = new MouseEvent('click', { bubbles: true, shiftKey: true });
+      canvas.dispatchEvent(event);
+
+      expect(promptSpy).toHaveBeenCalled();
+      expect(AppState.files[0].tags).toContain('test');
+      promptSpy.mockRestore();
+    });
+
+    test('Event bus "drive:tag-added" synchronizes background tags', () => {
+      // Re-initialize ChartManager to re-attach the event listener
+      ChartManager.init();
+
+      // Find the listener callback registered for 'drive:tag-added'
+      const driveTagCb = messenger.on.mock.calls.find(
+        (call) => call[0] === 'drive:tag-added'
+      )[1];
+
+      // Simulate receiving tag data from drive.js
+      driveTagCb({ fileId: 'file-123', tag: 'remote-tag' });
+
+      expect(AppState.files[0].tags).toContain('remote-tag');
+      const domElement = document.getElementById('chart-tags-0');
+      expect(domElement.innerHTML).toContain('remote-tag');
     });
   });
 

@@ -610,12 +610,21 @@ export const ChartManager = {
     return `${seconds}s`;
   },
 
+  _getTagStyle(tag) {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
+  },
+
   _generateTagsHtml(file) {
     if (!file.tags || file.tags.length === 0) return '';
     return file.tags
       .map(
         (t) =>
-          `<span style="background: rgba(0, 123, 255, 0.15); color: var(--text-color); border: 1px solid rgba(0, 123, 255, 0.3); padding: 1px 6px; border-radius: 10px; font-size: 0.65em; text-transform: capitalize;">${t}</span>`
+          `<span style="${this._getTagStyle(t)} padding: 1px 6px; border-radius: 10px; font-size: 0.65em; text-transform: capitalize;">${t}</span>`
       )
       .join('');
   },
