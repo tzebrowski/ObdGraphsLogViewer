@@ -1,8 +1,17 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import {
+  jest,
+  describe,
+  test,
+  expect,
+  beforeEach,
+  afterEach,
+} from '@jest/globals';
 import { Drive } from '../src/drive.js';
 import { DOM } from '../src/config.js';
 import { UI } from '../src/ui.js';
 import { dataProcessor } from '../src/dataprocessor.js';
+import { messenger } from '../src/bus.js';
+import { Alert } from '../src/alert.js';
 
 global.gapi = {
   client: {
@@ -332,6 +341,90 @@ describe('Drive Module Combined Suite', () => {
 
       expect(dataProcessor.process).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Tagging Functionality', () => {
+    beforeEach(() => {
+      Drive.fileData = [
+        {
+          file: { id: 'file-123', name: 'log1.json', appProperties: {} },
+          timestamp: 1000,
+          tags: ['rain'],
+        },
+      ];
+      jest.spyOn(Drive, 'populateDropdowns').mockImplementation(() => {});
+      jest.spyOn(Drive, 'refreshUI').mockImplementation(() => {});
+      gapi.client.drive.files.update.mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('_getTagStyle generates consistent hsla colors', () => {
+      const style1 = Drive._getTagStyle('track');
+      const style2 = Drive._getTagStyle('rain');
+
+      expect(style1).toContain('hsla(');
+      expect(style2).toContain('hsla(');
+      expect(style1).not.toEqual(style2); // Colors should vary by string hash
+    });
+
+    test('promptAddTag adds new tag, calls Drive API, and emits event', async () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Track '); // Includes intentional whitespace
+      const emitSpy = jest
+        .spyOn(messenger, 'emit')
+        .mockImplementation(() => {});
+
+      await Drive.promptAddTag('file-123');
+
+      expect(promptSpy).toHaveBeenCalled();
+      expect(Drive.fileData[0].tags).toContain('track');
+      expect(Drive.fileData[0].file.appProperties.tags).toBe('rain,track');
+
+      expect(gapi.client.drive.files.update).toHaveBeenCalledWith({
+        fileId: 'file-123',
+        appProperties: { tags: 'rain,track' },
+      });
+
+      expect(emitSpy).toHaveBeenCalledWith('drive:tag-added', {
+        fileId: 'log1.json',
+        tag: 'track',
+      });
+    });
+
+    test('promptAddTag ignores duplicates and alerts user', async () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Rain');
+      const alertSpy = jest
+        .spyOn(Alert, 'showAlert')
+        .mockImplementation(() => {});
+
+      await Drive.promptAddTag('file-123');
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'This tag is already applied to this log.'
+      );
+      expect(Drive.fileData[0].tags).toEqual(['rain']); // No duplicates
+      expect(gapi.client.drive.files.update).not.toHaveBeenCalled();
+    });
+
+    test('_syncTagFromChart updates tag silently from chart event', async () => {
+      await Drive._syncTagFromChart('file-123', 'commute');
+
+      expect(Drive.fileData[0].tags).toContain('commute');
+      expect(gapi.client.drive.files.update).toHaveBeenCalledWith({
+        fileId: 'file-123',
+        appProperties: { tags: 'rain,commute' },
+      });
+      expect(Drive.refreshUI).toHaveBeenCalled();
+    });
+
+    test('_syncTagFromChart ignores duplicate tag silently', async () => {
+      await Drive._syncTagFromChart('file-123', 'rain');
+
+      expect(Drive.fileData[0].tags).toEqual(['rain']);
+      expect(gapi.client.drive.files.update).not.toHaveBeenCalled();
     });
   });
 
