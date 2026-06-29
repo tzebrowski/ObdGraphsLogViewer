@@ -10,6 +10,7 @@ global.gapi = {
       files: {
         list: jest.fn(),
         get: jest.fn(),
+        update: jest.fn(),
       },
     },
     setToken: jest.fn(),
@@ -42,7 +43,13 @@ describe('Drive Module Combined Suite', () => {
     Drive.fileData = [];
     Drive._state = {
       sortOrder: 'desc',
-      filters: { term: '', start: null, end: null },
+      filters: {
+        term: '',
+        start: null,
+        end: null,
+        selectedMonth: '',
+        selectedTag: '',
+      },
       pagination: { currentPage: 1, itemsPerPage: 10 },
     };
 
@@ -232,27 +239,69 @@ describe('Drive Module Combined Suite', () => {
 
   describe('Logic: Filtering & Loading', () => {
     test('_applyFilters handles null/empty filter states', () => {
-      const item = { file: { name: 'Trip.json' }, timestamp: 1000 };
-      Drive._state.filters = { term: '', start: null, end: null };
+      const item = { file: { name: 'Trip.json' }, timestamp: 1000, tags: [] };
+      Drive._state.filters = {
+        term: '',
+        start: null,
+        end: null,
+        selectedMonth: '',
+        selectedTag: '',
+      };
       expect(Drive._applyFilters(item)).toBe(true);
     });
 
-    test('_applyFilters correctly matches text', () => {
-      const item = { file: { name: 'Speed-Test.json' }, timestamp: 1000 };
+    test('_applyFilters correctly matches text in filename and tags', () => {
+      const item = {
+        file: { name: 'Speed-Test.json' },
+        timestamp: 1000,
+        tags: ['track'],
+      };
 
+      // Matches filename
       Drive._state.filters.term = 'speed';
       expect(Drive._applyFilters(item)).toBe(true);
 
+      // Matches tag (search text matching tag pill)
+      Drive._state.filters.term = 'track';
+      expect(Drive._applyFilters(item)).toBe(true);
+
+      // Matches neither
       Drive._state.filters.term = 'trip';
       expect(Drive._applyFilters(item)).toBe(false);
     });
 
-    test('_applyFilters correctly matches date range', () => {
-      const item = { file: { name: 'A.json' }, timestamp: 1000 };
-      Drive._state.filters = { term: '', start: 500, end: 1500 };
+    test('_applyFilters correctly matches exact tag filter dropdown', () => {
+      const item = {
+        file: { name: 'Speed-Test.json' },
+        timestamp: 1000,
+        tags: ['rain'],
+      };
+
+      Drive._state.filters.selectedTag = 'rain';
       expect(Drive._applyFilters(item)).toBe(true);
 
-      Drive._state.filters = { term: '', start: 1500, end: 2000 };
+      Drive._state.filters.selectedTag = 'commute';
+      expect(Drive._applyFilters(item)).toBe(false);
+    });
+
+    test('_applyFilters correctly matches date range', () => {
+      const item = { file: { name: 'A.json' }, timestamp: 1000, tags: [] };
+      Drive._state.filters = {
+        term: '',
+        start: 500,
+        end: 1500,
+        selectedMonth: '',
+        selectedTag: '',
+      };
+      expect(Drive._applyFilters(item)).toBe(true);
+
+      Drive._state.filters = {
+        term: '',
+        start: 1500,
+        end: 2000,
+        selectedMonth: '',
+        selectedTag: '',
+      };
       expect(Drive._applyFilters(item)).toBe(false);
     });
 
@@ -307,20 +356,28 @@ describe('Drive Module Combined Suite', () => {
       Drive.initSearch();
       const start = document.getElementById('driveDateStart');
       const end = document.getElementById('driveDateEnd');
+      const tagSelect = document.getElementById('driveTagFilter');
       const clearBtn = document.getElementById('clearDriveFilters');
 
       start.value = '2023-01-01';
       end.value = '2023-01-31';
+      if (tagSelect) tagSelect.value = 'track';
 
       clearBtn.click();
 
       expect(start.value).toBe('');
       expect(end.value).toBe('');
+      if (tagSelect) expect(tagSelect.value).toBe('');
     });
 
     test('Sort toggle switches order and triggers refresh', () => {
       Drive.fileData = [
-        { file: { id: '1', name: 'a.json' }, timestamp: 1000, meta: {} },
+        {
+          file: { id: '1', name: 'a.json' },
+          timestamp: 1000,
+          meta: {},
+          tags: [],
+        },
       ];
       Drive.initSearch();
 
@@ -367,6 +424,7 @@ describe('Drive Module Combined Suite', () => {
         file: { id: `${i}`, name: `log-${i}.json`, size: 1000 },
         meta: { date: '2026-01-01', length: '100' },
         timestamp: new Date('2026-01-01').getTime() + i,
+        tags: [],
       }));
     };
 
@@ -442,6 +500,7 @@ describe('Drive Module Combined Suite', () => {
           file: { id: 'rec1', name: 'Recent.json' },
           meta: {},
           timestamp: 1000,
+          tags: [],
         },
       ];
       localStorage.setItem('recent_logs', JSON.stringify(['rec1']));
@@ -460,6 +519,7 @@ describe('Drive Module Combined Suite', () => {
           file: { id: 'rec1', name: 'Recent.json' },
           meta: {},
           timestamp: 1000,
+          tags: [],
         },
       ];
       localStorage.setItem('recent_logs', JSON.stringify(['rec1']));
