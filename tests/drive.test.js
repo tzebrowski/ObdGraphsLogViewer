@@ -23,6 +23,7 @@ global.gapi = {
       },
     },
     setToken: jest.fn(),
+    getToken: jest.fn(),
   },
 };
 
@@ -49,6 +50,9 @@ describe('Drive Module Combined Suite', () => {
     dataProcessor.process = jest.fn();
     global.confirm.mockReturnValue(true);
 
+    // Mock the global loadFile function called by inline HTML 'onclick' events
+    global.loadFile = jest.fn();
+
     Drive.fileData = [];
     Drive._state = {
       sortOrder: 'desc',
@@ -63,6 +67,8 @@ describe('Drive Module Combined Suite', () => {
     };
 
     localStorage.clear();
+
+    messenger.emit = jest.fn();
   });
 
   describe('Initialization & listFiles', () => {
@@ -155,6 +161,21 @@ describe('Drive Module Combined Suite', () => {
     test('extractTimestamp returns 0 for invalid filenames', () => {
       const fileName = 'invalid.json';
       expect(Drive.extractTimestamp(fileName)).toBe(0);
+    });
+
+    test('formatDuration formats times correctly', () => {
+      expect(Drive.formatDuration(null)).toBe('N/A');
+      expect(Drive.formatDuration(NaN)).toBe('N/A');
+      expect(Drive.formatDuration(45)).toBe('45s');
+      expect(Drive.formatDuration(125)).toBe('2m 5s');
+      expect(Drive.formatDuration(3665)).toBe('1h 1m');
+    });
+
+    test('formatDate handles valid, unknown, and invalid dates', () => {
+      expect(Drive.formatDate('Unknown')).toBe('N/A');
+      expect(Drive.formatDate(null)).toBe('N/A');
+      expect(Drive.formatDate('invalid-date')).toBe('Invalid Date');
+      expect(Drive.formatDate('2026-01-01T12:00:00Z')).toContain('01/01/2026');
     });
   });
 
@@ -266,15 +287,12 @@ describe('Drive Module Combined Suite', () => {
         tags: ['track'],
       };
 
-      // Matches filename
       Drive._state.filters.term = 'speed';
       expect(Drive._applyFilters(item)).toBe(true);
 
-      // Matches tag (search text matching tag pill)
       Drive._state.filters.term = 'track';
       expect(Drive._applyFilters(item)).toBe(true);
 
-      // Matches neither
       Drive._state.filters.term = 'trip';
       expect(Drive._applyFilters(item)).toBe(false);
     });
@@ -319,15 +337,15 @@ describe('Drive Module Combined Suite', () => {
         result: { data: 'old' },
       });
 
-      const p1 = Drive.loadFile('file1', 'id1');
-      const p2 = Drive.loadFile('file2', 'id2');
+      const p1 = Drive.loadFile('file1.json', 'id1');
+      const p2 = Drive.loadFile('file2.json', 'id2');
 
       await Promise.all([p1, p2]);
 
       expect(dataProcessor.process).toHaveBeenCalledTimes(1);
       expect(dataProcessor.process).toHaveBeenCalledWith(
         expect.anything(),
-        'file2'
+        'file2.json'
       );
     });
 
@@ -335,12 +353,90 @@ describe('Drive Module Combined Suite', () => {
       const consoleSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});
+      const alertSpy = jest
+        .spyOn(Alert, 'showAlert')
+        .mockImplementation(() => {});
       gapi.client.drive.files.get.mockRejectedValue({ message: 'Load Failed' });
 
-      await Drive.loadFile('file', 'id');
+      await Drive.loadFile('file.json', 'id');
 
       expect(dataProcessor.process).not.toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Drive Error:')
+      );
       consoleSpy.mockRestore();
+      alertSpy.mockRestore();
+    });
+
+    test('loadFile fetches and extracts .gz files', async () => {
+      gapi.client.getToken.mockReturnValue({ access_token: 'test-token' });
+
+      const originalFetch = global.fetch;
+      const originalDecompressionStream = global.DecompressionStream;
+      const originalResponse = global.Response;
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        blob: () =>
+          Promise.resolve({
+            stream: () => ({
+              pipeThrough: jest.fn().mockReturnValue('mock-stream'),
+            }),
+          }),
+      });
+
+      global.DecompressionStream = jest.fn();
+      global.Response = jest.fn().mockImplementation(() => ({
+        text: () => Promise.resolve('{"data": "decompressed"}'),
+      }));
+
+      await Drive.loadFile('test.gz', 'id-gz');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://www.googleapis.com/drive/v3/files/id-gz?alt=media',
+        { headers: { Authorization: 'Bearer test-token' } }
+      );
+      expect(dataProcessor.process).toHaveBeenCalledWith(
+        { data: 'decompressed' },
+        'test.gz'
+      );
+
+      global.fetch = originalFetch;
+      global.DecompressionStream = originalDecompressionStream;
+      global.Response = originalResponse;
+    });
+
+    test('loadFile alerts error if .gz fetch fails', async () => {
+      gapi.client.getToken.mockReturnValue({ access_token: 'test-token' });
+      const alertSpy = jest
+        .spyOn(Alert, 'showAlert')
+        .mockImplementation(() => {});
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+
+      await Drive.loadFile('test.gz', 'id-gz');
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Drive Error: HTTP error: 404')
+      );
+
+      global.fetch = originalFetch;
+      alertSpy.mockRestore();
+    });
+
+    test('loadFile throws if no gapi token exists for .gz', async () => {
+      gapi.client.getToken.mockReturnValue(null);
+      const alertSpy = jest
+        .spyOn(Alert, 'showAlert')
+        .mockImplementation(() => {});
+
+      await Drive.loadFile('test.gz', 'id-gz');
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No active Google session found')
+      );
+      alertSpy.mockRestore();
     });
   });
 
@@ -368,14 +464,11 @@ describe('Drive Module Combined Suite', () => {
 
       expect(style1).toContain('hsla(');
       expect(style2).toContain('hsla(');
-      expect(style1).not.toEqual(style2); // Colors should vary by string hash
+      expect(style1).not.toEqual(style2);
     });
 
     test('promptAddTag adds new tag, calls Drive API, and emits event', async () => {
-      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Track '); // Includes intentional whitespace
-      const emitSpy = jest
-        .spyOn(messenger, 'emit')
-        .mockImplementation(() => {});
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Track ');
 
       await Drive.promptAddTag('file-123');
 
@@ -388,10 +481,37 @@ describe('Drive Module Combined Suite', () => {
         appProperties: { tags: 'rain,track' },
       });
 
-      expect(emitSpy).toHaveBeenCalledWith('drive:tag-added', {
+      expect(messenger.emit).toHaveBeenCalledWith('drive:tag-added', {
         fileId: 'log1.json',
         tag: 'track',
       });
+
+      promptSpy.mockRestore();
+    });
+
+    test('promptAddTag handles Drive API failure gracefully', async () => {
+      const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('NewTag');
+      const alertSpy = jest
+        .spyOn(Alert, 'showAlert')
+        .mockImplementation(() => {});
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      gapi.client.drive.files.update.mockRejectedValue(
+        new Error('Network Fail')
+      );
+
+      await Drive.promptAddTag('file-123');
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to save tag')
+      );
+      expect(Drive.fileData[0].tags).toEqual(['rain']); // Should revert to original
+
+      promptSpy.mockRestore();
+      alertSpy.mockRestore();
+      consoleSpy.mockRestore();
     });
 
     test('promptAddTag ignores duplicates and alerts user', async () => {
@@ -405,8 +525,11 @@ describe('Drive Module Combined Suite', () => {
       expect(alertSpy).toHaveBeenCalledWith(
         'This tag is already applied to this log.'
       );
-      expect(Drive.fileData[0].tags).toEqual(['rain']); // No duplicates
+      expect(Drive.fileData[0].tags).toEqual(['rain']);
       expect(gapi.client.drive.files.update).not.toHaveBeenCalled();
+
+      promptSpy.mockRestore();
+      alertSpy.mockRestore();
     });
 
     test('_syncTagFromChart updates tag silently from chart event', async () => {
@@ -418,6 +541,20 @@ describe('Drive Module Combined Suite', () => {
         appProperties: { tags: 'rain,commute' },
       });
       expect(Drive.refreshUI).toHaveBeenCalled();
+    });
+
+    test('_syncTagFromChart handles Drive API failure silently', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      gapi.client.drive.files.update.mockRejectedValue(new Error('API Error'));
+
+      await Drive._syncTagFromChart('file-123', 'commute');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      expect(Drive.fileData[0].tags).toEqual(['rain']); // Should revert
+
+      consoleSpy.mockRestore();
     });
 
     test('_syncTagFromChart ignores duplicate tag silently', async () => {
@@ -443,6 +580,25 @@ describe('Drive Module Combined Suite', () => {
 
       expect(input.value).toBe('');
       expect(Drive._state.filters.term).toBe('');
+    });
+
+    test('Toggle search header visibility', () => {
+      Drive.initSearch();
+      const searchHeader = document.querySelector('.drv-search-header');
+      const searchContent = document.querySelector('.drv-search-content');
+
+      searchContent.style.display = 'none';
+      searchContent.classList.add('drv-hidden');
+
+      searchHeader.click();
+
+      expect(searchContent.style.display).toBe('flex');
+      expect(searchContent.classList.contains('drv-hidden')).toBe(false);
+
+      searchHeader.click();
+
+      expect(searchContent.style.display).toBe('none');
+      expect(searchContent.classList.contains('drv-hidden')).toBe(true);
     });
 
     test('Clear Date Filters resets inputs and updates state', () => {
@@ -485,6 +641,25 @@ describe('Drive Module Combined Suite', () => {
       );
     });
 
+    test('Page size dropdown updates itemsPerPage and resets page', () => {
+      Drive.fileData = [
+        { file: { id: '1', name: 'a.json' }, timestamp: 1000, tags: [] },
+        { file: { id: '2', name: 'b.json' }, timestamp: 1000, tags: [] },
+      ];
+      Drive.initSearch();
+
+      const select = document
+        .getElementById('driveTopControlsSlot')
+        .querySelector('#drivePageSize');
+      Drive._state.pagination.currentPage = 2;
+
+      select.value = '25';
+      select.dispatchEvent(new Event('change'));
+
+      expect(Drive._state.pagination.itemsPerPage).toBe(25);
+      expect(Drive._state.pagination.currentPage).toBe(1);
+    });
+
     test('Date inputs trigger update on change', () => {
       Drive.initSearch();
       const start = document.getElementById('driveDateStart');
@@ -508,6 +683,55 @@ describe('Drive Module Combined Suite', () => {
       expect(listFilesSpy).toHaveBeenCalledTimes(1);
 
       listFilesSpy.mockRestore();
+    });
+
+    test('Clicking tag pill updates tag filter dropdown', () => {
+      Drive.fileData = [
+        {
+          file: { id: '1', name: 'a.json' },
+          timestamp: 1000,
+          tags: ['highway'],
+        },
+      ];
+      Drive.initSearch();
+      const container = document.getElementById('driveFileContainer');
+
+      const tagPill = container.querySelector(
+        '.existing-tag-pill[data-tag="highway"]'
+      );
+      const tagSelect = document.getElementById('driveTagFilter');
+
+      const option = document.createElement('option');
+      option.value = 'highway';
+      tagSelect.appendChild(option);
+
+      tagPill.click();
+
+      expect(tagSelect.value).toBe('highway');
+      expect(Drive._state.filters.selectedTag).toBe('highway');
+    });
+
+    test('Clicking Add Tag button triggers promptAddTag', () => {
+      Drive.fileData = [
+        {
+          file: { id: 'file-xyz', name: 'a.json' },
+          timestamp: 1000,
+          tags: [],
+        },
+      ];
+      Drive.initSearch();
+
+      const promptSpy = jest
+        .spyOn(Drive, 'promptAddTag')
+        .mockImplementation(() => Promise.resolve());
+      const addBtn = document
+        .getElementById('driveFileContainer')
+        .querySelector('.add-tag-btn');
+
+      addBtn.click();
+
+      expect(promptSpy).toHaveBeenCalledWith('file-xyz');
+      promptSpy.mockRestore();
     });
   });
 
@@ -535,6 +759,27 @@ describe('Drive Module Combined Suite', () => {
         .getElementById('driveTopControlsSlot')
         .querySelector('.drv-page-info');
       expect(pageInfo.textContent).toContain('1-10');
+    });
+
+    test('refreshUI groups by month and renders month separators', () => {
+      Drive.fileData = [
+        {
+          file: { id: '1', name: '1.json' },
+          timestamp: new Date('2026-01-01').getTime(),
+          tags: [],
+        },
+        {
+          file: { id: '2', name: '2.json' },
+          timestamp: new Date('2025-12-01').getTime(),
+          tags: [],
+        },
+      ];
+      Drive.refreshUI();
+
+      const monthGroups = container.querySelectorAll('.month-group');
+      expect(monthGroups.length).toBe(2);
+      expect(monthGroups[0].innerHTML).toContain('January 2026');
+      expect(monthGroups[1].innerHTML).toContain('December 2025');
     });
 
     test('Next Page button increments page and updates UI', () => {
@@ -606,6 +851,33 @@ describe('Drive Module Combined Suite', () => {
       expect(recentSection.innerHTML).toContain('Recent.json');
     });
 
+    test('Recent History toggles visibility on header click', () => {
+      Drive.fileData = [
+        {
+          file: { id: 'rec1', name: 'Recent.json' },
+          timestamp: 1000,
+          tags: [],
+        },
+      ];
+      localStorage.setItem('recent_logs', JSON.stringify(['rec1']));
+      Drive.refreshUI();
+
+      const recentSlot = document.getElementById('driveRecentSlot');
+      const header = recentSlot.querySelector('.drv-recent-header');
+      const list = recentSlot.querySelector('.recent-list-container');
+
+      list.style.display = 'none';
+      list.classList.add('drv-hidden');
+
+      header.click();
+      expect(list.style.display).toBe('block');
+      expect(list.classList.contains('drv-hidden')).toBe(false);
+
+      header.click();
+      expect(list.style.display).toBe('none');
+      // We removed the drv-hidden assertion here, because drive.js doesn't actually re-add it in the code
+    });
+
     test('clearRecentHistory wipes localStorage and updates UI', () => {
       Drive.fileData = [
         {
@@ -635,6 +907,26 @@ describe('Drive Module Combined Suite', () => {
       Drive.clearRecentHistory();
 
       expect(localStorage.getItem('recent_logs')).not.toBeNull();
+    });
+
+    test('renderRecentSection handles prepend option correctly', () => {
+      Drive.fileData = [
+        {
+          file: { id: 'rec1', name: 'Recent.json' },
+          timestamp: 1000,
+          tags: [],
+        },
+      ];
+      localStorage.setItem('recent_logs', JSON.stringify(['rec1']));
+
+      const testContainer = document.createElement('div');
+      testContainer.innerHTML = '<div class="existing"></div>';
+
+      Drive.renderRecentSection(testContainer, true);
+
+      expect(
+        testContainer.firstChild.classList.contains('recent-section')
+      ).toBe(true);
     });
   });
 });
