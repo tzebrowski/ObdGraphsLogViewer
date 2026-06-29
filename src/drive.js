@@ -3,6 +3,7 @@ import { UI } from './ui.js';
 import { dataProcessor } from './dataprocessor.js';
 import { Alert } from './alert.js';
 import { debounce } from './debounce.js';
+import { messenger } from './bus.js';
 
 class DriveManager {
   constructor() {
@@ -12,12 +13,36 @@ class DriveManager {
 
     this._state = {
       sortOrder: 'desc',
-      filters: { term: '', start: null, end: null, selectedMonth: '' },
+      filters: {
+        term: '',
+        start: null,
+        end: null,
+        selectedMonth: '',
+        selectedTag: '',
+      },
       pagination: {
         currentPage: 1,
         itemsPerPage: 50,
       },
     };
+
+    messenger.on('file:tag-added', async (data) => {
+      await this._syncTagFromChart(data.fileId, data.tag);
+    });
+
+    messenger.on('chart:request-tags', (data) => {
+      const fileItem = this.fileData.find(
+        (f) => f.file.name === data.fileName || f.file.id === data.fileId
+      );
+      if (fileItem && fileItem.tags && fileItem.tags.length > 0) {
+        fileItem.tags.forEach((tag) => {
+          messenger.emit('drive:tag-added', {
+            fileId: data.fileName,
+            tag: tag,
+          });
+        });
+      }
+    });
 
     this.TEMPLATES = {
       searchInterface: () => `
@@ -40,13 +65,18 @@ class DriveManager {
           <div class="drv-search-content drv-hidden" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 8px;">
             <div class="drv-search-box">
               <i class="fas fa-search drv-search-icon"></i>
-              <input type="text" id="driveSearchInput" placeholder="Filter by name..." class="drv-search-input">
+              <input type="text" id="driveSearchInput" placeholder="Search names or tags..." class="drv-search-input">
               <i class="fas fa-times-circle drv-clear-icon" id="clearDriveSearchText" title="Clear search"></i>
             </div>
             <div class="drv-date-filters" style="display: flex; flex-direction: column; gap: 8px;">
-              <select id="driveMonthFilter" class="template-select" style="width: 100%; cursor: pointer;">
-                <option value="">-- All Months --</option>
-              </select>
+              <div style="display: flex; gap: 8px;">
+                <select id="driveMonthFilter" class="template-select" style="flex: 1; cursor: pointer;">
+                  <option value="">-- All Months --</option>
+                </select>
+                <select id="driveTagFilter" class="template-select" style="flex: 1; cursor: pointer;">
+                  <option value="">-- All Tags --</option>
+                </select>
+              </div>
               <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
                 <input type="date" id="driveDateStart" class="drv-date-input" style="flex: 1;">
                 <span style="color: var(--text-muted);">to</span>
@@ -102,7 +132,7 @@ class DriveManager {
           }
         </div>
       `,
-      fileCard: (file, meta) => `
+      fileCard: (file, meta, tags = []) => `
         <div class="drive-file-card" onclick="loadFile('${file.name}','${file.id}', this)">
           <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
           <div class="file-card-body">
@@ -111,6 +141,12 @@ class DriveManager {
               <div class="meta-item"><i class="far fa-calendar-alt"></i> <span>${this.formatDate(meta?.date)}</span></div>
               <div class="meta-item"><i class="fas fa-history"></i> <span>${this.formatDuration(meta?.length)}</span></div>
               <div class="meta-item"><i class="fas fa-hdd"></i> <span>${file.size ? (file.size / 1024).toFixed(0) : '?'} KB</span></div>
+            </div>
+            <div class="file-card-tags" style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+              ${tags.map((t) => `<span class="existing-tag-pill" data-tag="${t}" title="Click to filter by this tag" style="cursor: pointer; ${this._getTagStyle(t)} padding: 2px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 500; text-transform: capitalize; transition: filter 0.2s;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter='none'">${t}</span>`).join('')}
+              <span class="add-tag-btn" data-id="${file.id}" style="background: transparent; border: 1px dashed var(--text-muted); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; cursor: pointer; transition: color 0.2s;">
+                <i class="fas fa-plus"></i> Tag
+              </span>
             </div>
           </div>
         </div>
@@ -134,6 +170,15 @@ class DriveManager {
         <div class="recent-list-container drv-hidden"></div>
       `,
     };
+  }
+
+  _getTagStyle(tag) {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
   }
 
   formatDuration(seconds) {
@@ -229,18 +274,29 @@ class DriveManager {
       while (hasMore) {
         const res = await gapi.client.drive.files.list({
           pageSize: 100,
-          fields: 'nextPageToken, files(id, name, size, modifiedTime)',
+          fields:
+            'nextPageToken, files(id, name, size, modifiedTime, appProperties)',
           q: `'${folderId}' in parents and (name contains '.json' or name contains '.gz' or name contains '.jsonl') and trashed=false`,
           orderBy: 'modifiedTime desc',
           pageToken: pageToken,
         });
 
         const files = res.result.files || [];
-        const processedFiles = files.map((f) => ({
-          file: f,
-          meta: this.getFileMetadata(f.name),
-          timestamp: this.extractTimestamp(f.name),
-        }));
+        const processedFiles = files.map((f) => {
+          let tags = [];
+          if (f.appProperties && f.appProperties.tags) {
+            tags = f.appProperties.tags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean);
+          }
+          return {
+            file: f,
+            meta: this.getFileMetadata(f.name),
+            timestamp: this.extractTimestamp(f.name),
+            tags: tags,
+          };
+        });
 
         this.fileData = [...this.fileData, ...processedFiles];
 
@@ -257,18 +313,22 @@ class DriveManager {
         return;
       }
 
-      this.populateMonthFilterDropdown();
+      this.populateDropdowns();
       this.initSearch();
     } catch (error) {
       this.handleApiError(error, listEl);
     }
   }
 
-  populateMonthFilterDropdown() {
-    const select = document.getElementById('driveMonthFilter');
-    if (!select) return;
+  populateDropdowns() {
+    const monthSelect = document.getElementById('driveMonthFilter');
+    const tagSelect = document.getElementById('driveTagFilter');
+
+    if (!monthSelect || !tagSelect) return;
 
     const monthsSet = new Set();
+    const tagsSet = new Set();
+
     this.fileData.forEach((item) => {
       const dateObj = new Date(item.timestamp);
       if (!isNaN(dateObj.getTime())) {
@@ -278,18 +338,113 @@ class DriveManager {
         });
         monthsSet.add(monthYear);
       }
+
+      if (item.tags) {
+        item.tags.forEach((t) => tagsSet.add(t));
+      }
     });
 
-    const sortedMonths = Array.from(monthsSet).sort((a, b) => {
-      return new Date(b) - new Date(a);
+    const currentMonth = monthSelect.value;
+    monthSelect.innerHTML = '<option value="">-- All Months --</option>';
+    Array.from(monthsSet)
+      .sort((a, b) => new Date(b) - new Date(a))
+      .forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === currentMonth) opt.selected = true;
+        monthSelect.appendChild(opt);
+      });
+
+    const currentTag = tagSelect.value;
+    tagSelect.innerHTML = '<option value="">-- All Tags --</option>';
+    Array.from(tagsSet)
+      .sort()
+      .forEach((t) => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+        if (t === currentTag) opt.selected = true;
+        tagSelect.appendChild(opt);
+      });
+  }
+
+  async promptAddTag(fileId) {
+    const newTag = prompt('Enter a new tag (e.g., Track, Commute, Rain):');
+    if (!newTag || !newTag.trim()) return;
+
+    const tagClean = newTag.trim().toLowerCase();
+
+    const fileItem = this.fileData.find((f) => f.file.id === fileId);
+    if (!fileItem) return;
+
+    const currentTags = fileItem.tags || [];
+    if (currentTags.includes(tagClean)) {
+      Alert.showAlert('This tag is already applied to this log.');
+      return;
+    }
+
+    const updatedTags = [...currentTags, tagClean];
+    const tagsString = updatedTags.join(',');
+
+    fileItem.tags = updatedTags;
+    if (!fileItem.file.appProperties) fileItem.file.appProperties = {};
+    fileItem.file.appProperties.tags = tagsString;
+
+    this.populateDropdowns();
+    this.refreshUI();
+
+    messenger.emit('drive:tag-added', {
+      fileId: fileItem.file.name,
+      tag: tagClean,
     });
 
-    sortedMonths.forEach((m) => {
-      const opt = document.createElement('option');
-      opt.value = m;
-      opt.textContent = m;
-      select.appendChild(opt);
-    });
+    try {
+      await gapi.client.drive.files.update({
+        fileId: fileId,
+        appProperties: { tags: tagsString },
+      });
+    } catch (error) {
+      console.error('Error saving tag:', error);
+      fileItem.tags = currentTags;
+      fileItem.file.appProperties.tags = currentTags.join(',');
+      this.populateDropdowns();
+      this.refreshUI();
+      Alert.showAlert(`Failed to save tag to Google Drive: ${error.message}`);
+    }
+  }
+
+  async _syncTagFromChart(fileIdentifier, tag) {
+    const fileItem = this.fileData.find(
+      (f) => f.file.id === fileIdentifier || f.file.name === fileIdentifier
+    );
+    if (!fileItem) return;
+
+    const currentTags = fileItem.tags || [];
+    if (currentTags.includes(tag)) return;
+
+    const updatedTags = [...currentTags, tag];
+    const tagsString = updatedTags.join(',');
+
+    fileItem.tags = updatedTags;
+    if (!fileItem.file.appProperties) fileItem.file.appProperties = {};
+    fileItem.file.appProperties.tags = tagsString;
+
+    this.populateDropdowns();
+    this.refreshUI();
+
+    try {
+      await gapi.client.drive.files.update({
+        fileId: fileItem.file.id,
+        appProperties: { tags: tagsString },
+      });
+    } catch (error) {
+      console.error('Drive API Error syncing tag from chart:', error);
+      fileItem.tags = currentTags;
+      fileItem.file.appProperties.tags = currentTags.join(',');
+      this.populateDropdowns();
+      this.refreshUI();
+    }
   }
 
   async loadFile(fileName, id, element) {
@@ -310,6 +465,7 @@ class DriveManager {
       const isFiltering =
         this._state.filters.term ||
         this._state.filters.selectedMonth ||
+        this._state.filters.selectedTag ||
         this._state.filters.start ||
         this._state.filters.end;
 
@@ -365,6 +521,11 @@ class DriveManager {
             : response.result;
       }
 
+      const fileItem = this.fileData.find((f) => f.file.id === id);
+      if (fileItem && fileItem.tags) {
+        dataToProcess._injectedTags = fileItem.tags;
+      }
+
       dataProcessor.process(dataToProcess, fileName);
     } catch (error) {
       if (currentToken === this.activeLoadToken) {
@@ -381,7 +542,9 @@ class DriveManager {
     const searchHeader = document.querySelector('.drv-search-header');
     const searchContent = document.querySelector('.drv-search-content');
     if (searchHeader && searchContent) {
-      searchHeader.onclick = () => {
+      searchHeader.onclick = (e) => {
+        if (e.target.closest('#driveRefreshBtn')) return;
+
         const isHidden = searchContent.style.display === 'none';
         if (isHidden) {
           searchContent.style.display = 'flex';
@@ -413,6 +576,7 @@ class DriveManager {
             ?.value.toLowerCase()
             .trim() || '',
         selectedMonth: document.getElementById('driveMonthFilter')?.value || '',
+        selectedTag: document.getElementById('driveTagFilter')?.value || '',
         start: document.getElementById('driveDateStart')?.value
           ? new Date(document.getElementById('driveDateStart').value).setHours(
               0,
@@ -443,6 +607,7 @@ class DriveManager {
         const hasActiveFilters =
           this._state.filters.term ||
           this._state.filters.selectedMonth ||
+          this._state.filters.selectedTag ||
           this._state.filters.start ||
           this._state.filters.end;
         clearFiltersBtn.style.display = hasActiveFilters ? 'block' : 'none';
@@ -454,6 +619,37 @@ class DriveManager {
       else debouncedRefresh();
     };
 
+    const handleTagClick = (e) => {
+      const addBtn = e.target.closest('.add-tag-btn');
+      if (addBtn) {
+        e.stopPropagation();
+        const fileId = addBtn.dataset.id;
+        this.promptAddTag(fileId);
+        return;
+      }
+
+      const existingTag = e.target.closest('.existing-tag-pill');
+      if (existingTag) {
+        e.stopPropagation();
+        const tagValue = existingTag.dataset.tag;
+        const tagFilter = document.getElementById('driveTagFilter');
+
+        if (tagFilter) {
+          tagFilter.value = tagValue;
+          updateHandler(true);
+
+          if (searchContent && searchContent.style.display === 'none') {
+            searchHeader.click();
+          }
+        }
+      }
+    };
+
+    const container = document.getElementById('driveFileContainer');
+    const recentSlot = document.getElementById('driveRecentSlot');
+    if (container) container.addEventListener('click', handleTagClick);
+    if (recentSlot) recentSlot.addEventListener('click', handleTagClick);
+
     safeAddEvent('clearDriveSearchText', 'click', () => {
       const input = document.getElementById('driveSearchInput');
       if (input) input.value = '';
@@ -463,11 +659,13 @@ class DriveManager {
     safeAddEvent('clearDriveFilters', 'click', (e) => {
       e.stopPropagation();
       const input = document.getElementById('driveSearchInput');
-      const select = document.getElementById('driveMonthFilter');
+      const selectMonth = document.getElementById('driveMonthFilter');
+      const selectTag = document.getElementById('driveTagFilter');
       const start = document.getElementById('driveDateStart');
       const end = document.getElementById('driveDateEnd');
       if (input) input.value = '';
-      if (select) select.value = '';
+      if (selectMonth) selectMonth.value = '';
+      if (selectTag) selectTag.value = '';
       if (start) start.value = '';
       if (end) end.value = '';
       updateHandler(true);
@@ -482,6 +680,7 @@ class DriveManager {
 
     safeAddEvent('driveSearchInput', 'input', () => updateHandler(false));
     safeAddEvent('driveMonthFilter', 'change', () => updateHandler(true));
+    safeAddEvent('driveTagFilter', 'change', () => updateHandler(true));
     safeAddEvent('driveDateStart', 'input', () => updateHandler(true));
     safeAddEvent('driveDateEnd', 'input', () => updateHandler(true));
 
@@ -564,6 +763,7 @@ class DriveManager {
       const isFiltering =
         this._state.filters.term ||
         this._state.filters.selectedMonth ||
+        this._state.filters.selectedTag ||
         this._state.filters.start ||
         this._state.filters.end;
 
@@ -577,11 +777,14 @@ class DriveManager {
   }
 
   _applyFilters(item) {
-    const { term, selectedMonth, start, end } = this._state.filters;
+    const { term, selectedMonth, selectedTag, start, end } =
+      this._state.filters;
     const fileDate = item.timestamp;
     const name = item.file.name.toLowerCase();
 
-    const matchesText = name.includes(term);
+    const matchesText =
+      name.includes(term) ||
+      (item.tags && item.tags.some((t) => t.toLowerCase().includes(term)));
     const matchesDateRange =
       (!start || fileDate >= start) && (!end || fileDate <= end);
 
@@ -595,7 +798,12 @@ class DriveManager {
       matchesMonth = itemMonthYear === selectedMonth;
     }
 
-    return matchesText && matchesDateRange && matchesMonth;
+    let matchesTag = true;
+    if (selectedTag) {
+      matchesTag = item.tags && item.tags.includes(selectedTag);
+    }
+
+    return matchesText && matchesDateRange && matchesMonth && matchesTag;
   }
 
   renderGroupedCards(container, items) {
@@ -623,7 +831,11 @@ class DriveManager {
       }
 
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = this.TEMPLATES.fileCard(item.file, item.meta);
+      tempDiv.innerHTML = this.TEMPLATES.fileCard(
+        item.file,
+        item.meta,
+        item.tags
+      );
       const cardEl = tempDiv.firstElementChild;
 
       currentGroup.querySelector('.month-list').appendChild(cardEl);
@@ -664,7 +876,11 @@ class DriveManager {
 
     recentItems.forEach((item) => {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = this.TEMPLATES.fileCard(item.file, item.meta);
+      tempDiv.innerHTML = this.TEMPLATES.fileCard(
+        item.file,
+        item.meta,
+        item.tags
+      );
       const card = tempDiv.firstElementChild;
       card.classList.add('drv-recent-card');
       list.appendChild(card);

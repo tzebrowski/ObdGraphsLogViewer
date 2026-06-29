@@ -55,8 +55,23 @@ export const ChartManager = {
       zoomPlugin
     );
 
+    window.promptChartTag = (idx) => this._promptForTag(idx);
+
     messenger.on(EVENTS.BATCH_LOADED, (_event) => {
       ChartManager.render();
+    });
+
+    messenger.on('drive:tag-added', (data) => {
+      const { fileId, tag } = data;
+      AppState.files.forEach((file, index) => {
+        if (file.id === fileId || file.name === fileId) {
+          if (!file.tags) file.tags = [];
+          if (!file.tags.includes(tag)) {
+            file.tags.push(tag);
+            this._updateChartHeaderTags(index);
+          }
+        }
+      });
     });
 
     messenger.on(EVENTS.MAP_SELECTED, (data) => {
@@ -494,10 +509,22 @@ export const ChartManager = {
 
     if (this.viewMode === VIEW_MODES.OVERLAY) {
       this._renderOverlayMode(container);
+
+      AppState.files.forEach((file, idx) => {
+        messenger.emit('chart:request-tags', {
+          fileName: file.name,
+          index: idx,
+        });
+      });
     } else {
       AppState.files.forEach((file, idx) => {
         this._renderChartCard(container, file, idx);
         mapManager.loadRoute(idx);
+
+        messenger.emit('chart:request-tags', {
+          fileName: file.name,
+          index: idx,
+        });
       });
     }
   },
@@ -583,6 +610,60 @@ export const ChartManager = {
     return `${seconds}s`;
   },
 
+  _getTagStyle(tag) {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
+  },
+
+  _generateTagsHtml(file) {
+    if (!file.tags || file.tags.length === 0) return '';
+    return file.tags
+      .map(
+        (t) =>
+          `<span style="${this._getTagStyle(t)} padding: 1px 6px; border-radius: 10px; font-size: 0.65em; text-transform: capitalize;">${t}</span>`
+      )
+      .join('');
+  },
+
+  _updateChartHeaderTags(index) {
+    const container = document.getElementById(`chart-tags-${index}`);
+    const file = AppState.files[index];
+    if (container && file) {
+      container.innerHTML = this._generateTagsHtml(file);
+    }
+  },
+
+  _promptForTag(index) {
+    const file = AppState.files[index];
+    if (!file) return;
+
+    const newTag = prompt(
+      `Enter a new tag for ${file.name}\n(e.g., Track, Commute, Rain):`
+    );
+    if (!newTag || !newTag.trim()) return;
+
+    const tagClean = newTag.trim().toLowerCase();
+    if (!file.tags) file.tags = [];
+
+    if (file.tags.includes(tagClean)) {
+      alert('This tag is already applied to this log.');
+      return;
+    }
+
+    file.tags.push(tagClean);
+    this._updateChartHeaderTags(index);
+
+    messenger.emit('file:tag-added', {
+      fileId: file.id || file.name,
+      tag: tagClean,
+      index,
+    });
+  },
+
   _renderChartCard(container, file, idx) {
     const wrapper = document.createElement('div');
     wrapper.className = 'chart-card-compact';
@@ -600,6 +681,9 @@ export const ChartManager = {
              <span class="chart-meta-info chm-meta-text">
                 <i class="far fa-clock"></i> ${dateStr} &nbsp;|&nbsp; <i class="fas fa-stopwatch"></i> ${durationStr}
              </span>
+             <div id="chart-tags-${idx}" style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
+                ${this._generateTagsHtml(file)}
+             </div>
           </div>
           <div class="chart-actions chm-flex-center">
               <div class="chm-step-controls">
@@ -609,6 +693,7 @@ export const ChartManager = {
                   <button class="btn-icon chm-border-none" onclick="stepCursor(${idx}, 10)" title="+1s"><i class="fas fa-forward"></i></button>
               </div>  
               <button class="btn-icon" onclick="exportDataRange(${idx})" title="Export Visible CSV"><i class="fas fa-file-csv"></i></button>
+              <button class="btn-icon" onclick="promptChartTag(${idx})" title="Add Tag (Shortcut: T)"><i class="fas fa-tags"></i></button>
               <button class="btn-icon chm-cursor-help" title="${shortcuts}"><i class="fas fa-keyboard"></i></button>
               <button class="btn-icon" onclick="showChartInfo(${idx})" title="Log Details"><i class="fas fa-info-circle"></i></button>
               <div class="chm-vertical-divider"></div>
@@ -922,7 +1007,7 @@ export const ChartManager = {
     return {
       y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
       x: {
-        type: 'linear', // Change this from 'time' to 'linear'
+        type: 'linear',
         title: {
           display: true,
           text: 'Trip Duration (mm:ss)',
@@ -1080,6 +1165,7 @@ export const ChartManager = {
   _attachMouseListeners(canvas, index) {
     let isSelecting = false;
     let selectionStartMs = null;
+    let hasDragged = false;
 
     canvas.addEventListener('pointerdown', (e) => {
       if (e.shiftKey) {
@@ -1087,6 +1173,7 @@ export const ChartManager = {
         const chart = AppState.chartInstances[index];
         if (!chart) return;
         isSelecting = true;
+        hasDragged = false;
         selectionStartMs = chart.scales.x.getValueForPixel(e.offsetX);
       }
     });
@@ -1097,6 +1184,7 @@ export const ChartManager = {
       const newValue = chart.scales.x.getValueForPixel(e.offsetX);
 
       if (isSelecting) {
+        hasDragged = true;
         const file = AppState.files[index];
         AppState.activeHighlight = {
           start: (Math.min(selectionStartMs, newValue) - file.startTime) / 1000,
@@ -1125,6 +1213,11 @@ export const ChartManager = {
     canvas.addEventListener('pointerup', (e) => {
       if (isSelecting) {
         isSelecting = false;
+
+        if (!hasDragged) {
+          AppState.activeHighlight = null;
+          return;
+        }
 
         const chart = AppState.chartInstances[index];
         const file = AppState.files[index];
@@ -1224,6 +1317,7 @@ export const ChartManager = {
     canvas.addEventListener('pointerleave', () => {
       if (isSelecting) {
         isSelecting = false;
+        hasDragged = false;
         AppState.activeHighlight = null;
         const chart = AppState.chartInstances[index];
         if (chart) {
@@ -1237,6 +1331,11 @@ export const ChartManager = {
     });
 
     canvas.addEventListener('click', (e) => {
+      if (e.shiftKey && !e.altKey && !hasDragged) {
+        this._promptForTag(index);
+        return;
+      }
+
       if (e.altKey) {
         const chart = AppState.chartInstances[index];
         const file = AppState.files[index];
@@ -1244,7 +1343,6 @@ export const ChartManager = {
         const clickVal = chart.scales.x.getValueForPixel(e.offsetX);
         const relTime = (clickVal - file.startTime) / 1000;
 
-        // 1. Sprawdz czy kliknieto blisko istniejacej adnotacji punktowej (do usuniecia)
         if (file.annotations && file.annotations.length > 0) {
           const clickX = e.offsetX;
           let clickedNoteIdx = -1;
@@ -1268,7 +1366,6 @@ export const ChartManager = {
           }
         }
 
-        // 2. Sprawdz czy kliknieto wewnatrz podswietlonego obszaru (do usuniecia)
         if (file.highlights && file.highlights.length > 0) {
           const clickedHlIdx = file.highlights.findIndex(
             (hl) => relTime >= hl.start && relTime <= hl.end
@@ -1283,7 +1380,6 @@ export const ChartManager = {
           }
         }
 
-        // 3. Jeśli nie usunieto niczego, standardowo dodaj nowy znacznik
         const text = prompt(
           `Add point annotation (Alt+Click) at ${relTime.toFixed(2)}s:`,
           ''
@@ -1352,9 +1448,15 @@ export const ChartManager = {
           chart.zoom(0.9, undefined, 'none');
           break;
         case 'a':
+        case 'A':
           this._addAnnotationViaKeyboard(index);
           break;
+        case 't':
+        case 'T':
+          this._promptForTag(index);
+          break;
         case 'e':
+        case 'E':
           this.exportDataRange(index);
           break;
         case 'r':
@@ -1436,11 +1538,9 @@ export const ChartManager = {
           const pxEnd = x.getPixelForValue(file.startTime + hl.end * 1000);
 
           if (!isNaN(pxStart) && !isNaN(pxEnd)) {
-            // Rysowanie tła obszaru
-            ctx.fillStyle = hl.color || 'rgba(255, 165, 0, 0.15)'; // Default orange-ish
+            ctx.fillStyle = hl.color || 'rgba(255, 165, 0, 0.15)';
             ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
 
-            // --- KALKULACJA KONTEKSTU W LOCIE ---
             let statsObj = {};
             const startAbs = file.startTime + hl.start * 1000;
             const endAbs = file.startTime + hl.end * 1000;
@@ -1460,7 +1560,6 @@ export const ChartManager = {
               }
             });
 
-            // --- RYSOWANIE POBRANEGO KONTEKSTU Wewnątrz OBSZARU ---
             let texts = [];
             const displayLabel = hl.label || 'Highlighted Area';
             texts.push({ text: displayLabel, font: 'bold 11px Arial' });
@@ -1494,14 +1593,12 @@ export const ChartManager = {
               const boxHeight = texts.length * lineHeight + padding * 2;
               let maxWidth = 0;
 
-              // Zmierz szerokość tekstów by dopasować czarne tło
               texts.forEach((t) => {
                 ctx.font = t.font;
                 const w = ctx.measureText(t.text).width;
                 if (w > maxWidth) maxWidth = w;
               });
 
-              // Rysuj estetyczne, półprzezroczyste czarne tło dla tekstu kontekstu
               ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
               ctx.fillRect(
                 pxStart + 5,
@@ -1510,7 +1607,6 @@ export const ChartManager = {
                 boxHeight
               );
 
-              // Rysuj sam tekst
               ctx.fillStyle = 'white';
               let currentY = top + 5 + padding + 9;
               texts.forEach((t) => {
@@ -1572,10 +1668,12 @@ export const ChartManager = {
     \u2190 / \u2192 : Pan Left/Right (Shift for faster)
     + / - : Zoom In / Out
     R : Reset View
-    A : KEYBOARD: Add annotation at cursor
+    A : KEYBOARD: Add point annotation at cursor
+    T : Add Tag to file
     E : Export Visible Data (CSV)
     L : Toggle Legend Visibility
     Shift + Drag : Highlight Area
+    Shift + Click: Add Tag to file
     Alt + Click : Add / Delete Annotation or Highlight`;
   },
 
