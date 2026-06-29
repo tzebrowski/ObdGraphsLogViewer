@@ -150,7 +150,7 @@ await jest.unstable_mockModule('../src/palettemanager.js', () => ({
 }));
 
 await jest.unstable_mockModule('../src/preferences.js', () => ({
-  Preferences: { prefs: { showAreaFills: true } },
+  Preferences: { prefs: { showAreaFills: true, smoothLines: false } },
 }));
 
 const mockMapManager = {
@@ -170,6 +170,13 @@ const mockProjectManager = {
 };
 await jest.unstable_mockModule('../src/projectmanager.js', () => ({
   projectManager: mockProjectManager,
+}));
+
+const mockSignalRegistry = {
+  isDefaultSignal: jest.fn(() => true),
+};
+await jest.unstable_mockModule('../src/signalregistry.js', () => ({
+  signalRegistry: mockSignalRegistry,
 }));
 
 const { ChartManager } = await import('../src/chartmanager.js');
@@ -257,6 +264,40 @@ describe('ChartManager Complete Suite', () => {
       AppState.files = [{ name: 'f1' }];
       ChartManager.removeChart(0);
       expect(AppState.files).toHaveLength(1);
+    });
+
+    test('MAP_SELECTED event syncs tooltip and updates bounds (Stack mode)', () => {
+      ChartManager.init();
+      ChartManager.viewMode = 'stack';
+      AppState.files = [{ startTime: 1000, duration: 100 }];
+      mockChartInstance.scales.x.min = 2000;
+      mockChartInstance.scales.x.max = 3000;
+      AppState.chartInstances = [mockChartInstance];
+
+      const cb = messenger.on.mock.calls.find(
+        (call) => call[0] === 'map:position-selected'
+      )[1];
+      cb({ time: 5000, fileIndex: 0 });
+
+      expect(ChartManager.hoverValue).toBe(5000);
+      expect(mockChartInstance.options.scales.x.min).toBe(4500);
+    });
+
+    test('MAP_SELECTED event syncs tooltip and updates bounds (Overlay mode)', () => {
+      ChartManager.init();
+      ChartManager.viewMode = 'overlay';
+      AppState.files = [{ startTime: 1000 }, { startTime: 5000 }];
+      mockChartInstance.scales.x.min = 0;
+      mockChartInstance.scales.x.max = 1000;
+      AppState.chartInstances = [mockChartInstance];
+
+      const cb = messenger.on.mock.calls.find(
+        (call) => call[0] === 'map:position-selected'
+      )[1];
+      cb({ time: 5500, fileIndex: 1 });
+
+      expect(ChartManager.hoverValue).toBe(5500);
+      expect(mockChartInstance.options.scales.x.min).toBe(1000);
     });
   });
 
@@ -398,6 +439,20 @@ describe('ChartManager Complete Suite', () => {
       expect(ChartManager.hoverValue).toBe(21000);
     });
 
+    test('stepCursor Overlay mode clamps to maxDuration', () => {
+      ChartManager.viewMode = 'overlay';
+      AppState.files = [
+        { startTime: 1000, duration: 10 },
+        { startTime: 2000, duration: 20 },
+      ];
+      AppState.chartInstances = [mockChartInstance];
+
+      ChartManager.hoverValue = 1000;
+      ChartManager.stepCursor(0, 500);
+
+      expect(ChartManager.hoverValue).toBe(21000);
+    });
+
     test('Shifts view when cursor hits right edge', () => {
       ChartManager.hoverValue = 6000;
       ChartManager.stepCursor(0, 1);
@@ -460,6 +515,108 @@ describe('ChartManager Complete Suite', () => {
 
       expect(AppState.files[0].annotations).toHaveLength(1);
     });
+
+    test('Pointer events for highlighting anomalies', () => {
+      const file = {
+        startTime: 1000,
+        duration: 10,
+        signals: { A: [{ x: 1000, y: 1 }] },
+        highlights: [],
+      };
+      AppState.files = [file];
+      AppState.chartInstances = [mockChartInstance];
+      mockChartInstance.data.datasets = [{ label: 'A', hidden: false }];
+
+      let testCanvas = document.createElement('canvas');
+      testCanvas.getContext = jest.fn(() => mockChartInstance.ctx);
+      ChartManager._attachMouseListeners(testCanvas, 0);
+
+      const downEvent = new MouseEvent('pointerdown', {
+        bubbles: true,
+        shiftKey: true,
+      });
+      Object.defineProperty(downEvent, 'offsetX', { value: 10 });
+      mockChartInstance.scales.x.getValueForPixel.mockReturnValueOnce(1000);
+      testCanvas.dispatchEvent(downEvent);
+
+      const moveEvent = new MouseEvent('pointermove', { bubbles: true });
+      Object.defineProperty(moveEvent, 'offsetX', { value: 50 });
+      mockChartInstance.scales.x.getValueForPixel.mockReturnValueOnce(5000);
+      testCanvas.dispatchEvent(moveEvent);
+
+      expect(AppState.activeHighlight.start).toBe(0);
+      expect(AppState.activeHighlight.end).toBe(4);
+
+      const upEvent = new MouseEvent('pointerup', { bubbles: true });
+      Object.defineProperty(upEvent, 'offsetX', { value: 50 });
+      mockChartInstance.scales.x.getValueForPixel.mockReturnValueOnce(5000);
+      testCanvas.dispatchEvent(upEvent);
+
+      const modal = document.getElementById('customAnomalyModal');
+      expect(modal).not.toBeNull();
+
+      document.getElementById('anoTitle').value = 'Test High';
+      document.getElementById('btnAnoSave').click();
+
+      expect(file.highlights).toHaveLength(1);
+      expect(file.highlights[0].label).toBe('Test High');
+    });
+
+    test('Alt+Click deletes existing annotation or highlight', () => {
+      const file = {
+        startTime: 1000,
+        annotations: [{ time: 1.0, text: 'hi' }],
+        highlights: [{ start: 2.0, end: 3.0 }],
+      };
+      AppState.files = [file];
+      AppState.chartInstances = [mockChartInstance];
+
+      let testCanvas = document.createElement('canvas');
+      testCanvas.getContext = jest.fn(() => mockChartInstance.ctx);
+      ChartManager._attachMouseListeners(testCanvas, 0);
+
+      const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+      mockChartInstance.scales.x.getValueForPixel.mockReturnValueOnce(2000);
+      mockChartInstance.scales.x.getPixelForValue.mockReturnValue(50);
+      const clickEvent1 = new MouseEvent('click', {
+        bubbles: true,
+        altKey: true,
+      });
+      Object.defineProperty(clickEvent1, 'offsetX', { value: 50 });
+      testCanvas.dispatchEvent(clickEvent1);
+
+      expect(file.annotations).toHaveLength(0);
+
+      mockChartInstance.scales.x.getValueForPixel.mockReturnValueOnce(3500);
+      const clickEvent2 = new MouseEvent('click', {
+        bubbles: true,
+        altKey: true,
+      });
+      Object.defineProperty(clickEvent2, 'offsetX', { value: 50 });
+      testCanvas.dispatchEvent(clickEvent2);
+
+      expect(file.highlights).toHaveLength(0);
+
+      confirmSpy.mockRestore();
+    });
+
+    test('Keyboard controls handle left/right +/=', () => {
+      let testCanvas = document.createElement('canvas');
+      ChartManager.initKeyboardControls(testCanvas, 0);
+      AppState.chartInstances = [mockChartInstance];
+
+      testCanvas.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft' })
+      );
+      expect(mockChartInstance.pan).toHaveBeenCalled();
+
+      testCanvas.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }));
+      expect(mockChartInstance.zoom).toHaveBeenCalled();
+
+      testCanvas.dispatchEvent(new KeyboardEvent('keydown', { key: '-' }));
+      expect(mockChartInstance.zoom).toHaveBeenCalled();
+    });
   });
 
   describe('Tagging Functionality', () => {
@@ -479,7 +636,6 @@ describe('ChartManager Complete Suite', () => {
       ];
       AppState.chartInstances = [mockChartInstance];
 
-      // Setup DOM container for tags
       document.body.innerHTML = `<div id="chart-tags-0"></div>`;
 
       canvas = document.createElement('canvas');
@@ -524,7 +680,7 @@ describe('ChartManager Complete Suite', () => {
       expect(alertSpy).toHaveBeenCalledWith(
         'This tag is already applied to this log.'
       );
-      expect(AppState.files[0].tags.filter((t) => t === 'rain').length).toBe(1); // Still only 1 rain tag
+      expect(AppState.files[0].tags.filter((t) => t === 'rain').length).toBe(1);
       expect(messenger.emit).not.toHaveBeenCalled();
 
       promptSpy.mockRestore();
@@ -565,15 +721,12 @@ describe('ChartManager Complete Suite', () => {
     });
 
     test('Event bus "drive:tag-added" synchronizes background tags', () => {
-      // Re-initialize ChartManager to re-attach the event listener
       ChartManager.init();
 
-      // Find the listener callback registered for 'drive:tag-added'
       const driveTagCb = messenger.on.mock.calls.find(
         (call) => call[0] === 'drive:tag-added'
       )[1];
 
-      // Simulate receiving tag data from drive.js
       driveTagCb({ fileId: 'file-123', tag: 'remote-tag' });
 
       expect(AppState.files[0].tags).toContain('remote-tag');
@@ -657,6 +810,26 @@ describe('ChartManager Complete Suite', () => {
 
       expect(csv).toMatch(/1\.000,200\.000,10\.000(\r\n|\n|$)/);
     });
+
+    test('exportDataRange handles empty timeSet', () => {
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+      AppState.files = [
+        {
+          name: 'f1',
+          startTime: 1000,
+          availableSignals: ['A'],
+          signals: { A: [] },
+        },
+      ];
+      AppState.chartInstances = [mockChartInstance];
+      jest.spyOn(document, 'querySelector').mockReturnValue({ checked: true });
+
+      ChartManager.exportDataRange(0);
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Brak danych w zaznaczonym przedziale czasu.'
+      );
+      alertSpy.mockRestore();
+    });
   });
 
   describe('Chart Info Modal', () => {
@@ -677,6 +850,29 @@ describe('ChartManager Complete Suite', () => {
       expect(modal).not.toBeNull();
       expect(modal.innerHTML).toContain('trip.json');
       expect(modal.innerHTML).toContain('Signals Count');
+    });
+
+    test('showChartInfo complex metadata formatting', () => {
+      AppState.files = [
+        {
+          name: 'trip.json',
+          startTime: 1000,
+          duration: 60,
+          availableSignals: ['A'],
+          signals: { A: [{ x: 1000, y: 1 }], 'Math:A': [] },
+          metadata: {
+            engineTemp: { min: 80, max: 90, unit: 'C' },
+            customJson: { foo: 'bar' },
+            timestampTime: 1600000000000,
+            trip: { duration: 5 },
+          },
+        },
+      ];
+      ChartManager.showChartInfo(0);
+      const modal = document.getElementById('metadataModal');
+      expect(modal.innerHTML).toContain('Engine Temp');
+      expect(modal.innerHTML).toContain('Min: 80.00, Max: 90.00 [C]');
+      expect(modal.innerHTML).toContain('foo: bar');
     });
   });
 
@@ -813,6 +1009,71 @@ describe('ChartManager Complete Suite', () => {
 
       ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
       expect(mockChartInstance.ctx.stroke).toHaveBeenCalled();
+    });
+
+    test('HighlighterPlugin draws stats block', () => {
+      AppState.chartInstances = [mockChartInstance];
+      AppState.files = [
+        {
+          startTime: 1000,
+          highlights: [{ start: 0, end: 1, label: 'x', description: 'y' }],
+          signals: { A: [{ x: 1500, y: 10 }] },
+        },
+      ];
+      mockChartInstance.data.datasets = [{ hidden: false, label: 'A' }];
+      mockChartInstance.scales.x.getPixelForValue.mockReturnValue(50);
+      ChartManager.highlighterPlugin.afterDraw(mockChartInstance);
+      expect(mockChartInstance.ctx.fillText).toHaveBeenCalled();
+    });
+
+    test('updateSmoothing applies tension based on preferences', () => {
+      AppState.chartInstances = [mockChartInstance];
+      mockChartInstance.data.datasets = [{ tension: 0 }];
+
+      Preferences.prefs.smoothLines = true;
+      ChartManager.updateSmoothing();
+      expect(mockChartInstance.data.datasets[0].tension).toBe(0.8);
+
+      Preferences.prefs.smoothLines = false;
+      ChartManager.updateSmoothing();
+      expect(mockChartInstance.data.datasets[0].tension).toBe(0);
+    });
+
+    test('Tick and Tooltip Formatting Callbacks', () => {
+      const opts = ChartManager._getChartOptions({ startTime: 1000 });
+      const xTickCallback = opts.scales.x.ticks.callback;
+      expect(typeof xTickCallback(1600000000000)).toBe('string');
+
+      ChartManager.viewMode = 'overlay';
+      AppState.files = [{ startTime: 1000 }];
+      const tooltipTitleCb = opts.plugins.tooltip.callbacks.title;
+      expect(tooltipTitleCb([{ parsed: { x: 5000 } }])).toBe('T + 4.00s');
+
+      const dlFormatter = opts.plugins.datalabels.formatter;
+      const dlRes = dlFormatter(
+        { y: 0.5 },
+        { dataset: { originalMin: 0, originalMax: 100 } }
+      );
+      expect(dlRes).toBe('50.0');
+    });
+
+    test('Zoom and Pan Plugin Callbacks', () => {
+      ChartManager.viewMode = 'stack';
+      AppState.files = [{ startTime: 1000, duration: 10 }];
+      AppState.chartInstances = [mockChartInstance];
+
+      const opts = ChartManager._getZoomPluginConfig();
+
+      const shiftEvent = { shiftKey: true };
+      expect(opts.pan.onPanStart({ event: shiftEvent })).toBe(false);
+      expect(opts.zoom.onZoomStart({ event: shiftEvent })).toBe(false);
+
+      opts.pan.onPan({ chart: mockChartInstance });
+      opts.pan.onPanComplete({ chart: mockChartInstance });
+      opts.zoom.onZoom({ chart: mockChartInstance });
+      opts.zoom.onZoomComplete({ chart: mockChartInstance });
+
+      expect(mockChartInstance.update).toHaveBeenCalled();
     });
   });
 
