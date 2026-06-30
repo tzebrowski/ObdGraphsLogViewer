@@ -42,13 +42,17 @@ export const Navigation = {
 
     if (DeepLink.hasFileId() && hash !== '#analyzer') {
       hash = '#analyzer';
-      window.history.replaceState(null, '', window.location.pathname + window.location.search + hash);
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search + hash
+      );
     } else if (!hash) {
       hash = '#home';
     }
 
     console.log('Current Hash:', hash);
-    
+
     const routeAction = Navigation.routes[hash];
     if (routeAction) {
       routeAction();

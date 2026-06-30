@@ -32,6 +32,7 @@ global.confirm = jest.fn();
 describe('Drive Module Combined Suite', () => {
   let container;
   let listEl;
+  let dummyElement;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -49,6 +50,9 @@ describe('Drive Module Combined Suite', () => {
     UI.setLoading = jest.fn();
     dataProcessor.process = jest.fn();
     global.confirm.mockReturnValue(true);
+
+    // Mock element template to satisfy structural DOM element operations inside loadFile
+    dummyElement = { classList: { add: jest.fn(), remove: jest.fn() } };
 
     // Mock the global loadFile function called by inline HTML 'onclick' events
     global.loadFile = jest.fn();
@@ -333,20 +337,26 @@ describe('Drive Module Combined Suite', () => {
     });
 
     test('loadFile ignores old requests if a new one starts (Token check)', async () => {
-      gapi.client.drive.files.get.mockResolvedValue({
-        result: { data: 'old' },
+      gapi.client.getToken.mockReturnValue({ access_token: 'test-token' });
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ logData: 'mock-data' }),
       });
 
-      const p1 = Drive.loadFile('file1.json', 'id1');
-      const p2 = Drive.loadFile('file2.json', 'id2');
+      const p1 = Drive.loadFile('file1.json', 'id1', dummyElement);
+      const p2 = Drive.loadFile('file2.json', 'id2', dummyElement);
 
       await Promise.all([p1, p2]);
 
       expect(dataProcessor.process).toHaveBeenCalledTimes(1);
       expect(dataProcessor.process).toHaveBeenCalledWith(
-        expect.anything(),
+        { logData: 'mock-data' },
         'file2.json'
       );
+
+      global.fetch = originalFetch;
     });
 
     test('loadFile handles API errors', async () => {
@@ -356,14 +366,20 @@ describe('Drive Module Combined Suite', () => {
       const alertSpy = jest
         .spyOn(Alert, 'showAlert')
         .mockImplementation(() => {});
-      gapi.client.drive.files.get.mockRejectedValue({ message: 'Load Failed' });
 
-      await Drive.loadFile('file.json', 'id');
+      gapi.client.getToken.mockReturnValue({ access_token: 'test-token' });
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockRejectedValue(new Error('Load Failed'));
+
+      await Drive.loadFile('file.json', 'id', dummyElement);
 
       expect(dataProcessor.process).not.toHaveBeenCalled();
       expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Drive Error:')
+        expect.stringContaining('Download Error: Load Failed')
       );
+
+      global.fetch = originalFetch;
       consoleSpy.mockRestore();
       alertSpy.mockRestore();
     });
@@ -390,7 +406,7 @@ describe('Drive Module Combined Suite', () => {
         text: () => Promise.resolve('{"data": "decompressed"}'),
       }));
 
-      await Drive.loadFile('test.gz', 'id-gz');
+      await Drive.loadFile('test.gz', 'id-gz', dummyElement);
 
       expect(global.fetch).toHaveBeenCalledWith(
         'https://www.googleapis.com/drive/v3/files/id-gz?alt=media',
@@ -415,10 +431,10 @@ describe('Drive Module Combined Suite', () => {
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
 
-      await Drive.loadFile('test.gz', 'id-gz');
+      await Drive.loadFile('test.gz', 'id-gz', dummyElement);
 
       expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Drive Error: HTTP error: 404')
+        expect.stringContaining('Download Error: HTTP error: 404')
       );
 
       global.fetch = originalFetch;
@@ -431,10 +447,10 @@ describe('Drive Module Combined Suite', () => {
         .spyOn(Alert, 'showAlert')
         .mockImplementation(() => {});
 
-      await Drive.loadFile('test.gz', 'id-gz');
+      await Drive.loadFile('test.gz', 'id-gz', dummyElement);
 
       expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No active Google session found')
+        expect.stringContaining('GAPI client session token not found')
       );
       alertSpy.mockRestore();
     });
@@ -875,7 +891,6 @@ describe('Drive Module Combined Suite', () => {
 
       header.click();
       expect(list.style.display).toBe('none');
-      // We removed the drv-hidden assertion here, because drive.js doesn't actually re-add it in the code
     });
 
     test('clearRecentHistory wipes localStorage and updates UI', () => {

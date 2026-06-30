@@ -453,13 +453,13 @@ class DriveManager {
   async makeFilePublicAndCopyLink(fileId) {
     try {
       UI.setLoading(true, 'Generating shareable app link...');
-      
+
       await gapi.client.drive.permissions.create({
         fileId: fileId,
         resource: {
           role: 'reader',
-          type: 'anyone'
-        }
+          type: 'anyone',
+        },
       });
 
       const baseUrl = window.location.origin + window.location.pathname;
@@ -467,11 +467,12 @@ class DriveManager {
 
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(appLink);
-        Alert.showAlert('Success! App link copied to your clipboard. Anyone with this link can view the log in the app.');
+        Alert.showAlert(
+          'Success! App link copied to your clipboard. Anyone with this link can view the log in the app.'
+        );
       } else {
         Alert.showAlert(`Success! Shareable Link:\n${appLink}`);
       }
-      
     } catch (error) {
       console.error('Error making file public:', error);
       Alert.showAlert(`Failed to create public link: ${error.message}`);
@@ -518,14 +519,18 @@ class DriveManager {
 
     try {
       let dataToProcess;
-      const tokenObj = window.gapi && gapi.client ? gapi.client.getToken() : null;
+      const tokenObj =
+        window.gapi && gapi.client ? gapi.client.getToken() : null;
 
-      if (!tokenObj) throw new Error("GAPI client session token not found.");
+      if (!tokenObj) throw new Error('GAPI client session token not found.');
 
-      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, {
-        headers: { 'Authorization': `Bearer ${tokenObj.access_token}` }
-      });
-      
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+        {
+          headers: { Authorization: `Bearer ${tokenObj.access_token}` },
+        }
+      );
+
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       if (currentToken !== this.activeLoadToken) return;
 
@@ -533,7 +538,9 @@ class DriveManager {
         const blob = await response.blob();
         const ds = new DecompressionStream('gzip');
         const decompressedStream = blob.stream().pipeThrough(ds);
-        dataToProcess = JSON.parse(await new Response(decompressedStream).text());
+        dataToProcess = JSON.parse(
+          await new Response(decompressedStream).text()
+        );
       } else {
         dataToProcess = await response.json();
       }
@@ -542,9 +549,8 @@ class DriveManager {
       if (fileItem && fileItem.tags) {
         dataToProcess._injectedTags = fileItem.tags;
       }
-      
+
       dataProcessor.process(dataToProcess, fileName);
-      
     } catch (error) {
       if (currentToken === this.activeLoadToken) {
         console.error('Download error:', error);
@@ -651,7 +657,7 @@ class DriveManager {
       if (shareBtn) {
         e.stopPropagation();
         const fileId = shareBtn.dataset.id;
-        
+
         if (fileId) {
           this.makeFilePublicAndCopyLink(fileId);
         } else {
