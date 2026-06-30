@@ -1,3 +1,5 @@
+import { DeepLink } from './deeplink.js';
+
 export const Navigation = {
   routes: {
     '#home': () => {
@@ -36,10 +38,22 @@ export const Navigation = {
   },
 
   handleRoute: () => {
-    console.log('Current Hash:', window.location.hash);
-    const hash = window.location.hash || '#home';
-    const routeAction = Navigation.routes[hash];
+    let hash = window.location.hash;
 
+    if (DeepLink.hasFileId() && hash !== '#analyzer') {
+      hash = '#analyzer';
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search + hash
+      );
+    } else if (!hash) {
+      hash = '#home';
+    }
+
+    console.log('Current Hash:', hash);
+
+    const routeAction = Navigation.routes[hash];
     if (routeAction) {
       routeAction();
     } else {

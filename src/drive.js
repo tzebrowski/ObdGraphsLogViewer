@@ -147,6 +147,9 @@ class DriveManager {
               <span class="add-tag-btn" data-id="${file.id}" style="background: transparent; border: 1px dashed var(--text-muted); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.7em; cursor: pointer; transition: color 0.2s;">
                 <i class="fas fa-plus"></i> Tag
               </span>
+              <span class="share-file-btn" data-id="${file.id}" style="background: transparent; border: 1px solid #4285f4; color: #4285f4; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; cursor: pointer; transition: background 0.2s; margin-left: auto;" onmouseover="this.style.background='#4285f415'" onmouseout="this.style.background='transparent'" title="Create public app link and copy">
+                <i class="fas fa-link"></i> Get Link
+              </span>
             </div>
           </div>
         </div>
@@ -447,11 +450,45 @@ class DriveManager {
     }
   }
 
+  async makeFilePublicAndCopyLink(fileId) {
+    try {
+      UI.setLoading(true, 'Generating shareable app link...');
+
+      await gapi.client.drive.permissions.create({
+        fileId: fileId,
+        resource: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+
+      const baseUrl = window.location.origin + window.location.pathname;
+      const appLink = `${baseUrl}?fileId=${fileId}#analyzer`;
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(appLink);
+        Alert.showAlert(
+          'Success! App link copied to your clipboard. Anyone with this link can view the log in the app.'
+        );
+      } else {
+        Alert.showAlert(`Success! Shareable Link:\n${appLink}`);
+      }
+    } catch (error) {
+      console.error('Error making file public:', error);
+      Alert.showAlert(`Failed to create public link: ${error.message}`);
+    } finally {
+      UI.setLoading(false);
+    }
+  }
+
+  /**
+   * Loads an authenticated file from the verified user's layout list
+   */
   async loadFile(fileName, id, element) {
     document
       .querySelectorAll('.drive-file-card')
       .forEach((r) => r.classList.remove('active'));
-    element?.classList.add('active');
+    element.classList.add('active');
 
     let recent = JSON.parse(localStorage.getItem('recent_logs') || '[]');
     recent = [id, ...recent.filter((i) => i !== id)].slice(0, 3);
@@ -475,50 +512,37 @@ class DriveManager {
     }
 
     const currentToken = ++this.activeLoadToken;
-    UI.setLoading(true, 'Downloading from Drive...', () => {
+    UI.setLoading(true, 'Downloading log...', () => {
       this.activeLoadToken++;
       UI.setLoading(false);
     });
 
     try {
       let dataToProcess;
+      const tokenObj =
+        window.gapi && gapi.client ? gapi.client.getToken() : null;
+
+      if (!tokenObj) throw new Error('GAPI client session token not found.');
+
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+        {
+          headers: { Authorization: `Bearer ${tokenObj.access_token}` },
+        }
+      );
+
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      if (currentToken !== this.activeLoadToken) return;
 
       if (fileName.endsWith('.gz')) {
-        const tokenObj = gapi.client.getToken();
-        if (!tokenObj)
-          throw new Error(
-            'No active Google session found. Please sign in again.'
-          );
-
-        const response = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
-          {
-            headers: { Authorization: `Bearer ${tokenObj.access_token}` },
-          }
-        );
-
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
         const blob = await response.blob();
-
-        if (currentToken !== this.activeLoadToken) return;
-
         const ds = new DecompressionStream('gzip');
         const decompressedStream = blob.stream().pipeThrough(ds);
-        const fileText = await new Response(decompressedStream).text();
-
-        dataToProcess = JSON.parse(fileText);
+        dataToProcess = JSON.parse(
+          await new Response(decompressedStream).text()
+        );
       } else {
-        const response = await gapi.client.drive.files.get({
-          fileId: id,
-          alt: 'media',
-        });
-
-        if (currentToken !== this.activeLoadToken) return;
-
-        dataToProcess =
-          typeof response.result === 'string'
-            ? JSON.parse(response.result)
-            : response.result;
+        dataToProcess = await response.json();
       }
 
       const fileItem = this.fileData.find((f) => f.file.id === id);
@@ -529,7 +553,8 @@ class DriveManager {
       dataProcessor.process(dataToProcess, fileName);
     } catch (error) {
       if (currentToken === this.activeLoadToken) {
-        Alert.showAlert(`Drive Error: ${error.message}`);
+        console.error('Download error:', error);
+        Alert.showAlert(`Download Error: ${error.message}`);
       }
     } finally {
       if (currentToken === this.activeLoadToken) {
@@ -619,12 +644,25 @@ class DriveManager {
       else debouncedRefresh();
     };
 
-    const handleTagClick = (e) => {
+    const handleCardAction = (e) => {
       const addBtn = e.target.closest('.add-tag-btn');
       if (addBtn) {
         e.stopPropagation();
         const fileId = addBtn.dataset.id;
         this.promptAddTag(fileId);
+        return;
+      }
+
+      const shareBtn = e.target.closest('.share-file-btn');
+      if (shareBtn) {
+        e.stopPropagation();
+        const fileId = shareBtn.dataset.id;
+
+        if (fileId) {
+          this.makeFilePublicAndCopyLink(fileId);
+        } else {
+          Alert.showAlert('Cannot share this file: Missing File ID.');
+        }
         return;
       }
 
@@ -647,8 +685,8 @@ class DriveManager {
 
     const container = document.getElementById('driveFileContainer');
     const recentSlot = document.getElementById('driveRecentSlot');
-    if (container) container.addEventListener('click', handleTagClick);
-    if (recentSlot) recentSlot.addEventListener('click', handleTagClick);
+    if (container) container.addEventListener('click', handleCardAction);
+    if (recentSlot) recentSlot.addEventListener('click', handleCardAction);
 
     safeAddEvent('clearDriveSearchText', 'click', () => {
       const input = document.getElementById('driveSearchInput');
