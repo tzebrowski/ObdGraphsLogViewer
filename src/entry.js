@@ -15,11 +15,13 @@ import { Histogram } from './histogram.js';
 import { mathChannels } from './mathchannels.js';
 import { projectManager } from './projectmanager.js';
 import { signalRegistry } from './signalregistry.js';
+import { DeepLink } from './deeplink.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
 
   Auth.init();
+  DeepLink.init();
   UI.init();
   Analysis.init();
   Auth.onAuthSuccess = Drive.listFiles.bind(Drive);
@@ -98,7 +100,6 @@ window.openQuickGasFilter = () => {
     const select = document.getElementById('mathFormulaSelect');
     if (select) {
       select.value = 'gas_pedal_filter_batch';
-
       select.dispatchEvent(new Event('change'));
     }
   }, 50);
