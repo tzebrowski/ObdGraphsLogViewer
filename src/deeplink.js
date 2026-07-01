@@ -3,8 +3,7 @@ import { Alert } from './alert.js';
 import { dataProcessor } from './dataprocessor.js';
 
 export const DeepLink = {
-  GAS_PROXY_URL:
-    'https://script.google.com/macros/s/AKfycbxmTZr2iGeRXd2GvO1x3tJ118fI1YSCvZ01sRbO0elP_6dtYbiuBNhVsZCgjQEJL3O2WQ/exec',
+  GAS_PROXY_URL: 'https://api.my-giulia.com/api/file',
 
   /**
    * Checks if a deep-linked file ID is present in the URL query parameters
