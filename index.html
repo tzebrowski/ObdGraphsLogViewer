@@ -48,6 +48,7 @@
             <i class="fab fa-google-drive"></i>
             <span class="desktop-label">Drive</span>
           </button>
+
           <button
             class="tool-btn"
             onclick="document.getElementById('fileInput').click()"
@@ -116,6 +117,37 @@
         </div>
 
         <div class="nav-links">
+          <button
+            class="tool-btn user-profile-btn"
+            id="userProfileBtn"
+            onclick="toggleUserProfile()"
+            title="Account Profile"
+            style="margin-right: 8px; background: transparent; border: none"
+          >
+            <img
+              id="userAvatar"
+              src=""
+              class="user-avatar"
+              style="
+                display: none;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+              "
+              referrerpolicy="no-referrer"
+              onerror="
+                this.style.display = 'none';
+                document.getElementById('userIconFallback').style.display =
+                  'inline-block';
+              "
+            />
+            <i
+              id="userIconFallback"
+              class="fas fa-user-circle"
+              style="font-size: 1.2rem"
+            ></i>
+          </button>
+
           <a
             href="https://github.com/tzebrowski/ObdGraphs"
             target="_blank"
@@ -772,6 +804,83 @@
                   Got it!
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="userProfileModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 350px; text-align: center">
+          <div class="modal-header" style="justify-content: space-between">
+            <h2>User Profile</h2>
+            <button class="btn-close" onclick="toggleUserProfile()">×</button>
+          </div>
+          <div class="modal-body">
+            <img
+              id="profileModalAvatar"
+              src=""
+              style="
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                display: none;
+                margin: 0 auto 15px;
+              "
+              referrerpolicy="no-referrer"
+            />
+            <i
+              id="profileModalIcon"
+              class="fas fa-user-circle"
+              style="
+                font-size: 80px;
+                color: var(--text-muted);
+                margin-bottom: 15px;
+              "
+            ></i>
+
+            <h3 id="profileModalName" style="margin-bottom: 5px">
+              Not Logged In
+            </h3>
+            <p
+              id="profileModalEmail"
+              style="color: var(--text-muted); margin-bottom: 20px"
+            >
+              Connect to Google Drive to access your cloud telemetry logs.
+            </p>
+
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                margin-top: 15px;
+              "
+            >
+              <button
+                id="profileModalLoginBtn"
+                class="btn btn-primary"
+                onclick="
+                  handleAuth();
+                  toggleUserProfile();
+                "
+              >
+                <i class="fab fa-google-drive"></i> Sign In
+              </button>
+              <button
+                id="profileModalLogoutBtn"
+                class="btn"
+                style="
+                  display: none;
+                  color: var(--brand-red);
+                  border-color: var(--brand-red);
+                "
+                onclick="
+                  logoutDrive();
+                  toggleUserProfile();
+                "
+              >
+                <i class="fas fa-sign-out-alt"></i> Sign Out
+              </button>
             </div>
           </div>
         </div>

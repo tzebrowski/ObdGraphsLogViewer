@@ -104,3 +104,19 @@ window.openQuickGasFilter = () => {
     }
   }, 50);
 };
+
+window.toggleUserProfile = () => {
+  const modal = document.getElementById('userProfileModal');
+  if (!modal) return;
+  const isHidden = modal.style.display === 'none';
+  modal.style.display = isHidden ? 'flex' : 'none';
+};
+
+window.logoutDrive = () => {
+  if (window.gapi && gapi.client) {
+    gapi.client.setToken(null);
+  }
+  import('./bus.js').then(({ messenger }) => {
+    messenger.emit('auth:status-changed', { isLoggedIn: false });
+  });
+};

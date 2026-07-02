@@ -1,5 +1,6 @@
 import { AppState, DOM } from './config.js';
 import { Alert } from './alert.js';
+import { messenger } from './bus.js';
 
 export const Auth = {
   SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
@@ -8,7 +9,6 @@ export const Auth = {
 
   loadGoogleScripts: () => {
     return new Promise((resolve, reject) => {
-      // Check if already loaded to avoid duplicates
       if (window.gapi && window.google) return resolve();
 
       const gsi = document.createElement('script');
@@ -80,6 +80,20 @@ export const Auth = {
     AppState.google.gisInited = true;
   },
 
+  fetchUserDetails: async () => {
+    try {
+      const response = await gapi.client.drive.about.get({ fields: 'user' });
+      const user = response.result.user;
+
+      messenger.emit('auth:status-changed', {
+        isLoggedIn: true,
+        user: user,
+      });
+    } catch (error) {
+      console.error('Failed to fetch user details:', error);
+    }
+  },
+
   handleAuth: () => {
     if (!AppState.google.gapiInited || !AppState.google.gisInited) {
       Auth.initTokenClient();
@@ -98,6 +112,7 @@ export const Auth = {
       existingToken.expires_at &&
       Date.now() < existingToken.expires_at
     ) {
+      Auth.fetchUserDetails();
       if (Auth.onAuthSuccess) Auth.onAuthSuccess();
     } else {
       AppState.google.tokenClient.requestAccessToken({ prompt: '' });
@@ -105,6 +120,7 @@ export const Auth = {
   },
 
   onTokenReceived: async () => {
+    Auth.fetchUserDetails();
     if (Auth.onAuthSuccess) await Auth.onAuthSuccess();
   },
 };
