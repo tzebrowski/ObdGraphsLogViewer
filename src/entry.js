@@ -92,39 +92,6 @@ window.openMathModal = () => mathChannels.openModal();
 window.closeMathModal = () => mathChannels.closeModal();
 window.onMathFormulaChange = () => mathChannels.onFormulaChange();
 window.createMathChannel = () => mathChannels.createMathChannel();
-
-window.openQuickGasFilter = () => {
-  window.openMathModal();
-
-  setTimeout(() => {
-    const select = document.getElementById('mathFormulaSelect');
-    if (select) {
-      select.value = 'gas_pedal_filter_batch';
-      select.dispatchEvent(new Event('change'));
-    }
-  }, 50);
-};
-
-window.toggleUserProfile = () => {
-  const modal = document.getElementById('userProfileModal');
-  if (!modal) return;
-
-  const currentDisplay = window.getComputedStyle(modal).display;
-
-  if (currentDisplay === 'none') {
-    modal.style.display = 'flex';
-    modal.classList.remove('hidden');
-  } else {
-    modal.style.display = 'none';
-    modal.classList.add('hidden');
-  }
-};
-
-window.logoutDrive = () => {
-  if (window.gapi && gapi.client) {
-    gapi.client.setToken(null);
-  }
-  import('./bus.js').then(({ messenger }) => {
-    messenger.emit('auth:status-changed', { isLoggedIn: false });
-  });
-};
+window.toggleUserProfile = () => UI.toggleUserProfile();
+window.logoutDrive = () => Auth.logout();
+window.openQuickGasFilter = () => mathChannels.openQuickGasFilter();

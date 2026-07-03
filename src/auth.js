@@ -30,6 +30,13 @@ export const Auth = {
     });
   },
 
+  logout: () => {
+    if (window.gapi && gapi.client) {
+      gapi.client.setToken(null);
+    }
+    messenger.emit('auth:status-changed', { isLoggedIn: false });
+  },
+
   init: async () => {
     try {
       await Auth.loadGoogleScripts();
