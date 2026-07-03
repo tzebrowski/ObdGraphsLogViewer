@@ -33,12 +33,10 @@ export const Auth = {
   },
 
   init: async () => {
-    // 1. Expose functions to the global window so HTML onclick handlers can see them
     window.handleAuth = Auth.handleAuth;
     window.logoutDrive = Auth.logoutDrive;
 
     try {
-      // 2. Try fetching from backend API, but don't break if it's not ready yet
       try {
         const response = await fetch('/api/config');
         if (response.ok) {
@@ -51,7 +49,6 @@ export const Auth = {
 
       await Auth.loadGoogleScripts();
 
-      // 3. Fallback to local storage if API didn't provide a Client ID
       const cId = Auth.clientId || localStorage.getItem('alfa_clientId');
       if (cId) {
         const input = DOM.get('gClientId');
@@ -101,7 +98,6 @@ export const Auth = {
           return;
         }
 
-        // Ensure the token is saved safely and timestamped
         if (window.gapi && gapi.client) {
           let tokenObj = gapi.client.getToken() || resp;
           if (resp.expires_in) {
@@ -146,7 +142,6 @@ export const Auth = {
       }
     }
 
-    // Safely check for existing token
     let existingToken = null;
     if (
       window.gapi &&
@@ -185,7 +180,6 @@ export const Auth = {
     await Auth.fetchUserDetails();
     if (Auth.onAuthSuccess) await Auth.onAuthSuccess();
 
-    // Execute whatever action they clicked originally
     if (Auth._pendingAction === 'drive') {
       import('./drive.js').then(({ Drive }) => Drive.listFiles());
     } else {

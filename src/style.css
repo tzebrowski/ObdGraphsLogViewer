@@ -6875,3 +6875,26 @@ body.analyzer-active .footer.collapsed {
   overflow-y: auto;
   min-height: 150px;
 }
+
+.nav-links .user-profile-btn {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  color: var(--brand-blue, #1c3d72) !important;
+  height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  margin: 0 8px 0 0 !important;
+  padding: 0 12px !important;
+}
+
+.nav-links .user-profile-btn:hover {
+  background-color: #fff !important;
+  color: var(--brand-red, #c22636) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px) !important;
+}
