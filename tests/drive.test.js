@@ -40,6 +40,9 @@ describe('Drive Module Combined Suite', () => {
     document.body.innerHTML = `
       <div id="driveListContainer"></div>
       <div id="driveList"></div>
+      <div id="driveFileContainer"></div>
+      <div id="driveRecentSlot"></div>
+      <div id="driveTopControlsSlot"></div>
     `;
 
     listEl = document.getElementById('driveList');
@@ -51,10 +54,7 @@ describe('Drive Module Combined Suite', () => {
     dataProcessor.process = jest.fn();
     global.confirm.mockReturnValue(true);
 
-    // Mock element template to satisfy structural DOM element operations inside loadFile
     dummyElement = { classList: { add: jest.fn(), remove: jest.fn() } };
-
-    // Mock the global loadFile function called by inline HTML 'onclick' events
     global.loadFile = jest.fn();
 
     Drive.fileData = [];
@@ -71,8 +71,36 @@ describe('Drive Module Combined Suite', () => {
     };
 
     localStorage.clear();
-
     messenger.emit = jest.fn();
+  });
+
+  describe('Workspace & Auth Status (New Logic)', () => {
+    test('clearWorkspace resets internal data and wipes UI slots to default', () => {
+      Drive.fileData = [{ id: 'mock-file' }];
+      document.getElementById('driveFileContainer').innerHTML =
+        '<p>Logs loaded</p>';
+      document.getElementById('driveRecentSlot').innerHTML =
+        '<div>Recent Log</div>';
+      document.getElementById('driveTopControlsSlot').innerHTML =
+        '<button>Sort</button>';
+
+      Drive.clearWorkspace();
+
+      expect(Drive.fileData).toEqual([]);
+
+      expect(document.getElementById('driveFileContainer').innerHTML).toBe('');
+      expect(document.getElementById('driveRecentSlot').innerHTML).toBe('');
+      expect(document.getElementById('driveTopControlsSlot').innerHTML).toBe(
+        ''
+      );
+
+      expect(document.getElementById('driveList').innerHTML).toContain(
+        'empty-drive-msg'
+      );
+      expect(document.getElementById('driveList').innerHTML).toContain(
+        'Click <strong>Drive Scan</strong>'
+      );
+    });
   });
 
   describe('Initialization & listFiles', () => {
@@ -523,7 +551,7 @@ describe('Drive Module Combined Suite', () => {
       expect(alertSpy).toHaveBeenCalledWith(
         expect.stringContaining('Failed to save tag')
       );
-      expect(Drive.fileData[0].tags).toEqual(['rain']); // Should revert to original
+      expect(Drive.fileData[0].tags).toEqual(['rain']);
 
       promptSpy.mockRestore();
       alertSpy.mockRestore();
@@ -568,7 +596,7 @@ describe('Drive Module Combined Suite', () => {
       await Drive._syncTagFromChart('file-123', 'commute');
 
       expect(consoleSpy).toHaveBeenCalled();
-      expect(Drive.fileData[0].tags).toEqual(['rain']); // Should revert
+      expect(Drive.fileData[0].tags).toEqual(['rain']);
 
       consoleSpy.mockRestore();
     });

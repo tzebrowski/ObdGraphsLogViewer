@@ -39,6 +39,11 @@ export const UI = {
       UI.setLoading(true, event.message);
     });
 
+    // Added Auth listener
+    messenger.on('auth:status-changed', (event) => {
+      UI.updateUserAccount(event.isLoggedIn, event.user);
+    });
+
     messenger.on('dataprocessor:batch-load-completed', () => {
       UI.renderSignalList();
 
@@ -58,6 +63,65 @@ export const UI = {
     });
 
     this.renderProjectHistory();
+  },
+
+  toggleUserProfile() {
+    const modal = document.getElementById('userProfileModal');
+    if (!modal) return;
+
+    const currentDisplay = window.getComputedStyle(modal).display;
+
+    if (currentDisplay === 'none') {
+      modal.style.display = 'flex';
+      modal.classList.remove('hidden');
+    } else {
+      modal.style.display = 'none';
+      modal.classList.add('hidden');
+    }
+  },
+
+  updateUserAccount(isLoggedIn, user = null) {
+    const userAvatarEl = document.getElementById('userAvatar');
+    const userIconFallback = document.getElementById('userIconFallback');
+
+    const modalAvatar = document.getElementById('profileModalAvatar');
+    const modalIcon = document.getElementById('profileModalIcon');
+    const modalName = document.getElementById('profileModalName');
+    const modalEmail = document.getElementById('profileModalEmail');
+    const loginBtn = document.getElementById('profileModalLoginBtn');
+    const logoutBtn = document.getElementById('profileModalLogoutBtn');
+
+    if (isLoggedIn && user) {
+      if (user.photoLink) {
+        userAvatarEl.src = user.photoLink;
+        userAvatarEl.style.display = 'inline-block';
+        if (userIconFallback) userIconFallback.style.display = 'none';
+      }
+
+      modalName.innerText = user.displayName || 'Logged In';
+      modalEmail.innerText = user.emailAddress || '';
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'inline-flex'; // show logout
+
+      if (user.photoLink) {
+        modalAvatar.src = user.photoLink;
+        modalAvatar.style.display = 'block';
+        modalIcon.style.display = 'none';
+      }
+    } else {
+      userAvatarEl.style.display = 'none';
+      userAvatarEl.src = '';
+      if (userIconFallback) userIconFallback.style.display = 'inline-block';
+
+      modalName.innerText = 'Not Logged In';
+      modalEmail.innerText =
+        'Connect to Google Drive to access your cloud telemetry logs.';
+      modalAvatar.style.display = 'none';
+      modalAvatar.src = '';
+      modalIcon.style.display = 'inline-block';
+      loginBtn.style.display = 'inline-flex';
+      logoutBtn.style.display = 'none';
+    }
   },
 
   replayProjectHistory() {

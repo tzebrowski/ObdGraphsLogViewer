@@ -26,6 +26,14 @@ class DriveManager {
       },
     };
 
+    messenger.on('auth:status-changed', (event) => {
+      if (!event.isLoggedIn) {
+        const container = document.getElementById('driveListContainer');
+        if (container) container.style.display = 'none';
+        this.clearWorkspace();
+      }
+    });
+
     messenger.on('file:tag-added', async (data) => {
       await this._syncTagFromChart(data.fileId, data.tag);
     });
@@ -471,7 +479,8 @@ class DriveManager {
           'Success! App link copied to your clipboard. Anyone with this link can view the log in the app.'
         );
       } else {
-        Alert.showAlert(`Success! Shareable Link:\n${appLink}`);
+        Alert.showAlert(`Success! Shareable Link:
+${appLink}`);
       }
     } catch (error) {
       console.error('Error making file public:', error);
@@ -960,8 +969,11 @@ class DriveManager {
   }
 
   handleApiError(error, listEl) {
-    if (error.status === 401 || error.status === 403)
+    if (error.status === 401 || error.status === 403) {
       gapi.client.setToken(null);
+      messenger.emit('auth:status-changed', { isLoggedIn: false }); // Added to update UI immediately
+    }
+
     if (listEl) {
       const msg =
         error.result?.error?.message || error.message || 'Unknown error';
@@ -979,6 +991,30 @@ class DriveManager {
       localStorage.removeItem('recent_logs');
       this.refreshUI();
     }
+  }
+
+  clearWorkspace() {
+    this.fileData = [];
+
+    const listEl = document.getElementById('driveList');
+    if (listEl) {
+      listEl.innerHTML = `
+        <div class="empty-drive-msg">
+          <i class="fab fa-google-drive"></i>
+          <br />
+          Click <strong>Drive Scan</strong> in the top toolbar to load your logs.
+        </div>
+      `;
+    }
+
+    const container = document.getElementById('driveFileContainer');
+    if (container) container.innerHTML = '';
+
+    const recentSlot = document.getElementById('driveRecentSlot');
+    if (recentSlot) recentSlot.innerHTML = '';
+
+    const topControls = document.getElementById('driveTopControlsSlot');
+    if (topControls) topControls.innerHTML = '';
   }
 }
 

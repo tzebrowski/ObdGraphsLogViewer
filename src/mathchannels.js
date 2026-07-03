@@ -57,6 +57,18 @@ class MathChannels {
     });
   }
 
+  openQuickGasFilter() {
+    this.openModal();
+
+    setTimeout(() => {
+      const select = document.getElementById('mathFormulaSelect');
+      if (select) {
+        select.value = 'gas_pedal_filter_batch';
+        select.dispatchEvent(new Event('change'));
+      }
+    }, 50);
+  }
+
   executeAutoMath() {
     let createdCount = 0;
 
