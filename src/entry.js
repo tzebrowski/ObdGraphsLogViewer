@@ -108,8 +108,16 @@ window.openQuickGasFilter = () => {
 window.toggleUserProfile = () => {
   const modal = document.getElementById('userProfileModal');
   if (!modal) return;
-  const isHidden = modal.style.display === 'none';
-  modal.style.display = isHidden ? 'flex' : 'none';
+
+  const currentDisplay = window.getComputedStyle(modal).display;
+
+  if (currentDisplay === 'none') {
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+  } else {
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+  }
 };
 
 window.logoutDrive = () => {
