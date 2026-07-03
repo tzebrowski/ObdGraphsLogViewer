@@ -6,6 +6,8 @@ export const Auth = {
   SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
   DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
   onAuthSuccess: null,
+  clientId: null,
+  _pendingAction: null,
 
   loadGoogleScripts: () => {
     return new Promise((resolve, reject) => {
@@ -30,27 +32,38 @@ export const Auth = {
     });
   },
 
-  logout: () => {
-    if (window.gapi && gapi.client) {
-      gapi.client.setToken(null);
-    }
-    messenger.emit('auth:status-changed', { isLoggedIn: false });
-  },
-
   init: async () => {
+    // 1. Expose functions to the global window so HTML onclick handlers can see them
+    window.handleAuth = Auth.handleAuth;
+    window.logoutDrive = Auth.logoutDrive;
+
     try {
+      // 2. Try fetching from backend API, but don't break if it's not ready yet
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          Auth.clientId = config.googleClientId;
+        }
+      } catch (e) {
+        console.warn('Backend API not reached. Falling back to local storage.');
+      }
+
       await Auth.loadGoogleScripts();
 
-      const cId = localStorage.getItem('alfa_clientId');
+      // 3. Fallback to local storage if API didn't provide a Client ID
+      const cId = Auth.clientId || localStorage.getItem('alfa_clientId');
       if (cId) {
         const input = DOM.get('gClientId');
         if (input) input.value = cId;
       }
 
-      gapi.load('client', async () => {
-        await Auth.initGapiClient();
-        Auth.initTokenClient();
-      });
+      if (window.gapi) {
+        gapi.load('client', async () => {
+          await Auth.initGapiClient();
+          Auth.initTokenClient();
+        });
+      }
     } catch (error) {
       console.error('Google Auth Initialization Error:', error);
     }
@@ -73,14 +86,30 @@ export const Auth = {
   },
 
   initTokenClient: () => {
-    const cId = DOM.get('gClientId').value;
+    const cId =
+      Auth.clientId ||
+      DOM.get('gClientId')?.value ||
+      localStorage.getItem('alfa_clientId');
     if (!cId || !window.google) return;
 
     AppState.google.tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: cId,
       scope: Auth.SCOPES,
       callback: (resp) => {
-        if (resp.error !== undefined) throw resp;
+        if (resp.error !== undefined) {
+          console.error('Auth Error:', resp.error);
+          return;
+        }
+
+        // Ensure the token is saved safely and timestamped
+        if (window.gapi && gapi.client) {
+          let tokenObj = gapi.client.getToken() || resp;
+          if (resp.expires_in) {
+            tokenObj.expires_at = Date.now() + resp.expires_in * 1000;
+          }
+          gapi.client.setToken(tokenObj);
+        }
+
         Auth.onTokenReceived();
       },
     });
@@ -101,33 +130,76 @@ export const Auth = {
     }
   },
 
-  handleAuth: () => {
+  handleAuth: (targetAction = 'profile') => {
+    const cId =
+      Auth.clientId ||
+      DOM.get('gClientId')?.value ||
+      localStorage.getItem('alfa_clientId');
+
     if (!AppState.google.gapiInited || !AppState.google.gisInited) {
       Auth.initTokenClient();
-      if (!DOM.get('gClientId').value) {
+      if (!cId) {
         Alert.showAlert(
-          "Please click 'Drive Config' and enter your Client ID first."
+          'Please go to Settings and enter your Google Client ID first.'
         );
         return;
       }
     }
 
-    const existingToken = gapi.client.getToken();
-
+    // Safely check for existing token
+    let existingToken = null;
     if (
-      existingToken &&
-      existingToken.expires_at &&
-      Date.now() < existingToken.expires_at
+      window.gapi &&
+      gapi.client &&
+      typeof gapi.client.getToken === 'function'
     ) {
+      existingToken = gapi.client.getToken();
+    }
+
+    const isTokenValid =
+      existingToken &&
+      existingToken.access_token &&
+      (!existingToken.expires_at || Date.now() < existingToken.expires_at);
+
+    if (isTokenValid) {
       Auth.fetchUserDetails();
-      if (Auth.onAuthSuccess) Auth.onAuthSuccess();
+
+      if (targetAction === 'drive') {
+        import('./drive.js').then(({ Drive }) => Drive.listFiles());
+      } else if (targetAction === 'profile') {
+        if (typeof window.toggleUserProfile === 'function') {
+          window.toggleUserProfile();
+        }
+      }
     } else {
-      AppState.google.tokenClient.requestAccessToken({ prompt: '' });
+      Auth._pendingAction = targetAction;
+      if (AppState.google.tokenClient) {
+        AppState.google.tokenClient.requestAccessToken({ prompt: '' });
+      } else {
+        console.error('Token client not ready.');
+      }
     }
   },
 
   onTokenReceived: async () => {
-    Auth.fetchUserDetails();
+    await Auth.fetchUserDetails();
     if (Auth.onAuthSuccess) await Auth.onAuthSuccess();
+
+    // Execute whatever action they clicked originally
+    if (Auth._pendingAction === 'drive') {
+      import('./drive.js').then(({ Drive }) => Drive.listFiles());
+    } else {
+      if (typeof window.toggleUserProfile === 'function') {
+        window.toggleUserProfile();
+      }
+    }
+    Auth._pendingAction = null;
+  },
+
+  logoutDrive: () => {
+    if (window.gapi && gapi.client) {
+      gapi.client.setToken(null);
+    }
+    messenger.emit('auth:status-changed', { isLoggedIn: false });
   },
 };
