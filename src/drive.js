@@ -26,6 +26,14 @@ class DriveManager {
       },
     };
 
+    messenger.on('auth:status-changed', (event) => {
+      if (!event.isLoggedIn) {
+        const container = document.getElementById('driveListContainer');
+        if (container) container.style.display = 'none';
+        this.clearWorkspace();
+      }
+    });
+
     messenger.on('file:tag-added', async (data) => {
       await this._syncTagFromChart(data.fileId, data.tag);
     });
@@ -983,6 +991,30 @@ ${appLink}`);
       localStorage.removeItem('recent_logs');
       this.refreshUI();
     }
+  }
+
+  clearWorkspace() {
+    this.fileData = [];
+
+    const listEl = document.getElementById('driveList');
+    if (listEl) {
+      listEl.innerHTML = `
+        <div class="empty-drive-msg">
+          <i class="fab fa-google-drive"></i>
+          <br />
+          Click <strong>Drive Scan</strong> in the top toolbar to load your logs.
+        </div>
+      `;
+    }
+
+    const container = document.getElementById('driveFileContainer');
+    if (container) container.innerHTML = '';
+
+    const recentSlot = document.getElementById('driveRecentSlot');
+    if (recentSlot) recentSlot.innerHTML = '';
+
+    const topControls = document.getElementById('driveTopControlsSlot');
+    if (topControls) topControls.innerHTML = '';
   }
 }
 
