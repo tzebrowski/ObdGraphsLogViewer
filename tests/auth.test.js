@@ -56,9 +56,8 @@ describe('Auth Module Logic', () => {
     window.handleAuth = jest.fn();
     window.logoutDrive = jest.fn();
 
-    // Setup local storage mock
-    Storage.prototype.getItem = jest.fn();
-    Storage.prototype.setItem = jest.fn();
+    // Suppress console errors from intentional API failures during testing
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   test('init() fetches config from API and sets clientId', async () => {
@@ -72,21 +71,27 @@ describe('Auth Module Logic', () => {
 
     await Auth.init();
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/config');
+    // Updated to expect the exact absolute URL
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.my-giulia.com/api/config'
+    );
     expect(Auth.clientId).toBe('api-client-id');
     expect(window.handleAuth).toBe(Auth.handleAuth);
     expect(window.logoutDrive).toBe(Auth.logoutDrive);
   });
 
-  test('init() falls back to localStorage if API fails safely', async () => {
+  test('init() alerts user if API fails to load config safely', async () => {
     global.fetch.mockRejectedValueOnce(new Error('Network Error'));
     jest.spyOn(Auth, 'loadGoogleScripts').mockResolvedValueOnce();
-    Storage.prototype.getItem.mockReturnValueOnce('local-client-id');
 
     await Auth.init();
 
     expect(Auth.clientId).toBeNull();
-    expect(DOM.get).toHaveBeenCalledWith('gClientId');
+    expect(Alert.showAlert).toHaveBeenCalledWith(
+      'Failed to load Google Auth configuration.',
+      'Error',
+      'error'
+    );
   });
 
   test('initTokenClient() extracts and calculates expires_at accurately', () => {
@@ -96,14 +101,12 @@ describe('Auth Module Logic', () => {
       mockTokenClient
     );
 
-    // Simulate pre-existing gapi token object
     global.gapi.client.getToken.mockReturnValue({ access_token: 'existing' });
 
     Auth.initTokenClient();
 
     expect(global.google.accounts.oauth2.initTokenClient).toHaveBeenCalled();
 
-    // Trigger the callback
     const configArg =
       global.google.accounts.oauth2.initTokenClient.mock.calls[0][0];
     const now = Date.now();
@@ -138,6 +141,8 @@ describe('Auth Module Logic', () => {
   test("handleAuth('drive') saves pending action and requests token if token is expired", () => {
     AppState.google.gapiInited = true;
     AppState.google.gisInited = true;
+
+    Auth.clientId = 'valid-client-id';
 
     global.gapi.client.getToken.mockReturnValue({
       access_token: 'expired',
