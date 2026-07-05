@@ -32,30 +32,33 @@ export const Auth = {
     });
   },
 
+  fetchConfig: async () => {
+    try {
+      const response = await fetch('https://api.my-giulia.com/api/config');
+      if (!response.ok)
+        throw new Error(`HTTP error! Status: ${response.status}`);
+
+      const config = await response.json();
+      Auth.clientId = config.googleClientId;
+    } catch (e) {
+      console.error('Backend API not reached. Failed to load Client ID:', e);
+      Alert.showAlert(
+        'Failed to load Google Auth configuration.',
+        'Error',
+        'error'
+      );
+    }
+  },
+
   init: async () => {
     window.handleAuth = Auth.handleAuth;
     window.logoutDrive = Auth.logoutDrive;
 
     try {
-      try {
-        const response = await fetch('/api/config');
-        if (response.ok) {
-          const config = await response.json();
-          Auth.clientId = config.googleClientId;
-        }
-      } catch (e) {
-        console.warn('Backend API not reached. Falling back to local storage.');
-      }
-
+      await Auth.fetchConfig();
       await Auth.loadGoogleScripts();
 
-      const cId = Auth.clientId || localStorage.getItem('alfa_clientId');
-      if (cId) {
-        const input = DOM.get('gClientId');
-        if (input) input.value = cId;
-      }
-
-      if (window.gapi) {
+      if (window.gapi && Auth.clientId) {
         gapi.load('client', async () => {
           await Auth.initGapiClient();
           Auth.initTokenClient();
@@ -66,31 +69,17 @@ export const Auth = {
     }
   },
 
-  saveConfig: () => {
-    const cId = DOM.get('gClientId').value;
-    if (!cId) {
-      Alert.showAlert('Please enter a Client ID.');
-      return;
-    }
-    localStorage.setItem('alfa_clientId', cId);
-    Auth.initTokenClient();
-    Alert.showAlert('Configuration Saved!', 'Notification', 'success');
-  },
-
   initGapiClient: async () => {
     await gapi.client.init({ discoveryDocs: [Auth.DISCOVERY_DOC] });
     AppState.google.gapiInited = true;
   },
 
   initTokenClient: () => {
-    const cId =
-      Auth.clientId ||
-      DOM.get('gClientId')?.value ||
-      localStorage.getItem('alfa_clientId');
-    if (!cId || !window.google) return;
+    // 3. Rely purely on the API-provided client ID
+    if (!Auth.clientId || !window.google) return;
 
     AppState.google.tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: cId,
+      client_id: Auth.clientId,
       scope: Auth.SCOPES,
       callback: (resp) => {
         if (resp.error !== undefined) {
@@ -127,16 +116,11 @@ export const Auth = {
   },
 
   handleAuth: (targetAction = 'profile') => {
-    const cId =
-      Auth.clientId ||
-      DOM.get('gClientId')?.value ||
-      localStorage.getItem('alfa_clientId');
-
     if (!AppState.google.gapiInited || !AppState.google.gisInited) {
       Auth.initTokenClient();
-      if (!cId) {
+      if (!Auth.clientId) {
         Alert.showAlert(
-          'Please go to Settings and enter your Google Client ID first.'
+          'Google Client ID is missing. Please check your API connection.'
         );
         return;
       }
