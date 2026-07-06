@@ -150,7 +150,9 @@ await jest.unstable_mockModule('../src/palettemanager.js', () => ({
 }));
 
 await jest.unstable_mockModule('../src/preferences.js', () => ({
-  Preferences: { prefs: { showAreaFills: true, smoothLines: false } },
+  Preferences: {
+    prefs: { showAreaFills: true, smoothLines: false, showLabels: true },
+  },
 }));
 
 const mockMapManager = {

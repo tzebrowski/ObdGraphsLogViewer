@@ -21,6 +21,7 @@ export const Preferences = {
     'pref-smooth-lines': 'smoothLines',
     'pref-load-map': 'loadMap',
     'pref-remember-files': 'rememberFiles',
+    'pref-show-labels': 'showLabels',
   },
 
   defaultPrefs: {
@@ -32,6 +33,7 @@ export const Preferences = {
     smoothLines: false,
     loadMap: false,
     rememberFiles: true,
+    showLabels: false,
   },
 
   get prefs() {
@@ -121,6 +123,7 @@ export const Preferences = {
   _syncChart() {
     ChartManager.updateAreaFills();
     ChartManager.updateSmoothing();
+    ChartManager.updateAllLabelsVisibility();
   },
 
   _safeJsonParse(str, fallback) {
