@@ -50,8 +50,6 @@ window.onclick = (event) => {
   }
 };
 
-window.saveDriveConfig = () => Auth.saveConfig();
-window.toggleDriveConfig = () => UI.toggleItem('configPanel');
 window.toggleSidebar = () => UI.toggleSidebar();
 window.toggleFullScreen = () => UI.toggleFullScreen();
 window.toggleAllSignals = (check) => UI.toggleAllSignals(check);

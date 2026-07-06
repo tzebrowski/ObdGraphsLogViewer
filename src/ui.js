@@ -369,16 +369,6 @@ export const UI = {
     );
   },
 
-  toggleItem(i) {
-    const p = DOM.get(i);
-    if (!p) return;
-
-    const isHidden = p.style.display === 'none' || p.style.display === '';
-    p.style.display = isHidden ? 'block' : 'none';
-
-    if (AppState.chartInstance) AppState.chartInstance.resize();
-  },
-
   initSidebarSectionsCollapse() {
     UI.restoreSidebarState();
     UI.elements.sidebar.addEventListener('click', (e) => {
