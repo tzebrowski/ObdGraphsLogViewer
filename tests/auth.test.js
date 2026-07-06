@@ -4,7 +4,6 @@ import { AppState, DOM } from '../src/config.js';
 import { messenger } from '../src/bus.js';
 import { Alert } from '../src/alert.js';
 
-// Setup basic global mocks for dependencies
 global.window = Object.create(window || {});
 global.gapi = {
   client: {
@@ -36,7 +35,6 @@ describe('Auth Module Logic', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset Auth state
     Auth.clientId = null;
     Auth._pendingAction = null;
     AppState.google = {
@@ -45,18 +43,15 @@ describe('Auth Module Logic', () => {
       tokenClient: null,
     };
 
-    // Replaced jest.mock() with direct method overrides on the imported modules
     DOM.get = jest.fn().mockReturnValue({ value: 'local-client-id' });
     messenger.emit = jest.fn();
     messenger.on = jest.fn();
     Alert.showAlert = jest.fn();
 
-    // Window methods utilized in the UI interactions
     window.toggleUserProfile = jest.fn();
     window.handleAuth = jest.fn();
     window.logoutDrive = jest.fn();
 
-    // Suppress console errors from intentional API failures during testing
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -66,12 +61,10 @@ describe('Auth Module Logic', () => {
       json: () => Promise.resolve({ googleClientId: 'api-client-id' }),
     });
 
-    // Stub out script loading to avoid DOM errors in Jest
     jest.spyOn(Auth, 'loadGoogleScripts').mockResolvedValueOnce();
 
     await Auth.init();
 
-    // Updated to expect the exact absolute URL
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api.my-giulia.com/api/config'
     );
@@ -124,10 +117,11 @@ describe('Auth Module Logic', () => {
   test("handleAuth('profile') calls toggleUserProfile directly if token is valid", async () => {
     AppState.google.gapiInited = true;
     AppState.google.gisInited = true;
+    Auth.clientId = 'valid-client-id';
 
     global.gapi.client.getToken.mockReturnValue({
       access_token: 'valid',
-      expires_at: Date.now() + 100000, // Safely in future
+      expires_at: Date.now() + 100000,
     });
 
     jest.spyOn(Auth, 'fetchUserDetails').mockResolvedValueOnce();
@@ -146,7 +140,7 @@ describe('Auth Module Logic', () => {
 
     global.gapi.client.getToken.mockReturnValue({
       access_token: 'expired',
-      expires_at: Date.now() - 100000, // In the past
+      expires_at: Date.now() - 100000,
     });
 
     AppState.google.tokenClient = { requestAccessToken: jest.fn() };

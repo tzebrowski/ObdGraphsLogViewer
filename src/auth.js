@@ -72,10 +72,12 @@ export const Auth = {
       await Auth.fetchConfig();
       await Auth.loadGoogleScripts();
 
-      if (window.gapi && Auth.clientId) {
+      if (window.gapi) {
         gapi.load('client', async () => {
           await Auth.initGapiClient();
-          Auth.initTokenClient();
+          if (Auth.clientId) {
+            Auth.initTokenClient();
+          }
         });
       }
     } catch (error) {
@@ -129,6 +131,15 @@ export const Auth = {
   },
 
   handleAuth: (targetAction = 'profile') => {
+    if (!Auth.clientId) {
+      Alert.showAlert(
+        'Google Client ID is missing. Please check your API connection or Settings.',
+        'Configuration Error',
+        'error'
+      );
+      return;
+    }
+
     if (!AppState.google.gapiInited || !AppState.google.gisInited) {
       Auth.initTokenClient();
       if (!Auth.clientId) {
@@ -198,16 +209,28 @@ export const Auth = {
     const inputEl = document.getElementById('gClientId');
     if (inputEl) {
       const val = inputEl.value.trim();
-      Preferences.googleClientId = val; // Save to localStorage
-      Auth.clientId = val; // Update active session
-      Alert.showAlert(
-        'Google Client ID saved locally for development.',
-        'Success',
-        'success'
-      );
+      Preferences.googleClientId = val;
+      Auth.clientId = val || null;
 
-      if (window.google && AppState.google.gapiInited) {
-        Auth.initTokenClient();
+      if (val) {
+        Alert.showAlert(
+          'Google Client ID saved locally for development.',
+          'Success',
+          'success'
+        );
+
+        if (window.gapi && !AppState.google.gapiInited) {
+          gapi.load('client', async () => {
+            await Auth.initGapiClient();
+            Auth.initTokenClient();
+          });
+        } else if (window.google) {
+          Auth.initTokenClient();
+        }
+      } else {
+        Alert.showAlert('Google Client ID cleared.', 'Info', 'info');
+        AppState.google.tokenClient = null;
+        AppState.google.gisInited = false;
       }
     }
   },
