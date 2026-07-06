@@ -114,6 +114,12 @@ export const ChartManager = {
     });
   },
 
+  updateAllLabelsVisibility() {
+    AppState.chartInstances.forEach(chart => {
+      if (chart) this.updateLabelVisibility(chart);
+    });
+  },
+
   _syncTooltip(chart, timeValue) {
     if (!chart || timeValue === null) return;
 
@@ -1397,6 +1403,8 @@ export const ChartManager = {
   },
 
   _shouldShowLabels(chart) {
+    if (!Preferences.prefs.showLabels) return false;
+
     const xRange = chart.scales.x.max - chart.scales.x.min;
     return (
       xRange < this.datalabelsSettings.timeRange &&
