@@ -88,8 +88,8 @@ describe('Auth Module Logic', () => {
 
     expect(Auth.clientId).toBeNull();
     expect(Alert.showAlert).toHaveBeenCalledWith(
-      'Failed to load Google Auth configuration.',
-      'Error',
+      'Failed to load Google Auth configuration. Please enter a Client ID in Settings.',
+      'Connection Error',
       'error'
     );
   });

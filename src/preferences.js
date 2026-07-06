@@ -10,6 +10,7 @@ export const Preferences = {
   PREFS_KEY: 'giulia_user_prefs',
   PALETTE_KEY: 'giulia_chart_palette',
   SIDEBAR_STATE_KEY: 'sidebar_collapsed_states',
+  CLIENT_ID_KEY: 'giulia_google_client_id',
 
   PREF_MAP: {
     'pref-persistence': 'persistence',
@@ -58,6 +59,18 @@ export const Preferences = {
     }
   },
 
+  get googleClientId() {
+    return localStorage.getItem(this.CLIENT_ID_KEY) || '';
+  },
+
+  set googleClientId(id) {
+    if (id) {
+      localStorage.setItem(this.CLIENT_ID_KEY, id);
+    } else {
+      localStorage.removeItem(this.CLIENT_ID_KEY);
+    }
+  },
+
   init() {
     const currentPrefs = this.loadPreferences();
     this._setupEventListeners();
@@ -92,8 +105,6 @@ export const Preferences = {
     this._syncTheme(newPrefs.darkTheme);
     this._syncChart();
   },
-
-  // --- Internal Helpers ---
 
   _setupEventListeners() {
     // Listen for changes on all registered preference inputs
