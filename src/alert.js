@@ -11,11 +11,16 @@ export const Alert = {
     msgEl.innerText = message;
 
     content.className = `modal-content alert-modal ${type}`;
+
+    modal.classList.remove('hidden');
     modal.style.display = 'flex';
   },
 
   hideAlert() {
     const modal = document.getElementById('customAlert');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
   },
 };
