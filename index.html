@@ -570,6 +570,37 @@
                 </label>
               </div>
 
+              <div class="pref-subgroup">
+                <div class="pref-item">
+                  <div class="pref-info">
+                    <span class="pref-title">Google Drive Integration</span>
+                    <span class="pref-desc">Cloud access configuration</span>
+                  </div>
+                  <button
+                    class="btn btn-sm btn-add"
+                    id="toggle-drive-config"
+                    onclick="toggleDriveConfig()"
+                  >
+                    <i class="fas fa-cog"></i> Config
+                  </button>
+                </div>
+
+                <div id="configPanel" class="config-panel">
+                  <input
+                    type="text"
+                    id="gClientId"
+                    placeholder="Enter Google Client ID"
+                    class="mb-8"
+                  />
+                  <button
+                    class="btn btn-primary btn-sm"
+                    onclick="saveDriveConfig()"
+                  >
+                    Save ID
+                  </button>
+                </div>
+              </div>
+
               <div class="pref-item">
                 <div class="pref-info">
                   <span class="pref-title">Remember Layout</span>

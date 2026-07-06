@@ -1,6 +1,7 @@
 import { AppState, DOM } from './config.js';
 import { Alert } from './alert.js';
 import { messenger } from './bus.js';
+import { Preferences } from './preferences.js';
 
 export const Auth = {
   SCOPES: 'https://www.googleapis.com/auth/drive.readonly',
@@ -41,18 +42,31 @@ export const Auth = {
       const config = await response.json();
       Auth.clientId = config.googleClientId;
     } catch (e) {
-      console.error('Backend API not reached. Failed to load Client ID:', e);
-      Alert.showAlert(
-        'Failed to load Google Auth configuration.',
-        'Error',
-        'error'
-      );
+      console.warn('Backend API not reached. Attempting local fallback...', e);
+
+      const fallbackId = Preferences.googleClientId;
+      if (fallbackId) {
+        Auth.clientId = fallbackId;
+        console.log('Using local fallback Client ID.');
+      } else {
+        Alert.showAlert(
+          'Failed to load Google Auth configuration. Please enter a Client ID in Settings.',
+          'Connection Error',
+          'error'
+        );
+      }
     }
   },
 
   init: async () => {
     window.handleAuth = Auth.handleAuth;
     window.logoutDrive = Auth.logoutDrive;
+
+    const savedId = Preferences.googleClientId;
+    const inputEl = document.getElementById('gClientId');
+    if (inputEl && savedId) {
+      inputEl.value = savedId;
+    }
 
     try {
       await Auth.fetchConfig();
@@ -75,7 +89,6 @@ export const Auth = {
   },
 
   initTokenClient: () => {
-    // 3. Rely purely on the API-provided client ID
     if (!Auth.clientId || !window.google) return;
 
     AppState.google.tokenClient = google.accounts.oauth2.initTokenClient({
@@ -179,5 +192,23 @@ export const Auth = {
       gapi.client.setToken(null);
     }
     messenger.emit('auth:status-changed', { isLoggedIn: false });
+  },
+
+  saveConfig: () => {
+    const inputEl = document.getElementById('gClientId');
+    if (inputEl) {
+      const val = inputEl.value.trim();
+      Preferences.googleClientId = val; // Save to localStorage
+      Auth.clientId = val; // Update active session
+      Alert.showAlert(
+        'Google Client ID saved locally for development.',
+        'Success',
+        'success'
+      );
+
+      if (window.google && AppState.google.gapiInited) {
+        Auth.initTokenClient();
+      }
+    }
   },
 };
