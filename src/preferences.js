@@ -21,7 +21,7 @@ export const Preferences = {
     'pref-smooth-lines': 'smoothLines',
     'pref-load-map': 'loadMap',
     'pref-remember-files': 'rememberFiles',
-    'pref-show-labels': 'showLabels'
+    'pref-show-labels': 'showLabels',
   },
 
   defaultPrefs: {

@@ -115,7 +115,7 @@ export const ChartManager = {
   },
 
   updateAllLabelsVisibility() {
-    AppState.chartInstances.forEach(chart => {
+    AppState.chartInstances.forEach((chart) => {
       if (chart) this.updateLabelVisibility(chart);
     });
   },
