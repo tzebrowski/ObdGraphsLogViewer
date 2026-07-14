@@ -357,16 +357,23 @@ export const UI = {
     const mathBtn = document.getElementById('btn-create-math');
     const overlayBtn = document.getElementById('btn-mode-overlay');
     const quickFilterBtn = document.getElementById('btn-quick-gas-filter');
+    const dynoBtn = document.getElementById('btn-dyno-view');
 
-    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn, quickFilterBtn].forEach(
-      (btn) => {
-        if (btn) {
-          btn.disabled = !hasData;
-          btn.style.opacity = hasData ? '1' : '0.5';
-          btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
-        }
+    [
+      stackBtn,
+      xyBtn,
+      histBtn,
+      mathBtn,
+      overlayBtn,
+      quickFilterBtn,
+      dynoBtn,
+    ].forEach((btn) => {
+      if (btn) {
+        btn.disabled = !hasData;
+        btn.style.opacity = hasData ? '1' : '0.5';
+        btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
       }
-    );
+    });
   },
 
   toggleItem(i) {

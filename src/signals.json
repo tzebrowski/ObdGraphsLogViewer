@@ -84,7 +84,7 @@
   {
     "name": "Torque",
     "default": true,
-    "aliases": ["Torque", "Engine Torque", "Nm"]
+    "aliases": ["Torque", "Engine Torque", "Nm", "Measured Engine Torque"]
   },
   {
     "name": "Vehicle Speed",

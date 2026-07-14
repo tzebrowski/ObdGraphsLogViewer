@@ -16,6 +16,7 @@ import { mathChannels } from './mathchannels.js';
 import { projectManager } from './projectmanager.js';
 import { signalRegistry } from './signalregistry.js';
 import { DeepLink } from './deeplink.js';
+import { DynoManager } from './dynomanager.js';
 
 window.onload = async function () {
   await dataProcessor.loadConfiguration();
@@ -35,6 +36,7 @@ window.onload = async function () {
   Histogram.init();
   projectManager.init();
   signalRegistry.init();
+  DynoManager.init();
 
   const fileInput = DOM.get('fileInput');
   if (fileInput) {
