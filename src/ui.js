@@ -357,8 +357,9 @@ export const UI = {
     const mathBtn = document.getElementById('btn-create-math');
     const overlayBtn = document.getElementById('btn-mode-overlay');
     const quickFilterBtn = document.getElementById('btn-quick-gas-filter');
+    const dynoBtn = document.getElementById('btn-dyno-view');
 
-    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn, quickFilterBtn].forEach(
+    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn, quickFilterBtn, dynoBtn].forEach(
       (btn) => {
         if (btn) {
           btn.disabled = !hasData;
