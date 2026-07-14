@@ -122,35 +122,40 @@ export const DynoManager = {
   },
 
   injectHeaderControls(modal) {
-    const header = modal.querySelector('.modal-header');
-    if (header && !document.getElementById('dyno-controls')) {
-      const controlsDiv = document.createElement('div');
-      controlsDiv.id = 'dyno-controls';
-      controlsDiv.style.display = 'flex';
-      controlsDiv.style.alignItems = 'center';
-      controlsDiv.style.gap = '10px';
-      controlsDiv.style.marginRight = 'auto';
-      controlsDiv.style.marginLeft = '15px';
+    if (!document.getElementById('dyno-pull-select')) {
+      const searchInput = document.getElementById('dynoSignalSearch');
+      if (searchInput && searchInput.parentElement) {
+        const select = document.createElement('select');
+        select.id = 'dyno-pull-select';
+        select.className = 'template-select';
+        select.style.width = '100%';
+        select.style.marginBottom = '10px';
+        select.style.display = 'none';
 
-      const select = document.createElement('select');
-      select.id = 'dyno-pull-select';
-      select.className = 'template-select';
-      select.style.padding = '4px 8px';
-      select.style.display = 'none';
-      select.onchange = (e) => {
-        this.selectedPullIndex = parseInt(e.target.value, 10);
-        this.drawChart();
-      };
+        select.onchange = (e) => {
+          this.selectedPullIndex = parseInt(e.target.value, 10);
+          this.drawChart();
+        };
 
-      const exportBtn = document.createElement('button');
-      exportBtn.id = 'btn-export-dyno';
-      exportBtn.className = 'btn btn-sm btn-primary';
-      exportBtn.innerHTML = '<i class="fas fa-camera"></i> Save PNG';
-      exportBtn.onclick = () => this.exportChart();
+        searchInput.parentElement.insertBefore(select, searchInput);
+      }
+    }
 
-      controlsDiv.appendChild(select);
-      controlsDiv.appendChild(exportBtn);
-      header.insertBefore(controlsDiv, header.querySelector('.btn-close'));
+    if (!document.getElementById('btn-export-dyno')) {
+      const closeBtn = modal.querySelector('.btn-close');
+      if (closeBtn && closeBtn.parentElement) {
+        const mainHeader = closeBtn.parentElement;
+
+        const exportBtn = document.createElement('button');
+        exportBtn.id = 'btn-export-dyno';
+        exportBtn.className = 'btn btn-sm btn-primary';
+        exportBtn.innerHTML = '<i class="fas fa-camera"></i> Save PNG';
+        exportBtn.style.marginRight = 'auto';
+        exportBtn.style.marginLeft = '15px';
+        exportBtn.onclick = () => this.exportChart();
+
+        mainHeader.insertBefore(exportBtn, closeBtn);
+      }
     }
   },
 
@@ -180,6 +185,9 @@ export const DynoManager = {
     if (!list || !search) return;
 
     const file = AppState.files[0];
+
+    if (!file || !file.availableSignals) return;
+
     const signals = file.availableSignals.sort();
 
     const renderList = (filter = '') => {
@@ -476,7 +484,7 @@ export const DynoManager = {
         borderWidth: 3,
       },
       {
-        label: 'Power (KM)',
+        label: 'Power (HP)',
         data: powerData,
         borderColor: '#c22636',
         backgroundColor: 'rgba(194, 38, 54, 0.1)',
@@ -516,7 +524,7 @@ export const DynoManager = {
           datalabels: { display: false },
           title: {
             display: true,
-            text: `Virtual Dyno - Max Power: ${maxPower.toFixed(1)} KM | Max Torque: ${maxTorque.toFixed(1)} Nm`,
+            text: `Virtual Dyno - Max Power: ${maxPower.toFixed(1)} HP | Max Torque: ${maxTorque.toFixed(1)} Nm`,
             font: { size: 16, weight: 'bold' },
           },
           tooltip: {
@@ -545,7 +553,7 @@ export const DynoManager = {
           yPower: {
             type: 'linear',
             position: 'right',
-            title: { display: true, text: 'Power (KM)' },
+            title: { display: true, text: 'Power (HP)' },
             min: 0,
             max: Math.ceil(maxPower / 100) * 100 + 50,
             grid: { drawOnChartArea: false },
