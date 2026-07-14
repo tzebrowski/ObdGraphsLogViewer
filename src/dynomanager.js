@@ -187,7 +187,6 @@ export const DynoManager = {
       const lowerFilter = filter.toLowerCase();
 
       signals.forEach((sig) => {
-        // Exclude the base signals from the extra list
         if (
           sig === this.currentConfig.rpmKey ||
           sig === this.currentConfig.torqueKey ||
@@ -375,7 +374,6 @@ export const DynoManager = {
     const activePull = this.currentPulls[this.selectedPullIndex];
     const file = AppState.files[0];
 
-    // 1. Gather raw data for extra selected signals and forward-fill to match pull timeline
     const extraData = {};
     this.selectedExtraSignals.forEach((sig) => {
       extraData[sig] = new Float32Array(activePull.time.length);
@@ -391,7 +389,6 @@ export const DynoManager = {
       });
     });
 
-    // 2. Binning into 50 RPM buckets
     const binSize = 50;
     const binnedData = {};
 
@@ -428,7 +425,6 @@ export const DynoManager = {
         return pt;
       });
 
-    // 3. Moving average smoothing
     const dataPoints = binnedPoints.map((dp, i, arr) => {
       const windowSize = 2;
       let tSum = 0,
@@ -467,7 +463,6 @@ export const DynoManager = {
     const maxTorque = Math.max(...dataPoints.map((d) => d.torque));
     const maxPower = Math.max(...dataPoints.map((d) => d.power));
 
-    // 4. Construct Datasets
     const datasets = [
       {
         label: 'Torque (Nm)',
@@ -493,9 +488,7 @@ export const DynoManager = {
       },
     ];
 
-    // Inject Extra Signals as Dashed Lines mapped to yExtra
     this.selectedExtraSignals.forEach((sig) => {
-      // Use PaletteManager so the color matches the main application view
       const sigIdx = file.availableSignals.indexOf(sig);
       const color = PaletteManager.getColorForSignal(0, sigIdx);
 
@@ -508,7 +501,7 @@ export const DynoManager = {
         cubicInterpolationMode: 'monotone',
         pointRadius: 0,
         borderWidth: 2,
-        borderDash: [5, 5], // Dashed line to separate from Power/Torque
+        borderDash: [5, 5],
       });
     });
 
@@ -560,7 +553,7 @@ export const DynoManager = {
           yExtra: {
             type: 'linear',
             position: 'right',
-            display: false, // Auto-scales silently so it doesn't break Torq/Pow visual space
+            display: false,
             grid: { drawOnChartArea: false },
           },
         },
