@@ -1134,11 +1134,14 @@
               background: var(--sidebar-bg);
             "
           >
+            <!-- UPDATED LEFT HEADER -->
             <div
               class="modal-header"
               style="
                 border-bottom: 1px solid var(--border-color);
-                padding: 15px;
+                padding: 15px 20px;
+                height: 64px;
+                box-sizing: border-box;
               "
             >
               <h3 style="margin: 0; font-size: 1.1em; color: var(--text-main)">
@@ -1170,8 +1173,17 @@
           <div
             style="flex: 1; display: flex; flex-direction: column; min-width: 0"
           >
-            <div class="modal-header">
-              <h2>Virtual Dyno</h2>
+            <!-- UPDATED RIGHT HEADER -->
+            <div
+              class="modal-header"
+              style="
+                border-bottom: 1px solid var(--border-color);
+                padding: 15px 20px;
+                height: 64px;
+                box-sizing: border-box;
+              "
+            >
+              <h2 style="margin: 0">Virtual Dyno</h2>
               <button class="btn-close" onclick="closeDynoModal()">×</button>
             </div>
             <div
