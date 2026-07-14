@@ -1072,9 +1072,16 @@
                   />
                 </div>
                 <div style="flex: 1">
-                  <label style="font-size: 0.75em; color: var(--text-muted)"
-                    >Min RPM Delta</label
+                  <label
+                    style="font-size: 0.75em; color: var(--text-muted)"
+                    title="Minimum required change in RPM to be considered a valid pull."
                   >
+                    Min RPM Delta
+                    <i
+                      class="fas fa-info-circle"
+                      style="color: var(--brand-blue); cursor: help"
+                    ></i>
+                  </label>
                   <input
                     type="number"
                     id="dynoSetupRpmDelta"
@@ -1083,6 +1090,19 @@
                     step="100"
                   />
                 </div>
+              </div>
+              <div
+                style="
+                  font-size: 0.7em;
+                  color: var(--text-muted);
+                  margin-top: 8px;
+                  line-height: 1.3;
+                "
+              >
+                * <strong>Min RPM Delta:</strong> Prevents generating useless
+                charts for quick gear shifts or throttle blips. Set this to the
+                minimum RPM range you swept during your pull (e.g., 2000 to 4500
+                RPM = 2500 Delta).
               </div>
             </div>
           </div>
