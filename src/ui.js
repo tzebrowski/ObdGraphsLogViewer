@@ -359,15 +359,21 @@ export const UI = {
     const quickFilterBtn = document.getElementById('btn-quick-gas-filter');
     const dynoBtn = document.getElementById('btn-dyno-view');
 
-    [stackBtn, xyBtn, histBtn, mathBtn, overlayBtn, quickFilterBtn, dynoBtn].forEach(
-      (btn) => {
-        if (btn) {
-          btn.disabled = !hasData;
-          btn.style.opacity = hasData ? '1' : '0.5';
-          btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
-        }
+    [
+      stackBtn,
+      xyBtn,
+      histBtn,
+      mathBtn,
+      overlayBtn,
+      quickFilterBtn,
+      dynoBtn,
+    ].forEach((btn) => {
+      if (btn) {
+        btn.disabled = !hasData;
+        btn.style.opacity = hasData ? '1' : '0.5';
+        btn.style.cursor = hasData ? 'pointer' : 'not-allowed';
       }
-    );
+    });
   },
 
   toggleItem(i) {

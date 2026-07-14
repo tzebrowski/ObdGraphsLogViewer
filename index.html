@@ -115,7 +115,6 @@
             <i class="fas fa-chart-bar"></i>
           </button>
 
-
           <button
             id="btn-dyno-view"
             class="view-btn"
@@ -125,8 +124,6 @@
           >
             <i class="fas fa-tachometer-alt"></i>
           </button>
-
-
         </div>
 
         <div class="nav-links">
@@ -1009,22 +1006,40 @@
       </div>
 
       <div id="dynoModal" class="modal-overlay">
-        <div class="modal-content" style="width: 90vw; max-width: 1200px; height: 80vh;">
+        <div
+          class="modal-content"
+          style="width: 90vw; max-width: 1200px; height: 80vh"
+        >
           <div class="modal-header">
             <h2>Virtual Dyno</h2>
             <button class="btn-close" onclick="closeDynoModal()">×</button>
           </div>
-          <div class="modal-body" style="flex: 1; position: relative; display: flex; flex-direction: column;">
-            <div style="flex: 1; position: relative; min-height: 0;">
-                <canvas id="dynoCanvas"></canvas>
+          <div
+            class="modal-body"
+            style="
+              flex: 1;
+              position: relative;
+              display: flex;
+              flex-direction: column;
+            "
+          >
+            <div style="flex: 1; position: relative; min-height: 0">
+              <canvas id="dynoCanvas"></canvas>
             </div>
-            <div style="text-align: center; font-size: 0.85em; color: var(--text-muted); margin-top: 10px;">
-                * Power calculation is estimated based on Engine Torque and Engine Speed. Represents WOT sweeps only.
+            <div
+              style="
+                text-align: center;
+                font-size: 0.85em;
+                color: var(--text-muted);
+                margin-top: 10px;
+              "
+            >
+              * Power calculation is estimated based on Engine Torque and Engine
+              Speed. Represents WOT sweeps only.
             </div>
           </div>
         </div>
       </div>
-      
 
       <div id="mathModal" class="modal-overlay">
         <div class="modal-content">
