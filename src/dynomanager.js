@@ -13,6 +13,7 @@ export const DynoManager = {
     const modal = document.getElementById('dynoModal');
     if (modal) {
       modal.style.display = 'flex';
+      this.injectExportButton(modal);
       this.render();
     }
   },
@@ -28,10 +29,50 @@ export const DynoManager = {
     }
   },
 
+  injectExportButton(modal) {
+    const header = modal.querySelector('.modal-header');
+    // Inject the export button if it doesn't already exist
+    if (header && !document.getElementById('btn-export-dyno')) {
+      const exportBtn = document.createElement('button');
+      exportBtn.id = 'btn-export-dyno';
+      exportBtn.className = 'btn btn-sm btn-primary';
+      exportBtn.style.marginRight = 'auto';
+      exportBtn.style.marginLeft = '15px';
+      exportBtn.innerHTML = '<i class="fas fa-camera"></i> Save PNG';
+      exportBtn.onclick = () => this.exportChart();
+      header.insertBefore(exportBtn, header.querySelector('.btn-close'));
+    }
+  },
+
+  exportChart() {
+    const canvas = document.getElementById('dynoCanvas');
+    if (!canvas) return;
+    
+    // Create a temporary canvas to draw the background color
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const ctx = tempCanvas.getContext('2d');
+    
+    // Fill background to match theme so it's not transparent
+    const isDark = document.body.classList.contains('dark-theme') || document.body.classList.contains('pref-theme-dark');
+    ctx.fillStyle = isDark ? '#1e1e1e' : '#ffffff';
+    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Draw the original chart on top
+    ctx.drawImage(canvas, 0, 0);
+
+    const link = document.createElement('a');
+    link.download = 'mygiulia_virtual_dyno.png';
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  },
+
   extractPulls(file) {
     const pulls = [];
     let currentPull = { rpm: [], torque: [], power: [], time: [] };
     let inPull = false;
+    let hitWot = false; // Tracks if the 85% threshold was met during the 60% window
 
     // Detect necessary signals using strictly lowercase searches
     const rpmKey = file.availableSignals.find(s => s.toLowerCase().includes('engine speed') || s.toLowerCase().includes('rpm'));
@@ -50,7 +91,10 @@ export const DynoManager = {
       const val = parseFloat(p.y);
       if (val > maxPedal) maxPedal = val; 
     });
-    const pedalThreshold = maxPedal <= 1.0 ? 0.85 : (maxPedal * 0.85);
+    
+    // DUAL THRESHOLD: Start recording at 60% to catch spool, require 85% to validate as a WOT sweep
+    const pedalThresholdWOT = maxPedal <= 1.0 ? 0.85 : (maxPedal * 0.85);
+    const pedalThresholdStart = maxPedal <= 1.0 ? 0.60 : (maxPedal * 0.60);
 
     // Merge all unique timestamps
     const timeSet = new Set();
@@ -81,24 +125,29 @@ export const DynoManager = {
         pIdx++; 
       }
 
-      if (lastPedal > pedalThreshold && lastRpm !== null && lastTorque !== null) {
+      // Check if we are above the starting threshold (60%)
+      if (lastPedal > pedalThresholdStart && lastRpm !== null && lastTorque !== null) {
         inPull = true;
-        const power = (lastTorque * lastRpm) / 7021.5; // Power calculation
+        // Flag if we actually hit the required WOT threshold (85%) during this sweep
+        if (lastPedal >= pedalThresholdWOT) hitWot = true;
+
+        const power = (lastTorque * lastRpm) / 7021.5; 
         currentPull.rpm.push(lastRpm);
         currentPull.torque.push(lastTorque);
         currentPull.power.push(power);
         currentPull.time.push(t);
       } else if (inPull) {
-        // Valid pull threshold: > 1200 RPM delta
-        if (currentPull.rpm.length > 0 && (Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > 1200)) {
+        // Pedal dropped below 60%. Save pull if it hit 85% and was long enough
+        if (hitWot && currentPull.rpm.length > 0 && (Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > 1200)) {
           pulls.push(currentPull);
         }
         currentPull = { rpm: [], torque: [], power: [], time: [] };
         inPull = false;
+        hitWot = false;
       }
     });
     
-    if (inPull && currentPull.rpm.length > 0 && (Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > 1200)) {
+    if (inPull && hitWot && currentPull.rpm.length > 0 && (Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > 1200)) {
       pulls.push(currentPull);
     }
 
@@ -155,7 +204,7 @@ export const DynoManager = {
 
     // 2. Apply a moving average over the bins for that buttery-smooth dyno look
     const dataPoints = binnedPoints.map((dp, i, arr) => {
-      const windowSize = 3; // Smooth across 3 bins left/right
+      const windowSize = 2; // Reduced slightly to keep the ends sharp
       let tSum = 0, pSum = 0, count = 0;
       for (let j = Math.max(0, i - windowSize); j <= Math.min(arr.length - 1, i + windowSize); j++) {
         tSum += arr[j].torque;
@@ -182,7 +231,7 @@ export const DynoManager = {
             backgroundColor: 'rgba(28, 61, 114, 0.1)',
             yAxisID: 'yTorque',
             tension: 0.4,
-            cubicInterpolationMode: 'monotone', // Prevents wobble
+            cubicInterpolationMode: 'monotone',
             pointRadius: 0,
             borderWidth: 3
           },
@@ -193,7 +242,7 @@ export const DynoManager = {
             backgroundColor: 'rgba(194, 38, 54, 0.1)',
             yAxisID: 'yPower',
             tension: 0.4,
-            cubicInterpolationMode: 'monotone', // Prevents wobble
+            cubicInterpolationMode: 'monotone',
             pointRadius: 0,
             borderWidth: 3
           }
@@ -208,7 +257,7 @@ export const DynoManager = {
         },
         plugins: {
           datalabels: {
-            display: false // Turns off the global datalabels plugin specifically for this chart
+            display: false
           },
           title: {
             display: true,
@@ -225,7 +274,7 @@ export const DynoManager = {
           x: {
             type: 'linear',
             title: { display: true, text: 'Engine Speed (RPM)' },
-            grid: { color: 'rgba(0,0,0,0.05)' },
+            grid: { color: 'rgba(255,255,255,0.05)' },
             min: Math.floor(Math.min(...bestPull.rpm) / 500) * 500,
             max: Math.ceil(Math.max(...bestPull.rpm) / 500) * 500
           },
@@ -235,7 +284,7 @@ export const DynoManager = {
             title: { display: true, text: 'Torque (Nm)' },
             min: 0,
             max: Math.ceil(maxTorque / 100) * 100 + 100,
-            grid: { color: 'rgba(0,0,0,0.05)' }
+            grid: { color: 'rgba(255,255,255,0.05)' }
           },
           yPower: {
             type: 'linear',
@@ -250,3 +299,4 @@ export const DynoManager = {
     });
   }
 };
+
