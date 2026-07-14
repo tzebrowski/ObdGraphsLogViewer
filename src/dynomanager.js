@@ -1,14 +1,15 @@
 import { AppState, DOM } from './config.js';
 import { Chart } from 'chart.js';
+import { PaletteManager } from './palettemanager.js';
 
 export const DynoManager = {
   chartInstance: null,
   currentPulls: [],
   selectedPullIndex: 0,
   currentConfig: null,
+  selectedExtraSignals: [],
 
   init() {
-    // Rewire main button to open Setup instead of Chart directly
     window.openDynoModal = () => this.openSetupModal();
     window.closeDynoSetupModal = () => this.closeSetupModal();
     window.closeDynoModal = () => this.closeModal();
@@ -27,7 +28,6 @@ export const DynoManager = {
     const file = AppState.files[0];
     const signals = [...file.availableSignals].sort();
 
-    // Helper to populate select elements
     const populateSelect = (elementId, searchTerms) => {
       const select = document.getElementById(elementId);
       if (!select) return;
@@ -40,12 +40,10 @@ export const DynoManager = {
         opt.innerText = sig;
         select.appendChild(opt);
 
-        // Auto-select best match if not found yet
         if (!bestMatch) {
           const lowerSig = sig.toLowerCase();
-          if (searchTerms.some((term) => lowerSig.includes(term))) {
+          if (searchTerms.some((term) => lowerSig.includes(term)))
             bestMatch = sig;
-          }
         }
       });
       if (bestMatch) select.value = bestMatch;
@@ -105,6 +103,7 @@ export const DynoManager = {
       modal.style.display = 'flex';
       this.injectHeaderControls(modal);
       this.render();
+      this.populateSignalList();
     }
   },
 
@@ -118,6 +117,7 @@ export const DynoManager = {
       }
       this.currentPulls = [];
       this.selectedPullIndex = 0;
+      this.selectedExtraSignals = [];
     }
   },
 
@@ -163,9 +163,7 @@ export const DynoManager = {
     tempCanvas.height = canvas.height;
     const ctx = tempCanvas.getContext('2d');
 
-    const isDark =
-      document.body.classList.contains('dark-theme') ||
-      document.body.classList.contains('pref-theme-dark');
+    const isDark = document.body.classList.contains('dark-theme');
     ctx.fillStyle = isDark ? '#1e1e1e' : '#ffffff';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     ctx.drawImage(canvas, 0, 0);
@@ -176,22 +174,61 @@ export const DynoManager = {
     link.click();
   },
 
-  smoothData(data, windowSize = 4) {
-    const result = [];
-    for (let i = 0; i < data.length; i++) {
-      let sum = 0,
-        count = 0;
-      for (
-        let j = Math.max(0, i - windowSize);
-        j <= Math.min(data.length - 1, i + windowSize);
-        j++
-      ) {
-        sum += data[j];
-        count++;
-      }
-      result.push(sum / count);
-    }
-    return result;
+  populateSignalList() {
+    const list = document.getElementById('dynoSignalList');
+    const search = document.getElementById('dynoSignalSearch');
+    if (!list || !search) return;
+
+    const file = AppState.files[0];
+    const signals = file.availableSignals.sort();
+
+    const renderList = (filter = '') => {
+      list.innerHTML = '';
+      const lowerFilter = filter.toLowerCase();
+
+      signals.forEach((sig) => {
+        // Exclude the base signals from the extra list
+        if (
+          sig === this.currentConfig.rpmKey ||
+          sig === this.currentConfig.torqueKey ||
+          sig === this.currentConfig.pedalKey
+        )
+          return;
+        if (filter && !sig.toLowerCase().includes(lowerFilter)) return;
+
+        const div = document.createElement('div');
+        div.className = 'custom-checkbox-container';
+        div.style.marginBottom = '12px';
+        div.style.fontSize = '0.85em';
+        div.style.position = 'relative';
+
+        const isChecked = this.selectedExtraSignals.includes(sig);
+
+        div.innerHTML = `
+            <input type="checkbox" id="dyno-sig-${sig}" value="${sig}" ${isChecked ? 'checked' : ''} style="position: absolute; opacity: 0;">
+            <span class="checkmark"></span>
+            <label for="dyno-sig-${sig}" style="cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; padding-left: 28px; line-height: 1.2;">${sig}</label>
+        `;
+
+        const cb = div.querySelector('input');
+        cb.onchange = (e) => {
+          if (e.target.checked) {
+            if (!this.selectedExtraSignals.includes(sig))
+              this.selectedExtraSignals.push(sig);
+          } else {
+            this.selectedExtraSignals = this.selectedExtraSignals.filter(
+              (s) => s !== sig
+            );
+          }
+          this.drawChart();
+        };
+
+        list.appendChild(div);
+      });
+    };
+
+    renderList();
+    search.oninput = (e) => renderList(e.target.value);
   },
 
   extractPulls(file) {
@@ -207,12 +244,12 @@ export const DynoManager = {
     const torqueData = file.signals[torqueKey] || [];
     const pedalData = file.signals[pedalKey] || [];
 
-    // Scale threshold dynamically if sensor reports 0.0-1.0 instead of 0-100
     let maxPedal = 0;
     pedalData.forEach((p) => {
       const val = parseFloat(p.y);
       if (val > maxPedal) maxPedal = val;
     });
+
     const isDecimal = maxPedal <= 1.0;
     const threshStart = isDecimal ? pedalStart / 100 : pedalStart;
     const threshWot = isDecimal ? pedalWot / 100 : pedalWot;
@@ -333,39 +370,73 @@ export const DynoManager = {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    if (this.chartInstance) {
-      this.chartInstance.destroy();
-    }
+    if (this.chartInstance) this.chartInstance.destroy();
 
     const activePull = this.currentPulls[this.selectedPullIndex];
+    const file = AppState.files[0];
 
+    // 1. Gather raw data for extra selected signals and forward-fill to match pull timeline
+    const extraData = {};
+    this.selectedExtraSignals.forEach((sig) => {
+      extraData[sig] = new Float32Array(activePull.time.length);
+      const raw = file.signals[sig] || [];
+      let rIdx = 0;
+      let lastVal = 0;
+      activePull.time.forEach((t, i) => {
+        while (rIdx < raw.length && raw[rIdx].x <= t) {
+          lastVal = parseFloat(raw[rIdx].y);
+          rIdx++;
+        }
+        extraData[sig][i] = lastVal;
+      });
+    });
+
+    // 2. Binning into 50 RPM buckets
     const binSize = 50;
     const binnedData = {};
 
     activePull.rpm.forEach((rpm, i) => {
       const bin = Math.round(rpm / binSize) * binSize;
       if (!binnedData[bin]) {
-        binnedData[bin] = { torqueSum: 0, powerSum: 0, count: 0 };
+        binnedData[bin] = { torqueSum: 0, powerSum: 0, count: 0, extras: {} };
+        this.selectedExtraSignals.forEach(
+          (sig) => (binnedData[bin].extras[sig] = 0)
+        );
       }
       binnedData[bin].torqueSum += activePull.torque[i];
       binnedData[bin].powerSum += activePull.power[i];
+      this.selectedExtraSignals.forEach((sig) => {
+        binnedData[bin].extras[sig] += extraData[sig][i];
+      });
       binnedData[bin].count++;
     });
 
     const binnedPoints = Object.keys(binnedData)
       .map(Number)
       .sort((a, b) => a - b)
-      .map((bin) => ({
-        rpm: bin,
-        torque: binnedData[bin].torqueSum / binnedData[bin].count,
-        power: binnedData[bin].powerSum / binnedData[bin].count,
-      }));
+      .map((bin) => {
+        const count = binnedData[bin].count;
+        const pt = {
+          rpm: bin,
+          torque: binnedData[bin].torqueSum / count,
+          power: binnedData[bin].powerSum / count,
+          extras: {},
+        };
+        this.selectedExtraSignals.forEach((sig) => {
+          pt.extras[sig] = binnedData[bin].extras[sig] / count;
+        });
+        return pt;
+      });
 
+    // 3. Moving average smoothing
     const dataPoints = binnedPoints.map((dp, i, arr) => {
       const windowSize = 2;
       let tSum = 0,
         pSum = 0,
         count = 0;
+      const eSum = {};
+      this.selectedExtraSignals.forEach((sig) => (eSum[sig] = 0));
+
       for (
         let j = Math.max(0, i - windowSize);
         j <= Math.min(arr.length - 1, i + windowSize);
@@ -373,56 +444,83 @@ export const DynoManager = {
       ) {
         tSum += arr[j].torque;
         pSum += arr[j].power;
+        this.selectedExtraSignals.forEach(
+          (sig) => (eSum[sig] += arr[j].extras[sig])
+        );
         count++;
       }
-      return { rpm: dp.rpm, torque: tSum / count, power: pSum / count };
+
+      const pt = {
+        rpm: dp.rpm,
+        torque: tSum / count,
+        power: pSum / count,
+        extras: {},
+      };
+      this.selectedExtraSignals.forEach(
+        (sig) => (pt.extras[sig] = eSum[sig] / count)
+      );
+      return pt;
     });
 
     const torqueData = dataPoints.map((d) => ({ x: d.rpm, y: d.torque }));
     const powerData = dataPoints.map((d) => ({ x: d.rpm, y: d.power }));
-
     const maxTorque = Math.max(...dataPoints.map((d) => d.torque));
     const maxPower = Math.max(...dataPoints.map((d) => d.power));
 
+    // 4. Construct Datasets
+    const datasets = [
+      {
+        label: 'Torque (Nm)',
+        data: torqueData,
+        borderColor: '#1c3d72',
+        backgroundColor: 'rgba(28, 61, 114, 0.1)',
+        yAxisID: 'yTorque',
+        tension: 0.4,
+        cubicInterpolationMode: 'monotone',
+        pointRadius: 0,
+        borderWidth: 3,
+      },
+      {
+        label: 'Power (KM)',
+        data: powerData,
+        borderColor: '#c22636',
+        backgroundColor: 'rgba(194, 38, 54, 0.1)',
+        yAxisID: 'yPower',
+        tension: 0.4,
+        cubicInterpolationMode: 'monotone',
+        pointRadius: 0,
+        borderWidth: 3,
+      },
+    ];
+
+    // Inject Extra Signals as Dashed Lines mapped to yExtra
+    this.selectedExtraSignals.forEach((sig) => {
+      // Use PaletteManager so the color matches the main application view
+      const sigIdx = file.availableSignals.indexOf(sig);
+      const color = PaletteManager.getColorForSignal(0, sigIdx);
+
+      datasets.push({
+        label: sig,
+        data: dataPoints.map((d) => ({ x: d.rpm, y: d.extras[sig] })),
+        borderColor: color,
+        yAxisID: 'yExtra',
+        tension: 0.4,
+        cubicInterpolationMode: 'monotone',
+        pointRadius: 0,
+        borderWidth: 2,
+        borderDash: [5, 5], // Dashed line to separate from Power/Torque
+      });
+    });
+
     this.chartInstance = new Chart(ctx, {
       type: 'line',
-      data: {
-        datasets: [
-          {
-            label: 'Torque (Nm)',
-            data: torqueData,
-            borderColor: '#1c3d72',
-            backgroundColor: 'rgba(28, 61, 114, 0.1)',
-            yAxisID: 'yTorque',
-            tension: 0.4,
-            cubicInterpolationMode: 'monotone',
-            pointRadius: 0,
-            borderWidth: 3,
-          },
-          {
-            label: 'Power (KM)',
-            data: powerData,
-            borderColor: '#c22636',
-            backgroundColor: 'rgba(194, 38, 54, 0.1)',
-            yAxisID: 'yPower',
-            tension: 0.4,
-            cubicInterpolationMode: 'monotone',
-            pointRadius: 0,
-            borderWidth: 3,
-          },
-        ],
-      },
+      data: { datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false,
-        },
+        interaction: { mode: 'index', intersect: false },
         plugins: {
-          datalabels: {
-            display: false,
-          },
+          datalabels: { display: false },
           title: {
             display: true,
             text: `Virtual Dyno - Max Power: ${maxPower.toFixed(1)} KM | Max Torque: ${maxTorque.toFixed(1)} Nm`,
@@ -439,7 +537,7 @@ export const DynoManager = {
           x: {
             type: 'linear',
             title: { display: true, text: 'Engine Speed (RPM)' },
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            grid: { color: 'rgba(128,128,128,0.1)' },
             min: Math.floor(Math.min(...activePull.rpm) / 500) * 500,
             max: Math.ceil(Math.max(...activePull.rpm) / 500) * 500,
           },
@@ -449,7 +547,7 @@ export const DynoManager = {
             title: { display: true, text: 'Torque (Nm)' },
             min: 0,
             max: 1000,
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            grid: { color: 'rgba(128,128,128,0.1)' },
           },
           yPower: {
             type: 'linear',
@@ -457,6 +555,12 @@ export const DynoManager = {
             title: { display: true, text: 'Power (KM)' },
             min: 0,
             max: Math.ceil(maxPower / 100) * 100 + 50,
+            grid: { drawOnChartArea: false },
+          },
+          yExtra: {
+            type: 'linear',
+            position: 'right',
+            display: false, // Auto-scales silently so it doesn't break Torq/Pow visual space
             grid: { drawOnChartArea: false },
           },
         },

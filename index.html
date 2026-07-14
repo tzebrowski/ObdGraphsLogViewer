@@ -1117,34 +1117,87 @@
       <div id="dynoModal" class="modal-overlay">
         <div
           class="modal-content"
-          style="width: 90vw; max-width: 1200px; height: 80vh"
+          style="
+            width: 95vw;
+            max-width: 1400px;
+            height: 85vh;
+            flex-direction: row;
+            padding: 0;
+          "
         >
-          <div class="modal-header">
-            <h2>Virtual Dyno</h2>
-            <button class="btn-close" onclick="closeDynoModal()">×</button>
-          </div>
           <div
-            class="modal-body"
             style="
-              flex: 1;
-              position: relative;
+              width: 280px;
+              border-right: 1px solid var(--border-color);
               display: flex;
               flex-direction: column;
+              background: var(--sidebar-bg);
             "
           >
-            <div style="flex: 1; position: relative; min-height: 0">
-              <canvas id="dynoCanvas"></canvas>
+            <div
+              class="modal-header"
+              style="
+                border-bottom: 1px solid var(--border-color);
+                padding: 15px;
+              "
+            >
+              <h3 style="margin: 0; font-size: 1.1em; color: var(--text-main)">
+                Overlay Signals
+              </h3>
             </div>
             <div
               style="
-                text-align: center;
-                font-size: 0.85em;
-                color: var(--text-muted);
-                margin-top: 10px;
+                padding: 10px;
+                border-bottom: 1px solid var(--border-color);
               "
             >
-              * Power calculation is estimated based on Engine Torque and Engine
-              Speed. Represents WOT sweeps only.
+              <input
+                type="text"
+                id="dynoSignalSearch"
+                class="template-select"
+                style="width: 100%"
+                placeholder="Search signals..."
+              />
+            </div>
+            <div
+              id="dynoSignalList"
+              style="flex: 1; overflow-y: auto; padding: 10px"
+            >
+              <!-- Checkboxes injected here -->
+            </div>
+          </div>
+
+          <div
+            style="flex: 1; display: flex; flex-direction: column; min-width: 0"
+          >
+            <div class="modal-header">
+              <h2>Virtual Dyno</h2>
+              <button class="btn-close" onclick="closeDynoModal()">×</button>
+            </div>
+            <div
+              class="modal-body"
+              style="
+                flex: 1;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                padding: 15px;
+              "
+            >
+              <div style="flex: 1; position: relative; min-height: 0">
+                <canvas id="dynoCanvas"></canvas>
+              </div>
+              <div
+                style="
+                  text-align: center;
+                  font-size: 0.85em;
+                  color: var(--text-muted);
+                  margin-top: 10px;
+                "
+              >
+                * Power calculation is estimated based on Engine Torque and
+                Engine Speed. Represents WOT sweeps only.
+              </div>
             </div>
           </div>
         </div>
