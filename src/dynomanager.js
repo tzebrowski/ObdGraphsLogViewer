@@ -5,10 +5,98 @@ export const DynoManager = {
   chartInstance: null,
   currentPulls: [],
   selectedPullIndex: 0,
+  currentConfig: null,
 
   init() {
-    window.openDynoModal = () => this.openModal();
+    // Rewire main button to open Setup instead of Chart directly
+    window.openDynoModal = () => this.openSetupModal();
+    window.closeDynoSetupModal = () => this.closeSetupModal();
     window.closeDynoModal = () => this.closeModal();
+    window.generateDyno = () => this.generateFromSetup();
+  },
+
+  openSetupModal() {
+    if (AppState.files.length === 0) {
+      alert('Please load a log file first.');
+      return;
+    }
+
+    const modal = document.getElementById('dynoSetupModal');
+    if (!modal) return;
+
+    const file = AppState.files[0];
+    const signals = [...file.availableSignals].sort();
+
+    // Helper to populate select elements
+    const populateSelect = (elementId, searchTerms) => {
+      const select = document.getElementById(elementId);
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Select Signal --</option>';
+
+      let bestMatch = '';
+      signals.forEach((sig) => {
+        const opt = document.createElement('option');
+        opt.value = sig;
+        opt.innerText = sig;
+        select.appendChild(opt);
+
+        // Auto-select best match if not found yet
+        if (!bestMatch) {
+          const lowerSig = sig.toLowerCase();
+          if (searchTerms.some((term) => lowerSig.includes(term))) {
+            bestMatch = sig;
+          }
+        }
+      });
+      if (bestMatch) select.value = bestMatch;
+    };
+
+    populateSelect('dynoSetupRpm', ['engine speed', 'rpm']);
+    populateSelect('dynoSetupTorque', [
+      'measured engine torque',
+      'engine torque',
+      'torque',
+    ]);
+    populateSelect('dynoSetupPedal', [
+      'gas pedal',
+      'throttle position',
+      'pedal',
+    ]);
+
+    modal.style.display = 'flex';
+  },
+
+  closeSetupModal() {
+    const modal = document.getElementById('dynoSetupModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  generateFromSetup() {
+    const rpmKey = document.getElementById('dynoSetupRpm').value;
+    const torqueKey = document.getElementById('dynoSetupTorque').value;
+    const pedalKey = document.getElementById('dynoSetupPedal').value;
+
+    if (!rpmKey || !torqueKey || !pedalKey) {
+      alert('Please select Engine Speed, Torque, and Pedal Position signals.');
+      return;
+    }
+
+    this.currentConfig = {
+      rpmKey,
+      torqueKey,
+      pedalKey,
+      pedalStart: parseFloat(
+        document.getElementById('dynoSetupPedalStart').value
+      ),
+      pedalWot: parseFloat(document.getElementById('dynoSetupPedalWot').value),
+      rpmDelta: parseInt(
+        document.getElementById('dynoSetupRpmDelta').value,
+        10
+      ),
+    };
+
+    this.closeSetupModal();
+    this.openModal();
   },
 
   openModal() {
@@ -44,12 +132,11 @@ export const DynoManager = {
       controlsDiv.style.marginRight = 'auto';
       controlsDiv.style.marginLeft = '15px';
 
-      // Dropdown for selecting pulls
       const select = document.createElement('select');
       select.id = 'dyno-pull-select';
       select.className = 'template-select';
       select.style.padding = '4px 8px';
-      select.style.display = 'none'; // Hidden by default
+      select.style.display = 'none';
       select.onchange = (e) => {
         this.selectedPullIndex = parseInt(e.target.value, 10);
         this.drawChart();
@@ -113,36 +200,22 @@ export const DynoManager = {
     let inPull = false;
     let hitWot = false;
 
-    const rpmKey = file.availableSignals.find(
-      (s) =>
-        s.toLowerCase().includes('engine speed') ||
-        s.toLowerCase().includes('rpm')
-    );
-    const torqueKey = file.availableSignals.find(
-      (s) =>
-        s.toLowerCase().includes('measured engine torque') ||
-        s.toLowerCase().includes('engine torque')
-    );
-    const pedalKey = file.availableSignals.find(
-      (s) =>
-        s.toLowerCase().includes('gas pedal') ||
-        s.toLowerCase().includes('throttle')
-    );
-
-    if (!rpmKey || !torqueKey) return pulls;
+    const { rpmKey, torqueKey, pedalKey, pedalStart, pedalWot, rpmDelta } =
+      this.currentConfig;
 
     const rpmData = file.signals[rpmKey] || [];
     const torqueData = file.signals[torqueKey] || [];
-    const pedalData = pedalKey ? file.signals[pedalKey] || [] : [];
+    const pedalData = file.signals[pedalKey] || [];
 
+    // Scale threshold dynamically if sensor reports 0.0-1.0 instead of 0-100
     let maxPedal = 0;
     pedalData.forEach((p) => {
       const val = parseFloat(p.y);
       if (val > maxPedal) maxPedal = val;
     });
-
-    const pedalThresholdWOT = maxPedal <= 1.0 ? 0.85 : maxPedal * 0.85;
-    const pedalThresholdStart = maxPedal <= 1.0 ? 0.6 : maxPedal * 0.6;
+    const isDecimal = maxPedal <= 1.0;
+    const threshStart = isDecimal ? pedalStart / 100 : pedalStart;
+    const threshWot = isDecimal ? pedalWot / 100 : pedalWot;
 
     const timeSet = new Set();
     rpmData.forEach((p) => timeSet.add(p.x));
@@ -153,7 +226,7 @@ export const DynoManager = {
 
     let lastRpm = null,
       lastTorque = null,
-      lastPedal = pedalKey ? null : 100;
+      lastPedal = 100;
     let rIdx = 0,
       tIdx = 0,
       pIdx = 0;
@@ -172,13 +245,9 @@ export const DynoManager = {
         pIdx++;
       }
 
-      if (
-        lastPedal > pedalThresholdStart &&
-        lastRpm !== null &&
-        lastTorque !== null
-      ) {
+      if (lastPedal > threshStart && lastRpm !== null && lastTorque !== null) {
         inPull = true;
-        if (lastPedal >= pedalThresholdWOT) hitWot = true;
+        if (lastPedal >= threshWot) hitWot = true;
 
         const power = (lastTorque * lastRpm) / 7021.5;
         currentPull.rpm.push(lastRpm);
@@ -189,7 +258,7 @@ export const DynoManager = {
         if (
           hitWot &&
           currentPull.rpm.length > 0 &&
-          Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > 1200
+          Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > rpmDelta
         ) {
           pulls.push(currentPull);
         }
@@ -203,7 +272,7 @@ export const DynoManager = {
       inPull &&
       hitWot &&
       currentPull.rpm.length > 0 &&
-      Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > 1200
+      Math.max(...currentPull.rpm) - Math.min(...currentPull.rpm) > rpmDelta
     ) {
       pulls.push(currentPull);
     }
@@ -219,13 +288,12 @@ export const DynoManager = {
 
     if (this.currentPulls.length === 0) {
       alert(
-        'No Wide Open Throttle (WOT) sweeps detected in the active log.\n\nA WOT sweep requires >85% pedal position and >1200 RPM delta.'
+        `No sweeps found matching your criteria:\n- Start Pedal: ${this.currentConfig.pedalStart}%\n- WOT Pedal: ${this.currentConfig.pedalWot}%\n- Min RPM Delta: ${this.currentConfig.rpmDelta}`
       );
       this.closeModal();
       return;
     }
 
-    // Sort pulls so the longest RPM sweep is default (index 0)
     this.currentPulls.sort(
       (a, b) =>
         Math.max(...b.rpm) -
