@@ -381,7 +381,7 @@ describe('DynoManager Suite', () => {
       expect(Chart).toHaveBeenCalled();
       expect(mockChartInstance.data.datasets).toHaveLength(2);
       expect(mockChartInstance.data.datasets[0].label).toBe('Torque (Nm)');
-      expect(mockChartInstance.data.datasets[1].label).toBe('Power (KM)');
+      expect(mockChartInstance.data.datasets[1].label).toBe('Power (HP)');
     });
   });
 
