@@ -19,6 +19,12 @@ const mockChartInstance = {
   options: { plugins: {}, scales: {} },
 };
 
+await jest.unstable_mockModule('../src/chartmanager.js', () => ({
+  ChartManager: {
+    zoomTo: jest.fn(),
+  },
+}));
+
 await jest.unstable_mockModule('chart.js', () => {
   const MockChart = jest.fn((ctx, config) => {
     if (config && config.options) mockChartInstance.options = config.options;

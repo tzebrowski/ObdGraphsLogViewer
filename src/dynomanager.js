@@ -1,6 +1,7 @@
 import { AppState, DOM } from './config.js';
 import { Chart } from 'chart.js';
 import { PaletteManager } from './palettemanager.js';
+import { ChartManager } from './chartmanager.js';
 
 export const DynoManager = {
   chartInstance: null,
@@ -141,21 +142,56 @@ export const DynoManager = {
       }
     }
 
-    if (!document.getElementById('btn-export-dyno')) {
+    if (!document.getElementById('dyno-action-group')) {
       const closeBtn = modal.querySelector('.btn-close');
       if (closeBtn && closeBtn.parentElement) {
         const mainHeader = closeBtn.parentElement;
 
+        const actionGroup = document.createElement('div');
+        actionGroup.id = 'dyno-action-group';
+        actionGroup.style.display = 'flex';
+        actionGroup.style.gap = '10px';
+        actionGroup.style.marginRight = 'auto';
+        actionGroup.style.marginLeft = '15px';
+
+        const highlightBtn = document.createElement('button');
+        highlightBtn.className = 'btn btn-sm';
+        highlightBtn.style.backgroundColor = 'var(--brand-blue, #1c3d72)';
+        highlightBtn.style.color = '#fff';
+        highlightBtn.style.border = 'none';
+        highlightBtn.innerHTML =
+          '<i class="fas fa-search-plus"></i> View on Chart';
+        highlightBtn.onclick = () => this.highlightCurrentPull();
+
         const exportBtn = document.createElement('button');
-        exportBtn.id = 'btn-export-dyno';
         exportBtn.className = 'btn btn-sm btn-primary';
         exportBtn.innerHTML = '<i class="fas fa-camera"></i> Save PNG';
-        exportBtn.style.marginRight = 'auto';
-        exportBtn.style.marginLeft = '15px';
         exportBtn.onclick = () => this.exportChart();
 
-        mainHeader.insertBefore(exportBtn, closeBtn);
+        actionGroup.appendChild(highlightBtn);
+        actionGroup.appendChild(exportBtn);
+
+        mainHeader.insertBefore(actionGroup, closeBtn);
       }
+    }
+  },
+
+  highlightCurrentPull() {
+    if (this.currentPulls.length === 0) return;
+
+    const activePull = this.currentPulls[this.selectedPullIndex];
+    const file = AppState.files[0];
+
+    if (activePull.time && activePull.time.length > 0) {
+      const startTimeMs = activePull.time[0];
+      const endTimeMs = activePull.time[activePull.time.length - 1];
+
+      const startSec = (startTimeMs - file.startTime) / 1000;
+      const endSec = (endTimeMs - file.startTime) / 1000;
+
+      this.closeModal();
+
+      ChartManager.zoomTo(startSec, endSec, 0);
     }
   },
 
