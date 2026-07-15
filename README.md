@@ -10,7 +10,7 @@ This tool empowers users to take telemetry data recorded on the road and analyze
 
 Watch the video below to see the log viewer, cloud synchronization, tagging, and virtual dyno features in action:
 
-[![ObdGraphsLogViewer Walkthrough](https://img.youtube.com/vi/GPiEH2WuFo8/0.jpg)](https://www.youtube.com/watch?v=GPiEH2WuFo8 "ObdGraphsLogViewer Walkthrough")
+[![ObdGraphsLogViewer Walkthrough](https://img.youtube.com/vi/GPiEH2WuFo8/0.jpg)](https://www.youtube.com/watch?v=GPiEH2WuFo8 'ObdGraphsLogViewer Walkthrough')
 
 ## Key Features
 
