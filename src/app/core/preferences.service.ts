@@ -1,15 +1,25 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
 const CLIENT_ID_KEY = 'giulia_google_client_id';
 const REMEMBER_FILES_KEY = 'giulia_remember_files';
+const LOAD_MAP_KEY = 'giulia_load_map';
 
 /**
  * Minimal port of legacy/src/preferences.js — only the Google Client ID
- * fallback and "remember active files" toggle are needed so far (Milestones
- * 2-3a). Theme/persistence/palette prefs land in a later milestone.
+ * fallback, "remember active files", and "load map" toggles are needed so
+ * far (Milestones 2-4). Theme/mobile-sidebar/palette prefs are a tracked
+ * gap, deferred to a later pass.
  */
 @Injectable({ providedIn: 'root' })
 export class PreferencesService {
+  /** Opt-in map rendering (external tile requests + Leaflet cost). Defaults to false, matching legacy. */
+  readonly loadMap = signal(localStorage.getItem(LOAD_MAP_KEY) === 'true');
+
+  setLoadMap(value: boolean): void {
+    localStorage.setItem(LOAD_MAP_KEY, String(value));
+    this.loadMap.set(value);
+  }
+
   get googleClientId(): string {
     return localStorage.getItem(CLIENT_ID_KEY) || '';
   }

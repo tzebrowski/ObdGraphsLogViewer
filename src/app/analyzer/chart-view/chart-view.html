@@ -26,6 +26,7 @@
       <div class="canvas-wrapper chm-overlay-canvas-wrapper">
         <canvas #canvasEl tabindex="0"></canvas>
       </div>
+      <app-overlay-map></app-overlay-map>
     </div>
   </div>
   } @else { @for (file of appState.files(); track trackByFile($index, file); let
@@ -69,6 +70,7 @@
       <div class="chart-canvas-container">
         <canvas #canvasEl tabindex="0"></canvas>
       </div>
+      <app-embedded-map [fileIndex]="idx"></app-embedded-map>
     </div>
   </div>
   } }

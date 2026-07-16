@@ -25,8 +25,11 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import Hammer from 'hammerjs';
 import { AppStateService } from '../../core/app-state.service';
+import { MapService } from '../../core/map.service';
 import { ActiveHighlight, LoadedFile, ViewMode } from '../../core/models';
 import { SignalPaletteService } from '../../core/signal-palette.service';
+import { EmbeddedMap } from '../embedded-map/embedded-map';
+import { OverlayMap } from '../overlay-map/overlay-map';
 
 Chart.register(
   LineController,
@@ -71,20 +74,21 @@ type Point = { x: number; y: number };
 type LineDataset = ChartDataset<'line', Point[]> & ChartDatasetExtra;
 
 /**
- * Port of legacy/src/chartmanager.js's rendering core for Milestone 1: stack
- * and overlay view modes, zoom/pan, tooltip with real-value transform. Tag
- * annotations, anomaly highlight overlays, the per-card local range slider,
- * map sync, and keyboard shortcuts are deferred to later milestones.
+ * Port of legacy/src/chartmanager.js's rendering core: stack and overlay
+ * view modes, zoom/pan, tooltip with real-value transform, and (Milestone 4)
+ * chart-hover-drives-map-marker sync via MapService. Tag annotations, the
+ * per-card local range slider, and keyboard shortcuts remain out of scope.
  */
 @Component({
   selector: 'app-chart-view',
-  imports: [],
+  imports: [EmbeddedMap, OverlayMap],
   templateUrl: './chart-view.html',
   styleUrl: './chart-view.css',
 })
 export class ChartView {
   protected readonly appState = inject(AppStateService);
   private readonly palette = inject(SignalPaletteService);
+  private readonly mapService = inject(MapService);
 
   protected readonly canvasRefs =
     viewChildren<ElementRef<HTMLCanvasElement>>('canvasEl');
@@ -212,6 +216,8 @@ export class ChartView {
       this.buildDataset(file, key, fileIdx, sigIdx, key)
     );
 
+    canvas.addEventListener('mouseleave', () => this.mapService.clearHover());
+
     return new Chart(ctx, {
       type: 'line',
       data: { datasets },
@@ -219,7 +225,8 @@ export class ChartView {
         file,
         file.startTime,
         file.startTime + file.duration * 1000,
-        'stack'
+        'stack',
+        fileIdx
       ),
     });
   }
@@ -229,6 +236,7 @@ export class ChartView {
     canvas: HTMLCanvasElement
   ): Chart {
     const ctx = canvas.getContext('2d')!;
+    canvas.addEventListener('mouseleave', () => this.mapService.clearHover());
     const baseStartTime = files[0].startTime;
     const maxDuration = Math.max(...files.map((f) => f.duration));
 
@@ -256,7 +264,8 @@ export class ChartView {
         files[0],
         baseStartTime,
         baseStartTime + maxDuration * 1000,
-        'overlay'
+        'overlay',
+        0
       ),
     });
   }
@@ -308,14 +317,26 @@ export class ChartView {
     file: LoadedFile,
     xMin: number,
     xMax: number,
-    mode: ViewMode
+    mode: ViewMode,
+    hoverFileIdx: number
   ): ChartOptions<'line'> {
     const appState = this.appState;
+    const mapService = this.mapService;
     const options: ChartOptions<'line'> = {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      onHover: (event, _elements, chart) => {
+        if (event.x === null || event.x === undefined) return;
+        const timeValue = chart.scales['x'].getValueForPixel(event.x);
+        if (timeValue === undefined) return;
+        if (mode === 'overlay') {
+          mapService.setOverlayHover(timeValue);
+        } else {
+          mapService.setStackHover(hoverFileIdx, timeValue);
+        }
+      },
       scales: {
         y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
         x: {

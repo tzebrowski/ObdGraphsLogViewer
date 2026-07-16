@@ -39,6 +39,16 @@
   color: #fff;
 }
 
+.map-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-toggle-btn input[type='checkbox'] {
+  margin: 0;
+}
+
 app-chart-view {
   flex: 1;
   min-height: 0;

@@ -1,0 +1,21 @@
+:host {
+  display: contents;
+}
+
+.embedded-map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.embedded-map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #888);
+  font-size: 0.85em;
+  text-align: center;
+  padding: 20px;
+  pointer-events: none;
+}

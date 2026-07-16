@@ -1,0 +1,8 @@
+@if (preferences.loadMap()) {
+<div class="embedded-map-container active">
+  <div class="embedded-map-canvas" #mapContainer></div>
+  @if (!hasRoute()) {
+  <div class="embedded-map-empty">No GPS data in this log.</div>
+  }
+</div>
+}

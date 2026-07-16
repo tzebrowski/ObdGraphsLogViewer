@@ -42,6 +42,14 @@
       <button class="btn btn-sm" (click)="histogram.openModal()">
         <i class="fas fa-chart-bar"></i> Histogram
       </button>
+      <label class="btn btn-sm map-toggle-btn">
+        <input
+          type="checkbox"
+          [checked]="preferences.loadMap()"
+          (change)="preferences.setLoadMap($any($event.target).checked)"
+        />
+        <i class="fas fa-map-marked-alt"></i> Show Map
+      </label>
     </div>
 
     <app-chart-view></app-chart-view>
