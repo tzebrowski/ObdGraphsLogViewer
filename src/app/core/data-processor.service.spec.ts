@@ -3,6 +3,8 @@ import { AppStateService } from './app-state.service';
 import { DataProcessorService } from './data-processor.service';
 import { DbManagerService } from './db-manager.service';
 import { EventBusService } from './event-bus.service';
+import { MathChannelsService } from './math-channels.service';
+import { PreferencesService } from './preferences.service';
 import { ProjectManagerService } from './project-manager.service';
 import { SignalRegistryService } from './signal-registry.service';
 
@@ -19,13 +21,22 @@ describe('DataProcessorService', () => {
   let service: DataProcessorService;
 
   beforeEach(() => {
-    appState = new AppStateService();
+    const bus = new EventBusService();
+    appState = new AppStateService(bus);
+    const signalRegistry = new SignalRegistryService();
+    const mathChannels = new MathChannelsService(appState, bus, signalRegistry);
     service = new DataProcessorService(
       appState,
       new DbManagerService(),
-      new EventBusService(),
-      new ProjectManagerService(),
-      new SignalRegistryService()
+      bus,
+      new ProjectManagerService(
+        appState,
+        new DbManagerService(),
+        bus,
+        new PreferencesService(),
+        mathChannels
+      ),
+      signalRegistry
     );
   });
 

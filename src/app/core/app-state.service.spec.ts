@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppStateService } from './app-state.service';
+import { EventBusService } from './event-bus.service';
 import { LoadedFile } from './models';
 
 function makeFile(overrides: Partial<LoadedFile> = {}): LoadedFile {
@@ -19,29 +20,74 @@ function makeFile(overrides: Partial<LoadedFile> = {}): LoadedFile {
 
 describe('AppStateService', () => {
   it('reports dataLoaded only once a file is present', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     expect(state.dataLoaded()).toBe(false);
     state.addFile(makeFile());
     expect(state.dataLoaded()).toBe(true);
   });
 
   it('does not add a file whose dbId is already present', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     state.addFile(makeFile({ dbId: 1 }));
     state.addFile(makeFile({ dbId: 1 }));
     expect(state.files().length).toBe(1);
   });
 
   it('removeFileAt removes by index without touching other files', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     state.addFile(makeFile({ dbId: 1, name: 'a.json' }));
     state.addFile(makeFile({ dbId: 2, name: 'b.json' }));
     state.removeFileAt(0);
     expect(state.files().map((f) => f.name)).toEqual(['b.json']);
   });
 
+  it('removeFileAt emits FILE_REMOVED with the removed file', () => {
+    const bus = new EventBusService();
+    const state = new AppStateService(bus);
+    state.addFile(makeFile({ dbId: 1, name: 'a.json' }));
+
+    const received: unknown[] = [];
+    bus.on('file:removed').subscribe((event) => received.push(event));
+
+    state.removeFileAt(0);
+
+    expect(received).toEqual([
+      { index: 0, file: expect.objectContaining({ name: 'a.json' }) },
+    ]);
+  });
+
+  it('addDerivedSignal adds a signal to one file without mutating others', () => {
+    const state = new AppStateService(new EventBusService());
+    state.addFile(
+      makeFile({ dbId: 1, name: 'a.json', availableSignals: ['RPM'] })
+    );
+    state.addFile(
+      makeFile({ dbId: 2, name: 'b.json', availableSignals: ['RPM'] })
+    );
+
+    state.addDerivedSignal(0, 'Math: Boost', [{ x: 0, y: 1.2 }], {
+      min: 1.2,
+      max: 1.2,
+    });
+
+    expect(state.files()[0].availableSignals).toEqual(['Math: Boost', 'RPM']);
+    expect(state.files()[0].signals['Math: Boost']).toEqual([{ x: 0, y: 1.2 }]);
+    expect(state.files()[1].availableSignals).toEqual(['RPM']);
+  });
+
+  it('setActiveHighlight sets the active highlight signal', () => {
+    const state = new AppStateService(new EventBusService());
+    expect(state.activeHighlight()).toBeNull();
+    state.setActiveHighlight(1, 5, 0);
+    expect(state.activeHighlight()).toEqual({
+      start: 1,
+      end: 5,
+      targetIndex: 0,
+    });
+  });
+
   it('signals are visible by default and can be toggled per file/signal', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     expect(state.isSignalVisible(0, 'RPM')).toBe(true);
 
     state.setSignalVisible(0, 'RPM', false);
@@ -54,7 +100,7 @@ describe('AppStateService', () => {
   });
 
   it('setAllSignalsVisibleForFile toggles only the given file', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     state.setAllSignalsVisibleForFile(0, ['RPM', 'Speed'], false);
     expect(state.isSignalVisible(0, 'RPM')).toBe(false);
     expect(state.isSignalVisible(0, 'Speed')).toBe(false);
@@ -62,7 +108,7 @@ describe('AppStateService', () => {
   });
 
   it('setAllSignalsVisible(false) hides every signal across all loaded files', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     state.addFile(makeFile({ dbId: 1, availableSignals: ['RPM'] }));
     state.addFile(makeFile({ dbId: 2, availableSignals: ['Speed'] }));
 
@@ -76,7 +122,7 @@ describe('AppStateService', () => {
   });
 
   it('showAlert/clearAlert set and clear the alert message', () => {
-    const state = new AppStateService();
+    const state = new AppStateService(new EventBusService());
     expect(state.alertMessage()).toBeNull();
     state.showAlert('boom');
     expect(state.alertMessage()).toBe('boom');

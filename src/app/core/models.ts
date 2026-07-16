@@ -8,6 +8,7 @@ export const EVENTS = {
   MAP_SELECTED: 'map:position-selected',
   FILE_REMOVED: 'file:removed',
   BATCH_LOADED: 'dataprocessor:batch-load-completed',
+  ACTION_LOG: 'action:log',
 } as const;
 
 export interface SignalPoint {
@@ -37,4 +38,16 @@ export interface ActiveHighlight {
   start: number;
   end: number;
   targetIndex: number | null;
+}
+
+export interface FileRemovedEvent {
+  index: number;
+  file: LoadedFile;
+}
+
+export interface ActionLogEvent {
+  type: string;
+  description: string;
+  payload: unknown;
+  fileIndex: number;
 }

@@ -2,7 +2,9 @@ import { Component, inject, signal } from '@angular/core';
 import { AppStateService } from '../../core/app-state.service';
 import { LoadedFile } from '../../core/models';
 import { SignalPaletteService } from '../../core/signal-palette.service';
+import { AnomalyScanner } from '../anomaly-scanner/anomaly-scanner';
 import { DrivePanel } from '../drive-panel/drive-panel';
+import { LibraryPanel } from '../library-panel/library-panel';
 
 interface SignalRow {
   name: string;
@@ -12,12 +14,11 @@ interface SignalRow {
 /**
  * Port of the file-info + signal-list sections of legacy/src/ui.js
  * (renderSignalList/toggleFileSignals/toggleAllSignals), plus the Drive
- * Cloud Files panel (Milestone 2). Project/library and anomaly-filter
- * panels remain placeholders until Milestone 3.
+ * Cloud Files (Milestone 2) and Library/Anomaly Scanner (Milestone 3a) panels.
  */
 @Component({
   selector: 'app-sidebar',
-  imports: [DrivePanel],
+  imports: [DrivePanel, LibraryPanel, AnomalyScanner],
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.css',
 })

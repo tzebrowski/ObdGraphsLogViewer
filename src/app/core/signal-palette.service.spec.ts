@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppStateService } from './app-state.service';
+import { EventBusService } from './event-bus.service';
 import { LoadedFile } from './models';
 import { SignalPaletteService } from './signal-palette.service';
 
@@ -21,20 +22,20 @@ function makeFile(availableSignals: string[]): LoadedFile {
 
 describe('SignalPaletteService', () => {
   it('returns the default gray when the file does not exist', () => {
-    const appState = new AppStateService();
+    const appState = new AppStateService(new EventBusService());
     const palette = new SignalPaletteService(appState);
     expect(palette.getColorForSignal(0, 0)).toBe('#888888');
   });
 
   it('returns the first dark-palette color for the first signal', () => {
-    const appState = new AppStateService();
+    const appState = new AppStateService(new EventBusService());
     appState.addFile(makeFile(['RPM', 'Speed']));
     const palette = new SignalPaletteService(appState);
     expect(palette.getColorForSignal(0, 0)).toBe(DARK_PALETTE_FIRST);
   });
 
   it('caches the resolved color for a given file/signal index pair', () => {
-    const appState = new AppStateService();
+    const appState = new AppStateService(new EventBusService());
     appState.addFile(makeFile(['RPM']));
     const palette = new SignalPaletteService(appState);
 
@@ -44,7 +45,7 @@ describe('SignalPaletteService', () => {
   });
 
   it('assigns deterministic, distinct colors to Math/Filtered channels', () => {
-    const appState = new AppStateService();
+    const appState = new AppStateService(new EventBusService());
     appState.addFile(makeFile(['RPM', 'Math: Boost', 'Filtered: Speed']));
     const palette = new SignalPaletteService(appState);
 
@@ -57,7 +58,7 @@ describe('SignalPaletteService', () => {
   });
 
   it('resetCache clears memoized colors', () => {
-    const appState = new AppStateService();
+    const appState = new AppStateService(new EventBusService());
     appState.addFile(makeFile(['RPM']));
     const palette = new SignalPaletteService(appState);
 

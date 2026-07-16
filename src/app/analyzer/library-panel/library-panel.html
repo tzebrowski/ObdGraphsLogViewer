@@ -1,0 +1,94 @@
+<div class="pm-project-name-row">
+  @if (editingName()) {
+  <input
+    type="text"
+    class="pm-project-name-input"
+    [value]="nameDraft()"
+    (input)="nameDraft.set($any($event.target).value)"
+    (keyup.enter)="saveName()"
+  />
+  <i class="fas fa-check" title="Save" (click)="saveName()"></i>
+  } @else {
+  <span class="pm-project-name" (click)="startEditName()"
+    >{{ projectManager.projectName() }} <i class="fas fa-pencil-alt"></i
+  ></span>
+  }
+</div>
+
+<div class="pm-library-header">
+  <h4 class="pm-library-title">
+    Library
+    <span class="pm-library-count"
+      >({{ projectManager.libraryFiles().length }})</span
+    >
+  </h4>
+  @if (projectManager.libraryFiles().length > 0) {
+  <button class="btn-icon-text pm-btn-purge" (click)="purge()">
+    <i class="fas fa-trash-alt"></i> Purge
+  </button>
+  }
+</div>
+
+<div class="pm-library-list custom-scrollbar">
+  @if (projectManager.libraryFiles().length === 0) {
+  <div class="pm-library-empty">No logs saved in library.</div>
+  } @for (file of projectManager.libraryFiles(); track file.id) {
+  <div class="pm-library-item" [class.pm-active]="isLoaded(file.id)">
+    <div class="pm-col-left">
+      <div class="pm-icon">
+        <i
+          class="fas"
+          [class.fa-chart-line]="isLoaded(file.id)"
+          [class.fa-file-alt]="!isLoaded(file.id)"
+        ></i>
+      </div>
+      <div class="pm-info">
+        <span class="pm-name" [title]="file.name">{{ file.name }}</span>
+        <span class="pm-meta">
+          {{ formatDate(file.addedAt) }} • {{ formatDuration(file.duration) }}
+          min • {{ (file.size || 0).toLocaleString() }} pts
+        </span>
+      </div>
+    </div>
+    <div class="pm-col-right">
+      @if (isLoaded(file.id)) {
+      <span class="pm-status-loaded"><i class="fas fa-check"></i> Loaded</span>
+      } @else {
+      <button
+        class="pm-add-btn btn-icon"
+        title="Load into Project"
+        (click)="load(file.id)"
+      >
+        <i class="fas fa-plus"></i>
+      </button>
+      }
+      <button
+        class="pm-del-btn btn-icon"
+        title="Delete Permanently"
+        (click)="delete(file.id)"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+  }
+</div>
+
+@if (projectManager.history().length > 0) {
+<div class="pm-history-header" (click)="toggleHistory()">
+  <i class="fas fa-history"></i> Recent Activity ({{
+  projectManager.history().length }})
+  <i
+    class="fas"
+    [class.fa-chevron-down]="showHistory()"
+    [class.fa-chevron-right]="!showHistory()"
+  ></i>
+</div>
+@if (showHistory()) {
+<div class="pm-history-list">
+  @for (entry of projectManager.history().slice().reverse().slice(0, 10); track
+  entry.id) {
+  <div class="pm-history-item">{{ entry.description }}</div>
+  }
+</div>
+} }

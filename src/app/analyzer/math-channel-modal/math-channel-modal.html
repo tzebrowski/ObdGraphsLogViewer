@@ -1,0 +1,169 @@
+@if (mathChannels.isModalOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="close()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Create Math Channel</h2>
+      <button class="btn-close" (click)="close()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="control-group">
+        <label>Formula</label>
+        <select
+          class="template-select"
+          [value]="selectedFormulaId()"
+          (change)="onFormulaChange($any($event.target).value)"
+        >
+          <option value="">-- Select Formula --</option>
+          @if (categories().Business.length > 0) {
+          <optgroup label="Business Formulas">
+            @for (def of categories().Business; track def.id) {
+            <option [value]="def.id">{{ def.name }}</option>
+            }
+          </optgroup>
+          } @if (categories().Technical.length > 0) {
+          <optgroup label="Technical Processing">
+            @for (def of categories().Technical; track def.id) {
+            <option [value]="def.id">{{ def.name }}</option>
+            }
+          </optgroup>
+          }
+        </select>
+      </div>
+
+      @if (selectedDefinition(); as def) {
+      <p class="section-description">{{ def.description }}</p>
+
+      @if (appState.files().length > 1) {
+      <div class="control-group">
+        <label>Target File</label>
+        <select
+          class="template-select"
+          [value]="selectedFileIndex()"
+          (change)="onFileChange(+$any($event.target).value)"
+        >
+          @for (file of appState.files(); track file.dbId ?? file.name; let i =
+          $index) {
+          <option [value]="i">{{ i + 1 }}. {{ file.name }}</option>
+          }
+        </select>
+      </div>
+      } @for (input of def.inputs; track $index) {
+      <div class="math-input-wrapper">
+        <label class="math-label-small">{{ input.label }}</label>
+
+        @if (input.isMulti) {
+        <div class="math-source-checklist">
+          @for (sig of currentFile()?.availableSignals ?? []; track sig) {
+          <label class="math-source-checkbox">
+            <input
+              type="checkbox"
+              [checked]="selectedSources().includes(sig)"
+              (change)="toggleSource(sig)"
+            />
+            {{ sig }}
+          </label>
+          }
+        </div>
+        } @else if (input.isConstant && input.options) {
+        <select
+          class="template-select"
+          [value]="inputValues()[$index] ?? ''"
+          (change)="setInputValue($index, $any($event.target).value)"
+        >
+          @for (opt of input.options; track opt.value) {
+          <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+        } @else if (input.isConstant) {
+        <input
+          type="text"
+          class="template-select"
+          [value]="inputValues()[$index] ?? ''"
+          (input)="setInputValue($index, $any($event.target).value)"
+        />
+        } @else {
+        <select
+          class="template-select"
+          [value]="inputValues()[$index] ?? ''"
+          (change)="setInputValue($index, $any($event.target).value)"
+        >
+          <option value="">-- Select Signal --</option>
+          @for (sig of currentFile()?.availableSignals ?? []; track sig) {
+          <option [value]="sig">{{ sig }}</option>
+          }
+        </select>
+        }
+      </div>
+      }
+
+      <div class="control-group">
+        <label>Channel Name</label>
+        <input
+          type="text"
+          class="template-select"
+          [value]="channelName()"
+          [disabled]="!!def.isBatch"
+          (input)="channelName.set($any($event.target).value)"
+        />
+      </div>
+
+      <label class="math-section-label">Post-Processing</label>
+      <div class="math-checkbox-container">
+        <input
+          type="checkbox"
+          [checked]="smoothEnabled()"
+          (change)="smoothEnabled.set($any($event.target).checked)"
+        />
+        <span>Apply Smoothing</span>
+      </div>
+      <div class="control-group">
+        <label class="math-label-small">Window (Samples)</label>
+        <input
+          type="number"
+          class="template-select"
+          [value]="smoothWindow()"
+          [disabled]="!smoothEnabled()"
+          (input)="smoothWindow.set(+$any($event.target).value)"
+        />
+      </div>
+
+      <label class="math-section-label">Chart Visibility</label>
+      <div class="math-checkbox-container">
+        <input
+          type="checkbox"
+          [checked]="isolateEnabled()"
+          (change)="isolateEnabled.set($any($event.target).checked)"
+        />
+        <span>Isolate specific signals on chart</span>
+      </div>
+      <div class="control-group">
+        <label class="math-label-small"
+          >Signals to Show (comma-separated)</label
+        >
+        <input
+          type="text"
+          class="template-select"
+          [value]="autoEnableText()"
+          [disabled]="!isolateEnabled()"
+          (input)="autoEnableText.set($any($event.target).value)"
+        />
+      </div>
+      } @if (errorMessage(); as error) {
+      <div class="math-error-msg">{{ error }}</div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-sm" (click)="close()">Cancel</button>
+      <button
+        class="btn btn-sm btn-primary"
+        [disabled]="!canCreate()"
+        (click)="create()"
+      >
+        Create
+      </button>
+    </div>
+  </div>
+</div>
+}

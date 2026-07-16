@@ -25,7 +25,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import Hammer from 'hammerjs';
 import { AppStateService } from '../../core/app-state.service';
-import { LoadedFile, ViewMode } from '../../core/models';
+import { ActiveHighlight, LoadedFile, ViewMode } from '../../core/models';
 import { SignalPaletteService } from '../../core/signal-palette.service';
 
 Chart.register(
@@ -108,6 +108,10 @@ export class ChartView {
       this.appState.hiddenSignalKeys();
       this.syncVisibility();
     });
+
+    effect(() => {
+      this.applyActiveHighlight(this.appState.activeHighlight());
+    });
   }
 
   protected trackByFile(index: number, file: LoadedFile): unknown {
@@ -152,6 +156,27 @@ export class ChartView {
 
   protected manualZoom(index: number, zoomLevel: number): void {
     this.charts[index]?.zoom(zoomLevel);
+  }
+
+  /**
+   * Pans/zooms the target file's chart to a result range (e.g. from the
+   * anomaly scanner), matching legacy/src/chartmanager.js's `zoomTo`. Only
+   * takes effect in stack mode — like legacy, overlay mode has a single
+   * merged chart instance so per-file indices beyond 0 don't resolve.
+   */
+  private applyActiveHighlight(highlight: ActiveHighlight | null): void {
+    if (!highlight || highlight.targetIndex === null) return;
+    const chart = this.charts[highlight.targetIndex];
+    const file = this.appState.files()[highlight.targetIndex];
+    if (!chart || !file) return;
+
+    const duration = highlight.end - highlight.start;
+    const padding = duration * 4.0;
+    chart.options.scales!['x']!.min =
+      file.startTime + Math.max(0, highlight.start - padding) * 1000;
+    chart.options.scales!['x']!.max =
+      file.startTime + Math.min(file.duration, highlight.end + padding) * 1000;
+    chart.update('none');
   }
 
   private rebuild(

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStateService } from './app-state.service';
 import { AuthService } from './auth.service';
+import { EventBusService } from './event-bus.service';
 import { GoogleAccountsOAuth2CallbackResponse } from './google-api.types';
 import { PreferencesService } from './preferences.service';
 
@@ -22,7 +23,7 @@ describe('AuthService', () => {
   let initTokenClientMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    appState = new AppStateService();
+    appState = new AppStateService(new EventBusService());
     preferences = new PreferencesService();
     localStorage.clear();
     auth = new AuthService(preferences, appState);

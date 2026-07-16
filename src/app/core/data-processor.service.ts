@@ -17,7 +17,10 @@ const SCHEMA = { timeKey: 'x', valueKey: 'y' } as const;
  * ingestion path (drag-drop / file picker); `processExternal` is the same
  * normalize+persist+register pipeline for data fetched from elsewhere (e.g.
  * DriveService), matching legacy's direct `dataProcessor.process()` call
- * from `Drive.loadFile`.
+ * from `Drive.loadFile`. Session restore-on-reload ("remember active files")
+ * moved to ProjectManagerService as of Milestone 3a — it now respects which
+ * files were actually active (and the rememberFiles preference) rather than
+ * unconditionally restoring everything in IndexedDB.
  */
 @Injectable({ providedIn: 'root' })
 export class DataProcessorService {
@@ -28,32 +31,6 @@ export class DataProcessorService {
     private readonly projectManager: ProjectManagerService,
     private readonly signalRegistry: SignalRegistryService
   ) {}
-
-  /**
-   * Rehydrates the current session from IndexedDB (the "Remember active
-   * files" behavior, checked by default in legacy/index.html). `rawData` is
-   * left empty since only `signals` is persisted — fine for M1's chart view,
-   * which reads `file.signals`; CSV export / XY analysis / histogram (which
-   * need `rawData`) land in Milestone 3.
-   */
-  async restoreFromLibrary(): Promise<void> {
-    const filesMeta = await this.db.getAllFiles();
-    for (const meta of filesMeta) {
-      const signals = await this.db.getFileSignals(meta.id);
-      if (!signals) continue;
-      this.appState.addFile({
-        name: meta.name,
-        rawData: [],
-        signals,
-        startTime: meta.startTime,
-        duration: meta.duration,
-        availableSignals: meta.availableSignals,
-        metadata: meta.metadata,
-        size: meta.size,
-        dbId: meta.id,
-      });
-    }
-  }
 
   async handleFiles(files: File[]): Promise<void> {
     if (files.length === 0) return;

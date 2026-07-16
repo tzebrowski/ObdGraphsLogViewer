@@ -1,7 +1,7 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { AnalyzerShell } from './analyzer/analyzer-shell';
 import { AuthService } from './core/auth.service';
-import { DataProcessorService } from './core/data-processor.service';
+import { ProjectManagerService } from './core/project-manager.service';
 import { SignalRegistryService } from './core/signal-registry.service';
 import { Landing } from './landing/landing';
 
@@ -27,7 +27,7 @@ export class App {
       this.route.set(this.routeFromHash())
     );
 
-    inject(DataProcessorService).restoreFromLibrary();
+    inject(ProjectManagerService).init();
     inject(AuthService).init();
     inject(SignalRegistryService).init();
 

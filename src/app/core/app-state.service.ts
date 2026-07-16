@@ -1,5 +1,12 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { ActiveHighlight, LoadedFile, ViewMode } from './models';
+import { EventBusService } from './event-bus.service';
+import {
+  ActiveHighlight,
+  EVENTS,
+  LoadedFile,
+  SignalPoint,
+  ViewMode,
+} from './models';
 
 /** Replaces the shared mutable `AppState` object in legacy/src/config.js with signals. */
 @Injectable({ providedIn: 'root' })
@@ -16,6 +23,8 @@ export class AppStateService {
 
   readonly dataLoaded = computed(() => this.files().length > 0);
 
+  constructor(private readonly bus: EventBusService) {}
+
   showAlert(message: string): void {
     this.alertMessage.set(message);
   }
@@ -31,11 +40,44 @@ export class AppStateService {
 
   /** Removes a file from the current session view (does not touch the IndexedDB library). */
   removeFileAt(index: number): void {
+    const removed = this.files()[index];
     this.files.update((files) => files.filter((_, i) => i !== index));
+    if (removed) this.bus.emit(EVENTS.FILE_REMOVED, { index, file: removed });
   }
 
   clearFiles(): void {
     this.files.set([]);
+  }
+
+  /** Adds/overwrites a computed signal (e.g. a math channel) on a file, immutably. */
+  addDerivedSignal(
+    fileIndex: number,
+    name: string,
+    data: SignalPoint[],
+    metadataEntry: unknown
+  ): void {
+    this.files.update((files) =>
+      files.map((f, i) => {
+        if (i !== fileIndex) return f;
+        const availableSignals = f.availableSignals.includes(name)
+          ? f.availableSignals
+          : [...f.availableSignals, name].sort();
+        return {
+          ...f,
+          signals: { ...f.signals, [name]: data },
+          availableSignals,
+          metadata: { ...f.metadata, [name]: metadataEntry },
+        };
+      })
+    );
+  }
+
+  setActiveHighlight(
+    start: number,
+    end: number,
+    targetIndex: number | null
+  ): void {
+    this.activeHighlight.set({ start, end, targetIndex });
   }
 
   private static signalKey(fileIdx: number, signalName: string): string {

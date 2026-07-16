@@ -1,0 +1,31 @@
+.modal-content {
+  max-width: 520px;
+  max-height: 85vh;
+}
+
+.math-source-checklist {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.math-source-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.math-error-msg {
+  color: var(--brand-red, #e53e3e);
+  font-size: 0.85em;
+  padding: 6px 4px;
+}
