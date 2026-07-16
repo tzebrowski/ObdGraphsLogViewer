@@ -1,0 +1,58 @@
+@if (histogram.isModalOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="close()">
+  <div
+    class="modal-content hist-modal-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2><i class="fas fa-chart-bar"></i> Histogram Analysis</h2>
+      <button class="btn-close" (click)="close()">&times;</button>
+    </div>
+    <div class="modal-body hist-modal-body">
+      <div class="hist-controls">
+        <div class="hist-control">
+          <label class="hist-label">Log File</label>
+          <select
+            class="template-select"
+            (change)="onFileChange(+$any($event.target).value)"
+          >
+            @for (file of appState.files(); track file.dbId ?? file.name; let i
+            = $index) {
+            <option [value]="i" [selected]="i === histogram.fileIndex()">
+              {{ file.name }}
+            </option>
+            }
+          </select>
+        </div>
+        <div class="hist-control">
+          <label class="hist-label">Signal</label>
+          <select
+            class="template-select"
+            (change)="histogram.signalName.set($any($event.target).value)"
+          >
+            @for (sig of availableSignals(); track sig) {
+            <option [value]="sig" [selected]="sig === histogram.signalName()">
+              {{ sig }}
+            </option>
+            }
+          </select>
+        </div>
+        <div class="hist-control">
+          <label class="hist-label">Bins</label>
+          <input
+            type="number"
+            class="template-select hist-bins-input"
+            min="5"
+            max="100"
+            [value]="histogram.binCount()"
+            (input)="histogram.binCount.set(+$any($event.target).value)"
+          />
+        </div>
+      </div>
+      <div class="hist-canvas-wrapper">
+        <canvas #histCanvas></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+}

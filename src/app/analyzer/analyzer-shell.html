@@ -33,6 +33,15 @@
       <button class="btn btn-sm" (click)="mathChannels.openModal()">
         <i class="fas fa-calculator"></i> Math Channel
       </button>
+      <button class="btn btn-sm" (click)="dyno.openSetup()">
+        <i class="fas fa-tachometer-alt"></i> Virtual Dyno
+      </button>
+      <button class="btn btn-sm" (click)="xy.openModal()">
+        <i class="fas fa-braille"></i> XY Analysis
+      </button>
+      <button class="btn btn-sm" (click)="histogram.openModal()">
+        <i class="fas fa-chart-bar"></i> Histogram
+      </button>
     </div>
 
     <app-chart-view></app-chart-view>
@@ -42,3 +51,6 @@
 
 <app-loading-overlay></app-loading-overlay>
 <app-math-channel-modal></app-math-channel-modal>
+<app-dyno-modal></app-dyno-modal>
+<app-xy-modal></app-xy-modal>
+<app-histogram-modal></app-histogram-modal>

@@ -1,0 +1,154 @@
+@if (xy.isModalOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="close()">
+  <div
+    class="modal-content xy-modal-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2><i class="fas fa-braille"></i> XY Correlation Analysis</h2>
+      @if (appState.files().length > 1) {
+      <select
+        class="template-select xy-file-select"
+        (change)="onFileChange(+$any($event.target).value)"
+      >
+        @for (file of appState.files(); track file.dbId ?? file.name; let i =
+        $index) {
+        <option [value]="i" [selected]="i === xy.currentFileIndex()">
+          {{ file.name }}
+        </option>
+        }
+      </select>
+      }
+      <button class="btn-close" (click)="close()">&times;</button>
+    </div>
+
+    <div class="modal-body xy-modal-body">
+      <div class="xy-split-view">
+        <div class="xy-panel">
+          <div class="xy-panel-controls">
+            <select
+              class="template-select"
+              (change)="setSignal(0, 'xSignal', $any($event.target).value)"
+            >
+              <option value="" [selected]="!xy.panels()[0].xSignal">
+                X: -- Signal --
+              </option>
+              @for (sig of availableSignals(); track sig) {
+              <option [value]="sig" [selected]="sig === xy.panels()[0].xSignal">
+                X: {{ sig }}
+              </option>
+              }
+            </select>
+            <select
+              class="template-select"
+              (change)="setSignal(0, 'ySignal', $any($event.target).value)"
+            >
+              <option value="" [selected]="!xy.panels()[0].ySignal">
+                Y: -- Signal --
+              </option>
+              @for (sig of availableSignals(); track sig) {
+              <option [value]="sig" [selected]="sig === xy.panels()[0].ySignal">
+                Y: {{ sig }}
+              </option>
+              }
+            </select>
+            <select
+              class="template-select"
+              (change)="setSignal(0, 'zSignal', $any($event.target).value)"
+            >
+              <option value="" [selected]="!xy.panels()[0].zSignal">
+                Z (color): -- Signal --
+              </option>
+              @for (sig of availableSignals(); track sig) {
+              <option [value]="sig" [selected]="sig === xy.panels()[0].zSignal">
+                Z: {{ sig }}
+              </option>
+              }
+            </select>
+          </div>
+          <div class="xy-panel-chart-row">
+            <div class="xy-canvas-wrapper">
+              <canvas #xyCanvas0></canvas>
+            </div>
+            @if (legends()[0]; as legend) {
+            <div class="xy-legend">
+              <span class="xy-legend-label">{{ legend.label }}</span>
+              <div class="xy-gradient-bar"></div>
+              <div class="xy-legend-values">
+                <span>{{ legend.max.toFixed(1) }}</span>
+                <span>{{ ((legend.max + legend.min) / 2).toFixed(1) }}</span>
+                <span>{{ legend.min.toFixed(1) }}</span>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+
+        <div class="xy-panel">
+          <div class="xy-panel-controls">
+            <select
+              class="template-select"
+              (change)="setSignal(1, 'xSignal', $any($event.target).value)"
+            >
+              <option value="" [selected]="!xy.panels()[1].xSignal">
+                X: -- Signal --
+              </option>
+              @for (sig of availableSignals(); track sig) {
+              <option [value]="sig" [selected]="sig === xy.panels()[1].xSignal">
+                X: {{ sig }}
+              </option>
+              }
+            </select>
+            <select
+              class="template-select"
+              (change)="setSignal(1, 'ySignal', $any($event.target).value)"
+            >
+              <option value="" [selected]="!xy.panels()[1].ySignal">
+                Y: -- Signal --
+              </option>
+              @for (sig of availableSignals(); track sig) {
+              <option [value]="sig" [selected]="sig === xy.panels()[1].ySignal">
+                Y: {{ sig }}
+              </option>
+              }
+            </select>
+            <select
+              class="template-select"
+              (change)="setSignal(1, 'zSignal', $any($event.target).value)"
+            >
+              <option value="" [selected]="!xy.panels()[1].zSignal">
+                Z (color): -- Signal --
+              </option>
+              @for (sig of availableSignals(); track sig) {
+              <option [value]="sig" [selected]="sig === xy.panels()[1].zSignal">
+                Z: {{ sig }}
+              </option>
+              }
+            </select>
+          </div>
+          <div class="xy-panel-chart-row">
+            <div class="xy-canvas-wrapper">
+              <canvas #xyCanvas1></canvas>
+            </div>
+            @if (legends()[1]; as legend) {
+            <div class="xy-legend">
+              <span class="xy-legend-label">{{ legend.label }}</span>
+              <div class="xy-gradient-bar"></div>
+              <div class="xy-legend-values">
+                <span>{{ legend.max.toFixed(1) }}</span>
+                <span>{{ ((legend.max + legend.min) / 2).toFixed(1) }}</span>
+                <span>{{ legend.min.toFixed(1) }}</span>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="xy-timeline-view">
+        <canvas #xyTimelineCanvas></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+}

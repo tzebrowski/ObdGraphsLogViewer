@@ -39,12 +39,13 @@
         <label>Target File</label>
         <select
           class="template-select"
-          [value]="selectedFileIndex()"
           (change)="onFileChange(+$any($event.target).value)"
         >
           @for (file of appState.files(); track file.dbId ?? file.name; let i =
           $index) {
-          <option [value]="i">{{ i + 1 }}. {{ file.name }}</option>
+          <option [value]="i" [selected]="i === selectedFileIndex()">
+            {{ i + 1 }}. {{ file.name }}
+          </option>
           }
         </select>
       </div>
@@ -85,12 +86,15 @@
         } @else {
         <select
           class="template-select"
-          [value]="inputValues()[$index] ?? ''"
           (change)="setInputValue($index, $any($event.target).value)"
         >
-          <option value="">-- Select Signal --</option>
+          <option value="" [selected]="!inputValues()[$index]">
+            -- Select Signal --
+          </option>
           @for (sig of currentFile()?.availableSignals ?? []; track sig) {
-          <option [value]="sig">{{ sig }}</option>
+          <option [value]="sig" [selected]="sig === inputValues()[$index]">
+            {{ sig }}
+          </option>
           }
         </select>
         }
