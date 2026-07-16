@@ -1,13 +1,13 @@
 # CLAUDE.md
 
-
 ## AI Assistant Directives (Token & Context Management)
-* **Aggressive Context Management:**
-    * You MUST monitor context size. Prompt the user to use `/compact` mid-task if the conversation history grows too long (to prevent >150k token context bloat and expensive cache reads).
-    * Remind the user to use `/clear` when switching to a completely new task or a different module. Do not carry stale context.
-* **Subagent & Fork Efficiency:** When spawning subagents or using "forks", keep instructions strictly scoped to prevent runaway loops. If performing simple file-system reads, prefer cheaper models (like Haiku) if the environment allows it.
-* **Brevity is required:** Provide code solutions directly. Omit preamble, conversational filler, and lengthy explanations unless explicitly requested.
-* **Tooling Reliance:** Do not act as a syntax linter or formatter. Rely on ESLint, Stylelint, and Prettier (see Commands below) and CI to catch formatting/lint issues.
+
+- **Aggressive Context Management:**
+  - You MUST monitor context size. Prompt the user to use `/compact` mid-task if the conversation history grows too long (to prevent >150k token context bloat and expensive cache reads).
+  - Remind the user to use `/clear` when switching to a completely new task or a different module. Do not carry stale context.
+- **Subagent & Fork Efficiency:** When spawning subagents or using "forks", keep instructions strictly scoped to prevent runaway loops. If performing simple file-system reads, prefer cheaper models (like Haiku) if the environment allows it.
+- **Brevity is required:** Provide code solutions directly. Omit preamble, conversational filler, and lengthy explanations unless explicitly requested.
+- **Tooling Reliance:** Do not act as a syntax linter or formatter. Rely on ESLint, Stylelint, and Prettier (see Commands below) and CI to catch formatting/lint issues.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
