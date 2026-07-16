@@ -3,11 +3,7 @@
 
   <div class="control-group gray-box source-container">
     <h3 class="group-header">Cloud Files</h3>
-    <div class="empty-drive-msg">
-      <i class="fab fa-google-drive"></i>
-      <br />
-      Drive sync lands in a later milestone.
-    </div>
+    <app-drive-panel></app-drive-panel>
     <div class="status-text-subtle">
       @if (appState.files().length > 0) { {{ appState.files().length }} logs
       loaded }

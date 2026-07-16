@@ -1,6 +1,8 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { AnalyzerShell } from './analyzer/analyzer-shell';
+import { AuthService } from './core/auth.service';
 import { DataProcessorService } from './core/data-processor.service';
+import { SignalRegistryService } from './core/signal-registry.service';
 import { Landing } from './landing/landing';
 
 type Route = 'landing' | 'analyzer';
@@ -26,6 +28,8 @@ export class App {
     );
 
     inject(DataProcessorService).restoreFromLibrary();
+    inject(AuthService).init();
+    inject(SignalRegistryService).init();
 
     effect(() => {
       const isAnalyzer = this.route() === 'analyzer';

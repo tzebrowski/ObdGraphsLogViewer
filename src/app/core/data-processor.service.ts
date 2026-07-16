@@ -13,8 +13,11 @@ const SCHEMA_REGISTRY = {
 const SCHEMA = { timeKey: 'x', valueKey: 'y' } as const;
 
 /**
- * Port of legacy/src/dataprocessor.js — local-file ingestion path only for
- * Milestone 1 (drag-drop / file picker). Drive ingestion lands in Milestone 2.
+ * Port of legacy/src/dataprocessor.js. `handleFiles` is the local-file
+ * ingestion path (drag-drop / file picker); `processExternal` is the same
+ * normalize+persist+register pipeline for data fetched from elsewhere (e.g.
+ * DriveService), matching legacy's direct `dataProcessor.process()` call
+ * from `Drive.loadFile`.
  */
 @Injectable({ providedIn: 'root' })
 export class DataProcessorService {
@@ -102,6 +105,14 @@ export class DataProcessorService {
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsText(file);
     });
+  }
+
+  /** Normalizes, persists, and registers already-parsed data (e.g. from Google Drive). */
+  async processExternal(
+    data: unknown,
+    fileName: string
+  ): Promise<LoadedFile | undefined> {
+    return this.process(data, fileName);
   }
 
   private async process(

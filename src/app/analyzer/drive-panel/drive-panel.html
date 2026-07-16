@@ -1,0 +1,93 @@
+@if (!auth.isLoggedIn()) {
+<div class="empty-drive-msg">
+  <i class="fab fa-google-drive"></i>
+  <br />
+  Sign in with Google to browse logs saved in Drive.
+</div>
+<button class="btn btn-sm btn-primary drive-connect-btn" (click)="connect()">
+  <i class="fab fa-google"></i> Connect Google Drive
+</button>
+
+<div class="drive-clientid-toggle" (click)="toggleClientIdInput()">
+  <i class="fas fa-cog"></i> Advanced: set Client ID
+</div>
+@if (showClientIdInput()) {
+<div class="drive-clientid-row">
+  <input
+    type="text"
+    placeholder="Google Client ID"
+    [value]="clientIdDraft()"
+    (input)="onClientIdInput($event)"
+  />
+  <button class="btn btn-sm" (click)="saveClientId()">Save</button>
+</div>
+} } @else {
+<div class="drive-user-row">
+  <span class="drive-user-name">
+    <i class="fas fa-user-circle"></i>
+    {{ userLabel() }}
+  </span>
+  <div class="button-row-sm">
+    <button class="btn btn-sm" title="Rescan" (click)="rescan()">
+      <i class="fas fa-sync-alt" [class.fa-spin]="drive.loading()"></i>
+    </button>
+    <button class="btn btn-sm" title="Sign out" (click)="disconnect()">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
+  </div>
+</div>
+
+<div class="drive-search-row">
+  <input
+    type="text"
+    placeholder="Search logs..."
+    [value]="drive.searchTerm()"
+    (input)="onSearchInput($event)"
+  />
+  <button
+    class="btn btn-sm"
+    title="Toggle sort order"
+    (click)="toggleSortOrder()"
+  >
+    @if (drive.sortOrder() === 'desc') {
+    <i class="fas fa-sort-amount-down"></i>
+    } @else {
+    <i class="fas fa-sort-amount-up"></i>
+    }
+  </button>
+</div>
+
+@if (drive.error()) {
+<div class="drive-status-msg drive-error-msg">{{ drive.error() }}</div>
+} @if (drive.loading() && drive.files().length === 0) {
+<div class="drive-status-msg">Searching for logs...</div>
+} @if (!drive.loading() && drive.filteredSortedFiles().length === 0 &&
+!drive.error()) {
+<div class="drive-status-msg">No logs found.</div>
+}
+
+<div class="drive-file-list">
+  @for (item of drive.filteredSortedFiles(); track item.file.id) {
+  <div class="drive-file-card" (click)="loadFile(item)">
+    <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
+    <div class="file-card-body">
+      <div class="file-name-title">{{ item.file.name }}</div>
+      <div class="file-card-meta-grid">
+        <div class="meta-item">
+          <i class="far fa-calendar-alt"></i>
+          <span>{{ drive.formatDate(item.meta.date) }}</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-history"></i>
+          <span>{{ durationFor(item) }}</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-hdd"></i>
+          <span>{{ sizeKb(item.file.size) }} KB</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>
+}
