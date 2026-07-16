@@ -1,0 +1,40 @@
+<div class="app-container">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content" id="mainContent">
+    <div class="m1-toolbar">
+      <label class="btn btn-sm">
+        <i class="fas fa-folder-open"></i> Open Local
+        <input
+          type="file"
+          class="hidden"
+          accept=".csv,.json,.gz"
+          multiple
+          style="display: none"
+          (change)="fileLoaderInput($event)"
+        />
+      </label>
+      <div class="view-mode-toggle">
+        <button
+          class="btn btn-sm"
+          [class.active]="appState.viewMode() === 'stack'"
+          (click)="setViewMode('stack')"
+        >
+          Stack
+        </button>
+        <button
+          class="btn btn-sm"
+          [class.active]="appState.viewMode() === 'overlay'"
+          (click)="setViewMode('overlay')"
+        >
+          Overlay
+        </button>
+      </div>
+    </div>
+
+    <app-chart-view></app-chart-view>
+    <app-file-loader></app-file-loader>
+  </div>
+</div>
+
+<app-loading-overlay></app-loading-overlay>

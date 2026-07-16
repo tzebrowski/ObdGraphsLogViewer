@@ -1,0 +1,45 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+.app-container {
+  display: flex;
+  height: 100%;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+.m1-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.m1-toolbar label.btn {
+  cursor: pointer;
+}
+
+.view-mode-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.view-mode-toggle .btn.active {
+  background: var(--primary-red, #9a0000);
+  color: #fff;
+}
+
+app-chart-view {
+  flex: 1;
+  min-height: 0;
+}

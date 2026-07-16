@@ -1,0 +1,15 @@
+#chartContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.chart-canvas-container,
+.chm-overlay-canvas-wrapper {
+  position: relative;
+  height: 320px;
+}

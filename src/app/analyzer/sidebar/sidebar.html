@@ -1,0 +1,112 @@
+<div class="sidebar" id="sidebar">
+  <h2>My Giulia Telemetry Analyzer</h2>
+
+  <div class="control-group gray-box source-container">
+    <h3 class="group-header">Cloud Files</h3>
+    <div class="empty-drive-msg">
+      <i class="fab fa-google-drive"></i>
+      <br />
+      Drive sync lands in a later milestone.
+    </div>
+    <div class="status-text-subtle">
+      @if (appState.files().length > 0) { {{ appState.files().length }} logs
+      loaded }
+    </div>
+  </div>
+
+  <div class="control-group gray-box">
+    <h3>Anomaly Scanner</h3>
+    <p class="section-description">Coming in a later milestone.</p>
+  </div>
+
+  <div class="control-group flex-grow gray-box">
+    <div class="group-header-row">
+      <h3>Signals</h3>
+      <div class="button-row-sw">
+        <button class="btn btn-sm" (click)="toggleAllSignals(true)">All</button>
+        <button class="btn btn-sm" (click)="toggleAllSignals(false)">
+          None
+        </button>
+      </div>
+    </div>
+    <p class="section-description">
+      Search and select signals to display on the chart.
+    </p>
+
+    <div class="signal-list" id="signalList">
+      @if (appState.files().length === 0) {
+      <div style="padding: 10px; color: #666">
+        No signals available. Load a file first.
+      </div>
+      } @else {
+      <div class="signal-search-wrapper">
+        <input
+          type="text"
+          placeholder="Search signals..."
+          [value]="searchTerm()"
+          (input)="onSearchInput($event)"
+        />
+        @if (searchTerm().length > 0) {
+        <i
+          class="fas fa-times-circle"
+          title="Clear filter"
+          (click)="clearSearch()"
+        ></i>
+        }
+      </div>
+
+      @for (file of appState.files(); track file.dbId ?? file.name; let fileIdx
+      = $index) {
+      <div class="file-group-container">
+        <div class="file-meta-header">
+          <span>
+            <i
+              class="fas fa-trash-alt"
+              title="Remove log"
+              (click)="removeFile(fileIdx)"
+            ></i>
+            <i class="fas fa-file-alt"></i> {{ file.name }}
+          </span>
+          <div class="button-row-sm">
+            <button
+              class="btn btn-sm"
+              (click)="toggleFileSignals(fileIdx, file, true)"
+            >
+              All
+            </button>
+            <button
+              class="btn btn-sm"
+              (click)="toggleFileSignals(fileIdx, file, false)"
+            >
+              None
+            </button>
+          </div>
+        </div>
+
+        <div class="sig-list">
+          @for (row of signalRows(file); track row.name) {
+          <div class="signal-item">
+            <span
+              class="signal-color-swatch"
+              [style.background]="colorFor(fileIdx, row.name, file)"
+            ></span>
+            <input
+              type="checkbox"
+              [id]="'chk-f' + fileIdx + '-' + row.name"
+              [checked]="appState.isSignalVisible(fileIdx, row.name)"
+              (change)="toggleSignal(fileIdx, row.name, $event)"
+            />
+            <label
+              [for]="'chk-f' + fileIdx + '-' + row.name"
+              [class.math-signal]="row.isMath"
+            >
+              {{ row.name }}
+            </label>
+          </div>
+          }
+        </div>
+      </div>
+      } }
+    </div>
+  </div>
+</div>

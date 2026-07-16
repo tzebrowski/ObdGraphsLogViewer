@@ -1,0 +1,75 @@
+<div id="chartContainer" [class.has-data]="appState.dataLoaded()">
+  @if (!appState.dataLoaded()) {
+  <div id="empty-state" class="empty-state-container">
+    <div class="empty-state-content">
+      <i class="fas fa-chart-area empty-icon"></i>
+      <h3>No Telemetry Loaded</h3>
+      <p>
+        Drag &amp; drop a JSON or CSV trip log, or use the file picker in the
+        sidebar.
+      </p>
+    </div>
+  </div>
+  } @else if (appState.viewMode() === 'overlay') {
+  <div class="chart-card-compact chm-overlay-wrapper">
+    <div class="chart-header-sm">
+      <span class="chart-name"
+        >Overlay Comparison ({{ appState.files().length }} logs)</span
+      >
+      <div class="chart-actions chm-flex-center">
+        <button class="btn-icon" (click)="resetChart(0)" title="Reset Zoom">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+      </div>
+    </div>
+    <div class="chm-overlay-body">
+      <div class="canvas-wrapper chm-overlay-canvas-wrapper">
+        <canvas #canvasEl tabindex="0"></canvas>
+      </div>
+    </div>
+  </div>
+  } @else { @for (file of appState.files(); track trackByFile($index, file); let
+  idx = $index) {
+  <div class="chart-card-compact">
+    <div class="chart-header-sm chm-card-header">
+      <div class="chm-flex-column chm-min-width-0">
+        <span class="chart-name chm-bold-text chm-truncate"
+          >{{ file.name }}</span
+        >
+        <span class="chart-meta-info chm-meta-text">
+          <i class="far fa-clock"></i> {{ formatDate(file.startTime) }}
+          &nbsp;|&nbsp; <i class="fas fa-stopwatch"></i> {{
+          formatDuration(file.duration) }}
+        </span>
+      </div>
+      <div class="chart-actions chm-flex-center">
+        <button class="btn-icon" (click)="manualZoom(idx, 1.1)" title="Zoom In">
+          <i class="fas fa-plus"></i>
+        </button>
+        <button
+          class="btn-icon"
+          (click)="manualZoom(idx, 0.9)"
+          title="Zoom Out"
+        >
+          <i class="fas fa-minus"></i>
+        </button>
+        <button class="btn-icon" (click)="resetChart(idx)" title="Reset View">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        <button
+          class="btn-remove"
+          (click)="removeFile(idx)"
+          title="Remove Chart"
+        >
+          &times;
+        </button>
+      </div>
+    </div>
+    <div class="chart-body-row">
+      <div class="chart-canvas-container">
+        <canvas #canvasEl tabindex="0"></canvas>
+      </div>
+    </div>
+  </div>
+  } }
+</div>

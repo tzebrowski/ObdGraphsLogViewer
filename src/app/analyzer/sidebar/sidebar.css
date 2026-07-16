@@ -1,0 +1,73 @@
+.signal-search-wrapper {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 10;
+  padding: 10px 5px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signal-search-wrapper input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+
+.signal-search-wrapper i {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.file-meta-header {
+  padding: 8px 5px;
+  font-weight: bold;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--sidebar-bg);
+}
+
+.file-meta-header i.fa-trash-alt {
+  color: var(--brand-red);
+  cursor: pointer;
+}
+
+.sig-list {
+  padding-left: 10px;
+}
+
+.signal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 5px;
+}
+
+.signal-color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.signal-item label {
+  font-size: 0.85em;
+  flex-grow: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signal-item label.math-signal {
+  color: #01804f;
+  font-weight: bold;
+}

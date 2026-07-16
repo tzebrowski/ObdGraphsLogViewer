@@ -1,6 +1,7 @@
 // eslint.config.mjs
 import js from '@eslint/js';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default [
   {
@@ -10,11 +11,16 @@ export default [
       'coverage/',
       'bin/**',
       'build/**',
+      '.angular/**',
       '**/*.min.js',
     ],
   },
-  js.configs.recommended,
   {
+    files: ['legacy/**/*.js'],
+    ...js.configs.recommended,
+  },
+  {
+    files: ['legacy/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -32,22 +38,43 @@ export default [
     },
   },
   {
-    files: ['**/main.js'],
+    files: ['legacy/**/main.js'],
     languageOptions: {
       globals: {
         ...globals.node, // This defines require, __dirname, and process
       },
     },
   },
-
   {
-    files: ['**/*.test.js', '**/__tests__/**'],
+    files: ['legacy/**/*.test.js', 'legacy/**/__tests__/**'],
     languageOptions: {
       globals: {
         ...globals.browser,
         ...globals.node,
         ...globals.jest,
       },
+    },
+  },
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ['src/**/*.ts'],
+  })),
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.spec.ts'],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
 ];

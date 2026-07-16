@@ -1,0 +1,11 @@
+@if (appState.loading()) {
+<div class="loading-overlay">
+  <div class="spinner"></div>
+  <div>{{ appState.loadingMessage() || 'Loading...' }}</div>
+</div>
+} @if (appState.alertMessage(); as message) {
+<div class="alert-banner" (click)="appState.clearAlert()">
+  <i class="fas fa-exclamation-triangle"></i> {{ message }}
+  <span class="alert-dismiss">&times;</span>
+</div>
+}
