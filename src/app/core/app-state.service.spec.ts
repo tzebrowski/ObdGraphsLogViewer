@@ -145,6 +145,32 @@ describe('AppStateService', () => {
     expect(state.files()[0].annotations).toEqual([{ time: 2, text: 'second' }]);
   });
 
+  it('addFileTag appends a tag and emits FILE_TAG_ADDED', () => {
+    const bus = new EventBusService();
+    const state = new AppStateService(bus);
+    state.addFile(makeFile({ dbId: 1, name: 'a.json' }));
+
+    const received: unknown[] = [];
+    bus.on('file:tag-added').subscribe((event) => received.push(event));
+
+    const added = state.addFileTag(0, 'track');
+
+    expect(added).toBe(true);
+    expect(state.files()[0].tags).toEqual(['track']);
+    expect(received).toEqual([{ fileName: 'a.json', tag: 'track' }]);
+  });
+
+  it('addFileTag returns false and does not duplicate an existing tag', () => {
+    const state = new AppStateService(new EventBusService());
+    state.addFile(makeFile({ dbId: 1 }));
+    state.addFileTag(0, 'track');
+
+    const added = state.addFileTag(0, 'track');
+
+    expect(added).toBe(false);
+    expect(state.files()[0].tags).toEqual(['track']);
+  });
+
   it('showAlert/clearAlert set and clear the alert message', () => {
     const state = new AppStateService(new EventBusService());
     expect(state.alertMessage()).toBeNull();

@@ -4,6 +4,7 @@ import {
   ActiveHighlight,
   ChartAnnotation,
   EVENTS,
+  FileTagAddedEvent,
   LoadedFile,
   SignalPoint,
   ViewMode,
@@ -97,6 +98,28 @@ export class AppStateService {
             }
       )
     );
+  }
+
+  /**
+   * Port of legacy/src/chartmanager.js's `_promptForTag`. Returns false
+   * (without mutating state) if the file already has this tag, matching
+   * legacy's "already applied" alert path — the caller shows that alert.
+   */
+  addFileTag(fileIndex: number, tag: string): boolean {
+    const file = this.files()[fileIndex];
+    if (!file) return false;
+    if ((file.tags ?? []).includes(tag)) return false;
+
+    this.files.update((files) =>
+      files.map((f, i) =>
+        i !== fileIndex ? f : { ...f, tags: [...(f.tags ?? []), tag] }
+      )
+    );
+    this.bus.emit<FileTagAddedEvent>(EVENTS.FILE_TAG_ADDED, {
+      fileName: file.name,
+      tag,
+    });
+    return true;
   }
 
   setActiveHighlight(

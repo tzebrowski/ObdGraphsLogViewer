@@ -13,3 +13,17 @@
   position: relative;
   height: 320px;
 }
+
+.chart-tags-row {
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.chart-tag-pill {
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.65em;
+  text-transform: capitalize;
+}

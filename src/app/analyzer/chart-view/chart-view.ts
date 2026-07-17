@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  computed,
   effect,
   inject,
   signal,
@@ -33,6 +34,7 @@ import {
   ActiveHighlight,
   EVENTS,
   LoadedFile,
+  SignalPoint,
   ViewMode,
 } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
@@ -87,13 +89,28 @@ interface SliderRange {
   end: number;
 }
 
+interface MetaRow {
+  label: string;
+  value: string;
+}
+
+const SHORTCUTS_TEXT = `Keyboard Shortcuts:
+← / → : Pan Left/Right (Shift for faster)
++ / - : Zoom In / Out
+R : Reset View
+A : Add point annotation at cursor
+L : Toggle Legend Visibility
+Alt + Click : Add / Delete Annotation`;
+
 /**
  * Port of legacy/src/chartmanager.js's rendering core: stack and overlay
  * view modes, zoom/pan, tooltip with real-value transform, chart-hover-
  * drives-map-marker sync via MapService, point annotations (Alt+Click /
- * `A` keyboard shortcut), the per-card local range slider, and keyboard
- * pan/zoom/reset/legend-toggle shortcuts. File tagging, CSV export, and
- * Shift+Drag highlight-with-stats regions remain out of scope.
+ * `A` keyboard shortcut), the per-card local range slider, keyboard
+ * pan/zoom/reset/legend-toggle shortcuts, fine cursor stepping, visible-
+ * range CSV export, file tagging (synced to Drive when the name matches a
+ * loaded Drive entry), and the Log Details modal. Shift+Drag
+ * highlight-with-stats regions remain out of scope.
  */
 @Component({
   selector: 'app-chart-view',
@@ -113,6 +130,16 @@ export class ChartView {
 
   /** Keyed by chart index (fileIdx in stack mode, always 0 in overlay mode). */
   protected readonly sliderRanges = signal<Record<number, SliderRange>>({});
+
+  protected readonly chartInfoIndex = signal<number | null>(null);
+  /** Bundles the index with its file so the template's `@if...as` doesn't treat index 0 as falsy. */
+  protected readonly chartInfo = computed(() => {
+    const index = this.chartInfoIndex();
+    if (index === null) return null;
+    const file = this.appState.files()[index];
+    return file ? { index, file } : null;
+  });
+  protected readonly shortcutsText = SHORTCUTS_TEXT;
 
   private charts: Chart[] = [];
   private readonly lastHoverTime = new Map<number, number>();
@@ -206,6 +233,250 @@ export class ChartView {
     this.charts[index]?.zoom(zoomLevel);
     this.syncSliderFromChart(index);
     this.syncMapBounds(index, this.appState.viewMode());
+  }
+
+  /**
+   * Port of legacy/src/chartmanager.js's `stepCursor` — nudges the
+   * last-known hover position and pans the view to keep it in frame once it
+   * reaches an edge. `index` is a file index in stack mode; overlay mode's
+   * template always passes 0 (its single merged chart).
+   */
+  protected stepCursor(index: number, stepCount: number): void {
+    const mode = this.appState.viewMode();
+    const chartIdx = mode === 'overlay' ? 0 : index;
+    const chart = this.charts[chartIdx];
+    const files = this.appState.files();
+    const file = mode === 'overlay' ? files[0] : files[index];
+    if (!chart || !file) return;
+
+    const currentMin = chart.scales['x'].min as number;
+    const currentMax = chart.scales['x'].max as number;
+    let currentVal = this.lastHoverTime.get(chartIdx);
+    if (currentVal === undefined) currentVal = (currentMin + currentMax) / 2;
+
+    const STEP_SIZE_MS = 100;
+    let newVal = currentVal + stepCount * STEP_SIZE_MS;
+
+    if (mode === 'overlay') {
+      const maxDuration = Math.max(...files.map((f) => f.duration));
+      const baseStart = files[0].startTime;
+      newVal = Math.max(
+        baseStart,
+        Math.min(newVal, baseStart + maxDuration * 1000)
+      );
+    } else {
+      const maxTime = file.startTime + file.duration * 1000;
+      newVal = Math.max(file.startTime, Math.min(newVal, maxTime));
+    }
+
+    this.lastHoverTime.set(chartIdx, newVal);
+
+    const viewDuration = currentMax - currentMin;
+    let viewChanged = false;
+    if (newVal >= currentMax) {
+      const newMin = newVal - viewDuration * 0.2;
+      chart.options.scales!['x']!.min = newMin;
+      chart.options.scales!['x']!.max = newMin + viewDuration;
+      viewChanged = true;
+    } else if (newVal <= currentMin) {
+      const newMin = newVal - viewDuration * 0.8;
+      chart.options.scales!['x']!.min = newMin;
+      chart.options.scales!['x']!.max = newMin + viewDuration;
+      viewChanged = true;
+    }
+
+    if (viewChanged) {
+      chart.update('none');
+      this.syncSliderFromChart(index);
+      this.syncMapBounds(chartIdx, mode);
+    }
+
+    if (mode === 'overlay') {
+      this.mapService.setOverlayHover(newVal);
+    } else {
+      this.mapService.setStackHover(index, newVal);
+    }
+  }
+
+  /** Port of legacy/src/chartmanager.js's `exportDataRange` — CSV of the currently-visible time window, one column per visible signal. */
+  protected exportDataRange(index: number): void {
+    const chart = this.charts[index];
+    const file = this.appState.files()[index];
+    if (!chart || !file) return;
+
+    const minTime = chart.scales['x'].min as number;
+    const maxTime = chart.scales['x'].max as number;
+
+    const visibleSignals = file.availableSignals.filter((sig) =>
+      this.appState.isSignalVisible(index, sig)
+    );
+    if (visibleSignals.length === 0) {
+      this.appState.showAlert('No signals visible to export.');
+      return;
+    }
+
+    const timeSet = new Set<number>();
+    const dataBySignal: Record<string, SignalPoint[]> = {};
+    visibleSignals.forEach((sigKey) => {
+      dataBySignal[sigKey] = file.signals[sigKey].filter(
+        (p) => p.x >= minTime && p.x <= maxTime
+      );
+      dataBySignal[sigKey].forEach((p) => timeSet.add(p.x));
+    });
+
+    if (timeSet.size === 0) {
+      this.appState.showAlert('No data in the selected time range.');
+      return;
+    }
+
+    const sortedTimes = [...timeSet].sort((a, b) => a - b);
+    const csvRows = [`Time (s),${visibleSignals.join(',')}`];
+    const currentIndices: Record<string, number> = {};
+    visibleSignals.forEach((sig) => (currentIndices[sig] = 0));
+
+    sortedTimes.forEach((time) => {
+      const relTime = (time - file.startTime) / 1000;
+      const row = [relTime.toFixed(3)];
+
+      visibleSignals.forEach((sigKey) => {
+        const sigData = dataBySignal[sigKey];
+        if (sigData.length === 0) {
+          row.push('');
+          return;
+        }
+
+        let idx = currentIndices[sigKey];
+        while (idx < sigData.length - 1 && sigData[idx].x < time) idx++;
+        currentIndices[sigKey] = idx;
+
+        let value: number;
+        if (sigData[idx].x === time) {
+          value = sigData[idx].y;
+        } else if (time <= sigData[0].x) {
+          value = sigData[0].y;
+        } else if (time >= sigData[sigData.length - 1].x) {
+          value = sigData[sigData.length - 1].y;
+        } else {
+          const p0 = sigData[idx - 1];
+          const p1 = sigData[idx];
+          const timeRange = p1.x - p0.x;
+          const fraction = timeRange === 0 ? 0 : (time - p0.x) / timeRange;
+          value = p0.y + (p1.y - p0.y) * fraction;
+        }
+        row.push(value.toFixed(3));
+      });
+
+      csvRows.push(row.join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${file.name}_export_${Math.round(minTime)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  /** Port of legacy/src/chartmanager.js's `_promptForTag`. */
+  protected promptChartTag(index: number): void {
+    const file = this.appState.files()[index];
+    if (!file) return;
+
+    const newTag = prompt(
+      `Enter a new tag for ${file.name}\n(e.g., Track, Commute, Rain):`
+    );
+    if (!newTag || !newTag.trim()) return;
+
+    const added = this.appState.addFileTag(index, newTag.trim().toLowerCase());
+    if (!added) {
+      this.appState.showAlert('This tag is already applied to this log.');
+    }
+  }
+
+  /** Port of legacy/src/chartmanager.js's `_getTagStyle` — deterministic hue per tag name. */
+  protected tagStyle(tag: string): string {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
+  }
+
+  /** Port of legacy/src/chartmanager.js's `showChartInfo`. */
+  protected showChartInfo(index: number): void {
+    this.chartInfoIndex.set(index);
+  }
+
+  protected closeChartInfo(): void {
+    this.chartInfoIndex.set(null);
+  }
+
+  protected collectionRate(index: number): string {
+    const file = this.appState.files()[index];
+    if (!file) return 'N/A';
+
+    let totalRealSamples = 0;
+    let realSignalCount = 0;
+    Object.keys(file.signals).forEach((key) => {
+      if (key.startsWith('Math:')) return;
+      totalRealSamples += file.signals[key].length;
+      realSignalCount++;
+    });
+
+    if (file.duration <= 0 || totalRealSamples === 0 || realSignalCount === 0)
+      return 'N/A';
+    const totalHz = totalRealSamples / file.duration;
+    const perSignalHz = totalHz / realSignalCount;
+    return `${totalHz.toFixed(1)} req/sec (~${perSignalHz.toFixed(1)} Hz per signal)`;
+  }
+
+  /** Port of legacy/src/chartmanager.js's `showChartInfo`'s dynamic-metadata section. */
+  protected metadataRows(index: number): MetaRow[] {
+    const file = this.appState.files()[index];
+    if (!file?.metadata) return [];
+
+    const ignoredKeys = new Set([
+      'duration',
+      'trip.duration',
+      'starttime',
+      'trip.starttime',
+    ]);
+
+    return Object.entries(file.metadata)
+      .filter(([key]) => !ignoredKeys.has(key.toLowerCase()))
+      .map(([key, value]) => ({
+        label: key
+          .replace('trip.', '')
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, (s) => s.toUpperCase()),
+        value: this.formatMetaValue(key, value),
+      }));
+  }
+
+  private formatMetaValue(key: string, value: unknown): string {
+    if (value && typeof value === 'object') {
+      const v = value as { min?: number; max?: number; unit?: string };
+      if (v.min !== undefined && v.max !== undefined) {
+        const unitStr = v.unit && v.unit !== 'Math' ? ` [${v.unit}]` : '';
+        return `Min: ${v.min.toFixed(2)}, Max: ${v.max.toFixed(2)}${unitStr}`;
+      }
+      return JSON.stringify(value).replace(/["{}]/g, '').replace(/:/g, ': ');
+    }
+    const numeric = Number(value);
+    if (
+      key.toLowerCase().includes('time') &&
+      !isNaN(numeric) &&
+      numeric > 1_000_000_000
+    ) {
+      return new Date(numeric).toLocaleString();
+    }
+    return value === undefined || value === null ? 'N/A' : String(value);
   }
 
   /** Current [start, end] in seconds-from-file-start for the local range slider, defaulting to the full duration. */

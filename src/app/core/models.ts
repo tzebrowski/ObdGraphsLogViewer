@@ -13,6 +13,7 @@ export const EVENTS = {
   BATCH_LOADED: 'dataprocessor:batch-load-completed',
   ACTION_LOG: 'action:log',
   CHART_RESET_ALL: 'chart:reset-all',
+  FILE_TAG_ADDED: 'file:tag-added',
 } as const;
 
 export interface SignalPoint {
@@ -31,6 +32,13 @@ export interface LoadedFile {
   size: number;
   dbId: number | null;
   annotations?: ChartAnnotation[];
+  /** Session-only, matching legacy's non-persisted `file.tags` — synced to Drive appProperties when the name matches a loaded Drive entry. */
+  tags?: string[];
+}
+
+export interface FileTagAddedEvent {
+  fileName: string;
+  tag: string;
 }
 
 /** A point-in-time note plotted on the chart. Session-only, matching legacy's non-persisted `file.annotations`. */

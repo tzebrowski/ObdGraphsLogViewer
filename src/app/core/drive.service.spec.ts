@@ -5,6 +5,8 @@ import { AppStateService } from './app-state.service';
 import { AuthService } from './auth.service';
 import { DataProcessorService } from './data-processor.service';
 import { DriveService } from './drive.service';
+import { EventBusService } from './event-bus.service';
+import { EVENTS } from './models';
 
 function makeAuthFake(isLoggedInInitial = true) {
   return {
@@ -41,10 +43,11 @@ describe('DriveService', () => {
   let auth: ReturnType<typeof makeAuthFake>;
   let appState: ReturnType<typeof makeAppStateFake>;
   let dataProcessor: ReturnType<typeof makeDataProcessorFake>;
+  let bus: EventBusService;
 
   function create(): DriveService {
     return TestBed.runInInjectionContext(
-      () => new DriveService(auth, appState, dataProcessor)
+      () => new DriveService(auth, appState, dataProcessor, bus)
     );
   }
 
@@ -52,6 +55,7 @@ describe('DriveService', () => {
     auth = makeAuthFake(true);
     appState = makeAppStateFake();
     dataProcessor = makeDataProcessorFake();
+    bus = new EventBusService();
     localStorage.clear();
   });
 
@@ -370,6 +374,41 @@ describe('DriveService', () => {
       expect(appState.showAlert).toHaveBeenCalledWith(
         expect.stringContaining('Failed to save tag')
       );
+    });
+
+    it('syncs a FILE_TAG_ADDED bus event to the matching Drive entry by name', async () => {
+      const update = vi.fn().mockResolvedValue({});
+      vi.stubGlobal('gapi', { client: { drive: { files: { update } } } });
+
+      const drive = create();
+      const entry = makeTaggedEntry();
+      drive.files.set([entry]);
+
+      bus.emit(EVENTS.FILE_TAG_ADDED, { fileName: 'log.json', tag: 'commute' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(update).toHaveBeenCalledWith({
+        fileId: 'f1',
+        appProperties: { tags: 'commute' },
+      });
+      expect(drive.files()[0].tags).toEqual(['commute']);
+    });
+
+    it('ignores a FILE_TAG_ADDED event with no matching Drive entry', async () => {
+      const update = vi.fn();
+      vi.stubGlobal('gapi', { client: { drive: { files: { update } } } });
+
+      const drive = create();
+      drive.files.set([makeTaggedEntry()]);
+
+      bus.emit(EVENTS.FILE_TAG_ADDED, {
+        fileName: 'local-only.json',
+        tag: 'track',
+      });
+      await Promise.resolve();
+
+      expect(update).not.toHaveBeenCalled();
     });
   });
 

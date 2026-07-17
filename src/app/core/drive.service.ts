@@ -2,7 +2,9 @@ import { Injectable, computed, effect, signal } from '@angular/core';
 import { AppStateService } from './app-state.service';
 import { AuthService } from './auth.service';
 import { DataProcessorService } from './data-processor.service';
+import { EventBusService } from './event-bus.service';
 import { DriveApiFile } from './google-api.types';
+import { EVENTS, FileTagAddedEvent } from './models';
 
 const DRIVE_ROOT_FOLDER = 'mygiulia';
 const DRIVE_SUB_FOLDER = 'trips';
@@ -100,7 +102,8 @@ export class DriveService {
   constructor(
     private readonly auth: AuthService,
     private readonly appState: AppStateService,
-    private readonly dataProcessor: DataProcessorService
+    private readonly dataProcessor: DataProcessorService,
+    private readonly bus: EventBusService
   ) {
     effect(() => {
       if (!this.auth.isLoggedIn()) {
@@ -108,6 +111,21 @@ export class DriveService {
         this.error.set(null);
       }
     });
+
+    this.bus
+      .on<FileTagAddedEvent>(EVENTS.FILE_TAG_ADDED)
+      .subscribe(({ fileName, tag }) => this.syncTagFromChart(fileName, tag));
+  }
+
+  /**
+   * Port of legacy/src/drive.js's `_syncTagFromChart`: when a tag is added
+   * from the chart card (AppStateService.addFileTag) for a file that's also
+   * present in the Drive listing (matched by name), mirror it to Drive too.
+   */
+  private syncTagFromChart(fileName: string, tag: string): void {
+    const entry = this.files().find((f) => f.file.name === fileName);
+    if (!entry) return;
+    void this.addTag(entry, tag);
   }
 
   setSearchTerm(term: string): void {

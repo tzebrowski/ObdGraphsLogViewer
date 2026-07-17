@@ -17,6 +17,40 @@
         >Overlay Comparison ({{ appState.files().length }} logs)</span
       >
       <div class="chart-actions chm-flex-center">
+        <span class="chm-axis-label">X-Axis: Relative Time (s)</span>
+        <div class="chm-step-controls">
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(0, -10)"
+            title="-1s"
+          >
+            <i class="fas fa-backward"></i>
+          </button>
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(0, -1)"
+            title="-0.1s"
+          >
+            <i class="fas fa-caret-left chm-caret"></i>
+          </button>
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(0, 1)"
+            title="+0.1s"
+          >
+            <i class="fas fa-caret-right chm-caret"></i>
+          </button>
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(0, 10)"
+            title="+1s"
+          >
+            <i class="fas fa-forward"></i>
+          </button>
+        </div>
+        <button class="btn-icon chm-cursor-help" [title]="shortcutsText">
+          <i class="fas fa-keyboard"></i>
+        </button>
         <button class="btn-icon" (click)="resetChart(0)" title="Reset Zoom">
           <i class="fas fa-sync-alt"></i>
         </button>
@@ -42,8 +76,66 @@
           &nbsp;|&nbsp; <i class="fas fa-stopwatch"></i> {{
           formatDuration(file.duration) }}
         </span>
+        @if ((file.tags ?? []).length > 0) {
+        <div class="chart-tags-row">
+          @for (tag of file.tags; track tag) {
+          <span class="chart-tag-pill" [style]="tagStyle(tag)">{{ tag }}</span>
+          }
+        </div>
+        }
       </div>
       <div class="chart-actions chm-flex-center">
+        <div class="chm-step-controls">
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(idx, -10)"
+            title="-1s"
+          >
+            <i class="fas fa-backward"></i>
+          </button>
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(idx, -1)"
+            title="-0.1s"
+          >
+            <i class="fas fa-caret-left chm-caret"></i>
+          </button>
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(idx, 1)"
+            title="+0.1s"
+          >
+            <i class="fas fa-caret-right chm-caret"></i>
+          </button>
+          <button
+            class="btn-icon chm-border-none"
+            (click)="stepCursor(idx, 10)"
+            title="+1s"
+          >
+            <i class="fas fa-forward"></i>
+          </button>
+        </div>
+        <button
+          class="btn-icon"
+          (click)="exportDataRange(idx)"
+          title="Export Visible CSV"
+        >
+          <i class="fas fa-file-csv"></i>
+        </button>
+        <button class="btn-icon" (click)="promptChartTag(idx)" title="Add Tag">
+          <i class="fas fa-tags"></i>
+        </button>
+        <button class="btn-icon chm-cursor-help" [title]="shortcutsText">
+          <i class="fas fa-keyboard"></i>
+        </button>
+        <button
+          class="btn-icon"
+          (click)="showChartInfo(idx)"
+          title="Log Details"
+        >
+          <i class="fas fa-info-circle"></i>
+        </button>
+        <div class="chm-vertical-divider"></div>
         <button class="btn-icon" (click)="manualZoom(idx, 1.1)" title="Zoom In">
           <i class="fas fa-plus"></i>
         </button>
@@ -113,3 +205,79 @@
   </div>
   } }
 </div>
+
+@if (chartInfo(); as info) {
+<div
+  class="modal-overlay chm-modal-overlay"
+  style="display: flex"
+  (click)="closeChartInfo()"
+>
+  <div
+    class="modal-content chm-modal-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2>Log Details</h2>
+      <button class="btn-close" (click)="closeChartInfo()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <h4
+        class="chm-modal-title chm-truncate"
+        [title]="info.file.name"
+        style="margin-bottom: 20px"
+      >
+        {{ info.file.name }}
+      </h4>
+
+      <div class="chm-meta-row">
+        <strong class="chm-meta-label">Start Time</strong>
+        <span class="chm-meta-value"
+          >{{ formatDate(info.file.startTime) }}</span
+        >
+      </div>
+      <div class="chm-meta-row">
+        <strong class="chm-meta-label">Duration</strong>
+        <span class="chm-meta-value"
+          >{{ formatDuration(info.file.duration) }}</span
+        >
+      </div>
+      <div class="chm-meta-row">
+        <strong class="chm-meta-label">Signals Count</strong>
+        <span class="chm-meta-value"
+          >{{ info.file.availableSignals.length }}</span
+        >
+      </div>
+      <div class="chm-meta-row">
+        <strong class="chm-meta-label">Collection Rate</strong>
+        <span class="chm-meta-value">{{ collectionRate(info.index) }}</span>
+      </div>
+
+      @if (metadataRows(info.index).length > 0) {
+      <h5
+        class="chm-meta-header"
+        style="
+          margin-top: 20px;
+          margin-bottom: 10px;
+          color: #1c3d72;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 5px;
+        "
+      >
+        Extended Metadata
+      </h5>
+      @for (row of metadataRows(info.index); track row.label) {
+      <div class="chm-meta-row">
+        <strong class="chm-meta-label">{{ row.label }}</strong>
+        <span class="chm-meta-value">{{ row.value }}</span>
+      </div>
+      } }
+
+      <div class="chm-modal-footer">
+        <button class="btn btn-primary" (click)="closeChartInfo()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
