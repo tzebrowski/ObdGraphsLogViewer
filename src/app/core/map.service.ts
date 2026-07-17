@@ -10,6 +10,15 @@ export interface StackHoverState {
   time: number;
 }
 
+export interface ZoomRange {
+  start: number;
+  end: number;
+}
+
+export interface StackZoomRange extends ZoomRange {
+  fileIndex: number;
+}
+
 export interface RoutePoint {
   lat: number;
   lon: number;
@@ -79,10 +88,13 @@ export class MapLinearInterpolator {
  * since it's inherently imperative, matching how Chart.js instances are
  * owned by ChartView rather than a service.
  *
- * Scope cut vs. legacy: no manual color-metric picker (always
- * auto-detects GPS/vehicle speed), and no reverse chart-zoom-drives-map-
- * bounds sync (`syncMapBounds`) — only route display, hover-driven marker
- * sync, and click/drag-to-seek are ported.
+ * Also ports legacy/src/mapmanager.js's `setColorMetric` (manual
+ * color-metric override, exposed as `colorSignalOverrides`) and
+ * `syncMapBounds` (reverse chart-zoom-drives-map-bounds sync, exposed as
+ * `stackZoomRange`/`overlayZoomRange` + `getBoundsPointsInRange`) — both
+ * were unused dead code in legacy (defined but never wired to any UI or
+ * caller), so this is a from-scratch UI wiring against legacy's existing
+ * plumbing rather than a straight behavioral port.
  */
 @Injectable({ providedIn: 'root' })
 export class MapService {
@@ -90,6 +102,14 @@ export class MapService {
   readonly stackHover = signal<StackHoverState | null>(null);
   /** Same, for overlay mode: one merged chart drives every file's map simultaneously. */
   readonly overlayHover = signal<number | null>(null);
+
+  /** Keyed by fileIndex; `null`/absent means auto-detect (GPS/vehicle speed). */
+  readonly colorSignalOverrides = signal<Record<number, string | null>>({});
+
+  /** Set by ChartView on zoom/pan/reset (stack mode); EmbeddedMap reacts by fitting its bounds. */
+  readonly stackZoomRange = signal<StackZoomRange | null>(null);
+  /** Same, for overlay mode. */
+  readonly overlayZoomRange = signal<ZoomRange | null>(null);
 
   constructor(private readonly signalRegistry: SignalRegistryService) {}
 
@@ -104,6 +124,44 @@ export class MapService {
   clearHover(): void {
     this.stackHover.set(null);
     this.overlayHover.set(null);
+  }
+
+  setColorSignalOverride(fileIndex: number, signalName: string | null): void {
+    this.colorSignalOverrides.update((overrides) => ({
+      ...overrides,
+      [fileIndex]: signalName,
+    }));
+  }
+
+  setStackZoomRange(fileIndex: number, start: number, end: number): void {
+    this.stackZoomRange.set({ fileIndex, start, end });
+  }
+
+  setOverlayZoomRange(start: number, end: number): void {
+    this.overlayZoomRange.set({ start, end });
+  }
+
+  /** Port of legacy/src/mapmanager.js's `syncMapBounds`'s per-file point-sampling loop. */
+  getBoundsPointsInRange(
+    file: LoadedFile,
+    startAbs: number,
+    endAbs: number
+  ): Array<[number, number]> {
+    const { latKey, lonKey } = this.detectGpsSignals(file);
+    if (!latKey || !lonKey) return [];
+
+    const latData = file.signals[latKey];
+    const lonInterpolator = new MapLinearInterpolator(file.signals[lonKey]);
+    const points: Array<[number, number]> = [];
+
+    for (let i = 0; i < latData.length; i += 10) {
+      const p = latData[i];
+      if (p.x < startAbs || p.x > endAbs) continue;
+      const lat = p.y;
+      const lon = lonInterpolator.getValueAt(p.x);
+      if (lon !== null && this.isValidGps(lat, lon)) points.push([lat, lon]);
+    }
+    return points;
   }
 
   detectGpsSignals(file: LoadedFile): {

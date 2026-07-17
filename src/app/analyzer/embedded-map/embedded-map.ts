@@ -26,10 +26,11 @@ const TILES_DARK =
 
 /**
  * Port of legacy/src/mapmanager.js's per-file embedded map (`loadRoute`,
- * `#addRouteVisuals`, `#updateInfoControl`). Scope cuts vs. legacy: no
- * color-metric picker (auto-detects GPS/vehicle speed), always dark tiles
- * (no theme toggle yet — see Milestone 4 plan), and no reverse
- * chart-zoom-drives-map-bounds sync.
+ * `#addRouteVisuals`, `#updateInfoControl`), the manual color-metric
+ * picker (`setColorMetric`), and the reverse chart-zoom-drives-map-bounds
+ * sync (`syncMapBounds`, applied without a full route reload). Always
+ * dark tiles (no light-theme tile set defined by legacy — see
+ * PreferencesService.darkTheme's doc comment).
  */
 @Component({
   selector: 'app-embedded-map',
@@ -51,6 +52,14 @@ export class EmbeddedMap implements OnDestroy {
     () => this.appState.files()[this.fileIndex()]
   );
 
+  /** Signals offered in the color-metric picker; GPS lat/lon themselves are excluded. */
+  protected readonly colorableSignals = computed<string[]>(() => {
+    const file = this.file();
+    if (!file) return [];
+    const { latKey, lonKey } = this.mapService.detectGpsSignals(file);
+    return file.availableSignals.filter((s) => s !== latKey && s !== lonKey);
+  });
+
   protected readonly hasRoute = signal(false);
 
   private map: L.Map | null = null;
@@ -66,9 +75,11 @@ export class EmbeddedMap implements OnDestroy {
       const enabled = this.preferences.loadMap();
       const file = this.file();
       const container = this.mapContainer();
+      const override =
+        this.mapService.colorSignalOverrides()[this.fileIndex()] ?? null;
 
       if (enabled && file && container) {
-        this.loadRoute(file, container.nativeElement);
+        this.loadRoute(file, container.nativeElement, override);
       } else if (!enabled) {
         this.destroyMap();
       }
@@ -79,14 +90,33 @@ export class EmbeddedMap implements OnDestroy {
       if (!hover || hover.fileIndex !== this.fileIndex()) return;
       this.syncMarkerPosition(hover.time);
     });
+
+    effect(() => {
+      const range = this.mapService.stackZoomRange();
+      if (!range || range.fileIndex !== this.fileIndex()) return;
+      this.applyZoomRange(range.start, range.end);
+    });
+  }
+
+  protected selectedColorSignal(): string {
+    return this.mapService.colorSignalOverrides()[this.fileIndex()] ?? '';
+  }
+
+  protected onColorSignalChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.mapService.setColorSignalOverride(this.fileIndex(), value || null);
   }
 
   ngOnDestroy(): void {
     this.destroyMap();
   }
 
-  private loadRoute(file: LoadedFile, containerEl: HTMLDivElement): void {
-    const processed = this.mapService.processGpsData(file);
+  private loadRoute(
+    file: LoadedFile,
+    containerEl: HTMLDivElement,
+    colorSignalOverride: string | null
+  ): void {
+    const processed = this.mapService.processGpsData(file, colorSignalOverride);
     if (!processed) {
       this.hasRoute.set(false);
       return;
@@ -325,6 +355,23 @@ export class EmbeddedMap implements OnDestroy {
       centerSec + 0.5,
       this.fileIndex()
     );
+  }
+
+  /** Port of legacy/src/mapmanager.js's `syncMapBounds` for the single-file case. */
+  private applyZoomRange(startAbs: number, endAbs: number): void {
+    const file = this.file();
+    if (!this.map || !file) return;
+
+    const points = this.mapService.getBoundsPointsInRange(
+      file,
+      startAbs,
+      endAbs
+    );
+    if (points.length === 0) return;
+
+    const bounds = L.latLngBounds(points);
+    if (bounds.isValid())
+      this.map.fitBounds(bounds, { padding: [20, 20], animate: true });
   }
 
   private destroyMap(): void {

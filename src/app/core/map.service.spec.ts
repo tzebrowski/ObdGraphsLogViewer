@@ -284,4 +284,56 @@ describe('MapService', () => {
       expect(service.overlayHover()).toBeNull();
     });
   });
+
+  describe('colorSignalOverrides', () => {
+    it('sets and clears a per-file override independently', () => {
+      service.setColorSignalOverride(0, 'Boost');
+      service.setColorSignalOverride(1, 'RPM');
+      expect(service.colorSignalOverrides()).toEqual({ 0: 'Boost', 1: 'RPM' });
+
+      service.setColorSignalOverride(0, null);
+      expect(service.colorSignalOverrides()[0]).toBeNull();
+      expect(service.colorSignalOverrides()[1]).toBe('RPM');
+    });
+  });
+
+  describe('zoom range', () => {
+    it('setStackZoomRange/setOverlayZoomRange manage independent signals', () => {
+      service.setStackZoomRange(2, 100, 200);
+      service.setOverlayZoomRange(50, 150);
+      expect(service.stackZoomRange()).toEqual({
+        fileIndex: 2,
+        start: 100,
+        end: 200,
+      });
+      expect(service.overlayZoomRange()).toEqual({ start: 50, end: 150 });
+    });
+  });
+
+  describe('getBoundsPointsInRange', () => {
+    it('returns only valid GPS points within the absolute time range (sampled every 10th point, matching legacy)', () => {
+      const latitude = Array.from({ length: 21 }, (_, i) => ({
+        x: i * 100,
+        y: 52.0 + i * 0.001,
+      }));
+      const longitude = Array.from({ length: 21 }, (_, i) => ({
+        x: i * 100,
+        y: 21.0 + i * 0.001,
+      }));
+      const file = makeFile({ Latitude: latitude, Longitude: longitude });
+
+      // Samples land at indices 0, 10, 20 -> x = 0, 1000, 2000
+      const points = service.getBoundsPointsInRange(file, 900, 2100);
+      expect(points).toHaveLength(2);
+      expect(points[0][0]).toBeCloseTo(52.01);
+      expect(points[0][1]).toBeCloseTo(21.01);
+      expect(points[1][0]).toBeCloseTo(52.02);
+      expect(points[1][1]).toBeCloseTo(21.02);
+    });
+
+    it('returns an empty array when GPS signals are missing', () => {
+      const file = makeFile({ RPM: [{ x: 0, y: 1000 }] });
+      expect(service.getBoundsPointsInRange(file, 0, 1000)).toEqual([]);
+    });
+  });
 });

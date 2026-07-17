@@ -185,11 +185,13 @@ export class ChartView {
     chart.resetZoom();
     chart.update('none');
     this.syncSliderFromChart(index);
+    this.syncMapBounds(index, mode);
   }
 
   protected manualZoom(index: number, zoomLevel: number): void {
     this.charts[index]?.zoom(zoomLevel);
     this.syncSliderFromChart(index);
+    this.syncMapBounds(index, this.appState.viewMode());
   }
 
   /** Current [start, end] in seconds-from-file-start for the local range slider, defaulting to the full duration. */
@@ -222,6 +224,19 @@ export class ChartView {
       ...ranges,
       [index]: { start, end },
     }));
+  }
+
+  /** Port of legacy/src/chartmanager.js's `mapManager.syncMapBounds(...)` calls on zoom/pan/reset. */
+  private syncMapBounds(index: number, mode: ViewMode): void {
+    const chart = this.charts[index];
+    if (!chart) return;
+    const min = chart.scales['x'].min as number;
+    const max = chart.scales['x'].max as number;
+    if (mode === 'overlay') {
+      this.mapService.setOverlayZoomRange(min, max);
+    } else {
+      this.mapService.setStackZoomRange(index, min, max);
+    }
   }
 
   /** Recomputes the slider thumbs from the chart's current zoom/pan window. No-op in overlay mode, matching legacy. */
@@ -527,6 +542,7 @@ export class ChartView {
 
     chart.update('none');
     this.syncSliderFromChart(fileIdx);
+    this.syncMapBounds(chartIdx, mode);
   }
 
   private addAnnotationAtHover(
@@ -738,13 +754,19 @@ export class ChartView {
           pan: {
             enabled: true,
             mode: 'x',
-            onPanComplete: () => this.syncSliderFromChart(hoverFileIdx),
+            onPanComplete: () => {
+              this.syncSliderFromChart(hoverFileIdx);
+              this.syncMapBounds(hoverFileIdx, mode);
+            },
           },
           zoom: {
             wheel: { enabled: true },
             pinch: { enabled: true },
             mode: 'x',
-            onZoomComplete: () => this.syncSliderFromChart(hoverFileIdx),
+            onZoomComplete: () => {
+              this.syncSliderFromChart(hoverFileIdx);
+              this.syncMapBounds(hoverFileIdx, mode);
+            },
           },
         },
       },

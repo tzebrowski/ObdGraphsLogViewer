@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  computed,
   effect,
   inject,
   signal,
@@ -26,7 +27,10 @@ interface OverlayContext {
 /**
  * Port of legacy/src/mapmanager.js's `loadOverlayMap`: one merged map
  * showing every loaded file's route, all markers driven by the single
- * overlay chart's hover position (`MapService.overlayHover`).
+ * overlay chart's hover position (`MapService.overlayHover`). The
+ * color-metric picker and the reverse chart-zoom-drives-map-bounds sync
+ * apply uniformly across every file's route, matching legacy's single
+ * global `#activeColorSignal`/`syncMapBounds(..., null)` behavior.
  */
 @Component({
   selector: 'app-overlay-map',
@@ -44,6 +48,24 @@ export class OverlayMap implements OnDestroy {
 
   protected readonly hasRoute = signal(false);
 
+  /** Union of every loaded file's signals, minus whichever ones each file uses as GPS lat/lon. */
+  protected readonly colorableSignals = computed<string[]>(() => {
+    const files = this.appState.files();
+    const excluded = new Set<string>();
+    files.forEach((file) => {
+      const { latKey, lonKey } = this.mapService.detectGpsSignals(file);
+      if (latKey) excluded.add(latKey);
+      if (lonKey) excluded.add(lonKey);
+    });
+    const names = new Set<string>();
+    files.forEach((file) =>
+      file.availableSignals.forEach((s) => {
+        if (!excluded.has(s)) names.add(s);
+      })
+    );
+    return [...names].sort();
+  });
+
   private map: L.Map | null = null;
   private readonly contexts = new Map<number, OverlayContext>();
 
@@ -52,9 +74,10 @@ export class OverlayMap implements OnDestroy {
       const enabled = this.preferences.loadMap();
       const files = this.appState.files();
       const container = this.mapContainer();
+      const override = this.mapService.colorSignalOverrides()[0] ?? null;
 
       if (enabled && files.length > 0 && container) {
-        this.loadOverlay(files, container.nativeElement);
+        this.loadOverlay(files, container.nativeElement, override);
       } else if (!enabled) {
         this.destroyMap();
       }
@@ -65,13 +88,32 @@ export class OverlayMap implements OnDestroy {
       if (time === null) return;
       this.syncAllMarkers(time);
     });
+
+    effect(() => {
+      const range = this.mapService.overlayZoomRange();
+      if (!range) return;
+      this.applyZoomRange(range.start, range.end);
+    });
+  }
+
+  protected selectedColorSignal(): string {
+    return this.mapService.colorSignalOverrides()[0] ?? '';
+  }
+
+  protected onColorSignalChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.mapService.setColorSignalOverride(0, value || null);
   }
 
   ngOnDestroy(): void {
     this.destroyMap();
   }
 
-  private loadOverlay(files: LoadedFile[], containerEl: HTMLDivElement): void {
+  private loadOverlay(
+    files: LoadedFile[],
+    containerEl: HTMLDivElement,
+    colorSignalOverride: string | null
+  ): void {
     if (!this.map) {
       this.map = L.map(containerEl, { zoomControl: false });
       L.control.zoom({ position: 'topright' }).addTo(this.map);
@@ -88,7 +130,10 @@ export class OverlayMap implements OnDestroy {
     let hasValidRoute = false;
 
     files.forEach((file, fileIndex) => {
-      const processed = this.mapService.processGpsData(file);
+      const processed = this.mapService.processGpsData(
+        file,
+        colorSignalOverride
+      );
       if (!processed) return;
 
       const {
@@ -229,6 +274,30 @@ export class OverlayMap implements OnDestroy {
         if (svg) (svg as SVGElement).style.transform = `rotate(${angle}deg)`;
       }
     });
+  }
+
+  /** Port of legacy/src/mapmanager.js's `syncMapBounds` for the overlay (fileIndex === null) case. */
+  private applyZoomRange(startAbs: number, endAbs: number): void {
+    const files = this.appState.files();
+    if (!this.map || files.length === 0) return;
+    const baseStart = files[0].startTime;
+
+    const bounds = L.latLngBounds([]);
+    let hasPoints = false;
+    files.forEach((file) => {
+      const points = this.mapService.getBoundsPointsInRange(
+        file,
+        startAbs - baseStart + file.startTime,
+        endAbs - baseStart + file.startTime
+      );
+      points.forEach((p) => {
+        bounds.extend(p);
+        hasPoints = true;
+      });
+    });
+
+    if (hasPoints && bounds.isValid())
+      this.map.fitBounds(bounds, { padding: [20, 20], animate: true });
   }
 
   private destroyMap(): void {
