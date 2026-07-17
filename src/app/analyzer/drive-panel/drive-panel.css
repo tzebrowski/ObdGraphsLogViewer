@@ -70,3 +70,61 @@
   flex-direction: column;
   gap: 6px;
 }
+
+.file-card-tags {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.existing-tag-pill {
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  font-weight: 500;
+  text-transform: capitalize;
+  transition: filter 0.2s;
+}
+
+.existing-tag-pill:hover {
+  filter: brightness(1.2);
+}
+
+.existing-tag-pill.active {
+  filter: brightness(1.4);
+  box-shadow: 0 0 0 1px currentcolor;
+}
+
+.add-tag-btn {
+  background: transparent;
+  border: 1px dashed var(--text-muted);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.add-tag-btn:hover {
+  color: var(--text-color);
+}
+
+.share-file-btn {
+  background: transparent;
+  border: 1px solid #4285f4;
+  color: #4285f4;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+
+.share-file-btn:hover {
+  background: #4285f415;
+}

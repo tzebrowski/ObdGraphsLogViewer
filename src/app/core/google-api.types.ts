@@ -35,6 +35,17 @@ interface GapiFilesList {
     pageToken?: string | null;
     orderBy?: string;
   }): Promise<DriveFilesListResponse>;
+  update(args: {
+    fileId: string;
+    appProperties: Record<string, string>;
+  }): Promise<unknown>;
+}
+
+interface GapiPermissions {
+  create(args: {
+    fileId: string;
+    resource: { role: string; type: string };
+  }): Promise<unknown>;
 }
 
 interface GapiClient {
@@ -46,6 +57,7 @@ interface GapiClient {
       get(args: { fields: string }): Promise<{ result: { user: DriveUser } }>;
     };
     files: GapiFilesList;
+    permissions: GapiPermissions;
   };
 }
 

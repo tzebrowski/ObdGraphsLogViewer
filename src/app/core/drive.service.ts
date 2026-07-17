@@ -6,22 +6,39 @@ import { DriveApiFile } from './google-api.types';
 
 const DRIVE_ROOT_FOLDER = 'mygiulia';
 const DRIVE_SUB_FOLDER = 'trips';
+const RECENT_KEY = 'recent_logs';
+const RECENT_LIMIT = 3;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 export interface DriveFileEntry {
   file: DriveApiFile;
   meta: { date: string; length: string };
   timestamp: number;
+  tags?: string[];
 }
 
 export type DriveSortOrder = 'asc' | 'desc';
 
+function readRecentIds(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Port of legacy/src/drive.js's data layer: folder lookup, paginated file
- * listing, search/sort, and authenticated file download. The legacy
- * tagging (appProperties), public-link sharing, pagination controls, and
- * localStorage "recently viewed" section are dropped for Milestone 2 — out
- * of scope per the milestone plan (auth + listing + signal registry only);
- * they can be reintroduced during the Milestone 4 styling-parity pass.
+ * listing, search/sort, tagging (appProperties), public-link sharing,
+ * client-side pagination over the fetched list, and the localStorage
+ * "recently viewed" history. Month/date-range filtering are a tracked gap.
+ *
+ * Tagging and sharing call Drive *write* endpoints (files.update,
+ * permissions.create) against files discovered via folder-scanning, which
+ * requires the full `drive` OAuth scope (see AuthService) — legacy
+ * requested only `drive.readonly` while still calling these endpoints, so
+ * they silently failed there at runtime.
  */
 @Injectable({ providedIn: 'root' })
 export class DriveService {
@@ -30,17 +47,52 @@ export class DriveService {
   readonly error = signal<string | null>(null);
   readonly searchTerm = signal('');
   readonly sortOrder = signal<DriveSortOrder>('desc');
+  readonly selectedTag = signal<string | null>(null);
+
+  readonly currentPage = signal(1);
+  readonly itemsPerPage = signal<number>(PAGE_SIZE_OPTIONS[2]);
+  readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
+
+  readonly recentIds = signal<string[]>(readRecentIds());
 
   readonly filteredSortedFiles = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
-    const filtered = term
-      ? this.files().filter((item) =>
-          item.file.name.toLowerCase().includes(term)
-        )
-      : this.files();
+    const tag = this.selectedTag();
+    let filtered = this.files();
+    if (term) {
+      filtered = filtered.filter(
+        (item) =>
+          item.file.name.toLowerCase().includes(term) ||
+          (item.tags ?? []).some((t) => t.toLowerCase().includes(term))
+      );
+    }
+    if (tag) {
+      filtered = filtered.filter((item) => (item.tags ?? []).includes(tag));
+    }
 
     const sorted = [...filtered].sort((a, b) => a.timestamp - b.timestamp);
     return this.sortOrder() === 'desc' ? sorted.reverse() : sorted;
+  });
+
+  readonly totalPages = computed(() =>
+    Math.max(
+      1,
+      Math.ceil(this.filteredSortedFiles().length / this.itemsPerPage())
+    )
+  );
+
+  readonly paginatedFiles = computed(() => {
+    const page = Math.min(this.currentPage(), this.totalPages());
+    const size = this.itemsPerPage();
+    const start = (page - 1) * size;
+    return this.filteredSortedFiles().slice(start, start + size);
+  });
+
+  readonly recentEntries = computed(() => {
+    const byId = new Map(this.files().map((entry) => [entry.file.id, entry]));
+    return this.recentIds()
+      .map((id) => byId.get(id))
+      .filter((entry): entry is DriveFileEntry => entry !== undefined);
   });
 
   private activeLoadToken = 0;
@@ -60,10 +112,111 @@ export class DriveService {
 
   setSearchTerm(term: string): void {
     this.searchTerm.set(term);
+    this.currentPage.set(1);
   }
 
   toggleSortOrder(): void {
     this.sortOrder.set(this.sortOrder() === 'desc' ? 'asc' : 'desc');
+  }
+
+  setSelectedTag(tag: string | null): void {
+    this.selectedTag.set(tag);
+    this.currentPage.set(1);
+  }
+
+  setItemsPerPage(size: number): void {
+    this.itemsPerPage.set(size);
+    this.currentPage.set(1);
+  }
+
+  prevPage(): void {
+    this.currentPage.update((page) => Math.max(1, page - 1));
+  }
+
+  nextPage(): void {
+    this.currentPage.update((page) => Math.min(this.totalPages(), page + 1));
+  }
+
+  /** Port of legacy/src/drive.js's `promptAddTag`/`_syncTagFromChart` — no remove-tag UI exists in legacy either. */
+  async addTag(entry: DriveFileEntry, rawTag: string): Promise<void> {
+    const tag = rawTag.trim().toLowerCase();
+    if (!tag) return;
+
+    const currentTags = entry.tags ?? [];
+    if (currentTags.includes(tag)) {
+      this.appState.showAlert('This tag is already applied to this log.');
+      return;
+    }
+
+    const updatedTags = [...currentTags, tag];
+    this.setEntryTags(entry.file.id, updatedTags);
+
+    try {
+      await window.gapi!.client.drive.files.update({
+        fileId: entry.file.id,
+        appProperties: { tags: updatedTags.join(',') },
+      });
+    } catch (error) {
+      console.error('Error saving tag:', error);
+      this.setEntryTags(entry.file.id, currentTags);
+      this.appState.showAlert(
+        `Failed to save tag to Google Drive: ${(error as Error).message}`
+      );
+    }
+  }
+
+  /** Port of legacy/src/drive.js's `makeFilePublicAndCopyLink`. */
+  async makeFilePublicAndCopyLink(fileId: string): Promise<void> {
+    this.appState.loading.set(true);
+    this.appState.loadingMessage.set('Generating shareable app link...');
+
+    try {
+      await window.gapi!.client.drive.permissions.create({
+        fileId,
+        resource: { role: 'reader', type: 'anyone' },
+      });
+
+      const baseUrl = window.location.origin + window.location.pathname;
+      const appLink = `${baseUrl}?fileId=${fileId}#analyzer`;
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(appLink);
+        this.appState.showAlert(
+          'Success! App link copied to your clipboard. Anyone with this link can view the log in the app.'
+        );
+      } else {
+        this.appState.showAlert(`Success! Shareable Link: ${appLink}`);
+      }
+    } catch (error) {
+      console.error('Error making file public:', error);
+      this.appState.showAlert(
+        `Failed to create public link: ${(error as Error).message}`
+      );
+    } finally {
+      this.appState.loading.set(false);
+    }
+  }
+
+  clearRecentHistory(): void {
+    localStorage.removeItem(RECENT_KEY);
+    this.recentIds.set([]);
+  }
+
+  private setEntryTags(fileId: string, tags: string[]): void {
+    this.files.update((files) =>
+      files.map((entry) =>
+        entry.file.id === fileId ? { ...entry, tags } : entry
+      )
+    );
+  }
+
+  private recordRecentlyViewed(id: string): void {
+    const next = [id, ...this.recentIds().filter((i) => i !== id)].slice(
+      0,
+      RECENT_LIMIT
+    );
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    this.recentIds.set(next);
   }
 
   /** Signs in (if needed) and scans the Drive `mygiulia/trips` folder for logs. */
@@ -104,6 +257,7 @@ export class DriveService {
     const currentToken = ++this.activeLoadToken;
     this.appState.loading.set(true);
     this.appState.loadingMessage.set('Downloading log...');
+    this.recordRecentlyViewed(id);
 
     try {
       const accessToken = this.auth.getAccessToken();
@@ -219,6 +373,9 @@ export class DriveService {
           file: f,
           meta: this.getFileMetadata(f.name),
           timestamp: this.extractTimestamp(f.name),
+          tags: f.appProperties?.['tags']
+            ? f.appProperties['tags'].split(',').filter(Boolean)
+            : [],
         });
       });
 

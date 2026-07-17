@@ -57,7 +57,39 @@
   </button>
 </div>
 
-@if (drive.error()) {
+@if (drive.recentEntries().length > 0) {
+<div class="recent-section">
+  <div class="month-header drv-recent-header" (click)="toggleRecentExpanded()">
+    <span><i class="fas fa-history drv-icon-margin"></i> Recently Viewed</span>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span
+        class="drv-clear-history"
+        title="Clear History"
+        (click)="clearRecentHistory($event)"
+      >
+        <i class="fas fa-trash-alt"></i> Clear
+      </span>
+      <i
+        class="fas toggle-icon"
+        [class.fa-chevron-down]="recentExpanded()"
+        [class.fa-chevron-right]="!recentExpanded()"
+      ></i>
+    </div>
+  </div>
+  @if (recentExpanded()) {
+  <div class="recent-list-container">
+    @for (item of drive.recentEntries(); track item.file.id) {
+    <div class="drive-file-card drv-recent-card" (click)="loadFile(item)">
+      <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
+      <div class="file-card-body">
+        <div class="file-name-title">{{ item.file.name }}</div>
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>
+} @if (drive.error()) {
 <div class="drive-status-msg drive-error-msg">{{ drive.error() }}</div>
 } @if (drive.loading() && drive.files().length === 0) {
 <div class="drive-status-msg">Searching for logs...</div>
@@ -67,7 +99,7 @@
 }
 
 <div class="drive-file-list">
-  @for (item of drive.filteredSortedFiles(); track item.file.id) {
+  @for (item of drive.paginatedFiles(); track item.file.id) {
   <div class="drive-file-card" (click)="loadFile(item)">
     <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
     <div class="file-card-body">
@@ -86,8 +118,62 @@
           <span>{{ sizeKb(item.file.size) }} KB</span>
         </div>
       </div>
+      <div class="file-card-tags">
+        @for (tag of item.tags ?? []; track tag) {
+        <span
+          class="existing-tag-pill"
+          [class.active]="drive.selectedTag() === tag"
+          [style]="tagStyle(tag)"
+          title="Click to filter by this tag"
+          (click)="filterByTag(tag, $event)"
+        >
+          {{ tag }}
+        </span>
+        }
+        <span class="add-tag-btn" (click)="addTag(item, $event)">
+          <i class="fas fa-plus"></i> Tag
+        </span>
+        <span
+          class="share-file-btn"
+          title="Create public app link and copy"
+          (click)="shareFile(item, $event)"
+        >
+          <i class="fas fa-link"></i> Get Link
+        </span>
+      </div>
     </div>
   </div>
   }
 </div>
-}
+
+@if (drive.filteredSortedFiles().length > 0) {
+<div class="drv-pagination">
+  <div style="display: flex; align-items: center; gap: 5px">
+    <span class="drv-page-info">Show:</span>
+    <select [value]="drive.itemsPerPage()" (change)="onPageSizeChange($event)">
+      @for (size of drive.pageSizeOptions; track size) {
+      <option [value]="size">{{ size }}</option>
+      }
+    </select>
+  </div>
+  <div style="display: flex; align-items: center; gap: 8px">
+    <button
+      class="btn btn-sm"
+      [disabled]="drive.currentPage() === 1"
+      (click)="drive.prevPage()"
+    >
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <span class="drv-page-info"
+      >{{ pageRangeLabel() }} of {{ drive.filteredSortedFiles().length }}</span
+    >
+    <button
+      class="btn btn-sm"
+      [disabled]="drive.currentPage() === drive.totalPages()"
+      (click)="drive.nextPage()"
+    >
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+} }

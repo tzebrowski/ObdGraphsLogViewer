@@ -3,13 +3,21 @@ import { AppStateService } from './app-state.service';
 import { DriveUser, GapiToken, GoogleTokenClient } from './google-api.types';
 import { PreferencesService } from './preferences.service';
 
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+/**
+ * Deliberate deviation from legacy/src/auth.js (`drive.readonly`): tagging
+ * (appProperties) and public-link sharing write to files discovered via
+ * folder-scanning `files.list`, not files created/opened through this app,
+ * so `drive.file` doesn't cover them — the full `drive` scope is required.
+ * Legacy requested `drive.readonly` while still calling those write
+ * endpoints, so tagging/sharing silently failed there at runtime.
+ */
+const SCOPES = 'https://www.googleapis.com/auth/drive';
 const DISCOVERY_DOC =
   'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 /**
  * Port of legacy/src/auth.js. Loads Google Identity Services (GSI) + GAPI
- * dynamically and manages the Drive-readonly OAuth token. The legacy
+ * dynamically and manages the Drive OAuth token. The legacy
  * `_pendingAction`/`toggleUserProfile` modal plumbing is dropped — `signIn()`
  * returns a Promise instead, which DriveService awaits before scanning, so
  * there's no need for AuthService to know about DriveService (would
