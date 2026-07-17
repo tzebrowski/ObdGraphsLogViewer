@@ -31,10 +31,28 @@ export class Sidebar {
   private readonly palette = inject(SignalPaletteService);
 
   protected readonly searchTerm = signal('');
-  protected readonly settingsCollapsed = signal(true);
 
-  protected toggleSettingsCollapsed(): void {
-    this.settingsCollapsed.update((v) => !v);
+  /**
+   * Port of legacy/src/ui.js's `initSidebarSectionsCollapse` — every
+   * `.control-group` with a clickable header can be collapsed
+   * independently. "Settings & Preferences" starts collapsed, matching
+   * legacy's static `class="control-group gray-box collapsed"`.
+   */
+  protected readonly collapsedSections = signal<ReadonlySet<string>>(
+    new Set(['settings'])
+  );
+
+  protected isSectionCollapsed(id: string): boolean {
+    return this.collapsedSections().has(id);
+  }
+
+  protected toggleSection(id: string): void {
+    this.collapsedSections.update((sections) => {
+      const next = new Set(sections);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   protected signalRows(file: LoadedFile): SignalRow[] {

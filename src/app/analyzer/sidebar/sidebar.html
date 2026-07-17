@@ -6,8 +6,13 @@
 >
   <h2>My Giulia Telemetry Analyzer</h2>
 
-  <div class="control-group gray-box source-container">
-    <h3 class="group-header">Cloud Files</h3>
+  <div
+    class="control-group gray-box source-container"
+    [class.collapsed]="isSectionCollapsed('cloudFiles')"
+  >
+    <h3 class="group-header" (click)="toggleSection('cloudFiles')">
+      Cloud Files
+    </h3>
     <app-drive-panel></app-drive-panel>
     <div class="status-text-subtle">
       @if (appState.files().length > 0) { {{ appState.files().length }} logs
@@ -19,14 +24,20 @@
     <app-library-panel></app-library-panel>
   </div>
 
-  <div class="control-group gray-box">
-    <h3>Anomaly Scanner</h3>
+  <div
+    class="control-group gray-box"
+    [class.collapsed]="isSectionCollapsed('anomalyScanner')"
+  >
+    <h3 (click)="toggleSection('anomalyScanner')">Anomaly Scanner</h3>
     <app-anomaly-scanner></app-anomaly-scanner>
   </div>
 
-  <div class="control-group flex-grow gray-box">
+  <div
+    class="control-group flex-grow gray-box"
+    [class.collapsed]="isSectionCollapsed('signals')"
+  >
     <div class="group-header-row">
-      <h3>Signals</h3>
+      <h3 (click)="toggleSection('signals')">Signals</h3>
       <div class="button-row-sw">
         <button class="btn btn-sm" (click)="toggleAllSignals(true)">All</button>
         <button class="btn btn-sm" (click)="toggleAllSignals(false)">
@@ -124,8 +135,11 @@
     </div>
   </div>
 
-  <div class="control-group gray-box" [class.collapsed]="settingsCollapsed()">
-    <h3 (click)="toggleSettingsCollapsed()">Settings & Preferences</h3>
+  <div
+    class="control-group gray-box"
+    [class.collapsed]="isSectionCollapsed('settings')"
+  >
+    <h3 (click)="toggleSection('settings')">Settings & Preferences</h3>
     <p class="section-description">
       Customize the theme, colors, and cloud integration.
     </p>
