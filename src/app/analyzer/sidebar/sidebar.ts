@@ -1,7 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { AppStateService } from '../../core/app-state.service';
 import { LoadedFile } from '../../core/models';
+import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
+import { UiStateService } from '../../core/ui-state.service';
 import { AnomalyScanner } from '../anomaly-scanner/anomaly-scanner';
 import { DrivePanel } from '../drive-panel/drive-panel';
 import { LibraryPanel } from '../library-panel/library-panel';
@@ -24,6 +26,8 @@ interface SignalRow {
 })
 export class Sidebar {
   protected readonly appState = inject(AppStateService);
+  protected readonly preferences = inject(PreferencesService);
+  protected readonly uiState = inject(UiStateService);
   private readonly palette = inject(SignalPaletteService);
 
   protected readonly searchTerm = signal('');
@@ -81,5 +85,22 @@ export class Sidebar {
 
   protected removeFile(index: number): void {
     this.appState.removeFileAt(index);
+  }
+
+  protected paletteKey(fileName: string, signalName: string): string {
+    return this.palette.getSignalKey(fileName, signalName);
+  }
+
+  protected setCustomColor(
+    fileName: string,
+    signalName: string,
+    event: Event
+  ): void {
+    const color = (event.target as HTMLInputElement).value;
+    this.preferences.setCustomColor(
+      this.paletteKey(fileName, signalName),
+      color
+    );
+    this.palette.resetCache();
   }
 }

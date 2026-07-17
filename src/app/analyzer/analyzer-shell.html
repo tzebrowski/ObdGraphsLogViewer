@@ -1,8 +1,37 @@
 <div class="app-container">
   <app-sidebar></app-sidebar>
+  <div
+    class="sidebar-backdrop"
+    [class.active]="uiState.sidebarMobileActive()"
+    (click)="uiState.closeSidebarMobile()"
+  ></div>
 
   <div class="main-content" id="mainContent">
     <div class="m1-toolbar">
+      <button
+        class="btn btn-sm"
+        title="Toggle Sidebar"
+        (click)="uiState.toggleSidebar()"
+      >
+        <i class="fas fa-bars"></i>
+      </button>
+      <button
+        class="btn btn-sm"
+        title="Toggle theme"
+        (click)="preferences.setDarkTheme(!preferences.darkTheme())"
+      >
+        @if (preferences.darkTheme()) {
+        <i class="fas fa-sun"></i> Light } @else {
+        <i class="fas fa-moon"></i> Dark }
+      </button>
+      <label class="btn btn-sm" title="Use per-signal custom colors">
+        <input
+          type="checkbox"
+          [checked]="preferences.useCustomPalette()"
+          (change)="preferences.setUseCustomPalette($any($event.target).checked)"
+        />
+        Custom Palette
+      </label>
       <label class="btn btn-sm">
         <i class="fas fa-folder-open"></i> Open Local
         <input

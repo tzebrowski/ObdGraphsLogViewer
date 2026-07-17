@@ -6,6 +6,7 @@ import { HistogramService } from '../core/histogram.service';
 import { MathChannelsService } from '../core/math-channels.service';
 import { ViewMode } from '../core/models';
 import { PreferencesService } from '../core/preferences.service';
+import { UiStateService } from '../core/ui-state.service';
 import { XyAnalysisService } from '../core/xy-analysis.service';
 import { ChartView } from './chart-view/chart-view';
 import { DynoModal } from './dyno-modal/dyno-modal';
@@ -39,6 +40,7 @@ export class AnalyzerShell {
   protected readonly xy = inject(XyAnalysisService);
   protected readonly histogram = inject(HistogramService);
   protected readonly preferences = inject(PreferencesService);
+  protected readonly uiState = inject(UiStateService);
   private readonly dataProcessor = inject(DataProcessorService);
 
   protected setViewMode(mode: ViewMode): void {

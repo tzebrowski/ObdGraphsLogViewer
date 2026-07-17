@@ -2,6 +2,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { AnalyzerShell } from './analyzer/analyzer-shell';
 import { AuthService } from './core/auth.service';
 import { DeepLinkService } from './core/deep-link.service';
+import { PreferencesService } from './core/preferences.service';
 import { ProjectManagerService } from './core/project-manager.service';
 import { SignalRegistryService } from './core/signal-registry.service';
 import { Landing } from './landing/landing';
@@ -23,6 +24,7 @@ type Route = 'landing' | 'analyzer';
 })
 export class App {
   private readonly deepLink = inject(DeepLinkService);
+  private readonly preferences = inject(PreferencesService);
   protected readonly route = signal<Route>(this.routeFromHash());
 
   constructor() {
@@ -41,6 +43,13 @@ export class App {
       document.body.classList.toggle('analyzer-active', isAnalyzer);
       document.body.classList.toggle('landing-active', !isAnalyzer);
       document.body.classList.toggle('docs-body', !isAnalyzer);
+    });
+
+    effect(() => {
+      document.body.classList.toggle(
+        'dark-theme',
+        this.preferences.darkTheme()
+      );
     });
   }
 

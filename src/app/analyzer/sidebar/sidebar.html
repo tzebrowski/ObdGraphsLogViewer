@@ -1,4 +1,9 @@
-<div class="sidebar" id="sidebar">
+<div
+  class="sidebar"
+  id="sidebar"
+  [class.collapsed]="uiState.sidebarCollapsed()"
+  [class.active]="uiState.sidebarMobileActive()"
+>
   <h2>My Giulia Telemetry Analyzer</h2>
 
   <div class="control-group gray-box source-container">
@@ -86,10 +91,19 @@
         <div class="sig-list">
           @for (row of signalRows(file); track row.name) {
           <div class="signal-item">
+            @if (preferences.useCustomPalette()) {
+            <input
+              type="color"
+              class="signal-color-picker"
+              [value]="colorFor(fileIdx, row.name, file)"
+              (change)="setCustomColor(file.name, row.name, $event)"
+            />
+            } @else {
             <span
               class="signal-color-swatch"
               [style.background]="colorFor(fileIdx, row.name, file)"
             ></span>
+            }
             <input
               type="checkbox"
               [id]="'chk-f' + fileIdx + '-' + row.name"

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AppStateService } from './app-state.service';
+import { PreferencesService } from './preferences.service';
 
 const DARK_PALETTE = [
   '#FF3366',
@@ -29,14 +30,41 @@ const DARK_PALETTE = [
   '#99FF33',
 ];
 
+const LIGHT_PALETTE = [
+  '#D32F2F',
+  '#1976D2',
+  '#388E3C',
+  '#F57C00',
+  '#7B1FA2',
+  '#0097A7',
+  '#C2185B',
+  '#689F38',
+  '#E64A19',
+  '#303F9F',
+  '#00796B',
+  '#AFB42B',
+  '#5D4037',
+  '#455A64',
+  '#C0CA33',
+  '#FBC02D',
+  '#FFA000',
+  '#F51720',
+  '#0288D1',
+  '#004D40',
+  '#8E24AA',
+  '#D81B60',
+  '#558B2F',
+  '#1565C0',
+  '#EF6C00',
+];
+
 const DEFAULT_COLOR = '#888888';
 
 /**
- * Port of legacy/src/palettemanager.js's color-assignment algorithm. The
- * custom-user-palette override (Preferences) and light/dark theme toggle are
- * deferred — Milestone 1 always uses the dark palette, matching the app's
- * default theme. Math/filtered-channel color bucketing carries over so the
- * behavior is ready once Milestone 3 (math channels) lands.
+ * Port of legacy/src/palettemanager.js's color-assignment algorithm,
+ * including the light/dark palette switch and custom-user-palette override
+ * (both driven by PreferencesService). Math/filtered-channel color
+ * bucketing carries over unchanged.
  */
 @Injectable({ providedIn: 'root' })
 export class SignalPaletteService {
@@ -44,7 +72,10 @@ export class SignalPaletteService {
   private readonly mathColorMap = new Map<string, string>();
   private mathColorIndex = 0;
 
-  constructor(private readonly appState: AppStateService) {}
+  constructor(
+    private readonly appState: AppStateService,
+    private readonly preferences: PreferencesService
+  ) {}
 
   resetCache(): void {
     this.colorCache.clear();
@@ -53,7 +84,9 @@ export class SignalPaletteService {
   }
 
   getColorForSignal(fileIdx: number, sigIdx: number): string {
-    const cacheKey = `${fileIdx}:${sigIdx}`;
+    const isDark = this.preferences.darkTheme();
+    const useCustom = this.preferences.useCustomPalette();
+    const cacheKey = `${fileIdx}:${sigIdx}:${isDark}:${useCustom}`;
     const cached = this.colorCache.get(cacheKey);
     if (cached) return cached;
 
@@ -61,18 +94,41 @@ export class SignalPaletteService {
     if (!file) return DEFAULT_COLOR;
 
     const signalName = file.availableSignals[sigIdx] || `Signal_${sigIdx}`;
-    const color = this.resolveColor(signalName, fileIdx, sigIdx);
+    const color = this.resolveColor(
+      file.name,
+      signalName,
+      fileIdx,
+      sigIdx,
+      isDark,
+      useCustom
+    );
     this.colorCache.set(cacheKey, color);
     return color;
   }
 
+  /** Matches legacy/src/palettemanager.js's `getSignalKey` — used to key the persisted custom-palette map. */
+  getSignalKey(fileName: string, signalName: string): string {
+    return `${fileName}_${signalName}`;
+  }
+
   private resolveColor(
+    fileName: string,
     signalName: string,
     fileIdx: number,
-    sigIdx: number
+    sigIdx: number,
+    isDark: boolean,
+    useCustom: boolean
   ): string {
-    const palette = DARK_PALETTE;
-    const key = `${fileIdx}:${signalName}`;
+    if (useCustom) {
+      const custom =
+        this.preferences.customPalette()[
+          this.getSignalKey(fileName, signalName)
+        ];
+      if (custom) return custom;
+    }
+
+    const palette = isDark ? DARK_PALETTE : LIGHT_PALETTE;
+    const key = `${fileIdx}:${signalName}:${isDark}`;
 
     if (
       sigIdx === 999 ||

@@ -27,6 +27,7 @@ import Hammer from 'hammerjs';
 import { AppStateService } from '../../core/app-state.service';
 import { MapService } from '../../core/map.service';
 import { ActiveHighlight, LoadedFile, ViewMode } from '../../core/models';
+import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
 import { EmbeddedMap } from '../embedded-map/embedded-map';
 import { OverlayMap } from '../overlay-map/overlay-map';
@@ -89,6 +90,7 @@ export class ChartView {
   protected readonly appState = inject(AppStateService);
   private readonly palette = inject(SignalPaletteService);
   private readonly mapService = inject(MapService);
+  private readonly preferences = inject(PreferencesService);
 
   protected readonly canvasRefs =
     viewChildren<ElementRef<HTMLCanvasElement>>('canvasEl');
@@ -100,6 +102,7 @@ export class ChartView {
       const files = this.appState.files();
       const mode = this.appState.viewMode();
       const canvases = this.canvasRefs();
+      this.preferences.darkTheme();
 
       const expectedCanvases =
         files.length === 0 ? 0 : mode === 'overlay' ? 1 : files.length;
@@ -322,6 +325,11 @@ export class ChartView {
   ): ChartOptions<'line'> {
     const appState = this.appState;
     const mapService = this.mapService;
+    const isDark = this.preferences.darkTheme();
+    const textColor = isDark ? '#F8F9FA' : '#333333';
+    const gridColor = isDark
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.1)';
     const options: ChartOptions<'line'> = {
       responsive: true,
       maintainAspectRatio: false,
@@ -338,13 +346,23 @@ export class ChartView {
         }
       },
       scales: {
-        y: { beginAtZero: true, max: 1.2, ticks: { display: false } },
+        y: {
+          beginAtZero: true,
+          max: 1.2,
+          ticks: { display: false },
+          grid: { color: gridColor },
+        },
         x: {
           type: 'linear' as const,
           min: xMin,
           max: xMax,
-          title: { display: true, text: 'Trip Duration (mm:ss)' },
+          title: {
+            display: true,
+            text: 'Trip Duration (mm:ss)',
+            color: textColor,
+          },
           ticks: {
+            color: textColor,
             callback: (value) => {
               const date = new Date(value as number);
               const mm = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -355,6 +373,7 @@ export class ChartView {
               return `${mm}-${dd} ${hh}:${min}:${ss}`;
             },
           },
+          grid: { color: gridColor },
         },
       },
       plugins: {
@@ -412,6 +431,7 @@ export class ChartView {
           position: 'bottom',
           labels: {
             font: { size: 11 },
+            color: textColor,
             filter: (item, chartData) => {
               const ds = chartData.datasets[
                 item.datasetIndex!
