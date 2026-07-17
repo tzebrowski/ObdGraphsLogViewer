@@ -2,12 +2,12 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { AnalyzerShell } from './analyzer/analyzer-shell';
 import { AuthService } from './core/auth.service';
 import { DeepLinkService } from './core/deep-link.service';
+import { Route } from './core/models';
 import { PreferencesService } from './core/preferences.service';
 import { ProjectManagerService } from './core/project-manager.service';
 import { SignalRegistryService } from './core/signal-registry.service';
 import { Landing } from './landing/landing';
-
-type Route = 'landing' | 'analyzer';
+import { TopNav } from './top-nav/top-nav';
 
 /**
  * Root component. Ports the hash-based show/hide toggle from
@@ -18,7 +18,7 @@ type Route = 'landing' | 'analyzer';
  */
 @Component({
   selector: 'app-root',
-  imports: [Landing, AnalyzerShell],
+  imports: [Landing, AnalyzerShell, TopNav],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

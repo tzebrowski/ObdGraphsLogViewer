@@ -27,8 +27,14 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import Hammer from 'hammerjs';
 import { AppStateService } from '../../core/app-state.service';
+import { EventBusService } from '../../core/event-bus.service';
 import { MapService } from '../../core/map.service';
-import { ActiveHighlight, LoadedFile, ViewMode } from '../../core/models';
+import {
+  ActiveHighlight,
+  EVENTS,
+  LoadedFile,
+  ViewMode,
+} from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
 import { EmbeddedMap } from '../embedded-map/embedded-map';
@@ -100,6 +106,7 @@ export class ChartView {
   private readonly palette = inject(SignalPaletteService);
   private readonly mapService = inject(MapService);
   private readonly preferences = inject(PreferencesService);
+  private readonly bus = inject(EventBusService);
 
   protected readonly canvasRefs =
     viewChildren<ElementRef<HTMLCanvasElement>>('canvasEl');
@@ -144,6 +151,13 @@ export class ChartView {
     effect(() => {
       this.applyActiveHighlight(this.appState.activeHighlight());
     });
+
+    this.bus.on(EVENTS.CHART_RESET_ALL).subscribe(() => this.resetAll());
+  }
+
+  /** Port of legacy/src/chartmanager.js's `reset()` — TopNav's global "Reset Zoom" button. */
+  private resetAll(): void {
+    this.charts.forEach((_, index) => this.resetChart(index));
   }
 
   protected trackByFile(index: number, file: LoadedFile): unknown {

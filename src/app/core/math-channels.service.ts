@@ -55,14 +55,17 @@ class LinearInterpolator {
 /**
  * Port of legacy/src/mathchannels.js's computational engine (createChannel,
  * interpolation, auto-math, formula execution). The legacy modal's custom
- * searchable-autocomplete widget, "isolate on chart" auto-select-checkbox
- * animation, and gas-pedal quick-launch shortcut are dropped — the
- * MathChannelModal component (Milestone 3a) uses native form controls
- * instead, wired directly to this service's public API.
+ * searchable-autocomplete widget and "isolate on chart" auto-select-checkbox
+ * animation are dropped — the MathChannelModal component (Milestone 3a) uses
+ * native form controls instead, wired directly to this service's public API.
+ * The gas-pedal quick-launch shortcut is ported via `openModalWithFormula`
+ * (see TopNav's Quick Gas Filter button).
  */
 @Injectable({ providedIn: 'root' })
 export class MathChannelsService {
   readonly isModalOpen = signal(false);
+  /** Consumed once by MathChannelModal.resetForm() to pre-select a formula on open (e.g. the top-nav's Quick Gas Filter shortcut). */
+  readonly preselectFormulaId = signal<string | null>(null);
 
   constructor(
     private readonly appState: AppStateService,
@@ -77,6 +80,16 @@ export class MathChannelsService {
       this.appState.showAlert('Please load a log file first.');
       return;
     }
+    this.isModalOpen.set(true);
+  }
+
+  /** Port of legacy/src/entry.js's `openQuickGasFilter` — opens the modal with a formula pre-selected. */
+  openModalWithFormula(formulaId: string): void {
+    if (this.appState.files().length === 0) {
+      this.appState.showAlert('Please load a log file first.');
+      return;
+    }
+    this.preselectFormulaId.set(formulaId);
     this.isModalOpen.set(true);
   }
 

@@ -1,4 +1,11 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { AppStateService } from '../../core/app-state.service';
 import { MathDefinition } from '../../core/math-definitions';
 import { MathChannelsService } from '../../core/math-channels.service';
@@ -7,10 +14,12 @@ import { SignalRegistryService } from '../../core/signal-registry.service';
 
 /**
  * Port of legacy/src/mathchannels.js's modal UI. The custom searchable-
- * autocomplete widget is replaced with native `<select>`/checkbox controls;
- * the gas-pedal quick-launch shortcut is dropped. Signal-picker pre-fill
- * (matching a formula's expected input against the file's actual signal
- * names) is kept since it's the main usability win of the original widget.
+ * autocomplete widget is replaced with native `<select>`/checkbox controls.
+ * Signal-picker pre-fill (matching a formula's expected input against the
+ * file's actual signal names) is kept since it's the main usability win of
+ * the original widget. `resetForm` also consumes
+ * `MathChannelsService.preselectFormulaId` for the gas-pedal quick-launch
+ * shortcut (TopNav's Quick Gas Filter button).
  */
 @Component({
   selector: 'app-math-channel-modal',
@@ -222,5 +231,20 @@ export class MathChannelModal {
     this.isolateEnabled.set(false);
     this.autoEnableText.set('');
     this.errorMessage.set(null);
+
+    // untracked: this runs from an effect keyed on isModalOpen() — reading
+    // (and then clearing) preselectFormulaId() here would otherwise make
+    // that effect depend on it too, so clearing it mid-run would re-trigger
+    // resetForm() a second time and wipe the selection it just applied.
+    const preselect = untracked(() => this.mathChannels.preselectFormulaId());
+    if (preselect) {
+      this.mathChannels.preselectFormulaId.set(null);
+      // Deferred: the <select>'s <option>s are created in this same change-
+      // detection cycle (the modal is behind an @if on isModalOpen), and a
+      // native <select>.value assignment made before its matching <option>
+      // exists doesn't "stick" even once the option is added — applying it
+      // a tick later lets the options render first.
+      setTimeout(() => this.onFormulaChange(preselect));
+    }
   }
 }

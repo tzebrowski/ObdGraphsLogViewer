@@ -7,55 +7,6 @@
   ></div>
 
   <div class="main-content" id="mainContent">
-    <div class="m1-toolbar">
-      <button
-        class="btn btn-sm"
-        title="Toggle Sidebar"
-        (click)="uiState.toggleSidebar()"
-      >
-        <i class="fas fa-bars"></i>
-      </button>
-      <label class="btn btn-sm">
-        <i class="fas fa-folder-open"></i> Open Local
-        <input
-          type="file"
-          class="hidden"
-          accept=".csv,.json,.gz"
-          multiple
-          style="display: none"
-          (change)="fileLoaderInput($event)"
-        />
-      </label>
-      <div class="view-mode-toggle">
-        <button
-          class="btn btn-sm"
-          [class.active]="appState.viewMode() === 'stack'"
-          (click)="setViewMode('stack')"
-        >
-          Stack
-        </button>
-        <button
-          class="btn btn-sm"
-          [class.active]="appState.viewMode() === 'overlay'"
-          (click)="setViewMode('overlay')"
-        >
-          Overlay
-        </button>
-      </div>
-      <button class="btn btn-sm" (click)="mathChannels.openModal()">
-        <i class="fas fa-calculator"></i> Math Channel
-      </button>
-      <button class="btn btn-sm" (click)="dyno.openSetup()">
-        <i class="fas fa-tachometer-alt"></i> Virtual Dyno
-      </button>
-      <button class="btn btn-sm" (click)="xy.openModal()">
-        <i class="fas fa-braille"></i> XY Analysis
-      </button>
-      <button class="btn btn-sm" (click)="histogram.openModal()">
-        <i class="fas fa-chart-bar"></i> Histogram
-      </button>
-    </div>
-
     <app-chart-view></app-chart-view>
     <app-file-loader></app-file-loader>
   </div>

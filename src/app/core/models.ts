@@ -4,11 +4,15 @@ export const ViewMode = {
 } as const;
 export type ViewMode = (typeof ViewMode)[keyof typeof ViewMode];
 
+/** Which top-level page is shown, driven by `window.location.hash` (see App). */
+export type Route = 'landing' | 'analyzer';
+
 export const EVENTS = {
   MAP_SELECTED: 'map:position-selected',
   FILE_REMOVED: 'file:removed',
   BATCH_LOADED: 'dataprocessor:batch-load-completed',
   ACTION_LOG: 'action:log',
+  CHART_RESET_ALL: 'chart:reset-all',
 } as const;
 
 export interface SignalPoint {
