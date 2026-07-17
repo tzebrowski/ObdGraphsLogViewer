@@ -123,4 +123,57 @@
       } }
     </div>
   </div>
+
+  <div class="control-group gray-box" [class.collapsed]="settingsCollapsed()">
+    <h3 (click)="toggleSettingsCollapsed()">Settings & Preferences</h3>
+    <p class="section-description">
+      Customize the theme, colors, and cloud integration.
+    </p>
+    <div class="preferences-list">
+      <div class="pref-item">
+        <div class="pref-info">
+          <span class="pref-title">Dark Mode</span>
+          <span class="pref-desc">Switch to a dark visual theme</span>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            [checked]="preferences.darkTheme()"
+            (change)="preferences.setDarkTheme($any($event.target).checked)"
+          />
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
+      <div class="pref-item">
+        <div class="pref-info">
+          <span class="pref-title">Show GPS Map</span>
+          <span class="pref-desc">Display vehicle track on map</span>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            [checked]="preferences.loadMap()"
+            (change)="preferences.setLoadMap($any($event.target).checked)"
+          />
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
+      <div class="pref-item">
+        <div class="pref-info">
+          <span class="pref-title">Color Palette</span>
+          <span class="pref-desc">Override theme colors with your own</span>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            [checked]="preferences.useCustomPalette()"
+            (change)="preferences.setUseCustomPalette($any($event.target).checked)"
+          />
+          <span class="slider-round"></span>
+        </label>
+      </div>
+    </div>
+  </div>
 </div>

@@ -15,23 +15,6 @@
       >
         <i class="fas fa-bars"></i>
       </button>
-      <button
-        class="btn btn-sm"
-        title="Toggle theme"
-        (click)="preferences.setDarkTheme(!preferences.darkTheme())"
-      >
-        @if (preferences.darkTheme()) {
-        <i class="fas fa-sun"></i> Light } @else {
-        <i class="fas fa-moon"></i> Dark }
-      </button>
-      <label class="btn btn-sm" title="Use per-signal custom colors">
-        <input
-          type="checkbox"
-          [checked]="preferences.useCustomPalette()"
-          (change)="preferences.setUseCustomPalette($any($event.target).checked)"
-        />
-        Custom Palette
-      </label>
       <label class="btn btn-sm">
         <i class="fas fa-folder-open"></i> Open Local
         <input
@@ -71,14 +54,6 @@
       <button class="btn btn-sm" (click)="histogram.openModal()">
         <i class="fas fa-chart-bar"></i> Histogram
       </button>
-      <label class="btn btn-sm map-toggle-btn">
-        <input
-          type="checkbox"
-          [checked]="preferences.loadMap()"
-          (change)="preferences.setLoadMap($any($event.target).checked)"
-        />
-        <i class="fas fa-map-marked-alt"></i> Show Map
-      </label>
     </div>
 
     <app-chart-view></app-chart-view>

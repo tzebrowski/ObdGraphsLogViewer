@@ -31,6 +31,11 @@ export class Sidebar {
   private readonly palette = inject(SignalPaletteService);
 
   protected readonly searchTerm = signal('');
+  protected readonly settingsCollapsed = signal(true);
+
+  protected toggleSettingsCollapsed(): void {
+    this.settingsCollapsed.update((v) => !v);
+  }
 
   protected signalRows(file: LoadedFile): SignalRow[] {
     const term = this.searchTerm().toLowerCase().trim();
