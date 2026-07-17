@@ -26,6 +26,13 @@ export interface LoadedFile {
   metadata: Record<string, unknown>;
   size: number;
   dbId: number | null;
+  annotations?: ChartAnnotation[];
+}
+
+/** A point-in-time note plotted on the chart. Session-only, matching legacy's non-persisted `file.annotations`. */
+export interface ChartAnnotation {
+  time: number;
+  text: string;
 }
 
 export interface RawDataPoint {

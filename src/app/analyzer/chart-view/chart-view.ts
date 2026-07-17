@@ -3,6 +3,7 @@ import {
   ElementRef,
   effect,
   inject,
+  signal,
   viewChildren,
 } from '@angular/core';
 import {
@@ -15,6 +16,7 @@ import {
   LineElement,
   LinearScale,
   LogarithmicScale,
+  Plugin,
   PointElement,
   TimeScale,
   Title,
@@ -74,11 +76,18 @@ interface ChartDatasetExtra {
 type Point = { x: number; y: number };
 type LineDataset = ChartDataset<'line', Point[]> & ChartDatasetExtra;
 
+interface SliderRange {
+  start: number;
+  end: number;
+}
+
 /**
  * Port of legacy/src/chartmanager.js's rendering core: stack and overlay
- * view modes, zoom/pan, tooltip with real-value transform, and (Milestone 4)
- * chart-hover-drives-map-marker sync via MapService. Tag annotations, the
- * per-card local range slider, and keyboard shortcuts remain out of scope.
+ * view modes, zoom/pan, tooltip with real-value transform, chart-hover-
+ * drives-map-marker sync via MapService, point annotations (Alt+Click /
+ * `A` keyboard shortcut), the per-card local range slider, and keyboard
+ * pan/zoom/reset/legend-toggle shortcuts. File tagging, CSV export, and
+ * Shift+Drag highlight-with-stats regions remain out of scope.
  */
 @Component({
   selector: 'app-chart-view',
@@ -95,7 +104,23 @@ export class ChartView {
   protected readonly canvasRefs =
     viewChildren<ElementRef<HTMLCanvasElement>>('canvasEl');
 
+  /** Keyed by chart index (fileIdx in stack mode, always 0 in overlay mode). */
+  protected readonly sliderRanges = signal<Record<number, SliderRange>>({});
+
   private charts: Chart[] = [];
+  private readonly lastHoverTime = new Map<number, number>();
+  /**
+   * Angular's `@for` reuses canvas DOM nodes across rebuilds when a file's
+   * `dbId` trackBy key is unchanged (e.g. an annotation add/delete mutates
+   * `files()` but keeps the same files) — `chart.destroy()` only tears down
+   * Chart.js's own listeners, so without this cleanup, re-running
+   * `attachCanvasListeners` on a reused canvas would stack duplicate
+   * click/keydown handlers on top of the old ones.
+   */
+  private readonly canvasListenerCleanup = new WeakMap<
+    HTMLCanvasElement,
+    () => void
+  >();
 
   constructor() {
     effect(() => {
@@ -159,10 +184,62 @@ export class ChartView {
     chart.options.scales!['x']!.max = max;
     chart.resetZoom();
     chart.update('none');
+    this.syncSliderFromChart(index);
   }
 
   protected manualZoom(index: number, zoomLevel: number): void {
     this.charts[index]?.zoom(zoomLevel);
+    this.syncSliderFromChart(index);
+  }
+
+  /** Current [start, end] in seconds-from-file-start for the local range slider, defaulting to the full duration. */
+  protected sliderRange(index: number, file: LoadedFile): SliderRange {
+    return this.sliderRanges()[index] ?? { start: 0, end: file.duration };
+  }
+
+  protected onSliderInput(
+    index: number,
+    file: LoadedFile,
+    which: 'start' | 'end',
+    event: Event
+  ): void {
+    const value = parseFloat((event.target as HTMLInputElement).value);
+    const current = this.sliderRange(index, file);
+    let start = which === 'start' ? value : current.start;
+    let end = which === 'end' ? value : current.end;
+    if (start > end) [start, end] = [end, start];
+
+    const chart = this.charts[index];
+    if (!chart) return;
+    chart.options.scales!['x']!.min = file.startTime + start * 1000;
+    chart.options.scales!['x']!.max = file.startTime + end * 1000;
+    chart.update('none');
+    this.setSliderRange(index, start, end);
+  }
+
+  private setSliderRange(index: number, start: number, end: number): void {
+    this.sliderRanges.update((ranges) => ({
+      ...ranges,
+      [index]: { start, end },
+    }));
+  }
+
+  /** Recomputes the slider thumbs from the chart's current zoom/pan window. No-op in overlay mode, matching legacy. */
+  private syncSliderFromChart(index: number): void {
+    if (this.appState.viewMode() === 'overlay') return;
+    const chart = this.charts[index];
+    const file = this.appState.files()[index];
+    if (!chart || !file) return;
+
+    const start = Math.max(
+      0,
+      ((chart.scales['x'].min as number) - file.startTime) / 1000
+    );
+    const end = Math.min(
+      file.duration,
+      ((chart.scales['x'].max as number) - file.startTime) / 1000
+    );
+    this.setSliderRange(index, start, end);
   }
 
   /**
@@ -193,6 +270,8 @@ export class ChartView {
   ): void {
     this.charts.forEach((chart) => chart.destroy());
     this.charts = [];
+    this.lastHoverTime.clear();
+    this.sliderRanges.set({});
 
     if (files.length === 0) return;
 
@@ -205,6 +284,7 @@ export class ChartView {
         this.charts.push(
           this.buildStackChart(file, idx, canvases[idx].nativeElement)
         );
+        this.setSliderRange(idx, 0, file.duration);
       });
     }
   }
@@ -219,7 +299,7 @@ export class ChartView {
       this.buildDataset(file, key, fileIdx, sigIdx, key)
     );
 
-    canvas.addEventListener('mouseleave', () => this.mapService.clearHover());
+    this.attachCanvasListeners(canvas, fileIdx, 'stack');
 
     return new Chart(ctx, {
       type: 'line',
@@ -231,6 +311,9 @@ export class ChartView {
         'stack',
         fileIdx
       ),
+      plugins: [
+        this.buildAnnotationPlugin(() => this.appState.files()[fileIdx]),
+      ],
     });
   }
 
@@ -239,7 +322,7 @@ export class ChartView {
     canvas: HTMLCanvasElement
   ): Chart {
     const ctx = canvas.getContext('2d')!;
-    canvas.addEventListener('mouseleave', () => this.mapService.clearHover());
+    this.attachCanvasListeners(canvas, 0, 'overlay');
     const baseStartTime = files[0].startTime;
     const maxDuration = Math.max(...files.map((f) => f.duration));
 
@@ -270,7 +353,214 @@ export class ChartView {
         'overlay',
         0
       ),
+      plugins: [this.buildAnnotationPlugin(() => this.appState.files()[0])],
     });
+  }
+
+  private attachCanvasListeners(
+    canvas: HTMLCanvasElement,
+    fileIdx: number,
+    mode: ViewMode
+  ): void {
+    this.canvasListenerCleanup.get(canvas)?.();
+
+    const onMouseLeave = () => this.mapService.clearHover();
+    const onClick = (event: MouseEvent) =>
+      this.handleAltClick(fileIdx, mode, event, canvas);
+    const onKeydown = (event: KeyboardEvent) =>
+      this.handleKeydown(event, fileIdx, mode);
+
+    canvas.addEventListener('mouseleave', onMouseLeave);
+    canvas.addEventListener('click', onClick);
+    canvas.addEventListener('keydown', onKeydown);
+
+    this.canvasListenerCleanup.set(canvas, () => {
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+      canvas.removeEventListener('click', onClick);
+      canvas.removeEventListener('keydown', onKeydown);
+    });
+  }
+
+  private buildAnnotationPlugin(
+    getFile: () => LoadedFile | undefined
+  ): Plugin<'line'> {
+    return {
+      id: 'pointAnnotations',
+      afterDraw: (chart) => {
+        const file = getFile();
+        if (!file?.annotations?.length) return;
+        const {
+          ctx,
+          chartArea: { top, bottom },
+          scales: { x },
+        } = chart;
+        const xMin = x.min as number;
+        const xMax = x.max as number;
+
+        ctx.save();
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        file.annotations.forEach((note) => {
+          const absTime = file.startTime + note.time * 1000;
+          if (absTime < xMin || absTime > xMax) return;
+
+          const xPix = x.getPixelForValue(absTime);
+          ctx.beginPath();
+          ctx.strokeStyle = '#FFA500';
+          ctx.lineWidth = 2;
+          ctx.moveTo(xPix, top);
+          ctx.lineTo(xPix, bottom);
+          ctx.stroke();
+
+          const textWidth = ctx.measureText(note.text).width;
+          ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
+          ctx.fillRect(xPix + 2, top + 5, textWidth + 6, 20);
+          ctx.fillStyle = 'white';
+          ctx.fillText(note.text, xPix + 5, top + 19);
+        });
+        ctx.restore();
+      },
+    };
+  }
+
+  /**
+   * Alt+Click adds a point annotation at the clicked time, or deletes one
+   * within a small pixel radius of an existing annotation — matches
+   * legacy/src/chartmanager.js's Alt+Click handler.
+   */
+  private handleAltClick(
+    fileIdx: number,
+    mode: ViewMode,
+    event: MouseEvent,
+    canvas: HTMLCanvasElement
+  ): void {
+    if (!event.altKey) return;
+    const chartIdx = mode === 'overlay' ? 0 : fileIdx;
+    const chart = this.charts[chartIdx];
+    const file =
+      mode === 'overlay'
+        ? this.appState.files()[0]
+        : this.appState.files()[fileIdx];
+    if (!chart || !file) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clickPixel = event.clientX - rect.left;
+    const xValue = chart.scales['x'].getValueForPixel(clickPixel);
+    if (xValue === undefined) return;
+
+    const annotations = file.annotations ?? [];
+    const nearbyIndex = annotations.findIndex((note) => {
+      const notePixel = chart.scales['x'].getPixelForValue(
+        file.startTime + note.time * 1000
+      );
+      return Math.abs(notePixel - clickPixel) < 8;
+    });
+
+    if (nearbyIndex !== -1) {
+      if (confirm('Delete this point annotation?')) {
+        this.appState.removeAnnotationAt(
+          mode === 'overlay' ? 0 : fileIdx,
+          nearbyIndex
+        );
+      }
+      return;
+    }
+
+    const relTime = (xValue - file.startTime) / 1000;
+    const text = prompt(
+      `Add point annotation (Alt+Click) at ${relTime.toFixed(2)}s:`,
+      ''
+    );
+    if (text && text.trim()) {
+      this.appState.addAnnotation(mode === 'overlay' ? 0 : fileIdx, {
+        time: relTime,
+        text: text.trim(),
+      });
+    }
+  }
+
+  /**
+   * Port of legacy/src/chartmanager.js's `initKeyboardControls`. Tag (`T`)
+   * and CSV export (`E`) shortcuts are dropped along with those features.
+   */
+  private handleKeydown(
+    event: KeyboardEvent,
+    fileIdx: number,
+    mode: ViewMode
+  ): void {
+    const chartIdx = mode === 'overlay' ? 0 : fileIdx;
+    const chart = this.charts[chartIdx];
+    if (!chart) return;
+    const amount = event.shiftKey ? 0.05 : 0.01;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        chart.pan({ x: chart.width * amount }, undefined, 'none');
+        break;
+      case 'ArrowRight':
+        chart.pan({ x: -chart.width * amount }, undefined, 'none');
+        break;
+      case '+':
+      case '=':
+        chart.zoom(1.1);
+        break;
+      case '-':
+      case '_':
+        chart.zoom(0.9);
+        break;
+      case 'a':
+      case 'A':
+        this.addAnnotationAtHover(chartIdx, fileIdx, mode);
+        return;
+      case 'l':
+      case 'L':
+        this.toggleLegend(chartIdx);
+        return;
+      case 'r':
+      case 'R':
+        this.resetChart(fileIdx);
+        return;
+      default:
+        return;
+    }
+
+    chart.update('none');
+    this.syncSliderFromChart(fileIdx);
+  }
+
+  private addAnnotationAtHover(
+    chartIdx: number,
+    fileIdx: number,
+    mode: ViewMode
+  ): void {
+    const hoverTime = this.lastHoverTime.get(chartIdx);
+    if (hoverTime === undefined) {
+      alert('Hover over the chart to add an annotation.');
+      return;
+    }
+    const file =
+      mode === 'overlay'
+        ? this.appState.files()[0]
+        : this.appState.files()[fileIdx];
+    if (!file) return;
+
+    const relTime = (hoverTime - file.startTime) / 1000;
+    const text = prompt(`Add annotation at ${relTime.toFixed(2)}s:`, '');
+    if (text && text.trim()) {
+      this.appState.addAnnotation(mode === 'overlay' ? 0 : fileIdx, {
+        time: relTime,
+        text: text.trim(),
+      });
+    }
+  }
+
+  private toggleLegend(chartIdx: number): void {
+    const chart = this.charts[chartIdx];
+    const legend = chart?.options.plugins?.legend;
+    if (!legend) return;
+    legend.display = !legend.display;
+    chart.update();
   }
 
   private buildDataset(
@@ -339,6 +629,10 @@ export class ChartView {
         if (event.x === null || event.x === undefined) return;
         const timeValue = chart.scales['x'].getValueForPixel(event.x);
         if (timeValue === undefined) return;
+        this.lastHoverTime.set(
+          mode === 'overlay' ? 0 : hoverFileIdx,
+          timeValue
+        );
         if (mode === 'overlay') {
           mapService.setOverlayHover(timeValue);
         } else {
@@ -441,11 +735,16 @@ export class ChartView {
           },
         },
         zoom: {
-          pan: { enabled: true, mode: 'x' },
+          pan: {
+            enabled: true,
+            mode: 'x',
+            onPanComplete: () => this.syncSliderFromChart(hoverFileIdx),
+          },
           zoom: {
             wheel: { enabled: true },
             pinch: { enabled: true },
             mode: 'x',
+            onZoomComplete: () => this.syncSliderFromChart(hoverFileIdx),
           },
         },
       },

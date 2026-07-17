@@ -66,6 +66,44 @@
         </button>
       </div>
     </div>
+
+    <div class="local-slider-ui chm-slider-container">
+      <div class="chm-slider-relative-box">
+        <input
+          type="range"
+          class="local-range-start chm-range-input"
+          min="0"
+          [max]="file.duration"
+          step="0.1"
+          [value]="sliderRange(idx, file).start"
+          (input)="onSliderInput(idx, file, 'start', $event)"
+        />
+        <input
+          type="range"
+          class="local-range-end chm-range-input"
+          min="0"
+          [max]="file.duration"
+          step="0.1"
+          [value]="sliderRange(idx, file).end"
+          (input)="onSliderInput(idx, file, 'end', $event)"
+        />
+        <div class="local-slider-track chm-slider-track-bg"></div>
+        <div
+          class="local-slider-selection chm-slider-highlight"
+          [style.left.%]="(sliderRange(idx, file).start / file.duration) * 100"
+          [style.width.%]="
+            ((sliderRange(idx, file).end - sliderRange(idx, file).start) /
+              file.duration) *
+            100
+          "
+        ></div>
+      </div>
+      <div class="chm-slider-labels">
+        <span>{{ sliderRange(idx, file).start.toFixed(1) }}s</span>
+        <span>{{ sliderRange(idx, file).end.toFixed(1) }}s</span>
+      </div>
+    </div>
+
     <div class="chart-body-row">
       <div class="chart-canvas-container">
         <canvas #canvasEl tabindex="0"></canvas>

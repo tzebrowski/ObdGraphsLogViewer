@@ -121,6 +121,30 @@ describe('AppStateService', () => {
     expect(state.isSignalVisible(1, 'Speed')).toBe(true);
   });
 
+  it('addAnnotation appends to one file without mutating others', () => {
+    const state = new AppStateService(new EventBusService());
+    state.addFile(makeFile({ dbId: 1, name: 'a.json' }));
+    state.addFile(makeFile({ dbId: 2, name: 'b.json' }));
+
+    state.addAnnotation(0, { time: 1.5, text: 'Turbo spool' });
+
+    expect(state.files()[0].annotations).toEqual([
+      { time: 1.5, text: 'Turbo spool' },
+    ]);
+    expect(state.files()[1].annotations).toBeUndefined();
+  });
+
+  it('removeAnnotationAt removes by index', () => {
+    const state = new AppStateService(new EventBusService());
+    state.addFile(makeFile({ dbId: 1 }));
+    state.addAnnotation(0, { time: 1, text: 'first' });
+    state.addAnnotation(0, { time: 2, text: 'second' });
+
+    state.removeAnnotationAt(0, 0);
+
+    expect(state.files()[0].annotations).toEqual([{ time: 2, text: 'second' }]);
+  });
+
   it('showAlert/clearAlert set and clear the alert message', () => {
     const state = new AppStateService(new EventBusService());
     expect(state.alertMessage()).toBeNull();

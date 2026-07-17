@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { EventBusService } from './event-bus.service';
 import {
   ActiveHighlight,
+  ChartAnnotation,
   EVENTS,
   LoadedFile,
   SignalPoint,
@@ -69,6 +70,32 @@ export class AppStateService {
           metadata: { ...f.metadata, [name]: metadataEntry },
         };
       })
+    );
+  }
+
+  /** Port of legacy/src/chartmanager.js's Alt+Click/keyboard `A`-shortcut point annotations. */
+  addAnnotation(fileIndex: number, annotation: ChartAnnotation): void {
+    this.files.update((files) =>
+      files.map((f, i) =>
+        i !== fileIndex
+          ? f
+          : { ...f, annotations: [...(f.annotations ?? []), annotation] }
+      )
+    );
+  }
+
+  removeAnnotationAt(fileIndex: number, annotationIndex: number): void {
+    this.files.update((files) =>
+      files.map((f, i) =>
+        i !== fileIndex
+          ? f
+          : {
+              ...f,
+              annotations: (f.annotations ?? []).filter(
+                (_, ai) => ai !== annotationIndex
+              ),
+            }
+      )
     );
   }
 
