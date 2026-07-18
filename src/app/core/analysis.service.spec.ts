@@ -87,6 +87,28 @@ describe('AnalysisService', () => {
     expect(service.scanMessage()).toBe('1 events found');
   });
 
+  it('flushes an event that is still matching at the last row', () => {
+    appState.addFile(
+      makeFile([
+        { signal: 'RPM', timestamp: 0, value: 1000 },
+        { signal: 'RPM', timestamp: 1000, value: 5000 },
+        { signal: 'RPM', timestamp: 2000, value: 5200 },
+      ])
+    );
+
+    service.updateFilterRow(service.filters()[0].id, {
+      signal: 'RPM',
+      operator: '>',
+      value: '4000',
+    });
+    service.runScan();
+
+    expect(service.results()).toEqual([
+      { start: 1000, end: 2000, fileName: 'trip.json', fileIdx: 0 },
+    ]);
+    expect(service.scanMessage()).toBe('1 events found');
+  });
+
   it('runScan requires all criteria to match simultaneously (AND semantics)', () => {
     appState.addFile(
       makeFile([

@@ -133,6 +133,13 @@ export class AnalysisService {
     this.scanMessage.set(`${aggregated.length} events found`);
   }
 
+  /**
+   * Deliberate fix vs. legacy/src/analysis.js's `_scanFileData`: legacy
+   * never flushes a trailing event still open at the last row, so a filter
+   * that stays matched all the way to the end of the log (e.g. "RPM > 500"
+   * on a trip that never idles that low) silently produces zero results
+   * instead of one long one.
+   */
   private scanFileData(
     file: LoadedFile,
     fileIdx: number,
@@ -164,6 +171,16 @@ export class AnalysisService {
         });
       }
     });
+
+    if (inEvent && file.rawData.length > 0) {
+      results.push({
+        start: startT,
+        end: file.rawData[file.rawData.length - 1].timestamp,
+        fileName: file.name,
+        fileIdx,
+      });
+    }
+
     return results;
   }
 
