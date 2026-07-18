@@ -86,6 +86,13 @@ describe('AppStateService', () => {
     });
   });
 
+  it('clearActiveHighlight resets the active highlight signal to null', () => {
+    const state = new AppStateService(new EventBusService());
+    state.setActiveHighlight(1, 5, 0);
+    state.clearActiveHighlight();
+    expect(state.activeHighlight()).toBeNull();
+  });
+
   it('signals are visible by default and can be toggled per file/signal', () => {
     const state = new AppStateService(new EventBusService());
     expect(state.isSignalVisible(0, 'RPM')).toBe(true);

@@ -214,6 +214,11 @@ export class ChartView {
     const file = mode === 'overlay' ? files[0] : files[index];
     if (!chart || !file) return;
 
+    // Port of legacy/src/chartmanager.js's resetChart: clears any active
+    // anomaly-scanner highlight so it doesn't get redrawn at stale pixel
+    // coordinates once the view has moved on.
+    this.appState.clearActiveHighlight();
+
     const min = file.startTime;
     const max =
       file.startTime +
@@ -549,6 +554,13 @@ export class ChartView {
    * merged chart instance so per-file indices beyond 0 don't resolve.
    */
   private applyActiveHighlight(highlight: ActiveHighlight | null): void {
+    // Redraw every other stack chart too: whichever one previously held the
+    // highlight rectangle needs a repaint to erase it now that
+    // buildAnnotationPlugin's targetIndex check no longer matches.
+    this.charts.forEach((chart, idx) => {
+      if (idx !== highlight?.targetIndex) chart.draw();
+    });
+
     if (!highlight || highlight.targetIndex === null) return;
     const chart = this.charts[highlight.targetIndex];
     const file = this.appState.files()[highlight.targetIndex];
@@ -612,7 +624,10 @@ export class ChartView {
         fileIdx
       ),
       plugins: [
-        this.buildAnnotationPlugin(() => this.appState.files()[fileIdx]),
+        this.buildAnnotationPlugin(
+          () => this.appState.files()[fileIdx],
+          fileIdx
+        ),
       ],
     });
   }
@@ -653,7 +668,9 @@ export class ChartView {
         'overlay',
         0
       ),
-      plugins: [this.buildAnnotationPlugin(() => this.appState.files()[0])],
+      plugins: [
+        this.buildAnnotationPlugin(() => this.appState.files()[0], null),
+      ],
     });
   }
 
@@ -681,14 +698,22 @@ export class ChartView {
     });
   }
 
+  /**
+   * Port of legacy/src/chartmanager.js's `highlighterPlugin`: the
+   * anomaly-scanner's active-highlight rectangle (stack mode only, matching
+   * `applyActiveHighlight`'s scope) and point annotations. `highlightFileIdx`
+   * is `null` for the overlay chart, which has no single corresponding file
+   * index to compare against `activeHighlight.targetIndex`.
+   */
   private buildAnnotationPlugin(
-    getFile: () => LoadedFile | undefined
+    getFile: () => LoadedFile | undefined,
+    highlightFileIdx: number | null
   ): Plugin<'line'> {
     return {
-      id: 'pointAnnotations',
+      id: 'chartOverlays',
       afterDraw: (chart) => {
         const file = getFile();
-        if (!file?.annotations?.length) return;
+        if (!file) return;
         const {
           ctx,
           chartArea: { top, bottom },
@@ -697,6 +722,23 @@ export class ChartView {
         const xMin = x.min as number;
         const xMax = x.max as number;
 
+        const highlight = this.appState.activeHighlight();
+        if (highlight && highlightFileIdx === highlight.targetIndex) {
+          const pxStart = x.getPixelForValue(
+            file.startTime + highlight.start * 1000
+          );
+          const pxEnd = x.getPixelForValue(
+            file.startTime + highlight.end * 1000
+          );
+          if (!isNaN(pxStart) && !isNaN(pxEnd)) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+            ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
+            ctx.restore();
+          }
+        }
+
+        if (!file.annotations?.length) return;
         ctx.save();
         ctx.font = '11px Arial';
         ctx.textAlign = 'left';

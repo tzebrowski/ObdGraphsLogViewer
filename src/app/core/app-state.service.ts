@@ -130,6 +130,10 @@ export class AppStateService {
     this.activeHighlight.set({ start, end, targetIndex });
   }
 
+  clearActiveHighlight(): void {
+    this.activeHighlight.set(null);
+  }
+
   private static signalKey(fileIdx: number, signalName: string): string {
     return `${fileIdx}::${signalName}`;
   }
