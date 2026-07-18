@@ -163,7 +163,15 @@ export class OverlayMap implements OnDestroy {
 
     this.hasRoute.set(hasValidRoute);
     if (hasValidRoute) {
-      map.fitBounds(allBounds, { padding: [20, 20] });
+      // Deferred: the container may still be `display:none` in this same
+      // tick (its visibility is now driven by `hasRoute`, just set above,
+      // and Angular hasn't re-rendered yet) — invalidateSize() once it's
+      // actually visible avoids Leaflet computing bounds against a
+      // zero-size element.
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+        map.fitBounds(allBounds, { padding: [20, 20] });
+      });
     }
   }
 

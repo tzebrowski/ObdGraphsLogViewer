@@ -1,5 +1,7 @@
-@if (preferences.loadMap()) {
-<div class="chm-overlay-map">
+<div
+  class="chm-overlay-map"
+  [class.chm-overlay-map-hidden]="!(preferences.loadMap() && hasRoute())"
+>
   <div class="overlay-map-canvas" #mapContainer></div>
   @if (hasRoute() && colorableSignals().length > 0) {
   <select
@@ -13,8 +15,5 @@
     <option [value]="signal">{{ signal }}</option>
     }
   </select>
-  } @if (!hasRoute()) {
-  <div class="overlay-map-empty">No GPS data in these logs.</div>
   }
 </div>
-}

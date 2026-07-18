@@ -1,5 +1,7 @@
-@if (preferences.loadMap()) {
-<div class="embedded-map-container active">
+<div
+  class="embedded-map-container"
+  [class.active]="preferences.loadMap() && hasRoute()"
+>
   <div class="embedded-map-canvas" #mapContainer></div>
   @if (hasRoute() && colorableSignals().length > 0) {
   <select
@@ -13,8 +15,5 @@
     <option [value]="signal">{{ signal }}</option>
     }
   </select>
-  } @if (!hasRoute()) {
-  <div class="embedded-map-empty">No GPS data in this log.</div>
   }
 </div>
-}
