@@ -1,11 +1,14 @@
 :host {
-  display: block;
-  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .app-container {
   display: flex;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .main-content {
@@ -47,9 +50,4 @@
 
 .map-toggle-btn input[type='checkbox'] {
   margin: 0;
-}
-
-app-chart-view {
-  flex: 1;
-  min-height: 0;
 }
