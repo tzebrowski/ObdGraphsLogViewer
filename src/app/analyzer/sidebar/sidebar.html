@@ -20,7 +20,11 @@
     </div>
   </div>
 
-  <div class="control-group gray-box">
+  <div
+    class="control-group gray-box"
+    [class.collapsed]="isSectionCollapsed('project')"
+  >
+    <h3 class="group-header" (click)="toggleSection('project')">Project</h3>
     <app-library-panel></app-library-panel>
   </div>
 
