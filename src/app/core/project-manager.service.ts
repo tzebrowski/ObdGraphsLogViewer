@@ -365,7 +365,7 @@ export class ProjectManagerService {
         return this.createEmptyProject();
       }
 
-      if (!this.preferences.rememberFiles) {
+      if (!this.preferences.rememberFiles()) {
         project.resources.forEach((r) => {
           r.isActive = false;
         });

@@ -162,6 +162,9 @@ export class ChartView {
       const mode = this.appState.viewMode();
       const canvases = this.canvasRefs();
       this.preferences.darkTheme();
+      this.preferences.showAreaFills();
+      this.preferences.smoothLines();
+      this.preferences.showLabels();
 
       const expectedCanvases =
         files.length === 0 ? 0 : mode === 'overlay' ? 1 : files.length;
@@ -931,6 +934,8 @@ export class ChartView {
 
     const color = this.palette.getColorForSignal(fileIdx, sigIdx);
     const isVisible = this.appState.isSignalVisible(fileIdx, key);
+    const showAreaFills = this.preferences.showAreaFills();
+    const smoothLines = this.preferences.smoothLines();
 
     return {
       label,
@@ -942,9 +947,12 @@ export class ChartView {
       borderColor: color,
       borderWidth: isVisible ? 3 : 1.5,
       pointRadius: 0,
-      tension: 0,
-      backgroundColor: 'transparent',
-      fill: false,
+      tension: smoothLines ? 0.4 : 0,
+      cubicInterpolationMode: smoothLines ? 'monotone' : 'default',
+      backgroundColor: showAreaFills
+        ? this.getAlphaColor(color, 0.1)
+        : 'transparent',
+      fill: showAreaFills ? 'origin' : false,
       hidden: !isVisible,
     };
   }
@@ -1102,6 +1110,8 @@ export class ChartView {
   }
 
   private shouldShowLabels(chart: Chart): boolean {
+    if (!this.preferences.showLabels()) return false;
+
     const xRange =
       (chart.scales['x'].max as number) - (chart.scales['x'].min as number);
     return (
@@ -1109,6 +1119,15 @@ export class ChartView {
       chart.data.datasets.filter((ds) => !ds.hidden).length <=
         DATALABELS_MAX_VISIBLE_DATASETS
     );
+  }
+
+  /** Port of legacy/src/chartmanager.js's `getAlphaColor`. */
+  private getAlphaColor(hex: string, alpha = 0.1): string {
+    if (!hex || typeof hex !== 'string') return `rgba(128,128,128, ${alpha})`;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
   private syncVisibility(): void {

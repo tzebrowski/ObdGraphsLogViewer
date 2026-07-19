@@ -297,7 +297,7 @@ describe('ProjectManagerService', () => {
         signals: { 1: { RPM: [{ x: 0, y: 1 }] } },
       });
       const preferences = new PreferencesService();
-      preferences.rememberFiles = false;
+      preferences.setRememberFiles(false);
 
       const pm = new ProjectManagerService(
         appState,

@@ -38,11 +38,48 @@ describe('PreferencesService', () => {
 
   it('persists rememberFiles/googleClientId as before', () => {
     const preferences = new PreferencesService();
-    preferences.rememberFiles = false;
+    preferences.setRememberFiles(false);
     preferences.googleClientId = 'abc123';
 
     const reloaded = new PreferencesService();
-    expect(reloaded.rememberFiles).toBe(false);
+    expect(reloaded.rememberFiles()).toBe(false);
     expect(reloaded.googleClientId).toBe('abc123');
+  });
+
+  it('defaults area-fills/rememberFiles/persistence to true and smooth-lines/labels/performance to false', () => {
+    const preferences = new PreferencesService();
+    expect(preferences.rememberFiles()).toBe(true);
+    expect(preferences.showAreaFills()).toBe(true);
+    expect(preferences.persistence()).toBe(true);
+    expect(preferences.smoothLines()).toBe(false);
+    expect(preferences.showLabels()).toBe(false);
+    expect(preferences.performance()).toBe(false);
+  });
+
+  it('persists showAreaFills/smoothLines/showLabels/performance across instances', () => {
+    const preferences = new PreferencesService();
+    preferences.setShowAreaFills(false);
+    preferences.setSmoothLines(true);
+    preferences.setShowLabels(true);
+    preferences.setPerformance(true);
+
+    const reloaded = new PreferencesService();
+    expect(reloaded.showAreaFills()).toBe(false);
+    expect(reloaded.smoothLines()).toBe(true);
+    expect(reloaded.showLabels()).toBe(true);
+    expect(reloaded.performance()).toBe(true);
+  });
+
+  it('clears the saved sidebar layout when persistence is turned off', () => {
+    localStorage.setItem(
+      'sidebar_collapsed_states',
+      JSON.stringify(['signals'])
+    );
+    const preferences = new PreferencesService();
+
+    preferences.setPersistence(false);
+
+    expect(preferences.persistence()).toBe(false);
+    expect(localStorage.getItem('sidebar_collapsed_states')).toBeNull();
   });
 });
