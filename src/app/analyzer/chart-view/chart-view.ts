@@ -778,8 +778,8 @@ export class ChartView {
 
         ctx.save();
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(227, 24, 55, 0.6)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(227, 24, 55, 0.85)';
+        ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]);
         ctx.moveTo(xPixel, top);
         ctx.lineTo(xPixel, bottom);
@@ -995,6 +995,12 @@ export class ChartView {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      // Omits 'mouseout': legacy/src/chartmanager.js disables Chart.js's own
+      // event handling entirely (events: []) and drives the tooltip itself
+      // via chart.tooltip.setActiveElements, so it (like the hover-cursor
+      // line) never auto-clears when the pointer leaves the canvas. Chart.js
+      // otherwise hides the tooltip on its default 'mouseout' handling.
+      events: ['mousemove', 'click', 'touchstart', 'touchmove'],
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       onHover: (event, _elements, chart) => {
         if (event.x === null || event.x === undefined) return;
