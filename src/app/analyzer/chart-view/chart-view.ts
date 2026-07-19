@@ -629,6 +629,7 @@ export class ChartView {
       plugins: [
         this.buildAnnotationPlugin(
           () => this.appState.files()[fileIdx],
+          fileIdx,
           fileIdx
         ),
       ],
@@ -672,7 +673,7 @@ export class ChartView {
         0
       ),
       plugins: [
-        this.buildAnnotationPlugin(() => this.appState.files()[0], null),
+        this.buildAnnotationPlugin(() => this.appState.files()[0], null, 0),
       ],
     });
   }
@@ -704,13 +705,16 @@ export class ChartView {
   /**
    * Port of legacy/src/chartmanager.js's `highlighterPlugin`: the
    * anomaly-scanner's active-highlight rectangle (stack mode only, matching
-   * `applyActiveHighlight`'s scope) and point annotations. `highlightFileIdx`
-   * is `null` for the overlay chart, which has no single corresponding file
-   * index to compare against `activeHighlight.targetIndex`.
+   * `applyActiveHighlight`'s scope), point annotations, and the dashed
+   * vertical hover-cursor line. `highlightFileIdx` is `null` for the overlay
+   * chart, which has no single corresponding file index to compare against
+   * `activeHighlight.targetIndex`. `hoverKey` is this chart's key into
+   * `lastHoverTime` (fileIdx in stack mode, always 0 in overlay mode).
    */
   private buildAnnotationPlugin(
     getFile: () => LoadedFile | undefined,
-    highlightFileIdx: number | null
+    highlightFileIdx: number | null,
+    hoverKey: number
   ): Plugin<'line'> {
     return {
       id: 'chartOverlays',
@@ -719,7 +723,7 @@ export class ChartView {
         if (!file) return;
         const {
           ctx,
-          chartArea: { top, bottom },
+          chartArea: { top, bottom, left, right },
           scales: { x },
         } = chart;
         const xMin = x.min as number;
@@ -741,29 +745,45 @@ export class ChartView {
           }
         }
 
-        if (!file.annotations?.length) return;
+        if (file.annotations?.length) {
+          ctx.save();
+          ctx.font = '11px Arial';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+          file.annotations.forEach((note) => {
+            const absTime = file.startTime + note.time * 1000;
+            if (absTime < xMin || absTime > xMax) return;
+
+            const xPix = x.getPixelForValue(absTime);
+            ctx.beginPath();
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 2;
+            ctx.moveTo(xPix, top);
+            ctx.lineTo(xPix, bottom);
+            ctx.stroke();
+
+            const textWidth = ctx.measureText(note.text).width;
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
+            ctx.fillRect(xPix + 2, top + 5, textWidth + 6, 20);
+            ctx.fillStyle = 'white';
+            ctx.fillText(note.text, xPix + 5, top + 19);
+          });
+          ctx.restore();
+        }
+
+        const hoverTime = this.lastHoverTime.get(hoverKey);
+        if (hoverTime === undefined) return;
+        const xPixel = x.getPixelForValue(hoverTime);
+        if (xPixel < left || xPixel > right) return;
+
         ctx.save();
-        ctx.font = '11px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'bottom';
-        file.annotations.forEach((note) => {
-          const absTime = file.startTime + note.time * 1000;
-          if (absTime < xMin || absTime > xMax) return;
-
-          const xPix = x.getPixelForValue(absTime);
-          ctx.beginPath();
-          ctx.strokeStyle = '#FFA500';
-          ctx.lineWidth = 2;
-          ctx.moveTo(xPix, top);
-          ctx.lineTo(xPix, bottom);
-          ctx.stroke();
-
-          const textWidth = ctx.measureText(note.text).width;
-          ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
-          ctx.fillRect(xPix + 2, top + 5, textWidth + 6, 20);
-          ctx.fillStyle = 'white';
-          ctx.fillText(note.text, xPix + 5, top + 19);
-        });
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(227, 24, 55, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(xPixel, top);
+        ctx.lineTo(xPixel, bottom);
+        ctx.stroke();
         ctx.restore();
       },
     };
