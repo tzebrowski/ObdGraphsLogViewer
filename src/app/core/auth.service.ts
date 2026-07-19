@@ -163,6 +163,15 @@ export class AuthService {
     });
   }
 
+  /**
+   * Deliberate deviation from legacy/src/auth.js's `fetchConfig`: legacy
+   * shows an error alert here too when the backend is unreachable and no
+   * local fallback Client ID is saved, which fires on every page load
+   * before the user has taken any Drive-related action. `signIn()` already
+   * alerts the user if they actually try to connect without a Client ID
+   * configured, so this silently falls back instead (console warning only,
+   * for developers).
+   */
   private async fetchConfig(): Promise<void> {
     try {
       const response = await fetch('https://api.my-giulia.com/api/config');
@@ -178,10 +187,6 @@ export class AuthService {
       if (fallbackId) {
         this.clientId.set(fallbackId);
         console.log('Using local fallback Client ID.');
-      } else {
-        this.appState.showAlert(
-          'Failed to load Google Auth configuration. Please enter a Client ID in Settings.'
-        );
       }
     }
   }

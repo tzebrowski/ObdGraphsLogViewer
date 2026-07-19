@@ -83,15 +83,13 @@ describe('AuthService', () => {
     expect(auth.clientId()).toBe('local-fallback-id');
   });
 
-  it('init() alerts the user if the backend fails and no fallback is saved', async () => {
+  it('init() fails silently (no alert) if the backend fails and no fallback is saved', async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error('Network Error'));
 
     await auth.init();
 
     expect(auth.clientId()).toBeNull();
-    expect(appState.alertMessage()).toBe(
-      'Failed to load Google Auth configuration. Please enter a Client ID in Settings.'
-    );
+    expect(appState.alertMessage()).toBeNull();
   });
 
   it('signIn() fetches the user profile directly when an existing token is valid', async () => {
