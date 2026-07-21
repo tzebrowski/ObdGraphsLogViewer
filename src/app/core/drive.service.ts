@@ -30,11 +30,16 @@ function readRecentIds(): string[] {
   }
 }
 
+const MONTH_YEAR_FORMAT: Intl.DateTimeFormatOptions = {
+  month: 'long',
+  year: 'numeric',
+};
+
 /**
  * Port of legacy/src/drive.js's data layer: folder lookup, paginated file
- * listing, search/sort, tagging (appProperties), public-link sharing,
- * client-side pagination over the fetched list, and the localStorage
- * "recently viewed" history. Month/date-range filtering are a tracked gap.
+ * listing, search/sort, month/tag/date-range filtering, tagging
+ * (appProperties), public-link sharing, client-side pagination over the
+ * fetched list, and the localStorage "recently viewed" history.
  *
  * Tagging and sharing call Drive *write* endpoints (files.update,
  * permissions.create) against files discovered via folder-scanning, which
@@ -50,6 +55,10 @@ export class DriveService {
   readonly searchTerm = signal('');
   readonly sortOrder = signal<DriveSortOrder>('desc');
   readonly selectedTag = signal<string | null>(null);
+  readonly selectedMonth = signal('');
+  /** `<input type="date">`-formatted ('YYYY-MM-DD') bounds, inclusive. Empty string means unset. */
+  readonly dateStart = signal('');
+  readonly dateEnd = signal('');
 
   readonly currentPage = signal(1);
   readonly itemsPerPage = signal<number>(PAGE_SIZE_OPTIONS[2]);
@@ -57,9 +66,49 @@ export class DriveService {
 
   readonly recentIds = signal<string[]>(readRecentIds());
 
+  /** Port of legacy/src/drive.js's `populateDropdowns` month list — every "Month Year" present in the current listing, newest first. */
+  readonly availableMonths = computed(() => {
+    const months = new Set<string>();
+    this.files().forEach((item) => {
+      const date = new Date(item.timestamp);
+      if (!isNaN(date.getTime())) {
+        months.add(date.toLocaleString('en-US', MONTH_YEAR_FORMAT));
+      }
+    });
+    return [...months].sort(
+      (a, b) => new Date(b).getTime() - new Date(a).getTime()
+    );
+  });
+
+  /** Port of legacy/src/drive.js's `populateDropdowns` tag list — every tag present in the current listing, alphabetical. */
+  readonly availableTags = computed(() => {
+    const tags = new Set<string>();
+    this.files().forEach((item) =>
+      (item.tags ?? []).forEach((t) => tags.add(t))
+    );
+    return [...tags].sort();
+  });
+
+  readonly hasActiveFilters = computed(
+    () =>
+      !!this.searchTerm() ||
+      !!this.selectedMonth() ||
+      !!this.selectedTag() ||
+      !!this.dateStart() ||
+      !!this.dateEnd()
+  );
+
   readonly filteredSortedFiles = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
     const tag = this.selectedTag();
+    const month = this.selectedMonth();
+    const start = this.dateStart()
+      ? new Date(this.dateStart()).setHours(0, 0, 0, 0)
+      : null;
+    const end = this.dateEnd()
+      ? new Date(this.dateEnd()).setHours(23, 59, 59, 999)
+      : null;
+
     let filtered = this.files();
     if (term) {
       filtered = filtered.filter(
@@ -70,6 +119,22 @@ export class DriveService {
     }
     if (tag) {
       filtered = filtered.filter((item) => (item.tags ?? []).includes(tag));
+    }
+    if (month) {
+      filtered = filtered.filter(
+        (item) =>
+          new Date(item.timestamp).toLocaleString(
+            'en-US',
+            MONTH_YEAR_FORMAT
+          ) === month
+      );
+    }
+    if (start !== null || end !== null) {
+      filtered = filtered.filter(
+        (item) =>
+          (start === null || item.timestamp >= start) &&
+          (end === null || item.timestamp <= end)
+      );
     }
 
     const sorted = [...filtered].sort((a, b) => a.timestamp - b.timestamp);
@@ -139,6 +204,31 @@ export class DriveService {
 
   setSelectedTag(tag: string | null): void {
     this.selectedTag.set(tag);
+    this.currentPage.set(1);
+  }
+
+  setSelectedMonth(month: string): void {
+    this.selectedMonth.set(month);
+    this.currentPage.set(1);
+  }
+
+  setDateStart(date: string): void {
+    this.dateStart.set(date);
+    this.currentPage.set(1);
+  }
+
+  setDateEnd(date: string): void {
+    this.dateEnd.set(date);
+    this.currentPage.set(1);
+  }
+
+  /** Port of legacy/src/drive.js's `clearDriveFilters` handler. */
+  clearFilters(): void {
+    this.searchTerm.set('');
+    this.selectedTag.set(null);
+    this.selectedMonth.set('');
+    this.dateStart.set('');
+    this.dateEnd.set('');
     this.currentPage.set(1);
   }
 

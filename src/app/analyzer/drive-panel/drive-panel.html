@@ -57,6 +57,56 @@
   </button>
 </div>
 
+<div class="drive-filters-row">
+  <select
+    class="template-select"
+    title="Filter by month"
+    [value]="drive.selectedMonth()"
+    (change)="onMonthFilterChange($event)"
+  >
+    <option value="">-- All Months --</option>
+    @for (month of drive.availableMonths(); track month) {
+    <option [value]="month">{{ month }}</option>
+    }
+  </select>
+  <select
+    class="template-select"
+    title="Filter by tag"
+    [value]="drive.selectedTag() ?? ''"
+    (change)="onTagFilterChange($event)"
+  >
+    <option value="">-- All Tags --</option>
+    @for (tag of drive.availableTags(); track tag) {
+    <option [value]="tag">{{ tag }}</option>
+    }
+  </select>
+</div>
+
+<div class="drive-date-range-row">
+  <input
+    type="date"
+    class="drv-date-input"
+    [value]="drive.dateStart()"
+    (input)="onDateStartChange($event)"
+  />
+  <span class="drv-date-range-sep">to</span>
+  <input
+    type="date"
+    class="drv-date-input"
+    [value]="drive.dateEnd()"
+    (input)="onDateEndChange($event)"
+  />
+  @if (drive.hasActiveFilters()) {
+  <span
+    class="drv-clear-history"
+    title="Clear Filters"
+    (click)="clearFilters()"
+  >
+    <i class="fas fa-calendar-times"></i> Clear
+  </span>
+  }
+</div>
+
 @if (drive.recentEntries().length > 0) {
 <div class="recent-section">
   <div class="month-header drv-recent-header" (click)="toggleRecentExpanded()">

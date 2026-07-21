@@ -183,6 +183,72 @@ describe('DriveService', () => {
     ]);
   });
 
+  describe('month/date-range filtering', () => {
+    function seedDatedFiles(drive: DriveService) {
+      drive.files.set([
+        {
+          file: { id: '1', name: 'January Log' },
+          meta: { date: '', length: '' },
+          timestamp: new Date('2026-01-15T12:00:00Z').getTime(),
+          tags: ['track'],
+        },
+        {
+          file: { id: '2', name: 'March Log' },
+          meta: { date: '', length: '' },
+          timestamp: new Date('2026-03-10T12:00:00Z').getTime(),
+          tags: ['commute'],
+        },
+      ]);
+    }
+
+    it('availableMonths/availableTags list every distinct month and tag, newest month first', () => {
+      const drive = create();
+      seedDatedFiles(drive);
+
+      expect(drive.availableMonths()).toEqual(['March 2026', 'January 2026']);
+      expect(drive.availableTags()).toEqual(['commute', 'track']);
+    });
+
+    it('filteredSortedFiles() filters by selectedMonth', () => {
+      const drive = create();
+      seedDatedFiles(drive);
+
+      drive.setSelectedMonth('January 2026');
+      expect(drive.filteredSortedFiles().map((f) => f.file.name)).toEqual([
+        'January Log',
+      ]);
+    });
+
+    it('filteredSortedFiles() filters by an inclusive date range', () => {
+      const drive = create();
+      seedDatedFiles(drive);
+
+      drive.setDateStart('2026-02-01');
+      drive.setDateEnd('2026-03-31');
+      expect(drive.filteredSortedFiles().map((f) => f.file.name)).toEqual([
+        'March Log',
+      ]);
+    });
+
+    it('hasActiveFilters() reflects any filter and clearFilters() resets all of them', () => {
+      const drive = create();
+      seedDatedFiles(drive);
+      expect(drive.hasActiveFilters()).toBe(false);
+
+      drive.setSelectedMonth('January 2026');
+      drive.setSelectedTag('track');
+      drive.setDateStart('2026-01-01');
+      drive.setDateEnd('2026-01-31');
+      drive.setSearchTerm('log');
+      expect(drive.hasActiveFilters()).toBe(true);
+      expect(drive.filteredSortedFiles()).toHaveLength(1);
+
+      drive.clearFilters();
+      expect(drive.hasActiveFilters()).toBe(false);
+      expect(drive.filteredSortedFiles()).toHaveLength(2);
+    });
+  });
+
   it('loadFile() downloads via the authenticated REST endpoint and hands off to the data processor', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

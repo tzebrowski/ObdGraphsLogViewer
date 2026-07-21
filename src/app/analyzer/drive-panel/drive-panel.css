@@ -52,6 +52,34 @@
   min-width: 0;
 }
 
+.drive-filters-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.drive-filters-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.drive-date-range-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.85em;
+}
+
+.drive-date-range-row .drv-date-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.drv-date-range-sep {
+  color: var(--text-muted);
+}
+
 .drive-status-msg {
   padding: 8px 4px;
   font-size: 0.85em;

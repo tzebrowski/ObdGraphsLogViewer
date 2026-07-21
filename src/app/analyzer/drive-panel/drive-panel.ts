@@ -41,6 +41,27 @@ export class DrivePanel {
     this.drive.toggleSortOrder();
   }
 
+  protected onMonthFilterChange(event: Event): void {
+    this.drive.setSelectedMonth((event.target as HTMLSelectElement).value);
+  }
+
+  protected onTagFilterChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.drive.setSelectedTag(value || null);
+  }
+
+  protected onDateStartChange(event: Event): void {
+    this.drive.setDateStart((event.target as HTMLInputElement).value);
+  }
+
+  protected onDateEndChange(event: Event): void {
+    this.drive.setDateEnd((event.target as HTMLInputElement).value);
+  }
+
+  protected clearFilters(): void {
+    this.drive.clearFilters();
+  }
+
   protected loadFile(entry: DriveFileEntry): void {
     void this.drive.loadFile(entry.file.name, entry.file.id);
   }
