@@ -3,6 +3,7 @@ import { EventBusService } from './event-bus.service';
 import {
   ActiveHighlight,
   ChartAnnotation,
+  ChartHighlight,
   EVENTS,
   FileTagAddedEvent,
   LoadedFile,
@@ -94,6 +95,32 @@ export class AppStateService {
               ...f,
               annotations: (f.annotations ?? []).filter(
                 (_, ai) => ai !== annotationIndex
+              ),
+            }
+      )
+    );
+  }
+
+  /** Port of legacy/src/chartmanager.js's Shift+Drag "Save Highlighted Area" modal. */
+  addHighlight(fileIndex: number, highlight: ChartHighlight): void {
+    this.files.update((files) =>
+      files.map((f, i) =>
+        i !== fileIndex
+          ? f
+          : { ...f, highlights: [...(f.highlights ?? []), highlight] }
+      )
+    );
+  }
+
+  removeHighlightAt(fileIndex: number, highlightIndex: number): void {
+    this.files.update((files) =>
+      files.map((f, i) =>
+        i !== fileIndex
+          ? f
+          : {
+              ...f,
+              highlights: (f.highlights ?? []).filter(
+                (_, hi) => hi !== highlightIndex
               ),
             }
       )

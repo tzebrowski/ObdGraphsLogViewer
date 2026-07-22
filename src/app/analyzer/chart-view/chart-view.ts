@@ -95,23 +95,48 @@ interface MetaRow {
   value: string;
 }
 
+/** In-progress Shift+Drag selection, drawn live but not yet saved to `file.highlights`. */
+interface DragSelection {
+  chartIdx: number;
+  fileIdx: number;
+  startMs: number;
+  currentMs: number;
+  hasDragged: boolean;
+}
+
+/** Drives the "Save Highlighted Area" modal once a Shift+Drag selection is released. */
+interface PendingHighlight {
+  fileIdx: number;
+  chartIdx: number;
+  start: number;
+  end: number;
+  statsLines: string[];
+  titleDraft: string;
+  descDraft: string;
+}
+
 const SHORTCUTS_TEXT = `Keyboard Shortcuts:
 ← / → : Pan Left/Right (Shift for faster)
 + / - : Zoom In / Out
 R : Reset View
 A : Add point annotation at cursor
+T : Add Tag to file
+E : Export Visible Data (CSV)
 L : Toggle Legend Visibility
-Alt + Click : Add / Delete Annotation`;
+Shift + Drag : Highlight Area
+Shift + Click : Add Tag to file
+Alt + Click : Add / Delete Annotation or Highlight`;
 
 /**
  * Port of legacy/src/chartmanager.js's rendering core: stack and overlay
  * view modes, zoom/pan, tooltip with real-value transform, chart-hover-
  * drives-map-marker sync via MapService, point annotations (Alt+Click /
- * `A` keyboard shortcut), the per-card local range slider, keyboard
- * pan/zoom/reset/legend-toggle shortcuts, fine cursor stepping, visible-
- * range CSV export, file tagging (synced to Drive when the name matches a
- * loaded Drive entry), and the Log Details modal. Shift+Drag
- * highlight-with-stats regions remain out of scope.
+ * `A` keyboard shortcut), Shift+Drag highlight-with-stats regions (saved to
+ * `file.highlights`, Alt+Click to delete), the per-card local range slider,
+ * keyboard pan/zoom/reset/legend/tag/export shortcuts, fine cursor
+ * stepping, visible-range CSV export, file tagging (synced to Drive when
+ * the name matches a loaded Drive entry, `T` shortcut or Shift+Click), and
+ * the Log Details modal.
  */
 @Component({
   selector: 'app-chart-view',
@@ -142,8 +167,13 @@ export class ChartView {
   });
   protected readonly shortcutsText = SHORTCUTS_TEXT;
 
+  /** Set once a Shift+Drag selection is released, driving the "Save Highlighted Area" modal. */
+  protected readonly pendingHighlight = signal<PendingHighlight | null>(null);
+
   private charts: Chart[] = [];
   private readonly lastHoverTime = new Map<number, number>();
+  /** Keyed by chart index — the in-progress Shift+Drag selection, if any, drawn live by `buildAnnotationPlugin`. */
+  private readonly dragSelections = new Map<number, DragSelection>();
   /**
    * Angular's `@for` reuses canvas DOM nodes across rebuilds when a file's
    * `dbId` trackBy key is unchanged (e.g. an annotation add/delete mutates
@@ -679,28 +709,187 @@ export class ChartView {
     });
   }
 
+  /**
+   * Port of legacy/src/chartmanager.js's `_attachMouseListeners`, plus the
+   * Shift+Drag "highlight area" gesture: `isSelecting`/`hasDragged` are
+   * scoped to this call (one per canvas/chart lifetime) exactly like
+   * legacy's closure-local variables, shared by the pointer handlers and
+   * the click handler's Shift+Click-without-drag quick-tag case.
+   */
   private attachCanvasListeners(
     canvas: HTMLCanvasElement,
     fileIdx: number,
     mode: ViewMode
   ): void {
     this.canvasListenerCleanup.get(canvas)?.();
+    const chartIdx = mode === 'overlay' ? 0 : fileIdx;
+    const targetFileIdx = mode === 'overlay' ? 0 : fileIdx;
+
+    let isSelecting = false;
+    let hasDragged = false;
+    let selectionStartMs = 0;
 
     const onMouseLeave = () => this.mapService.clearHover();
-    const onClick = (event: MouseEvent) =>
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!event.shiftKey) return;
+      const chart = this.charts[chartIdx];
+      if (!chart) return;
+      event.preventDefault();
+      isSelecting = true;
+      hasDragged = false;
+      selectionStartMs = chart.scales['x'].getValueForPixel(event.offsetX) ?? 0;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!isSelecting) return;
+      const chart = this.charts[chartIdx];
+      if (!chart) return;
+      hasDragged = true;
+      const currentMs =
+        chart.scales['x'].getValueForPixel(event.offsetX) ?? selectionStartMs;
+      this.dragSelections.set(chartIdx, {
+        chartIdx,
+        fileIdx: targetFileIdx,
+        startMs: selectionStartMs,
+        currentMs,
+        hasDragged: true,
+      });
+      chart.draw();
+    };
+
+    const endSelection = (event: PointerEvent) => {
+      isSelecting = false;
+      this.dragSelections.delete(chartIdx);
+      const chart = this.charts[chartIdx];
+      const file = this.appState.files()[targetFileIdx];
+      chart?.draw();
+      if (!hasDragged || !chart || !file) return;
+
+      const endMs =
+        chart.scales['x'].getValueForPixel(event.offsetX) ?? selectionStartMs;
+      const startRel =
+        (Math.min(selectionStartMs, endMs) - file.startTime) / 1000;
+      const endRel =
+        (Math.max(selectionStartMs, endMs) - file.startTime) / 1000;
+      if (endRel - startRel > 0.05) {
+        this.openHighlightModal(
+          chart,
+          file,
+          targetFileIdx,
+          chartIdx,
+          startRel,
+          endRel
+        );
+      }
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (!isSelecting) return;
+      endSelection(event);
+    };
+
+    const onPointerLeave = () => {
+      if (!isSelecting) return;
+      isSelecting = false;
+      hasDragged = false;
+      this.dragSelections.delete(chartIdx);
+      this.charts[chartIdx]?.draw();
+    };
+
+    const onClick = (event: MouseEvent) => {
+      if (event.shiftKey && !event.altKey && !hasDragged) {
+        this.promptChartTag(targetFileIdx);
+        return;
+      }
       this.handleAltClick(fileIdx, mode, event, canvas);
+    };
+
     const onKeydown = (event: KeyboardEvent) =>
       this.handleKeydown(event, fileIdx, mode);
 
     canvas.addEventListener('mouseleave', onMouseLeave);
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('keydown', onKeydown);
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointerleave', onPointerLeave);
 
     this.canvasListenerCleanup.set(canvas, () => {
       canvas.removeEventListener('mouseleave', onMouseLeave);
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('keydown', onKeydown);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
     });
+  }
+
+  /** Port of legacy/src/chartmanager.js's per-visible-dataset min/max stats shown in the "Save Highlighted Area" modal. */
+  private openHighlightModal(
+    chart: Chart,
+    file: LoadedFile,
+    fileIdx: number,
+    chartIdx: number,
+    startRel: number,
+    endRel: number
+  ): void {
+    const startAbs = file.startTime + startRel * 1000;
+    const endAbs = file.startTime + endRel * 1000;
+    const statsLines: string[] = [];
+
+    chart.data.datasets.forEach((ds) => {
+      if (ds.hidden) return;
+      const extra = ds as unknown as ChartDatasetExtra;
+      if (extra._fileIdx !== fileIdx) return;
+      const dataPoints = (file.signals[extra._signalKey] ?? []).filter(
+        (p) => p.x >= startAbs && p.x <= endAbs
+      );
+      if (dataPoints.length === 0) return;
+      const vals = dataPoints.map((p) => p.y);
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      statsLines.push(
+        `${extra._signalKey}: min ${min.toFixed(1)}, max ${max.toFixed(1)}`
+      );
+    });
+
+    this.pendingHighlight.set({
+      fileIdx,
+      chartIdx,
+      start: startRel,
+      end: endRel,
+      statsLines,
+      titleDraft: '',
+      descDraft: '',
+    });
+  }
+
+  protected saveHighlight(): void {
+    const pending = this.pendingHighlight();
+    if (!pending) return;
+    this.appState.addHighlight(pending.fileIdx, {
+      start: pending.start,
+      end: pending.end,
+      label: pending.titleDraft.trim() || 'Highlighted Area',
+      description: pending.descDraft.trim(),
+      color: 'rgba(255, 165, 0, 0.15)',
+    });
+    this.pendingHighlight.set(null);
+  }
+
+  protected cancelHighlight(): void {
+    this.pendingHighlight.set(null);
+  }
+
+  protected setHighlightTitle(value: string): void {
+    this.pendingHighlight.update((p) => (p ? { ...p, titleDraft: value } : p));
+  }
+
+  protected setHighlightDesc(value: string): void {
+    this.pendingHighlight.update((p) => (p ? { ...p, descDraft: value } : p));
   }
 
   /**
@@ -744,6 +933,95 @@ export class ChartView {
             ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
             ctx.restore();
           }
+        }
+
+        const dragSelection = this.dragSelections.get(hoverKey);
+        if (dragSelection) {
+          const pxStart = x.getPixelForValue(dragSelection.startMs);
+          const pxEnd = x.getPixelForValue(dragSelection.currentMs);
+          if (!isNaN(pxStart) && !isNaN(pxEnd)) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+            ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
+            ctx.restore();
+          }
+        }
+
+        if (file.highlights?.length) {
+          ctx.save();
+          file.highlights.forEach((hl) => {
+            const pxStart = x.getPixelForValue(
+              file.startTime + hl.start * 1000
+            );
+            const pxEnd = x.getPixelForValue(file.startTime + hl.end * 1000);
+            if (isNaN(pxStart) || isNaN(pxEnd)) return;
+
+            ctx.fillStyle = hl.color || 'rgba(255, 165, 0, 0.15)';
+            ctx.fillRect(pxStart, top, pxEnd - pxStart, bottom - top);
+
+            const startAbs = file.startTime + hl.start * 1000;
+            const endAbs = file.startTime + hl.end * 1000;
+            const texts: { text: string; font: string }[] = [
+              { text: hl.label || 'Highlighted Area', font: 'bold 11px Arial' },
+              {
+                text: `Duration: ${(hl.end - hl.start).toFixed(2)}s`,
+                font: 'italic 10px Arial',
+              },
+            ];
+            if (hl.description) {
+              texts.push({ text: hl.description, font: 'italic 10px Arial' });
+            }
+
+            let hasStats = false;
+            chart.data.datasets.forEach((ds) => {
+              if (ds.hidden) return;
+              const extra = ds as unknown as ChartDatasetExtra;
+              if (extra._fileIdx !== hoverKey) return;
+              const dataPoints = (file.signals[extra._signalKey] ?? []).filter(
+                (p) => p.x >= startAbs && p.x <= endAbs
+              );
+              if (dataPoints.length === 0) return;
+              hasStats = true;
+              const vals = dataPoints.map((p) => p.y);
+              const min = Math.min(...vals);
+              const max = Math.max(...vals);
+              texts.push({
+                text: `${extra._signalKey}: min ${min.toFixed(1)}, max ${max.toFixed(1)}`,
+                font: '10px Arial',
+              });
+            });
+            if (!hasStats) {
+              texts.push({
+                text: 'No visible data in this range',
+                font: '10px Arial',
+              });
+            }
+
+            const padding = 5;
+            const lineHeight = 14;
+            const boxHeight = texts.length * lineHeight + padding * 2;
+            let maxWidth = 0;
+            texts.forEach((t) => {
+              ctx.font = t.font;
+              maxWidth = Math.max(maxWidth, ctx.measureText(t.text).width);
+            });
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(
+              pxStart + 5,
+              top + 5,
+              maxWidth + padding * 2,
+              boxHeight
+            );
+            ctx.fillStyle = 'white';
+            let currentY = top + 5 + padding + 9;
+            texts.forEach((t) => {
+              ctx.font = t.font;
+              ctx.fillText(t.text, pxStart + 5 + padding, currentY);
+              currentY += lineHeight;
+            });
+          });
+          ctx.restore();
         }
 
         if (file.annotations?.length) {
@@ -791,9 +1069,10 @@ export class ChartView {
   }
 
   /**
-   * Alt+Click adds a point annotation at the clicked time, or deletes one
-   * within a small pixel radius of an existing annotation — matches
-   * legacy/src/chartmanager.js's Alt+Click handler.
+   * Alt+Click deletes a nearby point annotation, or a highlight region
+   * containing the click, or otherwise adds a new point annotation — in
+   * that priority order, matching legacy/src/chartmanager.js's Alt+Click
+   * handler.
    */
   private handleAltClick(
     fileIdx: number,
@@ -803,11 +1082,9 @@ export class ChartView {
   ): void {
     if (!event.altKey) return;
     const chartIdx = mode === 'overlay' ? 0 : fileIdx;
+    const targetFileIdx = mode === 'overlay' ? 0 : fileIdx;
     const chart = this.charts[chartIdx];
-    const file =
-      mode === 'overlay'
-        ? this.appState.files()[0]
-        : this.appState.files()[fileIdx];
+    const file = this.appState.files()[targetFileIdx];
     if (!chart || !file) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -825,31 +1102,36 @@ export class ChartView {
 
     if (nearbyIndex !== -1) {
       if (confirm('Delete this point annotation?')) {
-        this.appState.removeAnnotationAt(
-          mode === 'overlay' ? 0 : fileIdx,
-          nearbyIndex
-        );
+        this.appState.removeAnnotationAt(targetFileIdx, nearbyIndex);
       }
       return;
     }
 
     const relTime = (xValue - file.startTime) / 1000;
+    const highlights = file.highlights ?? [];
+    const clickedHighlightIndex = highlights.findIndex(
+      (hl) => relTime >= hl.start && relTime <= hl.end
+    );
+    if (clickedHighlightIndex !== -1) {
+      if (confirm('Delete this highlighted area?')) {
+        this.appState.removeHighlightAt(targetFileIdx, clickedHighlightIndex);
+      }
+      return;
+    }
+
     const text = prompt(
       `Add point annotation (Alt+Click) at ${relTime.toFixed(2)}s:`,
       ''
     );
     if (text && text.trim()) {
-      this.appState.addAnnotation(mode === 'overlay' ? 0 : fileIdx, {
+      this.appState.addAnnotation(targetFileIdx, {
         time: relTime,
         text: text.trim(),
       });
     }
   }
 
-  /**
-   * Port of legacy/src/chartmanager.js's `initKeyboardControls`. Tag (`T`)
-   * and CSV export (`E`) shortcuts are dropped along with those features.
-   */
+  /** Port of legacy/src/chartmanager.js's `initKeyboardControls`. */
   private handleKeydown(
     event: KeyboardEvent,
     fileIdx: number,
@@ -878,6 +1160,17 @@ export class ChartView {
       case 'a':
       case 'A':
         this.addAnnotationAtHover(chartIdx, fileIdx, mode);
+        return;
+      case 't':
+      case 'T':
+        // Only in stack mode: exportDataRange/promptChartTag index by file,
+        // matching the toolbar buttons that expose them, which only exist
+        // per-file in the stack-mode template.
+        if (mode !== 'overlay') this.promptChartTag(fileIdx);
+        return;
+      case 'e':
+      case 'E':
+        if (mode !== 'overlay') this.exportDataRange(fileIdx);
         return;
       case 'l':
       case 'L':
@@ -1117,6 +1410,12 @@ export class ChartView {
           pan: {
             enabled: true,
             mode: 'x',
+            // Shift+Drag is reserved for the highlight-selection gesture
+            // (see attachCanvasListeners) -- without this, chartjs-plugin-zoom's
+            // own drag-to-pan handling races it on the same pointer events and
+            // shifts the x-scale mid-drag, corrupting the selected range.
+            onPanStart: ({ event }) =>
+              (event.srcEvent as MouseEvent).shiftKey ? false : undefined,
             onPanComplete: () => {
               this.syncSliderFromChart(hoverFileIdx);
               this.syncMapBounds(hoverFileIdx, mode);

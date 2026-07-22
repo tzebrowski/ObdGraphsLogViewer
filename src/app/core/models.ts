@@ -34,6 +34,8 @@ export interface LoadedFile {
   annotations?: ChartAnnotation[];
   /** Session-only, matching legacy's non-persisted `file.tags` — synced to Drive appProperties when the name matches a loaded Drive entry. */
   tags?: string[];
+  /** Session-only, matching legacy's non-persisted `file.highlights` — Shift+Drag-saved regions with a stats overlay. */
+  highlights?: ChartHighlight[];
 }
 
 export interface FileTagAddedEvent {
@@ -45,6 +47,15 @@ export interface FileTagAddedEvent {
 export interface ChartAnnotation {
   time: number;
   text: string;
+}
+
+/** A user-saved, Shift+Drag-selected time region with a title/description and per-signal min/max stats, rendered on the chart. */
+export interface ChartHighlight {
+  start: number;
+  end: number;
+  label: string;
+  description: string;
+  color: string;
 }
 
 export interface RawDataPoint {

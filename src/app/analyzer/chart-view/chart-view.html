@@ -280,4 +280,61 @@
     </div>
   </div>
 </div>
+} @if (pendingHighlight(); as ph) {
+<div
+  class="modal-overlay chm-modal-overlay"
+  style="display: flex"
+  (click)="cancelHighlight()"
+>
+  <div
+    class="modal-content chm-modal-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2>Save Highlighted Area</h2>
+      <button class="btn-close" (click)="cancelHighlight()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="chm-highlight-range">
+        Time:
+        <strong>{{ ph.start.toFixed(2) }}s - {{ ph.end.toFixed(2) }}s</strong>
+        (Duration: {{ (ph.end - ph.start).toFixed(2) }}s)
+      </p>
+
+      <div class="chm-highlight-stats">
+        <p class="chm-highlight-stats-title">
+          Calculated Context (visible data):
+        </p>
+        <ul>
+          @if (ph.statsLines.length === 0) {
+          <li>No visible data in this range</li>
+          } @for (line of ph.statsLines; track line) {
+          <li>{{ line }}</li>
+          }
+        </ul>
+      </div>
+
+      <input
+        type="text"
+        class="chm-highlight-title-input"
+        placeholder="Area title (e.g. Voltage drop)"
+        [value]="ph.titleDraft"
+        (input)="setHighlightTitle($any($event.target).value)"
+      />
+      <textarea
+        class="chm-highlight-desc-input"
+        placeholder="Additional description..."
+        [value]="ph.descDraft"
+        (input)="setHighlightDesc($any($event.target).value)"
+      ></textarea>
+
+      <div class="chm-modal-footer">
+        <button class="btn" (click)="cancelHighlight()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveHighlight()">
+          Save Highlight
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 }

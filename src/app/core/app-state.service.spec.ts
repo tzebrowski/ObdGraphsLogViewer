@@ -152,6 +152,56 @@ describe('AppStateService', () => {
     expect(state.files()[0].annotations).toEqual([{ time: 2, text: 'second' }]);
   });
 
+  it('addHighlight appends to one file without mutating others', () => {
+    const state = new AppStateService(new EventBusService());
+    state.addFile(makeFile({ dbId: 1, name: 'a.json' }));
+    state.addFile(makeFile({ dbId: 2, name: 'b.json' }));
+
+    state.addHighlight(0, {
+      start: 1,
+      end: 2,
+      label: 'Voltage drop',
+      description: '',
+      color: 'rgba(255, 165, 0, 0.15)',
+    });
+
+    expect(state.files()[0].highlights).toEqual([
+      {
+        start: 1,
+        end: 2,
+        label: 'Voltage drop',
+        description: '',
+        color: 'rgba(255, 165, 0, 0.15)',
+      },
+    ]);
+    expect(state.files()[1].highlights).toBeUndefined();
+  });
+
+  it('removeHighlightAt removes by index', () => {
+    const state = new AppStateService(new EventBusService());
+    state.addFile(makeFile({ dbId: 1 }));
+    state.addHighlight(0, {
+      start: 1,
+      end: 2,
+      label: 'first',
+      description: '',
+      color: '',
+    });
+    state.addHighlight(0, {
+      start: 3,
+      end: 4,
+      label: 'second',
+      description: '',
+      color: '',
+    });
+
+    state.removeHighlightAt(0, 0);
+
+    expect(state.files()[0].highlights).toEqual([
+      { start: 3, end: 4, label: 'second', description: '', color: '' },
+    ]);
+  });
+
   it('addFileTag appends a tag and emits FILE_TAG_ADDED', () => {
     const bus = new EventBusService();
     const state = new AppStateService(bus);
