@@ -2,7 +2,7 @@
 @if (route() === 'landing') {
 <main id="landing-page">
   <app-landing></app-landing>
-  <footer class="app-page-footer">
+  <div class="app-page-footer">
     <p>
       &copy; 2026 Tomasz Żebrowski. All rights reserved.<br />
       <em
@@ -16,7 +16,7 @@
       </a>
       <span class="app-version-container">v{{ appVersion }}</span>
     </div>
-  </footer>
+  </div>
 </main>
 } @else {
 <main id="analyzer-page">
