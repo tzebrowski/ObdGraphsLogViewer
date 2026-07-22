@@ -1,4 +1,5 @@
 import { Component, effect, inject, signal } from '@angular/core';
+import { version } from '../../package.json';
 import { AnalyzerShell } from './analyzer/analyzer-shell';
 import { AuthService } from './core/auth.service';
 import { DeepLinkService } from './core/deep-link.service';
@@ -26,6 +27,15 @@ export class App {
   private readonly deepLink = inject(DeepLinkService);
   private readonly preferences = inject(PreferencesService);
   protected readonly route = signal<Route>(this.routeFromHash());
+  /**
+   * Deliberate deviation from legacy/src/ui.js's `initVersionInfo` (a git
+   * tag + link to its GitHub release notes, injected at build time via
+   * Vite's `VITE_GIT_TAG`): this Angular app has no equivalent CI
+   * release-tagging or build-time git-describe injection set up yet, so
+   * this uses package.json's version instead of standing up that
+   * infrastructure just for a footer badge.
+   */
+  protected readonly appVersion = version;
 
   constructor() {
     document.body.classList.add('spa-mode');

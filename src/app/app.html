@@ -2,6 +2,21 @@
 @if (route() === 'landing') {
 <main id="landing-page">
   <app-landing></app-landing>
+  <footer class="app-page-footer">
+    <p>
+      &copy; 2026 Tomasz Żebrowski. All rights reserved.<br />
+      <em
+        >MyGiulia is an independent project and is not affiliated with any
+        vehicle manufacturer.</em
+      >
+    </p>
+    <div class="footer-links-container">
+      <a href="policy.html" class="footer-link-item">
+        <i class="fas fa-shield-alt"></i> Privacy Policy
+      </a>
+      <span class="app-version-container">v{{ appVersion }}</span>
+    </div>
+  </footer>
 </main>
 } @else {
 <main id="analyzer-page">

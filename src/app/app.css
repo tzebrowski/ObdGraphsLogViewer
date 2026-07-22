@@ -11,3 +11,22 @@ main#landing-page {
   display: flex;
   flex-direction: column;
 }
+
+/**
+ * Dedicated class rather than legacy's `.footer` -- that class is reused
+ * globally (src/styles.css) for a completely different, unrelated element
+ * (an analyzer-only fixed status bar), and is `display: none` by default,
+ * only shown via `body.analyzer-active`. Styled here to match what
+ * `.footer`'s own original (pre-reuse) rule intended for a plain
+ * copyright/links footer.
+ */
+.app-page-footer {
+  flex: 0 0 auto;
+  margin-top: 35px;
+  font-size: 0.85em;
+  color: #7f8c8d;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  text-align: center;
+}
