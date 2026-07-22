@@ -32,6 +32,7 @@
   justify-content: space-between;
   align-items: center;
   background: var(--sidebar-bg);
+  cursor: pointer;
 }
 
 .file-meta-header i.fa-trash-alt {

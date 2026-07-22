@@ -73,6 +73,7 @@ Tooltip.positioners.topRightCorner = function (_elements, _eventPosition) {
 
 const DATALABELS_TIME_RANGE_MS = 5000;
 const DATALABELS_MAX_VISIBLE_DATASETS = 5;
+const TOOLTIP_MATCH_THRESHOLD_MS = 5000;
 
 interface ChartDatasetExtra {
   originalMin: number;
@@ -1015,6 +1016,7 @@ export class ChartView {
         } else {
           mapService.setStackHover(hoverFileIdx, timeValue);
         }
+        this.syncTooltipActiveElements(chart, timeValue);
       },
       scales: {
         y: {
@@ -1154,6 +1156,62 @@ export class ChartView {
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  /**
+   * Port of legacy/src/chartmanager.js's `_syncTooltip`. Chart.js's own
+   * `interaction: { mode: 'nearest' }` picks a single shared data-array
+   * index across all datasets, but each PID is sampled independently at its
+   * own rate/timestamps — a shared index rarely lines up to the same real
+   * time across datasets, so the tooltip's PID list flickered between the
+   * full set and 2-3 entries depending on which index Chart.js happened to
+   * resolve. Finding each dataset's own nearest point in time (like legacy)
+   * gives a full, stable PID list every time.
+   */
+  private syncTooltipActiveElements(chart: Chart, timeValue: number): void {
+    const activeElements: { datasetIndex: number; index: number }[] = [];
+
+    chart.data.datasets.forEach((ds, dsIdx) => {
+      if (!chart.isDatasetVisible(dsIdx)) return;
+      const data = ds.data as Point[];
+      const index = this.findNearestIndex(data, timeValue);
+      if (index === -1) return;
+      if (Math.abs(data[index].x - timeValue) < TOOLTIP_MATCH_THRESHOLD_MS) {
+        activeElements.push({ datasetIndex: dsIdx, index });
+      }
+    });
+
+    if (activeElements.length === 0) return;
+    chart.setActiveElements(activeElements);
+    chart.tooltip?.setActiveElements(activeElements, {
+      x: chart.scales['x'].getPixelForValue(timeValue),
+      y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
+    });
+    chart.update('none');
+  }
+
+  /** Port of legacy/src/chartmanager.js's `_findNearestIndex` (binary search). */
+  private findNearestIndex(data: Point[], targetTime: number): number {
+    if (!data || data.length === 0) return -1;
+    if (targetTime <= data[0].x) return 0;
+    if (targetTime >= data[data.length - 1].x) return data.length - 1;
+
+    let start = 0;
+    let end = data.length - 1;
+    while (start <= end) {
+      const mid = Math.floor((start + end) / 2);
+      if (data[mid].x === targetTime) return mid;
+      else if (data[mid].x < targetTime) start = mid + 1;
+      else end = mid - 1;
+    }
+
+    const p1 = data[end];
+    const p2 = data[start];
+    if (!p1) return start;
+    if (!p2) return end;
+    return Math.abs(targetTime - p1.x) < Math.abs(targetTime - p2.x)
+      ? end
+      : start;
   }
 
   private syncVisibility(): void {

@@ -72,6 +72,22 @@ export class Sidebar {
     });
   }
 
+  /** Port of legacy/src/ui.js's `renderSignalList` per-file collapse (click the file header to hide/show its signal list). */
+  protected readonly collapsedFiles = signal<ReadonlySet<number>>(new Set());
+
+  protected isFileCollapsed(fileIdx: number): boolean {
+    return this.collapsedFiles().has(fileIdx);
+  }
+
+  protected toggleFileCollapsed(fileIdx: number): void {
+    this.collapsedFiles.update((files) => {
+      const next = new Set(files);
+      if (next.has(fileIdx)) next.delete(fileIdx);
+      else next.add(fileIdx);
+      return next;
+    });
+  }
+
   protected signalRows(file: LoadedFile): SignalRow[] {
     const term = this.searchTerm().toLowerCase().trim();
     return file.availableSignals
