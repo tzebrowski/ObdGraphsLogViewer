@@ -66,4 +66,9 @@ export class LibraryPanel {
   protected toggleHistory(): void {
     this.showHistory.update((v) => !v);
   }
+
+  /** Port of legacy/src/ui.js's `replayProjectHistory` — re-applies this project's history (currently: recreates math channels). */
+  protected replayProject(): void {
+    void this.projectManager.replayHistory();
+  }
 }

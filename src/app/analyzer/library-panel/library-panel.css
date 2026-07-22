@@ -51,3 +51,12 @@
   color: var(--text-muted);
   padding: 2px 4px;
 }
+
+.pm-replay-btn {
+  margin-top: 10px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

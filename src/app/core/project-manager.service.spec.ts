@@ -183,6 +183,46 @@ describe('ProjectManagerService', () => {
     });
   });
 
+  describe('resetProject', () => {
+    it('starts a fresh project with cleared history and re-registers currently-loaded files', () => {
+      const bus = new EventBusService();
+      const appState = new AppStateService(bus);
+      const pm = new ProjectManagerService(
+        appState,
+        makeDbFake(),
+        bus,
+        new PreferencesService(),
+        makeMathChannelsFake()
+      );
+
+      pm.renameProject('Track Day');
+      appState.addFile(makeFile({ dbId: 1, name: 'a.json' }));
+      pm.registerFile({
+        name: 'a.json',
+        dbId: 1,
+        size: 100,
+        metadata: {},
+      });
+      bus.emit(EVENTS.ACTION_LOG, {
+        type: 'CREATE_MATH_CHANNEL',
+        description: 'Added channel',
+        payload: {},
+        fileIndex: 0,
+      });
+      expect(pm.history()).toHaveLength(1);
+
+      pm.resetProject();
+
+      expect(pm.history()).toEqual([]);
+      expect(pm.projectName()).not.toBe('Track Day');
+
+      const stored = JSON.parse(localStorage.getItem('current_project')!);
+      expect(stored.resources).toHaveLength(1);
+      expect(stored.resources[0].fileName).toBe('a.json');
+      expect(stored.history).toEqual([]);
+    });
+  });
+
   describe('replayHistory', () => {
     it('replays CREATE_MATH_CHANNEL actions for files that still exist', async () => {
       const bus = new EventBusService();

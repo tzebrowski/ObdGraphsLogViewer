@@ -55,8 +55,6 @@ const STORAGE_KEY = 'current_project';
  *   like an oversight rather than an intentional design choice.
  * - `purgeLibrary()` clears in-memory state instead of a full page reload,
  *   since this is now a proper SPA.
- * `resetProject()` (starting a brand-new project) isn't exposed in the UI
- * yet — no surface for it in Milestone 3a.
  */
 @Injectable({ providedIn: 'root' })
 export class ProjectManagerService {
@@ -224,6 +222,32 @@ export class ProjectManagerService {
     }
 
     this.isReplaying = false;
+  }
+
+  /**
+   * Port of legacy/src/projectmanager.js's `resetProject`: starts a fresh
+   * project (new id/name/createdAt, cleared history) while re-registering
+   * any currently-loaded files against it so they aren't lost, just their
+   * history/resource tracking starts over.
+   */
+  resetProject(): void {
+    const fresh = this.createEmptyProject();
+    this.projectId = fresh.id;
+    this.projectName.set(fresh.name);
+    this.createdAt = fresh.createdAt;
+    this.resources = [];
+    this.history.set([]);
+
+    this.appState.files().forEach((file) => {
+      this.registerFile({
+        name: file.name,
+        dbId: file.dbId,
+        size: file.size,
+        metadata: file.metadata,
+      });
+    });
+
+    this.saveToStorage();
   }
 
   private async refreshLibrary(): Promise<void> {
