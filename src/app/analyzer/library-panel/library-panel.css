@@ -1,0 +1,62 @@
+.pm-project-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 0.85em;
+}
+
+.pm-project-name {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.pm-project-name:hover {
+  color: var(--text-color);
+}
+
+.pm-project-name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pm-history-header {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color);
+}
+
+.pm-history-header:hover {
+  color: var(--text-color);
+}
+
+.pm-history-list {
+  margin-top: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pm-history-item {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  padding: 2px 4px;
+}
+
+.pm-replay-btn {
+  margin-top: 10px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

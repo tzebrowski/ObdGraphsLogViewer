@@ -1,0 +1,71 @@
+.modal-content {
+  max-width: 520px;
+  max-height: 85vh;
+}
+
+.math-source-checklist {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.math-source-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.math-signal-filter {
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.math-signal-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.math-signal-filter-row .math-signal-filter {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.math-source-radio {
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.math-source-radio:hover {
+  background: var(--active-bg, #f0f0f0);
+}
+
+.math-source-radio.selected {
+  background: var(--brand-red, #e53e3e);
+  color: #fff;
+}
+
+.math-signal-no-results {
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  padding: 4px;
+}
+
+.math-error-msg {
+  color: var(--brand-red, #e53e3e);
+  font-size: 0.85em;
+  padding: 6px 4px;
+}

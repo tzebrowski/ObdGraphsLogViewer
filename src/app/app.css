@@ -1,0 +1,36 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+main#analyzer-page,
+main#landing-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/**
+ * Plain <div>, not a <footer> element, and a dedicated class rather than
+ * legacy's `.footer`. Two unrelated global rules in src/styles.css both
+ * target this markup shape: a bare `footer { position: fixed; bottom: 0;
+ * right: 0; ... }` (dead in legacy, which never actually uses a real
+ * <footer> tag -- only `<div class="footer">`) that floated this as a
+ * corner badge over page content, and `.footer` itself being reused for a
+ * completely different, unrelated element (an analyzer-only fixed status
+ * bar) that's `display: none` by default, only shown via
+ * `body.analyzer-active`. Styled here to match what `.footer`'s own
+ * original (pre-reuse) rule intended for a plain copyright/links footer.
+ */
+.app-page-footer {
+  flex: 0 0 auto;
+  margin-top: 35px;
+  font-size: 0.85em;
+  color: #7f8c8d;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  text-align: center;
+}

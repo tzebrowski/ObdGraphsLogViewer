@@ -1,0 +1,252 @@
+<nav class="top-nav">
+  <div class="nav-container">
+    @if (route() === 'analyzer') {
+    <div class="integrated-toolbar">
+      <button
+        class="nav-icon-btn"
+        title="Fullscreen"
+        (click)="toggleFullScreen()"
+      >
+        <i class="fas fa-expand"></i>
+      </button>
+      <button
+        class="nav-icon-btn"
+        title="Toggle Sidebar"
+        (click)="uiState.toggleSidebar()"
+      >
+        <i class="fas fa-bars"></i>
+      </button>
+      <button class="nav-icon-btn info-btn" title="Info" (click)="toggleInfo()">
+        <i class="fas fa-info-circle"></i>
+      </button>
+
+      <div class="toolbar-separator"></div>
+
+      <button class="tool-btn" title="Scan Drive" (click)="connectDrive()">
+        <i class="fab fa-google-drive"></i>
+        <span class="desktop-label">Drive</span>
+      </button>
+      <label class="tool-btn" title="Open Local">
+        <i class="fas fa-folder-open"></i>
+        <span class="desktop-label">Open</span>
+        <input
+          type="file"
+          class="hidden"
+          accept=".csv,.json,.gz"
+          multiple
+          style="display: none"
+          (change)="fileInputChange($event)"
+        />
+      </label>
+      <button class="tool-btn" title="Reset Zoom" (click)="resetAllZoom()">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+
+    <div class="view-switcher-container">
+      <button
+        class="view-btn"
+        title="Math Channel"
+        [disabled]="!appState.dataLoaded()"
+        (click)="mathChannels.openModal()"
+      >
+        <i class="fas fa-calculator"></i>
+      </button>
+      <button
+        class="view-btn"
+        title="Quick Auto-Filter (WOT)"
+        [disabled]="!appState.dataLoaded()"
+        (click)="openQuickGasFilter()"
+      >
+        <i class="fas fa-filter"></i>
+      </button>
+      <button
+        class="view-btn"
+        title="Stack View"
+        [class.active]="appState.viewMode() === 'stack'"
+        [disabled]="!appState.dataLoaded()"
+        (click)="setViewMode('stack')"
+      >
+        <i class="fas fa-stream"></i>
+      </button>
+      <button
+        class="view-btn"
+        title="Overlay View"
+        [class.active]="appState.viewMode() === 'overlay'"
+        [disabled]="!appState.dataLoaded()"
+        (click)="setViewMode('overlay')"
+      >
+        <i class="fas fa-layer-group"></i>
+      </button>
+      <button
+        class="view-btn"
+        title="XY Analysis"
+        [disabled]="!appState.dataLoaded()"
+        (click)="xy.openModal()"
+      >
+        <i class="fas fa-braille"></i>
+      </button>
+      <button
+        class="view-btn"
+        title="Histogram"
+        [disabled]="!appState.dataLoaded()"
+        (click)="histogram.openModal()"
+      >
+        <i class="fas fa-chart-bar"></i>
+      </button>
+      <button
+        class="view-btn"
+        title="Virtual Dyno"
+        [disabled]="!appState.dataLoaded()"
+        (click)="dyno.openSetup()"
+      >
+        <i class="fas fa-tachometer-alt"></i>
+      </button>
+    </div>
+    }
+
+    <div class="nav-links">
+      <button
+        class="tool-btn user-profile-btn"
+        title="Account Profile"
+        style="margin-right: 8px; background: transparent; border: none"
+        (click)="toggleProfile()"
+      >
+        @if (auth.isLoggedIn() && auth.user()?.photoLink) {
+        <img
+          [src]="auth.user()?.photoLink"
+          class="user-avatar"
+          style="width: 24px; height: 24px; border-radius: 50%"
+          referrerpolicy="no-referrer"
+        />
+        } @else {
+        <i class="fas fa-user-circle" style="font-size: 1.2rem"></i>
+        }
+      </button>
+
+      <a
+        href="https://github.com/tzebrowski/ObdGraphs"
+        target="_blank"
+        class="nav-link"
+        title="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+
+      <div class="nav-divider"></div>
+
+      <button
+        class="nav-btn-primary"
+        title="Return to Landing Page"
+        (click)="goHome()"
+      >
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+@if (infoOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="toggleInfo()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Application Overview</h2>
+      <button class="btn-close" (click)="toggleInfo()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="app-description">
+        <strong>My Giulia Telemetry Analyzer:</strong> A professional tool for
+        visualizing and scanning vehicle OBD data. Compare multiple logs, sync
+        timelines, and detect mechanical anomalies automatically.
+      </p>
+
+      <div class="info-grid">
+        <div class="info-card grid-span-2">
+          <h4>📥 How to Import Logs</h4>
+          <ol class="import-steps">
+            <li>Open <strong>MyGiulia</strong> on your Android device.</li>
+            <li>
+              Navigate to the <strong>Graph</strong> view and select
+              <strong>Manage recorded trips</strong>.
+            </li>
+            <li>Select your log and tap <strong>Send to Cloud</strong>.</li>
+            <li>
+              Upload the file here using the <strong>"Open"</strong> button.
+            </li>
+          </ol>
+        </div>
+
+        <div class="info-card">
+          <h4>⌨️ Keyboard Shortcuts</h4>
+          <ul class="shortcuts-list">
+            <li><strong>A</strong> - Add Annotation at cursor</li>
+            <li><strong>L</strong> - Toggle Chart Legend</li>
+            <li><strong>Arrows</strong> - Pan Left/Right (Shift for faster)</li>
+            <li><strong>+ / -</strong> - Zoom In / Out</li>
+            <li><strong>R</strong> - Reset View</li>
+            <li><strong>Alt + Click</strong> - Add/Delete Annotation</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h4>🔍 Anomaly Scanning</h4>
+          <p>
+            Uses logic templates to pinpoint events like boost leaks with
+            contextual zoom.
+          </p>
+        </div>
+
+        <div class="info-card">
+          <h4>🔄 Multi-Sync</h4>
+          <p>
+            Pan or zoom on any chart to automatically align all loaded logs.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" (click)="toggleInfo()">Got it!</button>
+      </div>
+    </div>
+  </div>
+</div>
+} @if (profileOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="toggleProfile()">
+  <div
+    class="modal-content"
+    style="max-width: 320px; text-align: center"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2>Account</h2>
+      <button class="btn-close" (click)="toggleProfile()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (auth.isLoggedIn()) {
+      <i
+        class="fas fa-user-circle"
+        style="font-size: 3em; color: var(--brand-blue)"
+      ></i>
+      <p><strong>{{ userLabel() }}</strong></p>
+      <p class="section-description">{{ auth.user()?.emailAddress }}</p>
+      <button class="btn btn-sm" (click)="signOut()">
+        <i class="fas fa-sign-out-alt"></i> Sign Out
+      </button>
+      } @else {
+      <i
+        class="fas fa-user-circle"
+        style="font-size: 3em; color: var(--text-muted)"
+      ></i>
+      <p><strong>Not Logged In</strong></p>
+      <p class="section-description">
+        Connect to Google Drive to access your cloud telemetry logs.
+      </p>
+      <button class="btn btn-sm btn-primary" (click)="connectDrive()">
+        <i class="fab fa-google"></i> Connect Google Drive
+      </button>
+      }
+    </div>
+  </div>
+</div>
+}
