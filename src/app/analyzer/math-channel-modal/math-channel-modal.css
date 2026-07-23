@@ -24,6 +24,33 @@
   cursor: pointer;
 }
 
+.math-signal-filter {
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.math-source-radio {
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.math-source-radio:hover {
+  background: var(--active-bg, #f0f0f0);
+}
+
+.math-source-radio.selected {
+  background: var(--brand-red, #e53e3e);
+  color: #fff;
+}
+
+.math-signal-no-results {
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  padding: 4px;
+}
+
 .math-error-msg {
   color: var(--brand-red, #e53e3e);
   font-size: 0.85em;

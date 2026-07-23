@@ -14,10 +14,15 @@ import { SignalRegistryService } from '../../core/signal-registry.service';
 
 /**
  * Port of legacy/src/mathchannels.js's modal UI. The custom searchable-
- * autocomplete widget is replaced with native `<select>`/checkbox controls.
- * Signal-picker pre-fill (matching a formula's expected input against the
- * file's actual signal names) is kept since it's the main usability win of
- * the original widget. `resetForm` also consumes
+ * autocomplete widget (a text input with a filtered click-to-select
+ * dropdown) is replaced with an always-visible signal list per input —
+ * checkboxes for multi-signal inputs, a click-to-select list for
+ * single-signal inputs — each with its own small filter box above it
+ * (`inputFilters`/`filteredSignals`) so the list stays usable once a file
+ * has many signals, matching the original widget's main usability win
+ * without bringing back a hidden-until-typed text field. Signal-picker
+ * pre-fill (matching a formula's expected input against the file's actual
+ * signal names) is kept for the same reason. `resetForm` also consumes
  * `MathChannelsService.preselectFormulaId` for the gas-pedal quick-launch
  * shortcut (TopNav's Quick Gas Filter button).
  */
@@ -41,6 +46,8 @@ export class MathChannelModal {
   protected readonly channelName = signal('');
   protected readonly inputValues = signal<Partial<Record<number, string>>>({});
   protected readonly selectedSources = signal<string[]>([]);
+  /** Per-input-index filter text narrowing that input's signal list (`filteredSignals`). */
+  protected readonly inputFilters = signal<Partial<Record<number, string>>>({});
   protected readonly smoothEnabled = signal(false);
   protected readonly smoothWindow = signal(5);
   protected readonly isolateEnabled = signal(false);
@@ -89,6 +96,7 @@ export class MathChannelModal {
     this.selectedFormulaId.set(id);
     this.errorMessage.set(null);
     this.selectedSources.set([]);
+    this.inputFilters.set({});
     this.smoothEnabled.set(false);
     this.smoothWindow.set(5);
 
@@ -147,6 +155,18 @@ export class MathChannelModal {
 
   protected setInputValue(idx: number, value: string): void {
     this.inputValues.update((v) => ({ ...v, [idx]: value }));
+  }
+
+  /** Signals for input `idx`, narrowed by that input's filter text (case-insensitive substring match). */
+  protected filteredSignals(idx: number): string[] {
+    const signals = this.currentFile()?.availableSignals ?? [];
+    const term = (this.inputFilters()[idx] ?? '').toLowerCase().trim();
+    if (!term) return signals;
+    return signals.filter((sig) => sig.toLowerCase().includes(term));
+  }
+
+  protected setInputFilter(idx: number, value: string): void {
+    this.inputFilters.update((f) => ({ ...f, [idx]: value }));
   }
 
   protected toggleSource(sig: string): void {
@@ -226,6 +246,7 @@ export class MathChannelModal {
     this.channelName.set('');
     this.inputValues.set({});
     this.selectedSources.set([]);
+    this.inputFilters.set({});
     this.smoothEnabled.set(false);
     this.smoothWindow.set(5);
     this.isolateEnabled.set(false);

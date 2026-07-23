@@ -49,13 +49,20 @@
           }
         </select>
       </div>
-      } @for (input of def.inputs; track $index) {
+      } @for (input of def.inputs; track $index; let inputIdx = $index) {
       <div class="math-input-wrapper">
         <label class="math-label-small">{{ input.label }}</label>
 
         @if (input.isMulti) {
+        <input
+          type="text"
+          class="template-select math-signal-filter"
+          placeholder="Filter signals..."
+          [value]="inputFilters()[inputIdx] ?? ''"
+          (input)="setInputFilter(inputIdx, $any($event.target).value)"
+        />
         <div class="math-source-checklist">
-          @for (sig of currentFile()?.availableSignals ?? []; track sig) {
+          @for (sig of filteredSignals(inputIdx); track sig) {
           <label class="math-source-checkbox">
             <input
               type="checkbox"
@@ -64,13 +71,15 @@
             />
             {{ sig }}
           </label>
+          } @if (filteredSignals(inputIdx).length === 0) {
+          <span class="math-signal-no-results">No signals match.</span>
           }
         </div>
         } @else if (input.isConstant && input.options) {
         <select
           class="template-select"
-          [value]="inputValues()[$index] ?? ''"
-          (change)="setInputValue($index, $any($event.target).value)"
+          [value]="inputValues()[inputIdx] ?? ''"
+          (change)="setInputValue(inputIdx, $any($event.target).value)"
         >
           @for (opt of input.options; track opt.value) {
           <option [value]="opt.value">{{ opt.label }}</option>
@@ -80,23 +89,30 @@
         <input
           type="text"
           class="template-select"
-          [value]="inputValues()[$index] ?? ''"
-          (input)="setInputValue($index, $any($event.target).value)"
+          [value]="inputValues()[inputIdx] ?? ''"
+          (input)="setInputValue(inputIdx, $any($event.target).value)"
         />
         } @else {
-        <select
-          class="template-select"
-          (change)="setInputValue($index, $any($event.target).value)"
-        >
-          <option value="" [selected]="!inputValues()[$index]">
-            -- Select Signal --
-          </option>
-          @for (sig of currentFile()?.availableSignals ?? []; track sig) {
-          <option [value]="sig" [selected]="sig === inputValues()[$index]">
+        <input
+          type="text"
+          class="template-select math-signal-filter"
+          placeholder="Filter signals..."
+          [value]="inputFilters()[inputIdx] ?? ''"
+          (input)="setInputFilter(inputIdx, $any($event.target).value)"
+        />
+        <div class="math-source-checklist">
+          @for (sig of filteredSignals(inputIdx); track sig) {
+          <div
+            class="math-source-radio"
+            [class.selected]="sig === inputValues()[inputIdx]"
+            (click)="setInputValue(inputIdx, sig)"
+          >
             {{ sig }}
-          </option>
+          </div>
+          } @if (filteredSignals(inputIdx).length === 0) {
+          <span class="math-signal-no-results">No signals match.</span>
           }
-        </select>
+        </div>
         }
       </div>
       }
