@@ -114,7 +114,40 @@
         </div>
 
         <div class="sig-list" [class.hidden]="isFileCollapsed(fileIdx)">
-          @for (row of signalRows(file); track row.name) {
+          @if (mathSignalRows(file).length > 0) {
+          <div class="signal-separator">Math Channels</div>
+          @for (row of mathSignalRows(file); track row.name) {
+          <div class="signal-item">
+            @if (preferences.useCustomPalette()) {
+            <input
+              type="color"
+              class="signal-color-picker"
+              [value]="colorFor(fileIdx, row.name, file)"
+              (change)="setCustomColor(file.name, row.name, $event)"
+            />
+            } @else {
+            <span
+              class="signal-color-swatch"
+              [style.background]="colorFor(fileIdx, row.name, file)"
+            ></span>
+            }
+            <input
+              type="checkbox"
+              [id]="'chk-f' + fileIdx + '-' + row.name"
+              [checked]="appState.isSignalVisible(fileIdx, row.name)"
+              (change)="toggleSignal(fileIdx, row.name, $event)"
+            />
+            <label
+              [for]="'chk-f' + fileIdx + '-' + row.name"
+              [class.math-signal]="row.isMath"
+            >
+              {{ row.name }}
+            </label>
+          </div>
+          } } @if (mathSignalRows(file).length > 0 &&
+          regularSignalRows(file).length > 0) {
+          <div class="signal-separator">Log Data</div>
+          } @for (row of regularSignalRows(file); track row.name) {
           <div class="signal-item">
             @if (preferences.useCustomPalette()) {
             <input

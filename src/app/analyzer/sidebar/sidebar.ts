@@ -88,11 +88,22 @@ export class Sidebar {
     });
   }
 
-  protected signalRows(file: LoadedFile): SignalRow[] {
+  /** Port of legacy/src/ui.js's `renderSignalList` grouping: Math Channels first, Log Data (stock signals) second, each alphabetical. */
+  protected mathSignalRows(file: LoadedFile): SignalRow[] {
+    return this.signalRowsFor(file, true);
+  }
+
+  protected regularSignalRows(file: LoadedFile): SignalRow[] {
+    return this.signalRowsFor(file, false);
+  }
+
+  private signalRowsFor(file: LoadedFile, isMath: boolean): SignalRow[] {
     const term = this.searchTerm().toLowerCase().trim();
     return file.availableSignals
+      .filter((name) => name.startsWith('Math:') === isMath)
       .filter((name) => !term || name.toLowerCase().includes(term))
-      .map((name) => ({ name, isMath: name.startsWith('Math:') }));
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ name, isMath }));
   }
 
   protected colorFor(
