@@ -177,6 +177,28 @@ export class MathChannelModal {
     );
   }
 
+  /**
+   * Select All/None, matching the same pattern used for signal visibility in
+   * the sidebar (toggleAllSignals/toggleFileSignals). Scoped to input `idx`'s
+   * currently-filtered signal list, like legacy/src/mathchannels.js's
+   * "(Select/Deselect All Visible)" option — with a filter active, "All"
+   * should mean everything currently shown, not the whole file.
+   */
+  protected selectAllVisible(idx: number): void {
+    const visible = this.filteredSignals(idx);
+    this.selectedSources.update((sources) => [
+      ...sources,
+      ...visible.filter((sig) => !sources.includes(sig)),
+    ]);
+  }
+
+  protected deselectAllVisible(idx: number): void {
+    const visible = this.filteredSignals(idx);
+    this.selectedSources.update((sources) =>
+      sources.filter((s) => !visible.includes(s))
+    );
+  }
+
   protected create(): void {
     const def = this.selectedDefinition();
     const file = this.currentFile();

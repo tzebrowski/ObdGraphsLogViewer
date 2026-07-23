@@ -54,13 +54,29 @@
         <label class="math-label-small">{{ input.label }}</label>
 
         @if (input.isMulti) {
-        <input
-          type="text"
-          class="template-select math-signal-filter"
-          placeholder="Filter signals..."
-          [value]="inputFilters()[inputIdx] ?? ''"
-          (input)="setInputFilter(inputIdx, $any($event.target).value)"
-        />
+        <div class="math-signal-filter-row">
+          <input
+            type="text"
+            class="template-select math-signal-filter"
+            placeholder="Filter signals..."
+            [value]="inputFilters()[inputIdx] ?? ''"
+            (input)="setInputFilter(inputIdx, $any($event.target).value)"
+          />
+          <button
+            type="button"
+            class="btn btn-sm"
+            (click)="selectAllVisible(inputIdx)"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm"
+            (click)="deselectAllVisible(inputIdx)"
+          >
+            None
+          </button>
+        </div>
         <div class="math-source-checklist">
           @for (sig of filteredSignals(inputIdx); track sig) {
           <label class="math-source-checkbox">

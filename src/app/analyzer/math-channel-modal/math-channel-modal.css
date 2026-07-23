@@ -29,6 +29,19 @@
   font-size: 0.85rem;
 }
 
+.math-signal-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.math-signal-filter-row .math-signal-filter {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
 .math-source-radio {
   padding: 3px 6px;
   border-radius: 4px;
