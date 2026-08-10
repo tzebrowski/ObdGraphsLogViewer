@@ -1450,6 +1450,15 @@ export class ChartView {
             wheel: { enabled: true },
             pinch: { enabled: true },
             mode: 'x',
+            // Same Shift-reserved-for-highlight guard as onPanStart above.
+            // Wheel events reach this callback as a plain native Event
+            // (shiftKey directly on it) while pinch events arrive wrapped
+            // in a HammerInput (shiftKey under .srcEvent) -- legacy checks
+            // both, so this does too.
+            onZoomStart: ({ event }) => {
+              const e = event as MouseEvent & { srcEvent?: MouseEvent };
+              return e.shiftKey || e.srcEvent?.shiftKey ? false : undefined;
+            },
             onZoomComplete: () => {
               this.syncSliderFromChart(hoverFileIdx);
               this.syncMapBounds(hoverFileIdx, mode);
@@ -1462,6 +1471,10 @@ export class ChartView {
   }
 
   private shouldShowLabels(chart: Chart): boolean {
+    // Matches legacy/src/chartmanager.js's updateLabelVisibility(): on
+    // narrow (phone-width) viewports, datalabels are force-hidden
+    // regardless of the other conditions below.
+    if (window.innerWidth <= 768) return false;
     if (!this.preferences.showLabels()) return false;
 
     const xRange =
