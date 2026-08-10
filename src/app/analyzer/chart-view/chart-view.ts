@@ -79,6 +79,16 @@ const DATALABELS_TIME_RANGE_MS = 5000;
 const DATALABELS_MAX_VISIBLE_DATASETS = 5;
 const TOOLTIP_MATCH_THRESHOLD_MS = 5000;
 
+/**
+ * Caps how many points a single line dataset carries. Without this, a dense
+ * wide-CSV export (one row per timestamp per signal, unlike the sparser
+ * event-based sampling typical JSON logs have) can push a single signal
+ * into the tens of thousands of points; with ~20 signals visible at once
+ * that's well over a million points for Chart.js to parse and stroke on
+ * every (re)build, which was observed to freeze the tab for 40+ seconds.
+ */
+const MAX_POINTS_PER_DATASET = 4000;
+
 interface ChartDatasetExtra {
   originalMin: number;
   originalMax: number;
@@ -1283,6 +1293,43 @@ export class ChartView {
     chart.update();
   }
 
+  /**
+   * Reduces `data` to roughly `maxPoints` by bucketing it and keeping each
+   * bucket's min- and max-y point (both real samples, not synthetic
+   * averages), so spikes/dips survive instead of being smoothed away.
+   * `data` must already be sorted ascending by `x`; the result stays sorted.
+   */
+  private downsampleMinMax(
+    data: SignalPoint[],
+    maxPoints: number
+  ): SignalPoint[] {
+    if (data.length <= maxPoints) return data;
+
+    const bucketSize = Math.ceil(data.length / (maxPoints / 2));
+    const result: SignalPoint[] = [];
+
+    for (let i = 0; i < data.length; i += bucketSize) {
+      let minPoint = data[i];
+      let maxPoint = data[i];
+      const end = Math.min(i + bucketSize, data.length);
+
+      for (let j = i + 1; j < end; j++) {
+        const p = data[j];
+        if (p.y < minPoint.y) minPoint = p;
+        if (p.y > maxPoint.y) maxPoint = p;
+      }
+
+      if (minPoint === maxPoint) {
+        result.push(minPoint);
+      } else if (minPoint.x <= maxPoint.x) {
+        result.push(minPoint, maxPoint);
+      } else {
+        result.push(maxPoint, minPoint);
+      }
+    }
+    return result;
+  }
+
   private buildDataset(
     file: LoadedFile,
     key: string,
@@ -1290,7 +1337,10 @@ export class ChartView {
     sigIdx: number,
     label: string
   ): LineDataset {
-    const rawData = file.signals[key];
+    const rawData = this.downsampleMinMax(
+      file.signals[key],
+      MAX_POINTS_PER_DATASET
+    );
     const yValues = rawData.map((d) => parseFloat(String(d.y)) || 0);
     const min = Math.min(...yValues);
     const max = Math.max(...yValues);
