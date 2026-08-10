@@ -74,12 +74,55 @@
   --btn-shadow: 0 2px 5px rgb(0 0 0 / 10%);
   --btn-hover-shadow: 0 4px 10px rgb(0 0 0 / 15%);
   --btn-font-weight: 600;
+
+  /*
+   * hextune-aligned design tokens (see /home/tzebrowski/github/tuning-tools).
+   * Additive only for now — nothing below is consumed yet. Values are this
+   * app's own brand colors reshaped into hextune's token vocabulary, not
+   * hextune's literal hexes, so the visual identity doesn't change once
+   * consumers are migrated over in a later step.
+   */
+  --page: #fcfcfc;
+  --surface-1: #fff;
+  --text-primary: #333;
+  --text-secondary: #666;
+
+  /*
+   * Named --text-muted-2 (not hextune's --text-muted) because the OLD
+   * --text-muted (#666, above) still has 48 live consumers and can't be
+   * redefined out from under them here. Renamed to --text-muted once the
+   * old token is retired in the mechanical-swap step.
+   */
+  --text-muted-2: #a0a0a0;
+  --grid: #ddd;
+  --border: rgb(11 11 11 / 10%);
+  --accent: #1c3d72;
+  --accent-2: #eb6834;
+  --ok: #01804f;
+  --warn: #b8860b;
+  --bad: #c22636;
 }
 
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
   --text-main: #333;
   --text-muted: #666;
+  --sidebar-bg: #1c1e22;
+  --active-bg: rgb(194 38 54 / 15%);
+  --text-empty-state: rgb(194 38 54 / 8%);
+
+  --page: #101216;
+  --surface-1: #1e2126;
+  --text-primary: #eef0f2;
+  --text-secondary: #a9adb4;
+  --text-muted-2: #6c7078;
+  --grid: #2a2d33;
+  --border: rgb(255 255 255 / 10%);
+  --accent: #3d5f9e;
+  --accent-2: #ff9224;
+  --ok: #3ecf6e;
+  --warn: #e0a83c;
+  --bad: #e0483c;
 }
 
 body.dark-theme .modal-content h2,
