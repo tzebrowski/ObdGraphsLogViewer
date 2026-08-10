@@ -12,6 +12,9 @@ const SCHEMA_REGISTRY = {
 };
 const SCHEMA = { timeKey: 'x', valueKey: 'y' } as const;
 
+const SAMPLE_TRIP_URL =
+  'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
+
 /**
  * Port of legacy/src/dataprocessor.js. `handleFiles` is the local-file
  * ingestion path (drag-drop / file picker); `processExternal` is the same
@@ -90,6 +93,25 @@ export class DataProcessorService {
     fileName: string
   ): Promise<LoadedFile | undefined> {
     return this.process(data, fileName);
+  }
+
+  /** Port of legacy/src/ui.js's `loadSampleData` — fetches a real trip profile so first-time visitors can try the app without a log of their own. Rethrows on network/parse failure so callers can decide whether to keep any surrounding UI (e.g. a modal) open. */
+  async loadSampleTrip(): Promise<void> {
+    this.appState.loading.set(true);
+    this.appState.loadingMessage.set('Loading sample file');
+
+    try {
+      const response = await fetch(SAMPLE_TRIP_URL);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      await this.process(data, 'sample-trip-giulia.json');
+    } catch (error) {
+      console.error('Error loading sample trip:', error);
+      this.appState.showAlert('Failed to load sample data.');
+      throw error;
+    } finally {
+      this.appState.loading.set(false);
+    }
   }
 
   private async process(

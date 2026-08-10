@@ -28,6 +28,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import Hammer from 'hammerjs';
 import { AppStateService } from '../../core/app-state.service';
+import { DataProcessorService } from '../../core/data-processor.service';
 import { EventBusService } from '../../core/event-bus.service';
 import { MapService } from '../../core/map.service';
 import {
@@ -39,6 +40,7 @@ import {
 } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
+import { UiStateService } from '../../core/ui-state.service';
 import { EmbeddedMap } from '../embedded-map/embedded-map';
 import { OverlayMap } from '../overlay-map/overlay-map';
 
@@ -146,10 +148,12 @@ Alt + Click : Add / Delete Annotation or Highlight`;
 })
 export class ChartView {
   protected readonly appState = inject(AppStateService);
+  protected readonly uiState = inject(UiStateService);
   private readonly palette = inject(SignalPaletteService);
   private readonly mapService = inject(MapService);
   private readonly preferences = inject(PreferencesService);
   private readonly bus = inject(EventBusService);
+  private readonly dataProcessor = inject(DataProcessorService);
 
   protected readonly canvasRefs =
     viewChildren<ElementRef<HTMLCanvasElement>>('canvasEl');
@@ -239,6 +243,12 @@ export class ChartView {
 
   protected removeFile(index: number): void {
     this.appState.removeFileAt(index);
+  }
+
+  protected loadSampleTrip(): void {
+    this.dataProcessor.loadSampleTrip().catch(() => {
+      /* alert already shown by DataProcessorService */
+    });
   }
 
   protected resetChart(index: number): void {

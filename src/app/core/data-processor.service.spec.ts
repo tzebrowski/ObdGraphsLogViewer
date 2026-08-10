@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStateService } from './app-state.service';
 import { DataProcessorService } from './data-processor.service';
 import { DbManagerService } from './db-manager.service';
@@ -38,6 +38,10 @@ describe('DataProcessorService', () => {
       ),
       signalRegistry
     );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('groups signals, sorts by timestamp, and computes duration', async () => {
@@ -169,5 +173,36 @@ describe('DataProcessorService', () => {
   it('clears the loading state once all files in the batch finish', async () => {
     await service.handleFiles([jsonFile('a.json', [{ s: 'RPM', t: 1, v: 1 }])]);
     expect(appState.loading()).toBe(false);
+  });
+
+  describe('loadSampleTrip', () => {
+    it('fetches the bundled sample trip and adds it as a file', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => [{ s: 'RPM', t: 0, v: 1000 }],
+        })
+      );
+
+      await service.loadSampleTrip();
+
+      expect(appState.files()).toHaveLength(1);
+      expect(appState.files()[0].name).toBe('sample-trip-giulia.json');
+      expect(appState.loading()).toBe(false);
+    });
+
+    it('shows an alert and rethrows when the download fails', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: false, status: 500 })
+      );
+
+      await expect(service.loadSampleTrip()).rejects.toThrow();
+
+      expect(appState.files()).toHaveLength(0);
+      expect(appState.alertMessage()).toContain('Failed to load sample data');
+      expect(appState.loading()).toBe(false);
+    });
   });
 });

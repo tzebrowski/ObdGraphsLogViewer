@@ -58,6 +58,15 @@ export class TopNav {
     this.infoOpen.update((v) => !v);
   }
 
+  protected loadSampleTrip(): void {
+    this.dataProcessor
+      .loadSampleTrip()
+      .then(() => this.infoOpen.set(false))
+      .catch(() => {
+        /* alert already shown by DataProcessorService; keep the modal open */
+      });
+  }
+
   protected toggleProfile(): void {
     this.profileOpen.update((v) => !v);
   }
