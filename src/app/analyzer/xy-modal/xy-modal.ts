@@ -13,13 +13,16 @@ import {
   LineController,
   LineElement,
   LinearScale,
+  Plugin,
   PointElement,
   ScatterController,
   Tooltip,
+  TooltipPositionerFunction,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { AppStateService } from '../../core/app-state.service';
 import { LoadedFile } from '../../core/models';
+import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
 import {
   PanelIndex,
@@ -38,6 +41,19 @@ Chart.register(
   Legend,
   zoomPlugin
 );
+
+declare module 'chart.js' {
+  interface TooltipPositionerMap {
+    xyFixed: TooltipPositionerFunction<never>;
+  }
+}
+/** Port of legacy/src/xyanalysis.js's `xyFixed` tooltip positioner — pins the timeline tooltip to the chart's top-right corner instead of following the cursor. */
+Tooltip.positioners.xyFixed = function (_elements, _eventPosition) {
+  const chart = this.chart;
+  if (!chart) return false as never;
+  const { chartArea } = chart;
+  return { x: chartArea.right - 10, y: chartArea.top + 10 };
+};
 
 interface Legend2 {
   min: number;
@@ -62,6 +78,7 @@ export class XyModal {
   protected readonly xy = inject(XyAnalysisService);
   protected readonly appState = inject(AppStateService);
   private readonly palette = inject(SignalPaletteService);
+  private readonly preferences = inject(PreferencesService);
 
   protected readonly panel0Canvas =
     viewChild<ElementRef<HTMLCanvasElement>>('xyCanvas0');
@@ -97,6 +114,7 @@ export class XyModal {
       const c0 = this.panel0Canvas();
       const c1 = this.panel1Canvas();
       const tc = this.timelineCanvas();
+      this.preferences.darkTheme();
       if (!this.xy.isModalOpen() || !file || !c0 || !c1 || !tc) return;
 
       this.drawPanel(0, file, panels[0]);
@@ -168,6 +186,10 @@ export class XyModal {
     const ctx = canvasRef.nativeElement.getContext('2d');
     if (!ctx) return;
 
+    const isDark = this.preferences.darkTheme();
+    const textColor = isDark ? '#eee' : '#333';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
     this.charts[panelIdx] = new Chart(ctx, {
       type: 'scatter',
       data: {
@@ -190,9 +212,15 @@ export class XyModal {
           x: {
             type: 'linear',
             position: 'bottom',
-            title: { display: true, text: xSignal },
+            title: { display: true, text: xSignal, color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor },
           },
-          y: { title: { display: true, text: ySignal } },
+          y: {
+            title: { display: true, text: ySignal, color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor },
+          },
         },
         plugins: {
           datalabels: { display: false },
@@ -278,16 +306,59 @@ export class XyModal {
     const ctx = canvasRef.nativeElement.getContext('2d');
     if (!ctx) return;
 
+    const isDark = this.preferences.darkTheme();
+    const textColor = isDark ? '#eee' : '#333';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+    /** Port of legacy/src/xyanalysis.js's `xyHoverLine` plugin: a vertical guide line at the active tooltip point. */
+    const hoverLinePlugin: Plugin<'line'> = {
+      id: 'xyHoverLine',
+      afterDraw: (chart) => {
+        // `_active` is a runtime-only field on Chart.js's Tooltip class, not
+        // part of the public TooltipModel type.
+        const tooltip = chart.tooltip as unknown as {
+          _active?: { element: { x: number } }[];
+        };
+        const active = tooltip?._active;
+        if (!active || active.length === 0) return;
+        const x = active[0].element.x;
+        const topY = chart.scales['y'].top;
+        const bottomY = chart.scales['y'].bottom;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, topY);
+        ctx.lineTo(x, bottomY);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = isDark
+          ? 'rgba(255, 255, 255, 0.5)'
+          : 'rgba(0, 0, 0, 0.5)';
+        ctx.stroke();
+        ctx.restore();
+      },
+    };
+
     this.timelineChart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
+      plugins: [hoverLinePlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
         interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { type: 'linear', title: { display: true, text: 'Time (s)' } },
+          x: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'Time (s)',
+              font: { size: 10 },
+              color: textColor,
+            },
+            grid: { color: gridColor },
+            ticks: { font: { size: 10 }, color: textColor },
+          },
           y: { display: false, min: -0.05, max: 1.05 },
         },
         plugins: {
@@ -295,9 +366,15 @@ export class XyModal {
           legend: {
             display: true,
             position: 'top',
-            labels: { boxWidth: 10, usePointStyle: true },
+            labels: {
+              boxWidth: 10,
+              font: { size: 10 },
+              usePointStyle: true,
+              color: textColor,
+            },
           },
           tooltip: {
+            position: 'xyFixed',
             mode: 'index',
             intersect: false,
             callbacks: {
