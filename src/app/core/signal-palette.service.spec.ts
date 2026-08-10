@@ -103,6 +103,22 @@ describe('SignalPaletteService', () => {
     expect(mathColor1).not.toBe(filteredColor);
   });
 
+  it('restarts math/filtered-channel color assignment from the start of the new palette on a theme toggle', () => {
+    const appState = new AppStateService(new EventBusService());
+    appState.addFile(makeFile(['Math: A', 'Math: B', 'Math: C']));
+    const preferences = new PreferencesService();
+    const palette = new SignalPaletteService(appState, preferences);
+
+    // Burn through a couple of dark-palette slots first.
+    palette.getColorForSignal(0, 0);
+    palette.getColorForSignal(0, 1);
+
+    preferences.setDarkTheme(false);
+    // A fresh math channel in the new theme should get the *first* light
+    // color, not continue from wherever the dark-theme index left off.
+    expect(palette.getColorForSignal(0, 2)).toBe(LIGHT_PALETTE_FIRST);
+  });
+
   it('resetCache clears memoized colors', () => {
     const appState = new AppStateService(new EventBusService());
     appState.addFile(makeFile(['RPM']));

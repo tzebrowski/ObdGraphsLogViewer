@@ -71,6 +71,7 @@ export class SignalPaletteService {
   private readonly colorCache = new Map<string, string>();
   private readonly mathColorMap = new Map<string, string>();
   private mathColorIndex = 0;
+  private lastIsDark: boolean | null = null;
 
   constructor(
     private readonly appState: AppStateService,
@@ -85,6 +86,15 @@ export class SignalPaletteService {
 
   getColorForSignal(fileIdx: number, sigIdx: number): string {
     const isDark = this.preferences.darkTheme();
+    // Port of legacy/src/palettemanager.js's MutationObserver-driven
+    // resetCache() on every theme toggle: math/filtered-channel colors are
+    // reassigned from the start of the new theme's palette rather than
+    // continuing wherever the index across all themes ever seen left off.
+    if (this.lastIsDark !== null && this.lastIsDark !== isDark) {
+      this.mathColorMap.clear();
+      this.mathColorIndex = 0;
+    }
+    this.lastIsDark = isDark;
     const useCustom = this.preferences.useCustomPalette();
     const cacheKey = `${fileIdx}:${sigIdx}:${isDark}:${useCustom}`;
     const cached = this.colorCache.get(cacheKey);
