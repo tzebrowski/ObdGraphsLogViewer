@@ -204,5 +204,47 @@ describe('DataProcessorService', () => {
       expect(appState.alertMessage()).toContain('Failed to load sample data');
       expect(appState.loading()).toBe(false);
     });
+
+    it('finalizes the batch load so auto math channels (e.g. GPS speed) are computed', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => [
+            { s: 'Latitude', t: 0, v: 52.0 },
+            { s: 'Longitude', t: 0, v: 21.0 },
+            { s: 'Latitude', t: 1000, v: 52.001 },
+            { s: 'Longitude', t: 1000, v: 21.001 },
+          ],
+        })
+      );
+
+      await service.loadSampleTrip();
+
+      expect(
+        appState.files()[0].signals['Math: GPS Speed (Auto)']
+      ).toBeDefined();
+    });
+  });
+
+  describe('processExternal', () => {
+    it('adds the file and finalizes the batch load so auto math channels are computed', async () => {
+      const result = await service.processExternal(
+        [
+          { s: 'Latitude', t: 0, v: 52.0 },
+          { s: 'Longitude', t: 0, v: 21.0 },
+          { s: 'Latitude', t: 1000, v: 52.001 },
+          { s: 'Longitude', t: 1000, v: 21.001 },
+        ],
+        'drive-file.json'
+      );
+
+      expect(result?.name).toBe('drive-file.json');
+      expect(appState.files()).toHaveLength(1);
+      expect(appState.loading()).toBe(false);
+      expect(
+        appState.files()[0].signals['Math: GPS Speed (Auto)']
+      ).toBeDefined();
+    });
   });
 });

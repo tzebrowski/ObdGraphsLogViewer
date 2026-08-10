@@ -87,12 +87,22 @@ export class DataProcessorService {
     });
   }
 
-  /** Normalizes, persists, and registers already-parsed data (e.g. from Google Drive). */
+  /**
+   * Normalizes, persists, and registers already-parsed data (e.g. from
+   * Google Drive or a deep-linked shared file). Matches legacy/src/
+   * dataprocessor.js's public `process()`, which -- unlike the internal
+   * multi-file batch path -- always finalizes the batch (emitting
+   * BATCH_LOADED) right after processing, so listeners like
+   * MathChannelsService's auto GPS-speed/distance channels run for these
+   * load paths too, not just local drag-and-drop.
+   */
   async processExternal(
     data: unknown,
     fileName: string
   ): Promise<LoadedFile | undefined> {
-    return this.process(data, fileName);
+    const result = await this.process(data, fileName);
+    this.finalizeBatchLoad();
+    return result;
   }
 
   /** Port of legacy/src/ui.js's `loadSampleData` — fetches a real trip profile so first-time visitors can try the app without a log of their own. Rethrows on network/parse failure so callers can decide whether to keep any surrounding UI (e.g. a modal) open. */
@@ -105,6 +115,7 @@ export class DataProcessorService {
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       await this.process(data, 'sample-trip-giulia.json');
+      this.finalizeBatchLoad();
     } catch (error) {
       console.error('Error loading sample trip:', error);
       this.appState.showAlert('Failed to load sample data.');
