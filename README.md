@@ -39,10 +39,10 @@ The application is automatically built and deployed via GitHub Actions to GitHub
 
 ## Tech Stack & Architecture
 
-This project is built for speed and maintainability, migrating from a legacy global-script structure to a modern Vite architecture:
+This project is built as a standalone Angular application (no NgModules), rewritten from an earlier plain-ES-modules implementation:
 
-- **Bundler:** Vite for ultra-fast development and optimized production builds.
-- **Architecture:** Fully modular ES Modules (ESM) structure, eliminating global variable pollution.
+- **Framework:** Angular, with standalone components and injectable services instead of global singletons.
 - **Charts:** Chart.js integrated via NPM, utilizing the `date-fns` adapter and zoom plugin.
+- **Maps:** Leaflet for GPS route playback synced to chart cursor position.
 - **Integration:** Google API (GAPI) & Google Identity Services for Drive access.
-- **Linting & Code Quality:** Automated code quality enforcement via ESLint (JS) and Stylelint (CSS).
+- **Linting & Code Quality:** Automated code quality enforcement via ESLint and Prettier, with unit tests run via Angular's test builder.
