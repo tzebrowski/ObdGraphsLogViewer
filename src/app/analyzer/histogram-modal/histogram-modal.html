@@ -45,7 +45,7 @@
             min="5"
             max="100"
             [value]="histogram.binCount()"
-            (input)="histogram.binCount.set(+$any($event.target).value)"
+            (input)="histogram.setBinCount(+$any($event.target).value)"
           />
         </div>
       </div>

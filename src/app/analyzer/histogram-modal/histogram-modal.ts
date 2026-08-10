@@ -17,6 +17,7 @@ import {
 } from 'chart.js';
 import { AppStateService } from '../../core/app-state.service';
 import { HistogramService } from '../../core/histogram.service';
+import { PreferencesService } from '../../core/preferences.service';
 
 Chart.register(
   BarController,
@@ -42,6 +43,7 @@ Chart.register(
 export class HistogramModal {
   protected readonly histogram = inject(HistogramService);
   protected readonly appState = inject(AppStateService);
+  private readonly preferences = inject(PreferencesService);
 
   protected readonly canvasRef =
     viewChild<ElementRef<HTMLCanvasElement>>('histCanvas');
@@ -86,6 +88,10 @@ export class HistogramModal {
     const ctx = canvasRef.nativeElement.getContext('2d');
     if (!ctx) return;
 
+    const isDark = this.preferences.darkTheme();
+    const textColor = isDark ? '#eee' : '#333';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
     this.chart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -104,13 +110,18 @@ export class HistogramModal {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          y: { beginAtZero: true },
+          y: {
+            beginAtZero: true,
+            ticks: { color: textColor },
+            grid: { color: gridColor },
+          },
           x: {
-            ticks: { maxRotation: 45, minRotation: 45 },
+            ticks: { color: textColor, maxRotation: 45, minRotation: 45 },
             grid: { display: false },
           },
         },
         plugins: {
+          legend: { labels: { color: textColor } },
           tooltip: {
             callbacks: { label: (ctx) => `Samples: ${ctx.raw}` },
           },

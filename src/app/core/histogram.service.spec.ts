@@ -87,4 +87,21 @@ describe('HistogramService', () => {
       expect(service.signalName()).toBe('Boost');
     });
   });
+
+  describe('setBinCount', () => {
+    it('sets a valid bin count', () => {
+      service.setBinCount(35);
+      expect(service.binCount()).toBe(35);
+    });
+
+    it("falls back to 20 for 0/NaN, matching legacy's parseInt(...) || 20", () => {
+      service.setBinCount(50);
+      service.setBinCount(0);
+      expect(service.binCount()).toBe(20);
+
+      service.setBinCount(50);
+      service.setBinCount(NaN);
+      expect(service.binCount()).toBe(20);
+    });
+  });
 });

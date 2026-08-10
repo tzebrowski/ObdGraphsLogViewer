@@ -42,6 +42,11 @@ export class HistogramService {
     this.signalName.set([...(file?.availableSignals ?? [])].sort()[0] ?? '');
   }
 
+  /** Falls back to 20 bins on an empty/invalid value, matching legacy/src/histogram.js's `parseInt(binsInput.value) || 20`. */
+  setBinCount(value: number): void {
+    this.binCount.set(value || 20);
+  }
+
   computeBins(values: number[], binCount: number): HistogramBins {
     const min = Math.min(...values);
     const max = Math.max(...values);
