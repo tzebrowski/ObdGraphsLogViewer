@@ -22,6 +22,7 @@ import {
   TimeScale,
   Title,
   Tooltip,
+  TooltipItem,
   TooltipPositionerFunction,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -1295,6 +1296,55 @@ export class ChartView {
     const gridColor = isDark
       ? 'rgba(255, 255, 255, 0.1)'
       : 'rgba(0, 0, 0, 0.1)';
+    // `events` isn't in Chart.js's TooltipOptions type but is read at
+    // runtime (Chart's `_eventHandler` filters afterEvent notifications
+    // per-plugin via `plugin.options.events`). Kept outside the `options`
+    // literal below to avoid TS's excess-property check on object literals.
+    const tooltipOptions = {
+      enabled: true,
+      // Disables the Tooltip plugin's own native mousemove/click/touch
+      // handling (legacy/src/chartmanager.js:1054). Without this it
+      // independently resolves a shared data-array index on every
+      // mousemove and races with syncTooltipActiveElements()'s manual
+      // per-dataset nearest-time matching below, which is what caused the
+      // tooltip to intermittently show only 1-2 signals instead of the
+      // full matched set.
+      events: [] as const,
+      mode: 'index' as const,
+      position: 'topRightCorner' as const,
+      yAlign: 'top' as const,
+      xAlign: 'right' as const,
+      caretSize: 0,
+      intersect: false,
+      itemSort: (a: TooltipItem<'line'>, b: TooltipItem<'line'>) =>
+        a.datasetIndex - b.datasetIndex,
+      callbacks: {
+        title: (items: TooltipItem<'line'>[]) => {
+          if (!items.length) return '';
+          const xVal = items[0].parsed.x ?? 0;
+          if (mode === 'overlay') {
+            const seconds = (xVal - file.startTime) / 1000;
+            return `T + ${Math.max(0, seconds).toFixed(2)}s`;
+          }
+          const date = new Date(xVal);
+          const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+          const dd = date.getDate().toString().padStart(2, '0');
+          const hh = date.getHours().toString().padStart(2, '0');
+          const min = date.getMinutes().toString().padStart(2, '0');
+          const ss = date.getSeconds().toString().padStart(2, '0');
+          const ms = date.getMilliseconds().toString().padStart(3, '0');
+          return `${mm}-${dd} ${hh}:${min}:${ss}.${ms}`;
+        },
+        label: (context: TooltipItem<'line'>) => {
+          const ds = context.dataset as unknown as ChartDatasetExtra;
+          const realY =
+            (context.parsed.y ?? 0) * (ds.originalMax - ds.originalMin) +
+            ds.originalMin;
+          const label = context.dataset.label ?? '';
+          return (label ? label + ': ' : '') + realY.toFixed(2);
+        },
+      },
+    };
     const options: ChartOptions<'line'> = {
       responsive: true,
       maintainAspectRatio: false,
@@ -1366,42 +1416,7 @@ export class ChartView {
             return realY.toFixed(1);
           },
         },
-        tooltip: {
-          enabled: true,
-          mode: 'index',
-          position: 'topRightCorner',
-          yAlign: 'top',
-          xAlign: 'right',
-          caretSize: 0,
-          intersect: false,
-          itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
-          callbacks: {
-            title: (items) => {
-              if (!items.length) return '';
-              const xVal = items[0].parsed.x ?? 0;
-              if (mode === 'overlay') {
-                const seconds = (xVal - file.startTime) / 1000;
-                return `T + ${Math.max(0, seconds).toFixed(2)}s`;
-              }
-              const date = new Date(xVal);
-              const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-              const dd = date.getDate().toString().padStart(2, '0');
-              const hh = date.getHours().toString().padStart(2, '0');
-              const min = date.getMinutes().toString().padStart(2, '0');
-              const ss = date.getSeconds().toString().padStart(2, '0');
-              const ms = date.getMilliseconds().toString().padStart(3, '0');
-              return `${mm}-${dd} ${hh}:${min}:${ss}.${ms}`;
-            },
-            label: (context) => {
-              const ds = context.dataset as unknown as ChartDatasetExtra;
-              const realY =
-                (context.parsed.y ?? 0) * (ds.originalMax - ds.originalMin) +
-                ds.originalMin;
-              const label = context.dataset.label ?? '';
-              return (label ? label + ': ' : '') + realY.toFixed(2);
-            },
-          },
-        },
+        tooltip: tooltipOptions,
         legend: {
           display: true,
           position: 'bottom',
