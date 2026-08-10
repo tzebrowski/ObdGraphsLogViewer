@@ -13,14 +13,16 @@ import { XyAnalysisService } from '../core/xy-analysis.service';
 
 const QUICK_GAS_FILTER_FORMULA_ID = 'gas_pedal_filter_batch';
 
+/** Port of legacy/src/ui.js's `InfoPage.STORAGE_KEY`. */
+const HIDE_INFO_KEY = 'hide_info_page';
+
 /**
  * Port of legacy/index.html's persistent `<nav class="top-nav">`, shared by
  * both the landing and analyzer pages. The `.integrated-toolbar` and
  * `.view-switcher-container` groups are only shown in analyzer mode,
- * matching legacy's `body.analyzer-active` CSS gating. The Info and Account
- * panels are simplified from legacy's versions: no "don't show again"
- * persistence for Info, and no separate login/logout button pair for
- * Account (AuthService's Promise-based `signIn()` covers both).
+ * matching legacy's `body.analyzer-active` CSS gating. The Account panel is
+ * simplified from legacy's version: no separate login/logout button pair
+ * (AuthService's Promise-based `signIn()` covers both).
  */
 @Component({
   selector: 'app-top-nav',
@@ -42,7 +44,10 @@ export class TopNav {
   private readonly dataProcessor = inject(DataProcessorService);
   private readonly bus = inject(EventBusService);
 
-  protected readonly infoOpen = signal(false);
+  /** Port of legacy/src/ui.js's `InfoPage.init` — auto-opens on launch unless the user previously checked "Don't show this again". */
+  protected readonly infoOpen = signal(
+    localStorage.getItem(HIDE_INFO_KEY) !== 'true'
+  );
   protected readonly profileOpen = signal(false);
 
   protected toggleFullScreen(): void {
@@ -56,6 +61,21 @@ export class TopNav {
 
   protected toggleInfo(): void {
     this.infoOpen.update((v) => !v);
+  }
+
+  /** Port of legacy/src/ui.js's `closeInfoBtn` handler — persists the "Don't show this again" choice only when explicitly closed via the Got it! button. */
+  protected closeInfo(hideChecked: boolean): void {
+    if (hideChecked) {
+      localStorage.setItem(HIDE_INFO_KEY, 'true');
+    } else {
+      localStorage.removeItem(HIDE_INFO_KEY);
+    }
+    this.infoOpen.set(false);
+  }
+
+  protected onDataSourceIconError(event: Event): void {
+    (event.target as HTMLImageElement).src =
+      'https://img.icons8.com/color/96/google-play.png';
   }
 
   protected loadSampleTrip(): void {

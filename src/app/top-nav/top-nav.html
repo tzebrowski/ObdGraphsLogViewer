@@ -164,6 +164,35 @@
       </p>
 
       <div class="info-grid">
+        <div class="info-card data-source-card grid-span-2">
+          <h4>📱 Data Source</h4>
+          <div class="data-source-flex">
+            <img
+              src="https://lh3.googleusercontent.com/d_S-jY_V_7z9_x_W5y_6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6z5z6=s128"
+              alt="MyGiulia Logo"
+              class="app-icon"
+              (error)="onDataSourceIconError($event)"
+            />
+            <div class="data-source-text">
+              <p>
+                Telemetry data is collected by the <strong>MyGiulia</strong>
+                Android application.
+              </p>
+              <a
+                href="https://play.google.com/store/apps/details?id=org.obd.graphs.my.giulia"
+                target="_blank"
+                class="play-store-btn"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                  alt="Get it on Google Play"
+                  height="30"
+                />
+              </a>
+            </div>
+          </div>
+        </div>
+
         <div class="info-card grid-span-2">
           <h4>📥 How to Import Logs</h4>
           <ol class="import-steps">
@@ -227,7 +256,19 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-primary" (click)="toggleInfo()">Got it!</button>
+        <div class="modal-preferences">
+          <label class="custom-checkbox-container">
+            <input type="checkbox" #hideInfoCheckbox />
+            <span class="checkmark"></span>
+            <span class="label-text">Don't show this again</span>
+          </label>
+          <button
+            class="btn btn-primary"
+            (click)="closeInfo(hideInfoCheckbox.checked)"
+          >
+            Got it!
+          </button>
+        </div>
       </div>
     </div>
   </div>
