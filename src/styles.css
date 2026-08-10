@@ -105,8 +105,6 @@
 
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
-  --text-main: #333;
-  --text-muted: #666;
   --sidebar-bg: #1c1e22;
   --active-bg: rgb(194 38 54 / 15%);
   --text-empty-state: rgb(194 38 54 / 8%);
@@ -151,8 +149,8 @@ html {
 }
 
 body.docs-body.dark-theme {
-  background-color: var(--dark-bg);
-  color: var(--light-text);
+  background-color: var(--page);
+  color: var(--text-primary);
 }
 
 body.docs-body.dark-theme .feature-card {
@@ -2083,7 +2081,7 @@ input[type='text'] {
   color: var(--text-main);
 }
 
-body.pref-theme-dark .searchable-input {
+body.dark-theme .searchable-input {
   color: #e0e0e0;
 }
 
@@ -2092,8 +2090,8 @@ body.pref-theme-dark .searchable-input {
   border-radius: 0 0 var(--btn-radius) var(--btn-radius);
 }
 
-body.pref-theme-dark .search-results-list,
-body.pref-theme-dark .searchable-input {
+body.dark-theme .search-results-list,
+body.dark-theme .searchable-input {
   background-color: #2b2b2b;
   border-color: #444;
 }
@@ -2111,7 +2109,7 @@ body.pref-theme-dark .searchable-input {
   background-color: #f0f0f0;
 }
 
-body.pref-theme-dark .search-option:hover {
+body.dark-theme .search-option:hover {
   background-color: #3a3a3a;
 }
 
@@ -2523,17 +2521,17 @@ body.pref-theme-dark .search-option:hover {
   font-size: 0.85em;
 }
 
-body.pref-theme-dark #xyModal .modal-body {
+body.dark-theme #xyModal .modal-body {
   background-color: #121212 !important;
 }
 
-body.pref-theme-dark #xyTimelineView,
-body.pref-theme-dark .xy-panel {
+body.dark-theme #xyTimelineView,
+body.dark-theme .xy-panel {
   background-color: #1e1e1e !important;
   border-color: #333;
 }
 
-body.pref-theme-dark .xy-panel-toolbar {
+body.dark-theme .xy-panel-toolbar {
   background-color: #252525;
   border-color: #333;
 }
