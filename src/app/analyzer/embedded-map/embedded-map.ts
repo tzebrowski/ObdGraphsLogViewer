@@ -21,16 +21,17 @@ import {
 import { LoadedFile } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 
+const TILES_LIGHT =
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 const TILES_DARK =
   'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 /**
  * Port of legacy/src/mapmanager.js's per-file embedded map (`loadRoute`,
  * `#addRouteVisuals`, `#updateInfoControl`), the manual color-metric
- * picker (`setColorMetric`), and the reverse chart-zoom-drives-map-bounds
- * sync (`syncMapBounds`, applied without a full route reload). Always
- * dark tiles (no light-theme tile set defined by legacy — see
- * PreferencesService.darkTheme's doc comment).
+ * picker (`setColorMetric`), the reverse chart-zoom-drives-map-bounds sync
+ * (`syncMapBounds`, applied without a full route reload), and the
+ * theme-driven tile layer (`updateTheme`/`tileLayer.setUrl`).
  */
 @Component({
   selector: 'app-embedded-map',
@@ -63,6 +64,7 @@ export class EmbeddedMap implements OnDestroy {
   protected readonly hasRoute = signal(false);
 
   private map: L.Map | null = null;
+  private tileLayer: L.TileLayer | null = null;
   private routeLayer: L.LayerGroup | null = null;
   private positionMarker: L.Marker | null = null;
   private infoControl: L.Control | null = null;
@@ -95,6 +97,11 @@ export class EmbeddedMap implements OnDestroy {
       const range = this.mapService.stackZoomRange();
       if (!range || range.fileIndex !== this.fileIndex()) return;
       this.applyZoomRange(range.start, range.end);
+    });
+
+    effect(() => {
+      const isDark = this.preferences.darkTheme();
+      this.tileLayer?.setUrl(isDark ? TILES_DARK : TILES_LIGHT);
     });
   }
 
@@ -136,7 +143,10 @@ export class EmbeddedMap implements OnDestroy {
     if (!this.map) {
       this.map = L.map(containerEl, { zoomControl: false }).setView([0, 0], 2);
       L.control.zoom({ position: 'topright' }).addTo(this.map);
-      L.tileLayer(TILES_DARK, { attribution: '© CartoDB' }).addTo(this.map);
+      const tileUrl = this.preferences.darkTheme() ? TILES_DARK : TILES_LIGHT;
+      this.tileLayer = L.tileLayer(tileUrl, { attribution: '© CartoDB' }).addTo(
+        this.map
+      );
     }
 
     this.latInterpolator = latInterpolator;
@@ -377,6 +387,7 @@ export class EmbeddedMap implements OnDestroy {
   private destroyMap(): void {
     this.map?.remove();
     this.map = null;
+    this.tileLayer = null;
     this.routeLayer = null;
     this.positionMarker = null;
     this.infoControl = null;

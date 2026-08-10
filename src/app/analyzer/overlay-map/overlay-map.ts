@@ -14,6 +14,8 @@ import { MapLinearInterpolator, MapService } from '../../core/map.service';
 import { LoadedFile } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 
+const TILES_LIGHT =
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 const TILES_DARK =
   'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
@@ -67,6 +69,7 @@ export class OverlayMap implements OnDestroy {
   });
 
   private map: L.Map | null = null;
+  private tileLayer: L.TileLayer | null = null;
   private readonly contexts = new Map<number, OverlayContext>();
 
   constructor() {
@@ -94,6 +97,11 @@ export class OverlayMap implements OnDestroy {
       if (!range) return;
       this.applyZoomRange(range.start, range.end);
     });
+
+    effect(() => {
+      const isDark = this.preferences.darkTheme();
+      this.tileLayer?.setUrl(isDark ? TILES_DARK : TILES_LIGHT);
+    });
   }
 
   protected selectedColorSignal(): string {
@@ -117,7 +125,10 @@ export class OverlayMap implements OnDestroy {
     if (!this.map) {
       this.map = L.map(containerEl, { zoomControl: false });
       L.control.zoom({ position: 'topright' }).addTo(this.map);
-      L.tileLayer(TILES_DARK, { attribution: '© CartoDB' }).addTo(this.map);
+      const tileUrl = this.preferences.darkTheme() ? TILES_DARK : TILES_LIGHT;
+      this.tileLayer = L.tileLayer(tileUrl, { attribution: '© CartoDB' }).addTo(
+        this.map
+      );
     }
     const map = this.map;
 
@@ -311,6 +322,7 @@ export class OverlayMap implements OnDestroy {
   private destroyMap(): void {
     this.map?.remove();
     this.map = null;
+    this.tileLayer = null;
     this.contexts.clear();
     this.hasRoute.set(false);
   }
