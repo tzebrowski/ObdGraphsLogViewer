@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legal Information - MyGiulia</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        font-size: 15px;
+        background-color: #fff;
+        color: #333;
+      }
+      .policy-container {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 40px 24px 24px;
+      }
+      .url-box {
+        background: #f5f5f5;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin: 10px 0;
+      }
+      code {
+        background: #f5f5f5;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      section {
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+
+  <body class="policy-body">
+    <div class="policy-container">
+      <h1>Legal Information & Privacy Policy</h1>
+      <p>
+        <strong>Service:</strong> MyGiulia Mobile App & My Giulia Telemetry
+        Analyzer
+      </p>
+      <div class="url-box">
+        Official Website:
+        <a href="https://my-giulia.com/">https://my-giulia.com/</a>
+      </div>
+      <p><em>Last Updated: July 22, 2026</em></p>
+      <hr />
+
+      <section>
+        <h2>1. Terms of Service</h2>
+        <p>
+          By downloading the <strong>MyGiulia</strong> app or using the
+          <strong>My Giulia Telemetry Analyzer</strong>, you agree to these
+          terms provided by Tomasz Żebrowski as Open Source tools "as is."
+        </p>
+        <p>
+          <strong>Safe Use:</strong> The user is solely responsible for the safe
+          operation of their vehicle. You agree not to interact with the
+          application while driving.
+        </p>
+      </section>
+
+      <section class="danger-section">
+        <h2>2. Disclaimer of Liability</h2>
+        <p>
+          <strong
+            >Tomasz Żebrowski takes no responsibility for any damages arising
+            from the use of the app or website.</strong
+          >
+        </p>
+        <ul>
+          <li>
+            <strong>Vehicle/Hardware Damage:</strong> No liability for ECU,
+            wiring, mobile devices, or OBD-II adapters.
+          </li>
+          <li>
+            <strong>Safety & Legal:</strong> No liability for accidents,
+            injuries, or legal fines.
+          </li>
+        </ul>
+      </section>
+
+      <section class="highlight-section">
+        <h2>3. Vehicle Data Privacy & Sovereignty</h2>
+        <p><strong>Your car's data remains yours.</strong></p>
+        <ul>
+          <li>
+            <strong>Local Browser Processing:</strong> All telemetry files are
+            analyzed <strong>locally within your web browser</strong>. Data is
+            never uploaded to our servers.
+          </li>
+          <li>
+            <strong>No Data Sharing:</strong> We do not share, sell, or transmit
+            telemetry or GPS data to any third parties.
+          </li>
+        </ul>
+      </section>
+
+      <section id="google-api-disclosure">
+        <h2>4. Google API Disclosure (Google Drive Access)</h2>
+        <p>
+          <strong>Justification:</strong> The application is a vehicle telemetry
+          analyzer. It requires Drive access so that users can select and
+          download their own JSON trip logs previously uploaded to Google Drive
+          by the companion MyGiulia Android app, and so that in-app actions like
+          tagging a log or generating a shareable link can write that metadata
+          back to the same file. All data is processed locally in the browser
+          memory for visualization on charts; no user data is stored on external
+          servers or shared with third parties.
+        </p>
+        <ul>
+          <li>
+            <strong>Access Scope:</strong> The App requests the
+            <code>https://www.googleapis.com/auth/drive</code> scope, rather
+            than a read-only scope, specifically to support tagging and
+            shareable-link creation on the user's own trip log files.
+          </li>
+          <li>
+            <strong>Usage:</strong> This is used strictly to read JSON telemetry
+            files selected by the user for visualization, and to write
+            tag/sharing metadata back onto those same files.
+          </li>
+          <li>
+            <strong>Data Handling:</strong> Files retrieved from Google Drive
+            are processed in the browser's volatile memory and are not stored,
+            cached, or transmitted to any external server.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Third-Party Services</h2>
+        <p>We use standard services for stability and performance.</p>
+        <ul>
+          <li>
+            <strong>Google Play Services:</strong> Subject to
+            <a href="https://www.google.com/policies/privacy/" target="_blank"
+              >Google's Privacy Policy</a
+            >.
+          </li>
+          <li>
+            <strong>Cookies/Local Storage:</strong> Used only to save UI
+            preferences locally on your device.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>6. Contact Us</h2>
+        <p>
+          Questions? Contact me at:
+          <a href="mailto:support@my-giulia.com">support@my-giulia.com</a>
+        </p>
+      </section>
+
+      <div class="footer">
+        <p>
+          &copy; 2026 Tomasz Żebrowski. All rights reserved.<br />
+          <em
+            >MyGiulia is an independent project and is not affiliated with any
+            vehicle manufacturer.</em
+          >
+        </p>
+        <a
+          href="index.html"
+          style="
+            text-decoration: none;
+            color: #7f8c8d;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            display: block;
+          "
+        >
+          <i class="fas fa-arrow-left"></i> Back to Documentation
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

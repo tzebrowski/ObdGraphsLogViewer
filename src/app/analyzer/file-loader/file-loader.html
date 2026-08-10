@@ -1,0 +1,24 @@
+<div
+  id="dropZone"
+  class="drop-zone"
+  [class.drag-over]="dragOver()"
+  (click)="fileInputDropZone.click()"
+  (dragenter)="onDragEnter($event)"
+  (dragover)="onDragEnter($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  <div class="drop-zone-content">
+    <i class="fas fa-file-upload"></i>
+    <p>Drag &amp; Drop telemetry JSON/CSV here or <span>browse</span></p>
+    <input
+      #fileInputDropZone
+      type="file"
+      accept=".csv,.json,.gz"
+      multiple
+      hidden
+      (click)="$event.stopPropagation()"
+      (change)="onFileInputChange($event)"
+    />
+  </div>
+</div>

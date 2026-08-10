@@ -1,0 +1,19 @@
+<div class="app-container">
+  <app-sidebar></app-sidebar>
+  <div
+    class="sidebar-backdrop"
+    [class.active]="uiState.sidebarMobileActive()"
+    (click)="uiState.closeSidebarMobile()"
+  ></div>
+
+  <div class="main-content" id="mainContent">
+    <app-chart-view></app-chart-view>
+    <app-file-loader></app-file-loader>
+  </div>
+</div>
+
+<app-loading-overlay></app-loading-overlay>
+<app-math-channel-modal></app-math-channel-modal>
+<app-dyno-modal></app-dyno-modal>
+<app-xy-modal></app-xy-modal>
+<app-histogram-modal></app-histogram-modal>

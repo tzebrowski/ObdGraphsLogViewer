@@ -1,0 +1,19 @@
+<div
+  class="embedded-map-container"
+  [class.active]="preferences.loadMap() && hasRoute()"
+>
+  <div class="embedded-map-canvas" #mapContainer></div>
+  @if (hasRoute() && colorableSignals().length > 0) {
+  <select
+    class="map-color-metric-select"
+    title="Color route by"
+    [value]="selectedColorSignal()"
+    (change)="onColorSignalChange($event)"
+  >
+    <option value="">Auto (Speed)</option>
+    @for (signal of colorableSignals(); track signal) {
+    <option [value]="signal">{{ signal }}</option>
+    }
+  </select>
+  }
+</div>

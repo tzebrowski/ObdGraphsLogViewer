@@ -1,0 +1,229 @@
+@if (!auth.isLoggedIn()) {
+<div class="empty-drive-msg">
+  <i class="fab fa-google-drive"></i>
+  <br />
+  Sign in with Google to browse logs saved in Drive.
+</div>
+<button class="btn btn-sm btn-primary drive-connect-btn" (click)="connect()">
+  <i class="fab fa-google"></i> Connect Google Drive
+</button>
+
+<div class="drive-clientid-toggle" (click)="toggleClientIdInput()">
+  <i class="fas fa-cog"></i> Advanced: set Client ID
+</div>
+@if (showClientIdInput()) {
+<div class="drive-clientid-row">
+  <input
+    type="text"
+    placeholder="Google Client ID"
+    [value]="clientIdDraft()"
+    (input)="onClientIdInput($event)"
+  />
+  <button class="btn btn-sm" (click)="saveClientId()">Save</button>
+</div>
+} } @else {
+<div class="drive-user-row">
+  <span class="drive-user-name">
+    <i class="fas fa-user-circle"></i>
+    {{ userLabel() }}
+  </span>
+  <div class="button-row-sm">
+    <button class="btn btn-sm" title="Rescan" (click)="rescan()">
+      <i class="fas fa-sync-alt" [class.fa-spin]="drive.loading()"></i>
+    </button>
+    <button class="btn btn-sm" title="Sign out" (click)="disconnect()">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
+  </div>
+</div>
+
+<div class="drive-search-row">
+  <input
+    type="text"
+    placeholder="Search logs..."
+    [value]="drive.searchTerm()"
+    (input)="onSearchInput($event)"
+  />
+  <button
+    class="btn btn-sm"
+    title="Toggle sort order"
+    (click)="toggleSortOrder()"
+  >
+    @if (drive.sortOrder() === 'desc') {
+    <i class="fas fa-sort-amount-down"></i>
+    } @else {
+    <i class="fas fa-sort-amount-up"></i>
+    }
+  </button>
+</div>
+
+<div class="drive-filters-row">
+  <select
+    class="template-select"
+    title="Filter by month"
+    [value]="drive.selectedMonth()"
+    (change)="onMonthFilterChange($event)"
+  >
+    <option value="">-- All Months --</option>
+    @for (month of drive.availableMonths(); track month) {
+    <option [value]="month">{{ month }}</option>
+    }
+  </select>
+  <select
+    class="template-select"
+    title="Filter by tag"
+    [value]="drive.selectedTag() ?? ''"
+    (change)="onTagFilterChange($event)"
+  >
+    <option value="">-- All Tags --</option>
+    @for (tag of drive.availableTags(); track tag) {
+    <option [value]="tag">{{ tag }}</option>
+    }
+  </select>
+</div>
+
+<div class="drive-date-range-row">
+  <input
+    type="date"
+    class="drv-date-input"
+    [value]="drive.dateStart()"
+    (input)="onDateStartChange($event)"
+  />
+  <span class="drv-date-range-sep">to</span>
+  <input
+    type="date"
+    class="drv-date-input"
+    [value]="drive.dateEnd()"
+    (input)="onDateEndChange($event)"
+  />
+  @if (drive.hasActiveFilters()) {
+  <span
+    class="drv-clear-history"
+    title="Clear Filters"
+    (click)="clearFilters()"
+  >
+    <i class="fas fa-calendar-times"></i> Clear
+  </span>
+  }
+</div>
+
+@if (drive.recentEntries().length > 0) {
+<div class="recent-section">
+  <div class="month-header drv-recent-header" (click)="toggleRecentExpanded()">
+    <span><i class="fas fa-history drv-icon-margin"></i> Recently Viewed</span>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span
+        class="drv-clear-history"
+        title="Clear History"
+        (click)="clearRecentHistory($event)"
+      >
+        <i class="fas fa-trash-alt"></i> Clear
+      </span>
+      <i
+        class="fas toggle-icon"
+        [class.fa-chevron-down]="recentExpanded()"
+        [class.fa-chevron-right]="!recentExpanded()"
+      ></i>
+    </div>
+  </div>
+  @if (recentExpanded()) {
+  <div class="recent-list-container">
+    @for (item of drive.recentEntries(); track item.file.id) {
+    <div class="drive-file-card drv-recent-card" (click)="loadFile(item)">
+      <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
+      <div class="file-card-body">
+        <div class="file-name-title">{{ item.file.name }}</div>
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>
+} @if (drive.error()) {
+<div class="drive-status-msg drive-error-msg">{{ drive.error() }}</div>
+} @if (drive.loading() && drive.files().length === 0) {
+<div class="drive-status-msg">Searching for logs...</div>
+} @if (!drive.loading() && drive.filteredSortedFiles().length === 0 &&
+!drive.error()) {
+<div class="drive-status-msg">No logs found.</div>
+}
+
+<div class="drive-file-list">
+  @for (item of drive.paginatedFiles(); track item.file.id) {
+  <div class="drive-file-card" (click)="loadFile(item)">
+    <div class="file-card-icon"><i class="fab fa-google-drive"></i></div>
+    <div class="file-card-body">
+      <div class="file-name-title">{{ item.file.name }}</div>
+      <div class="file-card-meta-grid">
+        <div class="meta-item">
+          <i class="far fa-calendar-alt"></i>
+          <span>{{ drive.formatDate(item.meta.date) }}</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-history"></i>
+          <span>{{ durationFor(item) }}</span>
+        </div>
+        <div class="meta-item">
+          <i class="fas fa-hdd"></i>
+          <span>{{ sizeKb(item.file.size) }} KB</span>
+        </div>
+      </div>
+      <div class="file-card-tags">
+        @for (tag of item.tags ?? []; track tag) {
+        <span
+          class="existing-tag-pill"
+          [class.active]="drive.selectedTag() === tag"
+          [style]="tagStyle(tag)"
+          title="Click to filter by this tag"
+          (click)="filterByTag(tag, $event)"
+        >
+          {{ tag }}
+        </span>
+        }
+        <span class="add-tag-btn" (click)="addTag(item, $event)">
+          <i class="fas fa-plus"></i> Tag
+        </span>
+        <span
+          class="share-file-btn"
+          title="Create public app link and copy"
+          (click)="shareFile(item, $event)"
+        >
+          <i class="fas fa-link"></i> Get Link
+        </span>
+      </div>
+    </div>
+  </div>
+  }
+</div>
+
+@if (drive.filteredSortedFiles().length > 0) {
+<div class="drv-pagination">
+  <div style="display: flex; align-items: center; gap: 5px">
+    <span class="drv-page-info">Show:</span>
+    <select [value]="drive.itemsPerPage()" (change)="onPageSizeChange($event)">
+      @for (size of drive.pageSizeOptions; track size) {
+      <option [value]="size">{{ size }}</option>
+      }
+    </select>
+  </div>
+  <div style="display: flex; align-items: center; gap: 8px">
+    <button
+      class="btn btn-sm"
+      [disabled]="drive.currentPage() === 1"
+      (click)="drive.prevPage()"
+    >
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <span class="drv-page-info"
+      >{{ pageRangeLabel() }} of {{ drive.filteredSortedFiles().length }}</span
+    >
+    <button
+      class="btn btn-sm"
+      [disabled]="drive.currentPage() === drive.totalPages()"
+      (click)="drive.nextPage()"
+    >
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+} }

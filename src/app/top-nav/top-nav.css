@@ -1,0 +1,27 @@
+:host {
+  display: contents;
+}
+
+button.nav-btn-primary,
+button.nav-icon-btn,
+button.tool-btn,
+button.view-btn {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+label.tool-btn {
+  cursor: pointer;
+}
+
+.view-btn:disabled,
+.tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.user-profile-btn {
+  cursor: pointer;
+}

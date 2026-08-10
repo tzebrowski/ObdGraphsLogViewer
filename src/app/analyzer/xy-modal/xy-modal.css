@@ -1,0 +1,103 @@
+.xy-modal-content {
+  width: 90vw;
+  max-width: 1400px;
+  height: 85vh;
+}
+
+.xy-file-select {
+  max-width: 280px;
+  margin-right: 10px;
+}
+
+.xy-modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: none;
+  overflow: hidden;
+  padding: 15px;
+}
+
+.xy-split-view {
+  flex: 2;
+  display: flex;
+  gap: 15px;
+  min-height: 0;
+}
+
+.xy-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+}
+
+.xy-panel-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.xy-panel-controls select {
+  flex: 1;
+  min-width: 0;
+}
+
+.xy-panel-chart-row {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+}
+
+.xy-canvas-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.xy-legend {
+  width: 70px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.xy-legend-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.7em;
+  color: var(--text-muted, #666);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.xy-gradient-bar {
+  width: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    to top,
+    hsl(240, 100%, 50%),
+    hsl(120, 100%, 50%),
+    hsl(0, 100%, 50%)
+  );
+}
+
+.xy-legend-values {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.65em;
+  color: var(--text-muted, #666);
+}
+
+.xy-timeline-view {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  border-top: 1px solid var(--border-color, #ddd);
+  padding-top: 10px;
+}

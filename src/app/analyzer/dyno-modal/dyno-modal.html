@@ -1,0 +1,192 @@
+@if (dyno.isSetupOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="closeSetup()">
+  <div
+    class="modal-content"
+    style="max-width: 500px"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2>Dyno Configuration</h2>
+      <button class="btn-close" (click)="closeSetup()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="section-description">
+        Select the appropriate telemetry signals and sweep criteria to generate
+        the dyno chart.
+      </p>
+
+      <div class="control-group">
+        <label class="math-label-small">Engine Speed (RPM)</label>
+        <select
+          class="template-select"
+          (change)="setupRpmKey.set($any($event.target).value)"
+        >
+          <option value="" [selected]="!setupRpmKey()">
+            -- Select Signal --
+          </option>
+          @for (sig of availableSignals(); track sig) {
+          <option [value]="sig" [selected]="sig === setupRpmKey()">
+            {{ sig }}
+          </option>
+          }
+        </select>
+      </div>
+      <div class="control-group">
+        <label class="math-label-small">Engine Torque (Nm)</label>
+        <select
+          class="template-select"
+          (change)="setupTorqueKey.set($any($event.target).value)"
+        >
+          <option value="" [selected]="!setupTorqueKey()">
+            -- Select Signal --
+          </option>
+          @for (sig of availableSignals(); track sig) {
+          <option [value]="sig" [selected]="sig === setupTorqueKey()">
+            {{ sig }}
+          </option>
+          }
+        </select>
+      </div>
+      <div class="control-group">
+        <label class="math-label-small">Gas Pedal Position (%)</label>
+        <select
+          class="template-select"
+          (change)="setupPedalKey.set($any($event.target).value)"
+        >
+          <option value="" [selected]="!setupPedalKey()">
+            -- Select Signal --
+          </option>
+          @for (sig of availableSignals(); track sig) {
+          <option [value]="sig" [selected]="sig === setupPedalKey()">
+            {{ sig }}
+          </option>
+          }
+        </select>
+      </div>
+
+      <div class="dyno-sweep-config">
+        <label class="math-label-small">Sweep Detection Criteria</label>
+        <div class="dyno-sweep-row">
+          <div>
+            <label class="dyno-sub-label">Start Pedal %</label>
+            <input
+              type="number"
+              class="template-select"
+              min="1"
+              max="100"
+              [value]="setupPedalStart()"
+              (input)="setupPedalStart.set(+$any($event.target).value)"
+            />
+          </div>
+          <div>
+            <label class="dyno-sub-label">WOT Pedal %</label>
+            <input
+              type="number"
+              class="template-select"
+              min="1"
+              max="100"
+              [value]="setupPedalWot()"
+              (input)="setupPedalWot.set(+$any($event.target).value)"
+            />
+          </div>
+          <div>
+            <label
+              class="dyno-sub-label"
+              title="Minimum required change in RPM to be considered a valid pull."
+            >
+              Min RPM Delta
+            </label>
+            <input
+              type="number"
+              class="template-select"
+              step="100"
+              [value]="setupRpmDelta()"
+              (input)="setupRpmDelta.set(+$any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="dyno-sweep-hint">
+          * <strong>Min RPM Delta:</strong> Prevents generating useless charts
+          for quick gear shifts or throttle blips. Set this to the minimum RPM
+          range you swept during your pull (e.g., 2000 to 4500 RPM = 2500
+          Delta).
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" (click)="generate()">
+        Generate Chart
+      </button>
+    </div>
+  </div>
+</div>
+} @if (dyno.isModalOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="close()">
+  <div
+    class="modal-content dyno-main-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="dyno-sidebar">
+      <div class="modal-header dyno-sidebar-header">
+        <h3>Overlay Signals</h3>
+      </div>
+      <div class="dyno-sidebar-search">
+        <input
+          type="text"
+          class="template-select"
+          placeholder="Search signals..."
+          [value]="signalSearch()"
+          (input)="signalSearch.set($any($event.target).value)"
+        />
+      </div>
+      <div class="dyno-sidebar-list">
+        @for (sig of extraSignalCandidates(); track sig) {
+        <label class="dyno-checkbox-row">
+          <input
+            type="checkbox"
+            [checked]="dyno.selectedExtraSignals().includes(sig)"
+            (change)="dyno.toggleExtraSignal(sig)"
+          />
+          {{ sig }}
+        </label>
+        }
+      </div>
+    </div>
+
+    <div class="dyno-main">
+      <div class="modal-header">
+        @if (dyno.pulls().length > 1) {
+        <select
+          class="template-select dyno-pull-select"
+          (change)="dyno.selectPull(+$any($event.target).value)"
+        >
+          @for (pull of dyno.pulls(); track $index; let i = $index) {
+          <option [value]="i" [selected]="i === dyno.selectedPullIndex()">
+            {{ pullLabel(pull, i) }}
+          </option>
+          }
+        </select>
+        }
+        <div class="dyno-actions">
+          <button class="btn btn-sm" (click)="viewOnChart()">
+            <i class="fas fa-search-plus"></i> View on Chart
+          </button>
+          <button class="btn btn-sm btn-primary" (click)="exportPng()">
+            <i class="fas fa-camera"></i> Save PNG
+          </button>
+        </div>
+        <button class="btn-close" (click)="close()">&times;</button>
+      </div>
+      <div class="modal-body dyno-chart-body">
+        <div class="dyno-canvas-wrapper">
+          <canvas #dynoCanvas></canvas>
+        </div>
+        <div class="dyno-footnote">
+          * Power calculation is estimated based on Engine Torque and Engine
+          Speed. Represents WOT sweeps only.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}

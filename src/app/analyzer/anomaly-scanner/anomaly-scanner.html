@@ -1,0 +1,89 @@
+@if (appState.files().length === 0) {
+<p class="section-description">Load a file first to scan for anomalies.</p>
+} @else {
+<div class="control-group">
+  <label class="math-label-small">Template</label>
+  <select
+    class="template-select"
+    (change)="applyTemplate($any($event.target).value); $any($event.target).value = ''"
+  >
+    <option value="">-- Load a Template --</option>
+    @for (entry of analysis.templates | keyvalue; track entry.key) {
+    <option [value]="entry.key">{{ entry.value.name }}</option>
+    }
+  </select>
+</div>
+
+<div class="filters-container">
+  @for (row of analysis.filters(); track row.id) {
+  <div class="filter-row">
+    <select
+      class="file-select"
+      [value]="row.fileIdx"
+      (change)="setRowFile(row.id, $any($event.target).value)"
+    >
+      <option value="-1">All Files</option>
+      @for (file of appState.files(); track file.dbId ?? file.name; let i =
+      $index) {
+      <option [value]="i">{{ file.name }}</option>
+      }
+    </select>
+    <select
+      class="sig-select"
+      [value]="row.signal"
+      (change)="setRowSignal(row.id, $any($event.target).value)"
+    >
+      <option value="">Signal...</option>
+      @for (sig of signalOptionsFor(row.fileIdx); track sig) {
+      <option [value]="sig">{{ sig }}</option>
+      }
+    </select>
+    <select
+      class="op"
+      [value]="row.operator"
+      (change)="setRowOperator(row.id, $any($event.target).value)"
+    >
+      <option value=">">&gt;</option>
+      <option value="<">&lt;</option>
+    </select>
+    <input
+      type="number"
+      placeholder="Val"
+      style="width: 60px"
+      [value]="row.value"
+      (input)="setRowValue(row.id, $any($event.target).value)"
+    />
+    <span class="remove-row" (click)="analysis.removeFilterRow(row.id)"
+      >&times;</span
+    >
+  </div>
+  }
+</div>
+
+<div class="button-row-sm">
+  <button class="btn btn-sm" (click)="analysis.addFilterRow()">
+    <i class="fas fa-plus"></i> Add Filter
+  </button>
+  <button class="btn btn-sm btn-primary" (click)="analysis.runScan()">
+    Run Scan
+  </button>
+</div>
+
+@if (analysis.scanMessage()) {
+<div class="status-text-subtle">{{ analysis.scanMessage() }}</div>
+}
+
+<div id="scanResults">
+  @for (result of analysis.results(); track $index; let i = $index) {
+  <div
+    class="result-item"
+    [class.selected]="selectedResultId === i"
+    (click)="selectResult(result, i)"
+  >
+    <div><b>{{ result.fileName }}</b></div>
+    Event {{ i + 1 }}: {{ relativeSeconds(result, 'start') }}s - {{
+    relativeSeconds(result, 'end') }}s
+  </div>
+  }
+</div>
+}

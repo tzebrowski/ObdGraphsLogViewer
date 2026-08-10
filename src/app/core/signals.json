@@ -1,0 +1,109 @@
+[
+  {
+    "name": "Fuel Level",
+    "default": false,
+    "aliases": ["Fuel Level"]
+  },
+
+  {
+    "name": "Fuel Consumption",
+    "default": false,
+    "aliases": ["Fuel Consumption"]
+  },
+
+  {
+    "name": "Distance",
+    "default": false,
+    "aliases": ["Distance", "Odometer", "Odo"]
+  },
+  {
+    "name": "Engine Speed",
+    "default": true,
+    "aliases": ["RPM", "Engine Speed", "Engine RPM", "Engine Rpm"]
+  },
+  {
+    "name": "Boost",
+    "default": true,
+    "aliases": ["Boost Pressure", "Boost"]
+  },
+  {
+    "name": "Intake Manifold Pressure",
+    "default": true,
+    "aliases": [
+      "Intake Manifold Pressure",
+      "Manifold Abs",
+      "MAP",
+      "Intake Press",
+      "Boost Pressure",
+      "Manifold Pressure",
+      "Boost"
+    ]
+  },
+  {
+    "name": "Gas Pedal Position",
+    "default": true,
+    "aliases": [
+      "Accelerator Pedal Position",
+      "Pedal Pos",
+      "Gas Pedal Position",
+      "Throttle Pos",
+      "TPS"
+    ]
+  },
+  {
+    "name": "AFR",
+    "default": false,
+    "aliases": [
+      "Air Fuel Ratio",
+      "Current",
+      "AFR Measured",
+      "Lambda Actual",
+      "AFR"
+    ]
+  },
+  {
+    "name": "Spark Advance",
+    "default": true,
+    "aliases": ["Spark Advance", "Ignition Timing", "Timing Adv", "Spark Angle"]
+  },
+  {
+    "name": "MAF",
+    "default": false,
+    "aliases": ["Air Mass", "MAF", "Flow"]
+  },
+  {
+    "name": "Latitude",
+    "default": false,
+    "aliases": ["GPS-Lat", "lat", "Lat", "lateral", "GPS Latitude", "Latitude"]
+  },
+  {
+    "name": "Longitude",
+    "default": false,
+    "aliases": ["GPS-Lon", "lng", "Lng", "lon", "GPS Longitude", "Longitude"]
+  },
+  {
+    "name": "Torque",
+    "default": true,
+    "aliases": ["Torque", "Engine Torque", "Nm", "Measured Engine Torque"]
+  },
+  {
+    "name": "Vehicle Speed",
+    "default": false,
+    "aliases": ["Vehicle Speed", "Speed", "Velocity"]
+  },
+  {
+    "name": "Lambda Sensor 1",
+    "default": false,
+    "aliases": ["O2 Sensor", "Equivalence Ratio", "AFR", "Lambda"]
+  },
+  {
+    "name": "Short Fuel Trim",
+    "default": false,
+    "aliases": ["SFT", "STFT", "Short Term"]
+  },
+  {
+    "name": "Atmospheric Pressure",
+    "default": false,
+    "aliases": ["Atmospheric", "Baro", "Barometric", "Ambient Pressure"]
+  }
+]

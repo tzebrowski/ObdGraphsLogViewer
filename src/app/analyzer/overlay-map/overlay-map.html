@@ -1,0 +1,19 @@
+<div
+  class="chm-overlay-map"
+  [class.chm-overlay-map-hidden]="!(preferences.loadMap() && hasRoute())"
+>
+  <div class="overlay-map-canvas" #mapContainer></div>
+  @if (hasRoute() && colorableSignals().length > 0) {
+  <select
+    class="map-color-metric-select"
+    title="Color routes by"
+    [value]="selectedColorSignal()"
+    (change)="onColorSignalChange($event)"
+  >
+    <option value="">Auto (Speed)</option>
+    @for (signal of colorableSignals(); track signal) {
+    <option [value]="signal">{{ signal }}</option>
+    }
+  </select>
+  }
+</div>

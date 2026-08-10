@@ -1,0 +1,21 @@
+.alert-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #9a0000;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  z-index: 10000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgb(0 0 0 / 20%);
+}
+
+.alert-dismiss {
+  margin-left: 8px;
+  font-weight: bold;
+}

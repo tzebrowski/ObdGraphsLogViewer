@@ -1,0 +1,158 @@
+.drive-connect-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.drive-clientid-toggle {
+  margin-top: 10px;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.drive-clientid-toggle:hover {
+  color: var(--text-color);
+}
+
+.drive-clientid-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.drive-clientid-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.drive-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.85em;
+}
+
+.drive-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drive-search-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.drive-search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.drive-filters-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.drive-filters-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.drive-date-range-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.85em;
+}
+
+.drive-date-range-row .drv-date-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.drv-date-range-sep {
+  color: var(--text-muted);
+}
+
+.drive-status-msg {
+  padding: 8px 4px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.drive-error-msg {
+  color: var(--brand-red, #e53e3e);
+}
+
+.drive-file-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-card-tags {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.existing-tag-pill {
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  font-weight: 500;
+  text-transform: capitalize;
+  transition: filter 0.2s;
+}
+
+.existing-tag-pill:hover {
+  filter: brightness(1.2);
+}
+
+.existing-tag-pill.active {
+  filter: brightness(1.4);
+  box-shadow: 0 0 0 1px currentcolor;
+}
+
+.add-tag-btn {
+  background: transparent;
+  border: 1px dashed var(--text-muted);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.add-tag-btn:hover {
+  color: var(--text-color);
+}
+
+.share-file-btn {
+  background: transparent;
+  border: 1px solid #4285f4;
+  color: #4285f4;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+
+.share-file-btn:hover {
+  background: #4285f415;
+}
