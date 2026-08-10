@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import L from 'leaflet';
 import { AppStateService } from '../../core/app-state.service';
+import { EventBusService } from '../../core/event-bus.service';
 import {
   GpsStats,
   HeatmapMeta,
@@ -18,7 +19,7 @@ import {
   MapService,
   RoutePoint,
 } from '../../core/map.service';
-import { LoadedFile } from '../../core/models';
+import { EVENTS, LoadedFile } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 
 const TILES_LIGHT =
@@ -45,6 +46,7 @@ export class EmbeddedMap implements OnDestroy {
   protected readonly appState = inject(AppStateService);
   protected readonly preferences = inject(PreferencesService);
   private readonly mapService = inject(MapService);
+  private readonly bus = inject(EventBusService);
 
   protected readonly mapContainer =
     viewChild<ElementRef<HTMLDivElement>>('mapContainer');
@@ -348,6 +350,7 @@ export class EmbeddedMap implements OnDestroy {
     if (svg) (svg as SVGElement).style.transform = `rotate(${angle}deg)`;
   }
 
+  /** Port of legacy/src/mapmanager.js's `#handleMapInteraction` — drives the chart's tooltip/cursor to the clicked/dragged time (see chart-view.ts's EVENTS.MAP_SELECTED subscription). */
   private handleMapInteraction(latlng: L.LatLng): void {
     const file = this.file();
     if (!file || !this.lonInterpolator) return;
@@ -359,12 +362,7 @@ export class EmbeddedMap implements OnDestroy {
     );
     if (time === null) return;
 
-    const centerSec = (time - file.startTime) / 1000;
-    this.appState.setActiveHighlight(
-      centerSec - 0.5,
-      centerSec + 0.5,
-      this.fileIndex()
-    );
+    this.bus.emit(EVENTS.MAP_SELECTED, { time, fileIndex: this.fileIndex() });
   }
 
   /** Port of legacy/src/mapmanager.js's `syncMapBounds` for the single-file case. */

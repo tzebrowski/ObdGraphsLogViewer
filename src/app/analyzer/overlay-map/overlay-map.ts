@@ -10,8 +10,9 @@ import {
 } from '@angular/core';
 import L from 'leaflet';
 import { AppStateService } from '../../core/app-state.service';
+import { EventBusService } from '../../core/event-bus.service';
 import { MapLinearInterpolator, MapService } from '../../core/map.service';
-import { LoadedFile } from '../../core/models';
+import { EVENTS, LoadedFile } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 
 const TILES_LIGHT =
@@ -44,6 +45,7 @@ export class OverlayMap implements OnDestroy {
   protected readonly appState = inject(AppStateService);
   protected readonly preferences = inject(PreferencesService);
   private readonly mapService = inject(MapService);
+  private readonly bus = inject(EventBusService);
 
   protected readonly mapContainer =
     viewChild<ElementRef<HTMLDivElement>>('mapContainer');
@@ -162,6 +164,14 @@ export class OverlayMap implements OnDestroy {
         fileIndex,
         isHeatmap
       );
+      positionMarker.on('drag', (e) =>
+        this.handleMapInteraction(
+          fileIndex,
+          file,
+          lonInterpolator,
+          (e.target as L.Marker).getLatLng()
+        )
+      );
       routePoints.forEach((p) => allBounds.extend([p.lat, p.lon]));
 
       this.contexts.set(fileIndex, {
@@ -252,10 +262,23 @@ export class OverlayMap implements OnDestroy {
 
     return L.marker(startPoint, {
       icon: arrowIcon,
-      draggable: false,
+      draggable: true,
       autoPan: false,
       zIndexOffset: 1000,
     }).addTo(mapInstance);
+  }
+
+  /** Port of legacy/src/mapmanager.js's `#handleMapInteraction` — drives the shared overlay chart's tooltip/cursor to the dragged time (see chart-view.ts's EVENTS.MAP_SELECTED subscription). */
+  private handleMapInteraction(
+    fileIndex: number,
+    file: LoadedFile,
+    lonInterpolator: MapLinearInterpolator,
+    latlng: L.LatLng
+  ): void {
+    const time = this.mapService.findNearestTime(file, lonInterpolator, latlng);
+    if (time === null) return;
+
+    this.bus.emit(EVENTS.MAP_SELECTED, { time, fileIndex });
   }
 
   private syncAllMarkers(relativeTime: number): void {

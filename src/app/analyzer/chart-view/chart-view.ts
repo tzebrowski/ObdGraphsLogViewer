@@ -36,6 +36,7 @@ import {
   ActiveHighlight,
   EVENTS,
   LoadedFile,
+  MapSelectedEvent,
   SignalPoint,
   ViewMode,
 } from '../../core/models';
@@ -219,6 +220,52 @@ export class ChartView {
     });
 
     this.bus.on(EVENTS.CHART_RESET_ALL).subscribe(() => this.resetAll());
+
+    this.bus
+      .on<MapSelectedEvent>(EVENTS.MAP_SELECTED)
+      .subscribe((event) => this.onMapSelected(event));
+  }
+
+  /**
+   * Port of legacy/src/chartmanager.js's `MAP_SELECTED` listener: a
+   * click-on-route or marker-drag on the map (see EmbeddedMap/OverlayMap's
+   * `handleMapInteraction`) drives this chart's tooltip/cursor to that
+   * time, panning the visible range if the time falls outside it.
+   */
+  private onMapSelected({ time, fileIndex }: MapSelectedEvent): void {
+    const files = this.appState.files();
+    const mode = this.appState.viewMode();
+
+    if (mode === 'overlay') {
+      const file = files[fileIndex];
+      const baseFile = files[0];
+      if (!file || !baseFile) return;
+      const relativeTime = baseFile.startTime + (time - file.startTime);
+
+      const chart = this.charts[0];
+      if (!chart) return;
+      this.lastHoverTime.set(0, relativeTime);
+      this.syncTooltipActiveElements(chart, relativeTime);
+      this.panIntoView(chart, relativeTime);
+      return;
+    }
+
+    const chart = this.charts[fileIndex];
+    if (!chart) return;
+    this.lastHoverTime.set(fileIndex, time);
+    this.syncTooltipActiveElements(chart, time);
+    this.panIntoView(chart, time);
+  }
+
+  /** Shifts the chart's visible x-range to keep `time` in view, keeping the same zoom width, matching legacy's MAP_SELECTED range check. */
+  private panIntoView(chart: Chart, time: number): void {
+    const xScale = chart.scales['x'];
+    if (time >= xScale.min && time <= xScale.max) return;
+
+    const range = xScale.max - xScale.min;
+    chart.options.scales!['x']!.min = time - range / 2;
+    chart.options.scales!['x']!.max = time + range / 2;
+    chart.update('none');
   }
 
   /** Port of legacy/src/chartmanager.js's `reset()` — TopNav's global "Reset Zoom" button. */

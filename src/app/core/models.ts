@@ -75,6 +75,12 @@ export interface FileRemovedEvent {
   file: LoadedFile;
 }
 
+/** Port of legacy/src/mapmanager.js's `#handleMapInteraction`: emitted when the user clicks the route line or drags the position marker, driving the chart's tooltip/cursor to that time (legacy/src/chartmanager.js's `MAP_SELECTED` listener). */
+export interface MapSelectedEvent {
+  time: number;
+  fileIndex: number;
+}
+
 export interface ActionLogEvent {
   type: string;
   description: string;
