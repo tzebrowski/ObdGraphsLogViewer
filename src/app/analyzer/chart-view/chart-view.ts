@@ -388,6 +388,8 @@ export class ChartView {
       this.syncMapBounds(chartIdx, mode);
     }
 
+    this.syncTooltipActiveElements(chart, newVal);
+
     if (mode === 'overlay') {
       this.mapService.setOverlayHover(newVal);
     } else {
