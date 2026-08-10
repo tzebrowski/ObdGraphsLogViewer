@@ -106,6 +106,7 @@
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
   --sidebar-bg: #1c1e22;
+  --card-bg: #1e2126;
   --active-bg: rgb(194 38 54 / 15%);
   --text-empty-state: rgb(194 38 54 / 8%);
 
@@ -1881,7 +1882,6 @@ body.analyzer-active {
 
 .source-container {
   padding: 8px !important;
-  background: #fff !important;
   border-radius: 12px !important;
   box-shadow: 0 4px 20px #0000000d !important;
 }
@@ -2390,7 +2390,6 @@ body.dark-theme .search-option:hover {
   flex-direction: column;
   flex: 1;
   min-height: 450px;
-  background: #fff;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   box-shadow:
@@ -2536,12 +2535,7 @@ body.dark-theme .xy-panel-toolbar {
   border-color: #333;
 }
 
-.sidebar {
-  background-color: #f8f9fa;
-}
-
 .control-group.gray-box {
-  background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 8px;
@@ -2558,7 +2552,6 @@ body.dark-theme .xy-panel-toolbar {
 }
 
 .section-description {
-  color: #666;
   font-size: 0.85em;
   margin-bottom: 12px;
   line-height: 1.4;
