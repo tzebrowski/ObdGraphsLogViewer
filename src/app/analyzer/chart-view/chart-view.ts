@@ -515,7 +515,7 @@ export class ChartView {
       hash = tag.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash) % 360;
-    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-primary); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
   }
 
   /** Port of legacy/src/chartmanager.js's `showChartInfo`. */

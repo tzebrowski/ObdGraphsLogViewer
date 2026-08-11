@@ -738,7 +738,7 @@ input[type='range']::-webkit-slider-thumb {
 .modal-header h2 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-color, #333);
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: 0.5px;
 }
@@ -781,10 +781,10 @@ input[type='range']::-webkit-slider-thumb {
 input[type='number'],
 input[type='text'] {
   width: 100%;
-  border: 1px solid var(--grid, #ddd);
+  border: 1px solid var(--grid);
   border-radius: 8px;
-  background-color: var(--input-bg, #fff);
-  color: var(--text-color, #333);
+  background-color: var(--surface-1);
+  color: var(--text-primary);
   font-size: 0.95rem;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -1735,6 +1735,34 @@ body.analyzer-active {
   --nav-border: rgb(183 28 28 / 20%);
   --nav-text: #333;
   --nav-shadow: 0 4px 15px rgb(0 0 0 / 5%);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/*
+ * app-root's own :host rule (app.css) deliberately uses min-height, not
+ * height, since the landing route's content is taller than one viewport
+ * and needs to scroll normally. But that also means analyzer-page's
+ * flex:1;min-height:0 chain (meant to let #chartContainer's own
+ * overflow-y:auto take over scrolling) has nothing bounding it either --
+ * app-root just grows to fit content, which the html/body caps below
+ * then clip invisibly instead of properly confining. Hard-cap app-root
+ * too, but only on the analyzer route.
+ */
+body.analyzer-active app-root {
+  height: 100vh;
+}
+
+/*
+ * `<html>`, not just `<body>`, is the browser's actual root scrolling
+ * element (document.scrollingElement) -- capping body alone left html
+ * free to scroll instead. :has() scopes this to the analyzer route only,
+ * since the landing route's body intentionally has no height cap (its
+ * content is taller than one viewport and scrolls normally).
+ */
+html:has(body.analyzer-active) {
+  height: 100vh;
+  overflow: hidden;
 }
 
 .nav-link {
