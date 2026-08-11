@@ -1465,7 +1465,7 @@ a {
     linear-gradient(#1c3d72d9, #0a0a0ae5), url('/resources/background.png');
   background-size: cover;
   background-position: center;
-  border-bottom: 4px solid var(--accent);
+  border-bottom: 4px solid var(--bad);
 }
 
 .hero h1 {
@@ -1507,7 +1507,7 @@ a {
 
 .feature-card i {
   font-size: 3rem;
-  color: var(--accent);
+  color: var(--bad);
   margin-bottom: 20px;
 }
 
@@ -2738,7 +2738,7 @@ body.analyzer-active .view-switcher-container {
 }
 
 .btn-brand-red {
-  background-color: var(--accent) !important;
+  background-color: var(--bad) !important;
 }
 
 .btn-full-width {
