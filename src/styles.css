@@ -177,9 +177,9 @@ body.docs-body.dark-theme .feature-card {
 
 .sidebar h2 {
   margin-top: 0;
-  color: var(--text-primary);
+  color: var(--brand-red);
   font-size: 1.4em;
-  border-bottom: 2px solid var(--grid);
+  border-bottom: 2px solid var(--brand-blue);
   padding: 10px;
   flex-shrink: 0;
 }
@@ -2601,7 +2601,7 @@ body.dark-theme .xy-panel-toolbar {
 #signalList .signal-item label {
   padding: 2px 0;
   cursor: pointer;
-  border-bottom: 1px solid #f9f9f9;
+  border-bottom: 1px solid var(--grid);
   font-size: 0.9em;
   color: #444;
   width: 100%;
