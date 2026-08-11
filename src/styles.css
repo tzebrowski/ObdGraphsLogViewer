@@ -264,7 +264,7 @@ body.docs-body.dark-theme .feature-card {
 input[type='number'],
 input[type='text'] {
   margin-bottom: 5px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
 }
 
 .btn-green {
@@ -781,9 +781,9 @@ input[type='range']::-webkit-slider-thumb {
 input[type='number'],
 input[type='text'] {
   width: 100%;
-  border: 1px solid var(--grid);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background-color: var(--surface-1);
+  background-color: var(--grid);
   color: var(--text-primary);
   font-size: 0.95rem;
   transition: all 0.2s ease;
@@ -1887,7 +1887,7 @@ input[type='number'],
 input[type='text'] {
   border-radius: var(--btn-radius) !important;
   padding: 10px;
-  border: 1px solid var(--grid);
+  border: 1px solid var(--border);
 }
 
 .status-text-subtle {
