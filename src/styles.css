@@ -177,11 +177,16 @@ body.docs-body.dark-theme .feature-card {
 
 .sidebar h2 {
   margin-top: 0;
-  color: var(--brand-red);
+  color: var(--text-primary);
   font-size: 1.4em;
-  border-bottom: 2px solid var(--brand-blue);
+  border-bottom: 2px solid var(--grid);
   padding: 10px;
   flex-shrink: 0;
+}
+
+body:not(.dark-theme) .sidebar h2 {
+  color: var(--brand-red);
+  border-bottom-color: var(--brand-blue);
 }
 
 .version {
