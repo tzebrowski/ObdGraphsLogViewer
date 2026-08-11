@@ -269,7 +269,7 @@ input[type='text'] {
 
 .btn-green {
   display: inline-block;
-  background-color: var(--ok);
+  background-color: var(--accent);
   color: #fff;
   padding: 15px 35px;
   border-radius: 50px;
@@ -280,13 +280,13 @@ input[type='text'] {
     transform 0.2s,
     background 0.2s,
     box-shadow 0.2s;
-  box-shadow: 0 4px 15px #01804f4d;
+  box-shadow: 0 4px 15px #2a78d64d;
 }
 
 .btn-green:hover {
-  background-color: #01a163;
+  background-color: #3987e5;
   transform: scale(1.05);
-  box-shadow: 0 6px 20px #01804f66;
+  box-shadow: 0 6px 20px #2a78d666;
 }
 
 .btn {
@@ -329,17 +329,17 @@ input[type='text'] {
 }
 
 .btn-primary {
-  background-color: var(--ok);
+  background-color: var(--accent);
   color: #fff;
   border: 0;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #016b42;
+  background-color: #1c5aa8;
 }
 
 .btn-primary:hover {
-  background: #01633d;
+  background: #164a8c;
 }
 
 .btn-add,
