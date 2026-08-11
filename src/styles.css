@@ -1794,11 +1794,6 @@ body.analyzer-active {
   box-shadow: 0 4px 8px #0000001a;
 }
 
-.drive-file-card.active {
-  border: 2px solid var(--accent);
-  background: #2a78d60d;
-}
-
 .file-card-icon {
   font-size: 1.4em;
   color: #4285f4;
