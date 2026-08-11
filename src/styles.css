@@ -45,13 +45,9 @@
 }
 
 :root {
-  --brand-green: #01804f;
-  --brand-red: #c22636;
-  --brand-blue: #1c3d72;
   --dark-bg: #0a0a0a;
   --light-text: #f4f4f4;
   --sidebar-bg: #f8f9fa;
-  --primary-red: var(--bad);
   --text-empty-state: #fdf2f2;
   --transition-speed: 0.3s;
   --active-bg: #fdf2f2;
@@ -68,8 +64,10 @@
 
   /*
    * hextune-aligned design tokens (see /home/tzebrowski/github/tuning-tools).
-   * Values are this app's own brand colors reshaped into hextune's token
-   * vocabulary, not hextune's literal hexes, so visual identity is kept.
+   * --page/--surface-1/--text-* keep this app's own light/dark neutrals;
+   * --accent/--accent-2/--ok/--warn/--bad are hextune's own literal hexes
+   * (not just its token names) so the two apps in this product line share
+   * one accent/status-color identity, not just a naming convention.
    */
   --page: #fcfcfc;
   --surface-1: #fff;
@@ -78,11 +76,11 @@
   --text-muted: #a0a0a0;
   --grid: #ddd;
   --border: rgb(11 11 11 / 10%);
-  --accent: #1c3d72;
+  --accent: #2a78d6;
   --accent-2: #eb6834;
-  --ok: #01804f;
+  --ok: #1f8a4c;
   --warn: #b8860b;
-  --bad: #c22636;
+  --bad: #c0392b;
 }
 
 body.dark-theme {
@@ -98,7 +96,7 @@ body.dark-theme {
   --text-muted: #6c7078;
   --grid: #2a2d33;
   --border: rgb(255 255 255 / 10%);
-  --accent: #3d5f9e;
+  --accent: #4a90d9;
   --accent-2: #ff9224;
   --ok: #3ecf6e;
   --warn: #e0a83c;
@@ -3543,7 +3541,7 @@ body.analyzer-active .footer.collapsed {
   background: transparent !important;
   border: 0 !important;
   border-radius: 8px !important;
-  color: var(--accent, #1c3d72) !important;
+  color: var(--accent) !important;
   height: 38px !important;
   display: flex !important;
   align-items: center !important;
