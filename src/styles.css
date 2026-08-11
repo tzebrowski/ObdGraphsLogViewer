@@ -85,7 +85,7 @@
 
 body.dark-theme {
   --chart-canvas-bg: #1a1a1a;
-  --sidebar-bg: #1c1e22;
+  --sidebar-bg: #131519;
   --active-bg: rgb(194 38 54 / 15%);
   --text-empty-state: rgb(194 38 54 / 8%);
 
@@ -1595,7 +1595,7 @@ a {
 }
 
 input:checked + .slider-round {
-  background-color: var(--ok);
+  background-color: var(--accent);
 }
 
 input:checked + .slider-round::before {
@@ -2508,7 +2508,7 @@ body.dark-theme .xy-panel-toolbar {
 }
 
 .control-group.gray-box {
-  border: 1px solid var(--border);
+  border: 1px solid var(--grid);
   border-radius: 6px;
   padding: 8px;
   margin: 6px 4px 2px;
