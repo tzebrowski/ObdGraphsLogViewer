@@ -42,6 +42,7 @@ import {
 } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
+import { themeColor } from '../../core/theme.util';
 import { UiStateService } from '../../core/ui-state.service';
 import { EmbeddedMap } from '../embedded-map/embedded-map';
 import { OverlayMap } from '../overlay-map/overlay-map';
@@ -514,7 +515,7 @@ export class ChartView {
       hash = tag.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash) % 360;
-    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-color); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
+    return `background: hsla(${hue}, 70%, 50%, 0.15); color: var(--text-primary); border: 1px solid hsla(${hue}, 70%, 50%, 0.3);`;
   }
 
   /** Port of legacy/src/chartmanager.js's `showChartInfo`. */
@@ -1390,11 +1391,9 @@ export class ChartView {
   ): ChartOptions<'line'> {
     const appState = this.appState;
     const mapService = this.mapService;
-    const isDark = this.preferences.darkTheme();
-    const textColor = isDark ? '#F8F9FA' : '#333333';
-    const gridColor = isDark
-      ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.1)';
+    this.preferences.darkTheme();
+    const textColor = themeColor('--text-primary');
+    const gridColor = themeColor('--border');
     // `events` isn't in Chart.js's TooltipOptions type but is read at
     // runtime (Chart's `_eventHandler` filters afterEvent notifications
     // per-plugin via `plugin.options.events`). Kept outside the `options`
@@ -1473,7 +1472,10 @@ export class ChartView {
       scales: {
         y: {
           beginAtZero: true,
-          max: 1.2,
+          // Data is min-max normalized to [0, 1] per signal (buildDataset
+          // above), so max only needs a sliver of headroom above 1 to keep
+          // a peak's line stroke from clipping against the plot's top edge.
+          max: 1.03,
           ticks: { display: false },
           grid: { color: gridColor },
         },

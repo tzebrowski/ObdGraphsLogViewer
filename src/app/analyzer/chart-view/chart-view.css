@@ -49,12 +49,12 @@
 .chm-highlight-desc-input {
   width: 100%;
   padding: 8px;
-  border: 1px solid var(--border-color, #ccc);
+  border: 1px solid var(--grid);
   border-radius: 4px;
   box-sizing: border-box;
   font-family: inherit;
-  background: var(--input-bg, #fff);
-  color: var(--text-color, #333);
+  background: var(--surface-1);
+  color: var(--text-primary);
 }
 
 .chm-highlight-desc-input {

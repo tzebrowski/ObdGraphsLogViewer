@@ -18,6 +18,7 @@ import {
 import { AppStateService } from '../../core/app-state.service';
 import { HistogramService } from '../../core/histogram.service';
 import { PreferencesService } from '../../core/preferences.service';
+import { themeColor } from '../../core/theme.util';
 
 Chart.register(
   BarController,
@@ -88,9 +89,9 @@ export class HistogramModal {
     const ctx = canvasRef.nativeElement.getContext('2d');
     if (!ctx) return;
 
-    const isDark = this.preferences.darkTheme();
-    const textColor = isDark ? '#eee' : '#333';
-    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    this.preferences.darkTheme();
+    const textColor = themeColor('--text-primary');
+    const gridColor = themeColor('--border');
 
     this.chart = new Chart(ctx, {
       type: 'bar',

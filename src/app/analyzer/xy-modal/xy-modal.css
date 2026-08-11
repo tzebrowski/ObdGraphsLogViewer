@@ -70,7 +70,7 @@
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-size: 0.7em;
-  color: var(--text-muted, #666);
+  color: var(--text-secondary);
   text-align: center;
   white-space: nowrap;
 }
@@ -91,13 +91,13 @@
   flex-direction: column;
   justify-content: space-between;
   font-size: 0.65em;
-  color: var(--text-muted, #666);
+  color: var(--text-secondary);
 }
 
 .xy-timeline-view {
   flex: 1;
   position: relative;
   min-height: 0;
-  border-top: 1px solid var(--border-color, #ddd);
+  border-top: 1px solid var(--grid);
   padding-top: 10px;
 }
