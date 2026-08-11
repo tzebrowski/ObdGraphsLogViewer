@@ -670,6 +670,7 @@ input[type='range']::-webkit-slider-thumb {
   align-items: center;
   padding: 2px 10px;
   background: var(--surface-1);
+  border-top: 2px solid var(--accent);
   border-bottom: 1px solid var(--grid);
   flex-shrink: 0;
 }
@@ -2362,7 +2363,7 @@ body.dark-theme .search-option:hover {
   flex-direction: column;
   flex: 1;
   min-height: 450px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--grid);
   border-radius: 8px;
   box-shadow:
     0 4px 6px -1px #0000001a,
