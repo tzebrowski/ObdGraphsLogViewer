@@ -6,7 +6,7 @@
 .math-source-checklist {
   max-height: 160px;
   overflow-y: auto;
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--grid);
   border-radius: 8px;
   padding: 8px;
   display: flex;
@@ -54,18 +54,18 @@
 }
 
 .math-source-radio.selected {
-  background: var(--brand-red, #e53e3e);
+  background: var(--bad);
   color: #fff;
 }
 
 .math-signal-no-results {
   font-size: 0.8rem;
-  color: var(--text-muted, #888);
+  color: var(--text-secondary);
   padding: 4px;
 }
 
 .math-error-msg {
-  color: var(--brand-red, #e53e3e);
+  color: var(--bad);
   font-size: 0.85em;
   padding: 6px 4px;
 }

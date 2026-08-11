@@ -8,11 +8,11 @@
 
 .pm-project-name {
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .pm-project-name:hover {
-  color: var(--text-color);
+  color: var(--text-primary);
 }
 
 .pm-project-name-input {
@@ -27,14 +27,14 @@
   justify-content: space-between;
   gap: 6px;
   font-size: 0.8em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   padding-top: 6px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--grid);
 }
 
 .pm-history-header:hover {
-  color: var(--text-color);
+  color: var(--text-primary);
 }
 
 .pm-history-list {
@@ -48,7 +48,7 @@
 
 .pm-history-item {
   font-size: 0.75em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   padding: 2px 4px;
 }
 
