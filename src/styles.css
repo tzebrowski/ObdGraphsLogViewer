@@ -81,6 +81,17 @@
   --ok: #198843;
   --warn: #b8860b;
   --bad: #c22636;
+
+  /*
+   * Fixed brand-identity colors, intentionally NOT redefined in body.dark-theme.
+   * The landing page's decorative brand colors (hero, feature icons, CTAs) and
+   * the "Return to Landing Page" nav button never varied with the app's
+   * light/dark preference in the original design -- unlike --accent/--ok/--bad
+   * above, which are meant to shift for dark-mode legibility.
+   */
+  --brand-red: #c22636;
+  --brand-green: #198843;
+  --brand-blue: #1c3d72;
 }
 
 body.dark-theme {
@@ -269,7 +280,7 @@ input[type='text'] {
 
 .btn-green {
   display: inline-block;
-  background-color: var(--ok);
+  background-color: var(--brand-green);
   color: #fff;
   padding: 15px 35px;
   border-radius: 50px;
@@ -1465,7 +1476,7 @@ a {
     linear-gradient(#1c3d72d9, #0a0a0ae5), url('/resources/background.png');
   background-size: cover;
   background-position: center;
-  border-bottom: 4px solid var(--bad);
+  border-bottom: 4px solid var(--brand-red);
 }
 
 .hero h1 {
@@ -1496,23 +1507,23 @@ a {
   padding: 30px;
   border-radius: 15px;
   text-align: center;
-  border-top: 3px solid var(--accent);
+  border-top: 3px solid var(--brand-blue);
   transition: 0.3s;
 }
 
 .feature-card:hover {
-  border-top-color: var(--ok);
+  border-top-color: var(--brand-green);
   transform: translateY(-5px);
 }
 
 .feature-card i {
   font-size: 3rem;
-  color: var(--bad);
+  color: var(--brand-red);
   margin-bottom: 20px;
 }
 
 .tech-specs {
-  background-color: var(--accent);
+  background-color: var(--brand-blue);
   padding: 60px 20px;
   text-align: center;
 }
@@ -1521,7 +1532,7 @@ a {
   background: #ffffff1a;
   padding: 10px 20px;
   border-radius: 30px;
-  border: 1px solid var(--ok);
+  border: 1px solid var(--brand-green);
   font-size: 0.9rem;
   margin: 5px;
   display: inline-block;
@@ -1666,7 +1677,7 @@ input:checked + .slider-round::before {
 }
 
 .nav-btn-primary {
-  background-color: var(--accent);
+  background-color: var(--brand-red);
   color: #fff;
   padding: 8px 16px;
   border-radius: 20px;
@@ -2738,7 +2749,7 @@ body.analyzer-active .view-switcher-container {
 }
 
 .btn-brand-red {
-  background-color: var(--bad) !important;
+  background-color: var(--brand-red) !important;
 }
 
 .btn-full-width {
