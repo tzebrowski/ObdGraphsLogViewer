@@ -124,7 +124,7 @@ html {
   font-family: 'Segoe UI', Roboto, sans-serif;
   font-size: 15px;
   background-color: #fcfcfc;
-  color: #333;
+  color: var(--text-primary);
   transition: background var(--transition-speed) ease;
 }
 
