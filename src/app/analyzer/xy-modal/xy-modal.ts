@@ -24,6 +24,7 @@ import { AppStateService } from '../../core/app-state.service';
 import { LoadedFile } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
+import { themeColor } from '../../core/theme.util';
 import {
   PanelIndex,
   ScatterPoint,
@@ -186,9 +187,9 @@ export class XyModal {
     const ctx = canvasRef.nativeElement.getContext('2d');
     if (!ctx) return;
 
-    const isDark = this.preferences.darkTheme();
-    const textColor = isDark ? '#eee' : '#333';
-    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    this.preferences.darkTheme();
+    const textColor = themeColor('--text-primary');
+    const gridColor = themeColor('--border');
 
     this.charts[panelIdx] = new Chart(ctx, {
       type: 'scatter',
@@ -306,9 +307,9 @@ export class XyModal {
     const ctx = canvasRef.nativeElement.getContext('2d');
     if (!ctx) return;
 
-    const isDark = this.preferences.darkTheme();
-    const textColor = isDark ? '#eee' : '#333';
-    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    this.preferences.darkTheme();
+    const textColor = themeColor('--text-primary');
+    const gridColor = themeColor('--border');
 
     /** Port of legacy/src/xyanalysis.js's `xyHoverLine` plugin: a vertical guide line at the active tooltip point. */
     const hoverLinePlugin: Plugin<'line'> = {
@@ -330,7 +331,7 @@ export class XyModal {
         ctx.moveTo(x, topY);
         ctx.lineTo(x, bottomY);
         ctx.lineWidth = 1;
-        ctx.strokeStyle = isDark
+        ctx.strokeStyle = this.preferences.darkTheme()
           ? 'rgba(255, 255, 255, 0.5)'
           : 'rgba(0, 0, 0, 0.5)';
         ctx.stroke();

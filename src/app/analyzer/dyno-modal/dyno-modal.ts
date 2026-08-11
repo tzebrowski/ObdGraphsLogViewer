@@ -20,6 +20,7 @@ import {
 } from 'chart.js';
 import { AppStateService } from '../../core/app-state.service';
 import { DynoPull, DynoService } from '../../core/dyno.service';
+import { PreferencesService } from '../../core/preferences.service';
 import { SignalPaletteService } from '../../core/signal-palette.service';
 
 Chart.register(
@@ -51,6 +52,7 @@ export class DynoModal {
   protected readonly dyno = inject(DynoService);
   protected readonly appState = inject(AppStateService);
   private readonly palette = inject(SignalPaletteService);
+  private readonly preferences = inject(PreferencesService);
 
   protected readonly canvasRef =
     viewChild<ElementRef<HTMLCanvasElement>>('dynoCanvas');
@@ -148,9 +150,7 @@ export class DynoModal {
     const ctx = tempCanvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.fillStyle = document.body.classList.contains('dark-theme')
-      ? '#1e1e1e'
-      : '#ffffff';
+    ctx.fillStyle = this.preferences.darkTheme() ? '#1e1e1e' : '#ffffff';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     ctx.drawImage(canvas, 0, 0);
 
