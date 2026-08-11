@@ -76,11 +76,11 @@
   --text-muted: #a0a0a0;
   --grid: #ddd;
   --border: rgb(11 11 11 / 10%);
-  --accent: #2a78d6;
+  --accent: #1c3d72;
   --accent-2: #eb6834;
-  --ok: #1f8a4c;
+  --ok: #198843;
   --warn: #b8860b;
-  --bad: #c0392b;
+  --bad: #c22636;
 }
 
 body.dark-theme {
