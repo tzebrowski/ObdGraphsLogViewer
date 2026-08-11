@@ -1472,7 +1472,10 @@ export class ChartView {
       scales: {
         y: {
           beginAtZero: true,
-          max: 1.2,
+          // Data is min-max normalized to [0, 1] per signal (buildDataset
+          // above), so max only needs a sliver of headroom above 1 to keep
+          // a peak's line stroke from clipping against the plot's top edge.
+          max: 1.03,
           ticks: { display: false },
           grid: { color: gridColor },
         },
