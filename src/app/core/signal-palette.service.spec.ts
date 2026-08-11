@@ -5,7 +5,7 @@ import { LoadedFile } from './models';
 import { PreferencesService } from './preferences.service';
 import { SignalPaletteService } from './signal-palette.service';
 
-const DARK_PALETTE_FIRST = '#FF3366';
+const DARK_PALETTE_FIRST = '#D85A79';
 const LIGHT_PALETTE_FIRST = '#D32F2F';
 
 function makeFile(availableSignals: string[]): LoadedFile {
