@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
 import { AuthService } from './auth.service';
 import { DataProcessorService } from './data-processor.service';
@@ -11,10 +12,18 @@ import { EVENTS } from './models';
 function makeAuthFake(isLoggedInInitial = true) {
   return {
     isLoggedIn: signal(isLoggedInInitial),
+    user: vi.fn().mockReturnValue(null),
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn(),
     getAccessToken: vi.fn().mockReturnValue('token-abc'),
   } as unknown as AuthService;
+}
+
+function makeAccountFake(hasDriveFeature = true) {
+  return {
+    hasFeature: vi.fn().mockReturnValue(hasDriveFeature),
+    loginWithGoogle: vi.fn().mockResolvedValue({ ok: true }),
+  } as unknown as AccountService;
 }
 
 function makeAppStateFake() {
@@ -41,18 +50,20 @@ function driveFilesList(
 
 describe('DriveService', () => {
   let auth: ReturnType<typeof makeAuthFake>;
+  let account: ReturnType<typeof makeAccountFake>;
   let appState: ReturnType<typeof makeAppStateFake>;
   let dataProcessor: ReturnType<typeof makeDataProcessorFake>;
   let bus: EventBusService;
 
   function create(): DriveService {
     return TestBed.runInInjectionContext(
-      () => new DriveService(auth, appState, dataProcessor, bus)
+      () => new DriveService(auth, account, appState, dataProcessor, bus)
     );
   }
 
   beforeEach(() => {
     auth = makeAuthFake(true);
+    account = makeAccountFake(true);
     appState = makeAppStateFake();
     dataProcessor = makeDataProcessorFake();
     bus = new EventBusService();
@@ -77,6 +88,53 @@ describe('DriveService', () => {
     TestBed.tick();
 
     expect(drive.files()).toEqual([]);
+  });
+
+  describe('connectAndScan()', () => {
+    it('signs in, links the account, and scans when the account has the Drive feature', async () => {
+      const list = driveFilesList([
+        { result: { files: [{ id: 'root-1', name: 'mygiulia' }] } },
+        { result: { files: [{ id: 'sub-1', name: 'trips' }] } },
+        { result: { files: [] } },
+      ]);
+      vi.stubGlobal('gapi', { client: { drive: { files: { list } } } });
+
+      const drive = create();
+      await drive.connectAndScan();
+
+      expect(auth.signIn).toHaveBeenCalled();
+      expect(account.loginWithGoogle).toHaveBeenCalledWith(
+        'token-abc',
+        undefined,
+        undefined
+      );
+      expect(account.hasFeature).toHaveBeenCalledWith('google-drive-access');
+      expect(list).toHaveBeenCalled();
+    });
+
+    it('does nothing further if signIn() does not leave the user logged in', async () => {
+      (auth.isLoggedIn as unknown as { set: (v: boolean) => void }).set(false);
+
+      const drive = create();
+      await drive.connectAndScan();
+
+      expect(account.loginWithGoogle).not.toHaveBeenCalled();
+    });
+
+    it('alerts and stops without scanning when the account lacks google-drive-access', async () => {
+      account = makeAccountFake(false);
+      const drive = TestBed.runInInjectionContext(
+        () => new DriveService(auth, account, appState, dataProcessor, bus)
+      );
+
+      await drive.connectAndScan();
+
+      expect(account.loginWithGoogle).toHaveBeenCalled();
+      expect(appState.showAlert).toHaveBeenCalledWith(
+        expect.stringContaining('Google Drive access')
+      );
+      expect(drive.files()).toEqual([]);
+    });
   });
 
   it('listFiles() walks mygiulia/trips and populates files on success', async () => {
