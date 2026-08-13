@@ -1,10 +1,13 @@
 import { Injectable, computed, effect, signal } from '@angular/core';
+import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
 import { AuthService } from './auth.service';
 import { DataProcessorService } from './data-processor.service';
 import { EventBusService } from './event-bus.service';
 import { DriveApiFile } from './google-api.types';
 import { EVENTS, FileTagAddedEvent } from './models';
+
+const DRIVE_FEATURE_NAME = 'google-drive-access';
 
 const DRIVE_ROOT_FOLDER = 'mygiulia';
 const DRIVE_SUB_FOLDER = 'trips';
@@ -166,6 +169,7 @@ export class DriveService {
 
   constructor(
     private readonly auth: AuthService,
+    private readonly account: AccountService,
     private readonly appState: AppStateService,
     private readonly dataProcessor: DataProcessorService,
     private readonly bus: EventBusService
@@ -327,12 +331,33 @@ export class DriveService {
     this.recentIds.set(next);
   }
 
-  /** Signs in (if needed) and scans the Drive `mygiulia/trips` folder for logs. */
+  /**
+   * Signs in (if needed), links/creates the shared My Giulia account with the same Google
+   * token (see AuthService's SCOPES), and — once the account is confirmed entitled to
+   * `google-drive-access` — scans the Drive `mygiulia/trips` folder for logs.
+   */
   async connectAndScan(): Promise<void> {
     await this.auth.signIn();
-    if (this.auth.isLoggedIn()) {
-      await this.listFiles();
+    if (!this.auth.isLoggedIn()) return;
+
+    const accessToken = this.auth.getAccessToken();
+    if (accessToken) {
+      const authUser = this.auth.user();
+      await this.account.loginWithGoogle(
+        accessToken,
+        authUser?.displayName,
+        authUser?.photoLink
+      );
     }
+
+    if (!this.account.hasFeature(DRIVE_FEATURE_NAME)) {
+      this.appState.showAlert(
+        "Your My Giulia account doesn't have Google Drive access. Please contact support if you believe this is a mistake."
+      );
+      return;
+    }
+
+    await this.listFiles();
   }
 
   async listFiles(): Promise<void> {

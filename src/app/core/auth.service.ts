@@ -10,8 +10,13 @@ import { PreferencesService } from './preferences.service';
  * so `drive.file` doesn't cover them — the full `drive` scope is required.
  * Legacy requested `drive.readonly` while still calling those write
  * endpoints, so tagging/sharing silently failed there at runtime.
+ *
+ * `email` is added so the resulting access token carries a verified email claim — this is the
+ * same token DriveService hands to AccountService.loginWithGoogle() to link/create the My
+ * Giulia account, so there's a single Google consent screen for both Drive access and account
+ * sign-in.
  */
-const SCOPES = 'https://www.googleapis.com/auth/drive';
+const SCOPES = 'https://www.googleapis.com/auth/drive email';
 const DISCOVERY_DOC =
   'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 

@@ -1,6 +1,7 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { version } from '../../package.json';
 import { AnalyzerShell } from './analyzer/analyzer-shell';
+import { AccountService } from './core/account.service';
 import { AuthService } from './core/auth.service';
 import { DeepLinkService } from './core/deep-link.service';
 import { Route } from './core/models';
@@ -45,6 +46,7 @@ export class App {
 
     inject(ProjectManagerService).init();
     inject(AuthService).init();
+    inject(AccountService).init();
     inject(SignalRegistryService).init();
     this.deepLink.init();
 

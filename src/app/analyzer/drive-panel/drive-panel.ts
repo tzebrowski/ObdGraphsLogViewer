@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { AccountService } from '../../core/account.service';
 import { AuthService } from '../../core/auth.service';
 import { DriveFileEntry, DriveService } from '../../core/drive.service';
 
@@ -15,6 +16,7 @@ import { DriveFileEntry, DriveService } from '../../core/drive.service';
 })
 export class DrivePanel {
   protected readonly auth = inject(AuthService);
+  protected readonly account = inject(AccountService);
   protected readonly drive = inject(DriveService);
 
   protected readonly showClientIdInput = signal(false);
@@ -27,6 +29,7 @@ export class DrivePanel {
 
   protected disconnect(): void {
     this.auth.signOut();
+    this.account.logout();
   }
 
   protected rescan(): void {
@@ -125,6 +128,8 @@ export class DrivePanel {
   }
 
   protected userLabel(): string {
+    const accountUser = this.account.user();
+    if (accountUser) return accountUser.displayName || accountUser.email;
     const user = this.auth.user();
     return user?.displayName || user?.emailAddress || 'Connected';
   }
