@@ -332,13 +332,16 @@ export class DriveService {
   }
 
   /**
-   * Signs in (if needed), links/creates the shared My Giulia account with the same Google
-   * token (see AuthService's SCOPES), and — once the account is confirmed entitled to
-   * `google-drive-access` — scans the Drive `mygiulia/trips` folder for logs.
+   * Signs in (if needed) and links/creates the My Giulia account with the same Google token
+   * (see AuthService's SCOPES) — the identity-only half of `connectAndScan()`, without also
+   * scanning Drive. Used directly by AccountModal's "Continue with Google", so signing in from
+   * the account panel doesn't also kick off a Drive folder scan the user didn't ask for.
+   * Returns whether the account ended up entitled to `google-drive-access` (showing an alert via
+   * AppStateService if signed in but not entitled — mirrors connectAndScan()'s own messaging).
    */
-  async connectAndScan(): Promise<void> {
+  async ensureSignedIn(): Promise<boolean> {
     await this.auth.signIn();
-    if (!this.auth.isLoggedIn()) return;
+    if (!this.auth.isLoggedIn()) return false;
 
     const accessToken = this.auth.getAccessToken();
     if (accessToken) {
@@ -354,8 +357,18 @@ export class DriveService {
       this.appState.showAlert(
         "Your My Giulia account doesn't have Google Drive access. Please contact support if you believe this is a mistake."
       );
-      return;
+      return false;
     }
+    return true;
+  }
+
+  /**
+   * Signs in (if needed), links/creates the shared My Giulia account with the same Google
+   * token, and — once the account is confirmed entitled to `google-drive-access` — scans the
+   * Drive `mygiulia/trips` folder for logs.
+   */
+  async connectAndScan(): Promise<void> {
+    if (!(await this.ensureSignedIn())) return;
 
     await this.listFiles();
   }

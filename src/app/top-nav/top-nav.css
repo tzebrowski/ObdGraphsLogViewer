@@ -25,3 +25,27 @@ label.tool-btn {
 .user-profile-btn {
   cursor: pointer;
 }
+
+.account-features-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.account-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: 0.78em;
+}
+
+.account-feature-pill i {
+  color: var(--accent);
+  font-size: 0.85em;
+}

@@ -106,16 +106,16 @@
     }
 
     <div class="nav-links">
-      @if (route() === 'analyzer') {
+      @if (route() === 'analyzer') { @if (account.isSignedIn()) {
       <button
         class="tool-btn user-profile-btn"
         title="Account Profile"
         style="margin-right: 8px; background: transparent; border: none"
         (click)="toggleProfile()"
       >
-        @if (auth.isLoggedIn() && auth.user()?.photoLink) {
+        @if (account.user()?.photoUrl || auth.user()?.photoLink) {
         <img
-          [src]="auth.user()?.photoLink"
+          [src]="account.user()?.photoUrl || auth.user()?.photoLink"
           class="user-avatar"
           style="width: 24px; height: 24px; border-radius: 50%"
           referrerpolicy="no-referrer"
@@ -124,7 +124,16 @@
         <i class="fas fa-user-circle" style="font-size: 1.2rem"></i>
         }
       </button>
-      }
+      } @else {
+      <button
+        class="tool-btn"
+        title="Sign in with Google"
+        (click)="openAccountModal()"
+      >
+        <i class="fab fa-google"></i>
+        <span class="desktop-label">Sign In</span>
+      </button>
+      } }
 
       <a
         href="https://github.com/tzebrowski/ObdGraphs"
@@ -285,30 +294,35 @@
       <button class="btn-close" (click)="toggleProfile()">&times;</button>
     </div>
     <div class="modal-body">
-      @if (auth.isLoggedIn()) {
+      @if (account.user()?.photoUrl) {
+      <img
+        [src]="account.user()?.photoUrl"
+        class="user-avatar"
+        style="width: 56px; height: 56px; border-radius: 50%"
+        referrerpolicy="no-referrer"
+      />
+      } @else {
       <i
         class="fas fa-user-circle"
         style="font-size: 3em; color: var(--accent)"
       ></i>
+      }
       <p><strong>{{ userLabel() }}</strong></p>
-      <p class="section-description">{{ auth.user()?.emailAddress }}</p>
+      <p class="section-description">{{ account.user()?.email }}</p>
+      @if (account.features().size > 0) {
+      <div class="account-features-list">
+        @for (feature of account.features(); track feature) {
+        <span class="account-feature-pill">
+          <i class="fas fa-check"></i> {{ feature }}
+        </span>
+        }
+      </div>
+      }
       <button class="btn btn-sm" (click)="signOut()">
         <i class="fas fa-sign-out-alt"></i> Sign Out
       </button>
-      } @else {
-      <i
-        class="fas fa-user-circle"
-        style="font-size: 3em; color: var(--text-muted)"
-      ></i>
-      <p><strong>Not Logged In</strong></p>
-      <p class="section-description">
-        Connect to Google Drive to access your cloud telemetry logs.
-      </p>
-      <button class="btn btn-sm btn-primary" (click)="connectDrive()">
-        <i class="fab fa-google"></i> Connect Google Drive
-      </button>
-      }
     </div>
   </div>
 </div>
 }
+<app-account-modal [open]="accountModalOpen()" (closed)="closeAccountModal()" />

@@ -1,4 +1,6 @@
 import { Component, inject, input, signal } from '@angular/core';
+import { AccountModal } from '../account-modal/account-modal';
+import { AccountService } from '../core/account.service';
 import { AppStateService } from '../core/app-state.service';
 import { AuthService } from '../core/auth.service';
 import { DataProcessorService } from '../core/data-processor.service';
@@ -26,7 +28,7 @@ const HIDE_INFO_KEY = 'hide_info_page';
  */
 @Component({
   selector: 'app-top-nav',
-  imports: [],
+  imports: [AccountModal],
   templateUrl: './top-nav.html',
   styleUrl: './top-nav.css',
 })
@@ -35,6 +37,7 @@ export class TopNav {
 
   protected readonly uiState = inject(UiStateService);
   protected readonly auth = inject(AuthService);
+  protected readonly account = inject(AccountService);
   protected readonly drive = inject(DriveService);
   protected readonly appState = inject(AppStateService);
   protected readonly mathChannels = inject(MathChannelsService);
@@ -49,6 +52,7 @@ export class TopNav {
     localStorage.getItem(HIDE_INFO_KEY) !== 'true'
   );
   protected readonly profileOpen = signal(false);
+  protected readonly accountModalOpen = signal(false);
 
   protected toggleFullScreen(): void {
     const el = document.getElementById('mainContent') ?? document.body;
@@ -116,16 +120,34 @@ export class TopNav {
     this.mathChannels.openModalWithFormula(QUICK_GAS_FILTER_FORMULA_ID);
   }
 
+  /** Clears both the My Giulia account session and the Drive OAuth token, so nothing is left
+   *  half-signed-in. */
   protected signOut(): void {
+    this.account.logout();
     this.auth.signOut();
     this.profileOpen.set(false);
+  }
+
+  protected openAccountModal(): void {
+    this.profileOpen.set(false);
+    this.accountModalOpen.set(true);
+  }
+
+  protected closeAccountModal(): void {
+    this.accountModalOpen.set(false);
   }
 
   protected goHome(): void {
     window.location.hash = '';
   }
 
+  /** Prefers the My Giulia account's own profile (email/subscriptions/features live there) over
+   *  AuthService's raw Drive profile, which only has a displayName/email pulled from
+   *  `drive.about.get` and doesn't necessarily reflect the account's sign-in state after a
+   *  reload (see AccountModal's doc comment). */
   protected userLabel(): string {
+    const accountUser = this.account.user();
+    if (accountUser) return accountUser.displayName || accountUser.email;
     const user = this.auth.user();
     return user?.displayName || user?.emailAddress || 'Not Logged In';
   }
