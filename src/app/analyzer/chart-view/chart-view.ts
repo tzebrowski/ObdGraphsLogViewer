@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChildren,
 } from '@angular/core';
 import {
@@ -1358,7 +1359,14 @@ export class ChartView {
     }));
 
     const color = this.palette.getColorForSignal(fileIdx, sigIdx);
-    const isVisible = this.appState.isSignalVisible(fileIdx, key);
+    // untracked: visibility toggles are handled incrementally by the dedicated
+    // hiddenSignalKeys effect (syncVisibility) -- reading this signal normally here would make
+    // it a dependency of the structural rebuild effect too (since buildDataset runs
+    // synchronously inside it), forcing a full chart.destroy()/recreate -- and the zoom/pan
+    // state loss that comes with it -- on every visibility checkbox toggle.
+    const isVisible = untracked(() =>
+      this.appState.isSignalVisible(fileIdx, key)
+    );
     const showAreaFills = this.preferences.showAreaFills();
     const smoothLines = this.preferences.smoothLines();
 
@@ -1528,7 +1536,12 @@ export class ChartView {
               const ds = chartData.datasets[
                 item.datasetIndex!
               ] as unknown as ChartDatasetExtra;
-              return appState.isSignalVisible(ds._fileIdx, ds._signalKey);
+              // untracked: Chart.js computes legend items synchronously during chart
+              // construction, so a plain read here would make the structural rebuild effect
+              // depend on hiddenSignalKeys too (see the matching note in buildDataset).
+              return untracked(() =>
+                appState.isSignalVisible(ds._fileIdx, ds._signalKey)
+              );
             },
           },
         },
