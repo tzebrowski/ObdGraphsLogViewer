@@ -40,6 +40,28 @@
   cursor: pointer;
 }
 
+/* Raw log names (Drive uploads, CSV re-exports) can run 40+ characters -- truncate with an
+   ellipsis instead of wrapping mid-word, and expose the full name as a hover tooltip. */
+.file-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.file-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.file-meta-header .button-row-sm {
+  flex-shrink: 0;
+}
+
 .sig-list {
   padding-left: 10px;
 }

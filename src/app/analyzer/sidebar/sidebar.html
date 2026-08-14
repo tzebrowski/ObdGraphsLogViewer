@@ -79,7 +79,7 @@
       = $index) {
       <div class="file-group-container">
         <div class="file-meta-header" (click)="toggleFileCollapsed(fileIdx)">
-          <span>
+          <span class="file-name-row">
             <i
               class="fas fa-trash-alt"
               title="Remove log"
@@ -90,7 +90,10 @@
               [class.fa-chevron-down]="!isFileCollapsed(fileIdx)"
               [class.fa-chevron-right]="isFileCollapsed(fileIdx)"
             ></i>
-            <i class="fas fa-file-alt"></i> {{ file.name }}
+            <i class="fas fa-file-alt"></i>
+            <span class="file-name-text" [title]="file.name"
+              >{{ file.name }}</span
+            >
           </span>
           <div class="button-row-sm">
             <button
