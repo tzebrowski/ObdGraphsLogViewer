@@ -16,8 +16,9 @@ import { DriveService } from '../core/drive.service';
  * AccountModal (hextune's identically-purposed dialog). Unlike hextune (separate
  * GoogleAuthService/AccountService, one Google consent screen for Drive, a later separate one
  * for the account), this app already unifies both into a single consent screen (see
- * AuthService's SCOPES) — DriveService.ensureSignedIn() covers sign-in + account-link without
- * also triggering a Drive folder scan.
+ * AuthService's SCOPES) — signing in here also scans Drive immediately (DriveService's own
+ * "Connect Google Drive" button in the sidebar is the only other entry point now that the
+ * toolbar's separate "Drive" button is gone), so there's no extra click needed to see logs.
  */
 @Component({
   selector: 'app-account-modal',
@@ -56,6 +57,9 @@ export class AccountModal {
     this.error.set('');
 
     const entitled = await this.drive.ensureSignedIn();
+    if (entitled) {
+      await this.drive.listFiles();
+    }
 
     this.submitting.set(false);
     if (entitled) {
