@@ -1,0 +1,56 @@
+:host {
+  display: contents;
+}
+
+/* Slim always-present strip along the right edge -- hovering it reveals .edge-panel. The small
+   pill in its center is a discoverability hint so the hover zone isn't invisible. */
+.edge-trigger {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  width: 14px;
+  height: calc(100vh - 48px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edge-trigger::before {
+  content: '';
+  width: 4px;
+  height: 60px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: 0.35;
+}
+
+.edge-panel {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  width: 300px;
+  height: calc(100vh - 48px);
+  box-sizing: border-box;
+  padding: 10px;
+  overflow-y: auto;
+  background: var(--sidebar-bg);
+  border-left: 1px solid var(--grid);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.35);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  z-index: 501;
+}
+
+.edge-panel.open {
+  transform: translateX(0);
+}
+
+/* Hover-to-reveal is a desktop-only affordance -- the left sidebar's own signal list already
+   covers narrow/touch viewports. */
+@media (width <= 768px) {
+  .edge-trigger,
+  .edge-panel {
+    display: none;
+  }
+}

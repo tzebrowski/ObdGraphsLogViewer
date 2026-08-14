@@ -486,11 +486,23 @@ export class ChartView {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${file.name}_export_${Math.round(minTime)}.csv`;
+    // A raw epoch-ms suffix (the old `_export_${minTime}`) made re-imported exports unreadable
+    // in the sidebar's file list -- name it by the relative time range instead, which also
+    // matches the "Time (s)" column the CSV itself uses.
+    const relStart = Math.round((minTime - file.startTime) / 1000);
+    const relEnd = Math.round((maxTime - file.startTime) / 1000);
+    link.download = `${this.baseFileName(file.name)}_${relStart}s-${relEnd}s.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+
+  /** Strips the noisy compound extension off a raw log name (e.g. Drive uploads end in
+   *  `.jsonl.json.gz`) so generated file names -- like exportDataRange's CSV download -- don't
+   *  chain extensions on top of it. */
+  private baseFileName(name: string): string {
+    return name.replace(/\.(jsonl\.json\.gz|json\.gz|json|csv)$/i, '');
   }
 
   /** Port of legacy/src/chartmanager.js's `_promptForTag`. */

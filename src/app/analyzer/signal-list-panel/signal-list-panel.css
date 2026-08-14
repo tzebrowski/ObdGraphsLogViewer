@@ -1,0 +1,144 @@
+.signal-search-wrapper {
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  z-index: 10;
+  padding: 10px 5px;
+  border-bottom: 1px solid var(--grid);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signal-search-wrapper input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--grid);
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+
+.signal-search-wrapper i {
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.file-meta-header {
+  padding: 8px 5px;
+  font-weight: bold;
+  border-bottom: 1px solid var(--grid);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--sidebar-bg);
+  cursor: pointer;
+}
+
+.file-meta-header i.fa-trash-alt {
+  color: var(--bad);
+  cursor: pointer;
+}
+
+/* Raw log names (Drive uploads, CSV re-exports) can run 40+ characters -- truncate with an
+   ellipsis instead of wrapping mid-word, and expose the full name as a hover tooltip. */
+.file-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.file-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.file-meta-header .button-row-sm {
+  flex-shrink: 0;
+}
+
+.sig-list {
+  padding-left: 10px;
+}
+
+.signal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 5px;
+}
+
+.signal-color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.signal-item label {
+  font-size: 0.85em;
+  flex-grow: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signal-item label.math-signal {
+  color: var(--ok);
+  font-weight: bold;
+}
+
+/* Signal category groups (Basics/Air/Boost/Fuel-AFR/etc.) -- mirrors AutoTuner's "Measures"
+   panel: a collapsible header with a tri-state checkbox that toggles the whole group. */
+.category-group {
+  margin-bottom: 2px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.category-chevron {
+  font-size: 0.7em;
+  width: 10px;
+  color: var(--text-secondary);
+}
+
+.category-checkbox {
+  flex-shrink: 0;
+}
+
+.category-name {
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  flex-grow: 1;
+}
+
+.category-count {
+  font-size: 0.7em;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.category-body {
+  padding-left: 14px;
+}
+
+.category-body.hidden {
+  display: none;
+}
