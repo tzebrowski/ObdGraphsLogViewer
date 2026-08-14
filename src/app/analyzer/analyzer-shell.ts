@@ -6,6 +6,7 @@ import { FileLoader } from './file-loader/file-loader';
 import { HistogramModal } from './histogram-modal/histogram-modal';
 import { LoadingOverlay } from './loading-overlay/loading-overlay';
 import { MathChannelModal } from './math-channel-modal/math-channel-modal';
+import { RightSignalsPanel } from './right-signals-panel/right-signals-panel';
 import { Sidebar } from './sidebar/sidebar';
 import { XyModal } from './xy-modal/xy-modal';
 
@@ -28,6 +29,7 @@ import { XyModal } from './xy-modal/xy-modal';
     DynoModal,
     XyModal,
     HistogramModal,
+    RightSignalsPanel,
   ],
   templateUrl: './analyzer-shell.html',
   styleUrl: './analyzer-shell.css',
