@@ -4,7 +4,6 @@ import { AccountService } from '../core/account.service';
 import { AppStateService } from '../core/app-state.service';
 import { AuthService } from '../core/auth.service';
 import { DataProcessorService } from '../core/data-processor.service';
-import { DriveService } from '../core/drive.service';
 import { DynoService } from '../core/dyno.service';
 import { EventBusService } from '../core/event-bus.service';
 import { HistogramService } from '../core/histogram.service';
@@ -38,7 +37,6 @@ export class TopNav {
   protected readonly uiState = inject(UiStateService);
   protected readonly auth = inject(AuthService);
   protected readonly account = inject(AccountService);
-  protected readonly drive = inject(DriveService);
   protected readonly appState = inject(AppStateService);
   protected readonly mathChannels = inject(MathChannelsService);
   protected readonly dyno = inject(DynoService);
@@ -110,10 +108,6 @@ export class TopNav {
   protected openProfileFromMenu(): void {
     this.accountMenuOpen.set(false);
     this.profileOpen.set(true);
-  }
-
-  protected connectDrive(): void {
-    void this.drive.connectAndScan();
   }
 
   protected fileInputChange(event: Event): void {
