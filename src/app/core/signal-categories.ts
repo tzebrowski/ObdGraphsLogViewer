@@ -37,7 +37,7 @@ const RULES: CategoryRule[] = [
   },
   {
     category: 'Fuel / AFR',
-    pattern: /\bafr\b|lambda|fuel|air.?fuel/i,
+    pattern: /\bafr\b|lambda|fuel|air.?fuel|\bo2\b|oxygen/i,
   },
   {
     category: 'Boost',
@@ -46,7 +46,7 @@ const RULES: CategoryRule[] = [
   },
   {
     category: 'Load / Torque',
-    pattern: /torque|\bload\b/i,
+    pattern: /torque|\bload\b|horsepower|horse power|\bhp\b/i,
   },
   {
     category: 'Temperature',

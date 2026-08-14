@@ -39,6 +39,24 @@ describe('categoryForSignal', () => {
     expect(categoryForSignal('Longitude')).toBe('Location');
   });
 
+  it('categorizes signal names from the bundled sample trip', () => {
+    expect(categoryForSignal('Air Fuel Ratio')).toBe('Fuel / AFR');
+    expect(categoryForSignal('Air Mass Flow Measured')).toBe('Air / Intake');
+    expect(categoryForSignal('Air Mass Flow Target')).toBe('Air / Intake');
+    expect(categoryForSignal('Calculated horse power')).toBe('Load / Torque');
+    expect(categoryForSignal('Catalyst temp')).toBe('Temperature');
+    expect(categoryForSignal('Engine Rpm')).toBe('Basics');
+    expect(categoryForSignal('Intake Manifold Pressure Measured')).toBe(
+      'Boost'
+    );
+    // O2 sensor voltage is an AFR/emissions reading, not a generic electrical one --
+    // Fuel/AFR is checked before Electrical's broader "voltage" match.
+    expect(categoryForSignal('O2 Voltage')).toBe('Fuel / AFR');
+    expect(categoryForSignal('Over Boost Measured')).toBe('Boost');
+    expect(categoryForSignal('Over Boost Target')).toBe('Boost');
+    expect(categoryForSignal('Short Fuel Trim')).toBe('Fuel / AFR');
+  });
+
   it('falls back to Other for unrecognized signal names', () => {
     expect(categoryForSignal('Some Unknown Custom Pid')).toBe('Other');
   });
