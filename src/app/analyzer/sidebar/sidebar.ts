@@ -5,6 +5,10 @@ import {
   PreferencesService,
   SIDEBAR_STATE_KEY,
 } from '../../core/preferences.service';
+import {
+  categoryForSignal,
+  SIGNAL_CATEGORIES,
+} from '../../core/signal-categories';
 import { SignalPaletteService } from '../../core/signal-palette.service';
 import { UiStateService } from '../../core/ui-state.service';
 import { AnomalyScanner } from '../anomaly-scanner/anomaly-scanner';
@@ -14,6 +18,11 @@ import { LibraryPanel } from '../library-panel/library-panel';
 interface SignalRow {
   name: string;
   isMath: boolean;
+}
+
+interface CategoryGroup {
+  category: string;
+  rows: SignalRow[];
 }
 
 /**
@@ -95,6 +104,78 @@ export class Sidebar {
 
   protected regularSignalRows(file: LoadedFile): SignalRow[] {
     return this.signalRowsFor(file, false);
+  }
+
+  /**
+   * Groups regularSignalRows(file) (stock/log signals -- Math Channels stay in their own flat
+   * bucket, see the template) by what they measure, in SIGNAL_CATEGORIES order, matching
+   * AutoTuner's "Measures" panel. Empty categories are dropped so search filtering doesn't leave
+   * empty group headers behind.
+   */
+  protected categorizedSignalRows(file: LoadedFile): CategoryGroup[] {
+    const rows = this.regularSignalRows(file);
+    const byCategory = new Map<string, SignalRow[]>();
+    for (const row of rows) {
+      const category = categoryForSignal(row.name);
+      const bucket = byCategory.get(category);
+      if (bucket) bucket.push(row);
+      else byCategory.set(category, [row]);
+    }
+    return SIGNAL_CATEGORIES.map((category) => ({
+      category,
+      rows: byCategory.get(category) ?? [],
+    })).filter((group) => group.rows.length > 0);
+  }
+
+  /** Keys are `${fileIdx}::${category}`; presence in the set means collapsed. */
+  protected readonly collapsedCategories = signal<ReadonlySet<string>>(
+    new Set()
+  );
+
+  private static categoryKey(fileIdx: number, category: string): string {
+    return `${fileIdx}::${category}`;
+  }
+
+  protected isCategoryCollapsed(fileIdx: number, category: string): boolean {
+    return this.collapsedCategories().has(
+      Sidebar.categoryKey(fileIdx, category)
+    );
+  }
+
+  protected toggleCategoryCollapsed(fileIdx: number, category: string): void {
+    const key = Sidebar.categoryKey(fileIdx, category);
+    this.collapsedCategories.update((collapsed) => {
+      const next = new Set(collapsed);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** Drives the group header checkbox's checked/indeterminate state. */
+  protected categoryVisibility(
+    fileIdx: number,
+    group: CategoryGroup
+  ): 'all' | 'none' | 'some' {
+    const visibleCount = group.rows.filter((row) =>
+      this.appState.isSignalVisible(fileIdx, row.name)
+    ).length;
+    if (visibleCount === 0) return 'none';
+    if (visibleCount === group.rows.length) return 'all';
+    return 'some';
+  }
+
+  protected toggleCategory(
+    fileIdx: number,
+    group: CategoryGroup,
+    event: Event
+  ): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.appState.setAllSignalsVisibleForFile(
+      fileIdx,
+      group.rows.map((row) => row.name),
+      checked
+    );
   }
 
   private signalRowsFor(file: LoadedFile, isMath: boolean): SignalRow[] {

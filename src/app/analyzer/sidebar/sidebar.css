@@ -72,3 +72,51 @@
   color: var(--ok);
   font-weight: bold;
 }
+
+/* Signal category groups (Basics/Air/Boost/Fuel-AFR/etc.) -- mirrors AutoTuner's "Measures"
+   panel: a collapsible header with a tri-state checkbox that toggles the whole group. */
+.category-group {
+  margin-bottom: 2px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.category-chevron {
+  font-size: 0.7em;
+  width: 10px;
+  color: var(--text-secondary);
+}
+
+.category-checkbox {
+  flex-shrink: 0;
+}
+
+.category-name {
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  flex-grow: 1;
+}
+
+.category-count {
+  font-size: 0.7em;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.category-body {
+  padding-left: 14px;
+}
+
+.category-body.hidden {
+  display: none;
+}

@@ -145,35 +145,72 @@
             </label>
           </div>
           } } @if (mathSignalRows(file).length > 0 &&
-          regularSignalRows(file).length > 0) {
+          categorizedSignalRows(file).length > 0) {
           <div class="signal-separator">Log Data</div>
-          } @for (row of regularSignalRows(file); track row.name) {
-          <div class="signal-item">
-            @if (preferences.useCustomPalette()) {
-            <input
-              type="color"
-              class="signal-color-picker"
-              [value]="colorFor(fileIdx, row.name, file)"
-              (change)="setCustomColor(file.name, row.name, $event)"
-            />
-            } @else {
-            <span
-              class="signal-color-swatch"
-              [style.background]="colorFor(fileIdx, row.name, file)"
-            ></span>
-            }
-            <input
-              type="checkbox"
-              [id]="'chk-f' + fileIdx + '-' + row.name"
-              [checked]="appState.isSignalVisible(fileIdx, row.name)"
-              (change)="toggleSignal(fileIdx, row.name, $event)"
-            />
-            <label
-              [for]="'chk-f' + fileIdx + '-' + row.name"
-              [class.math-signal]="row.isMath"
+          } @for (group of categorizedSignalRows(file); track group.category) {
+          <div class="category-group">
+            <div
+              class="category-header"
+              (click)="toggleCategoryCollapsed(fileIdx, group.category)"
             >
-              {{ row.name }}
-            </label>
+              <i
+                class="fas toggle-icon category-chevron"
+                [class.fa-chevron-down]="
+                  !isCategoryCollapsed(fileIdx, group.category)
+                "
+                [class.fa-chevron-right]="
+                  isCategoryCollapsed(fileIdx, group.category)
+                "
+              ></i>
+              <input
+                type="checkbox"
+                class="category-checkbox"
+                [checked]="
+                  categoryVisibility(fileIdx, group) === 'all'
+                "
+                [indeterminate]="
+                  categoryVisibility(fileIdx, group) === 'some'
+                "
+                (click)="$event.stopPropagation()"
+                (change)="toggleCategory(fileIdx, group, $event)"
+              />
+              <span class="category-name">{{ group.category }}</span>
+              <span class="category-count">{{ group.rows.length }}</span>
+            </div>
+            <div
+              class="category-body"
+              [class.hidden]="isCategoryCollapsed(fileIdx, group.category)"
+            >
+              @for (row of group.rows; track row.name) {
+              <div class="signal-item">
+                @if (preferences.useCustomPalette()) {
+                <input
+                  type="color"
+                  class="signal-color-picker"
+                  [value]="colorFor(fileIdx, row.name, file)"
+                  (change)="setCustomColor(file.name, row.name, $event)"
+                />
+                } @else {
+                <span
+                  class="signal-color-swatch"
+                  [style.background]="colorFor(fileIdx, row.name, file)"
+                ></span>
+                }
+                <input
+                  type="checkbox"
+                  [id]="'chk-f' + fileIdx + '-' + row.name"
+                  [checked]="appState.isSignalVisible(fileIdx, row.name)"
+                  (change)="toggleSignal(fileIdx, row.name, $event)"
+                />
+                <label
+                  [for]="'chk-f' + fileIdx + '-' + row.name"
+                  [class.math-signal]="row.isMath"
+                >
+                  {{ row.name }}
+                </label>
+              </div>
+              }
+            </div>
           </div>
           }
         </div>
