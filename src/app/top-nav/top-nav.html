@@ -107,23 +107,44 @@
 
     <div class="nav-links">
       @if (route() === 'analyzer') { @if (account.isSignedIn()) {
-      <button
-        class="tool-btn user-profile-btn"
-        title="Account Profile"
-        style="margin-right: 8px; background: transparent; border: none"
-        (click)="toggleProfile()"
-      >
-        @if (account.user()?.photoUrl || auth.user()?.photoLink) {
-        <img
-          [src]="account.user()?.photoUrl || auth.user()?.photoLink"
-          class="user-avatar"
-          style="width: 24px; height: 24px; border-radius: 50%"
-          referrerpolicy="no-referrer"
-        />
-        } @else {
-        <i class="fas fa-user-circle" style="font-size: 1.2rem"></i>
+      <div class="account-pill-wrap">
+        <button
+          class="account-pill-btn"
+          [class.active]="accountMenuOpen()"
+          title="Account: view profile, sign out"
+          (click)="toggleAccountMenu()"
+        >
+          @if (account.user()?.photoUrl || auth.user()?.photoLink) {
+          <img
+            [src]="account.user()?.photoUrl || auth.user()?.photoLink"
+            class="account-pill-avatar-img"
+            referrerpolicy="no-referrer"
+          />
+          } @else {
+          <span class="account-pill-avatar-initial"
+            >{{ accountInitial() }}</span
+          >
+          }
+          <span class="account-pill-name">{{ userLabel() }}</span>
+          <svg class="account-pill-chevron" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        @if (accountMenuOpen()) {
+        <div
+          class="account-dropdown-backdrop"
+          (click)="closeAccountMenu()"
+        ></div>
+        <div class="account-dropdown">
+          <button class="account-dropdown-item" (click)="openProfileFromMenu()">
+            <i class="fas fa-user-circle"></i> View profile
+          </button>
+          <button class="account-dropdown-item" (click)="signOut()">
+            <i class="fas fa-sign-out-alt"></i> Sign out
+          </button>
+        </div>
         }
-      </button>
+      </div>
       } @else {
       <button
         class="tool-btn"
@@ -285,42 +306,48 @@
 } @if (profileOpen()) {
 <div class="modal-overlay" style="display: flex" (click)="toggleProfile()">
   <div
-    class="modal-content"
-    style="max-width: 320px; text-align: center"
+    class="modal-content account-profile-content"
+    style="max-width: 340px; text-align: center"
     (click)="$event.stopPropagation()"
   >
-    <div class="modal-header">
-      <h2>Account</h2>
-      <button class="btn-close" (click)="toggleProfile()">&times;</button>
-    </div>
+    <button
+      class="btn-close account-profile-closebtn"
+      (click)="toggleProfile()"
+    >
+      &times;
+    </button>
     <div class="modal-body">
       @if (account.user()?.photoUrl) {
       <img
         [src]="account.user()?.photoUrl"
-        class="user-avatar"
-        style="width: 56px; height: 56px; border-radius: 50%"
+        class="account-profile-avatar"
         referrerpolicy="no-referrer"
       />
       } @else {
-      <i
-        class="fas fa-user-circle"
-        style="font-size: 3em; color: var(--accent)"
-      ></i>
+      <span class="account-profile-avatar account-profile-avatar-initial"
+        >{{ accountInitial() }}</span
+      >
       }
-      <p><strong>{{ userLabel() }}</strong></p>
-      <p class="section-description">{{ account.user()?.email }}</p>
+      <p class="account-profile-name">{{ userLabel() }}</p>
+      <p class="account-profile-email">{{ account.user()?.email }}</p>
+
+      <div class="account-profile-divider"></div>
+
+      <div class="account-profile-features-heading">Features</div>
       @if (account.features().size > 0) {
-      <div class="account-features-list">
+      <div class="account-profile-features-list">
         @for (feature of account.features(); track feature) {
-        <span class="account-feature-pill">
-          <i class="fas fa-check"></i> {{ feature }}
-        </span>
+        <div class="account-profile-feature-row">
+          <span class="account-profile-feature-check">
+            <i class="fas fa-check"></i>
+          </span>
+          <span class="account-profile-feature-name">{{ feature }}</span>
+        </div>
         }
       </div>
+      } @else {
+      <p class="section-description">No features available</p>
       }
-      <button class="btn btn-sm" (click)="signOut()">
-        <i class="fas fa-sign-out-alt"></i> Sign Out
-      </button>
     </div>
   </div>
 </div>

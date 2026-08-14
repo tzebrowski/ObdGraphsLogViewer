@@ -53,6 +53,10 @@ export class TopNav {
   );
   protected readonly profileOpen = signal(false);
   protected readonly accountModalOpen = signal(false);
+  /** Dropdown under the signed-in avatar pill -- "View profile" / "Sign out", matching hextune's
+   *  topbar (avatar+name button opens this menu; the actual profile info lives in a separate
+   *  modal opened from within it). */
+  protected readonly accountMenuOpen = signal(false);
 
   protected toggleFullScreen(): void {
     const el = document.getElementById('mainContent') ?? document.body;
@@ -95,6 +99,19 @@ export class TopNav {
     this.profileOpen.update((v) => !v);
   }
 
+  protected toggleAccountMenu(): void {
+    this.accountMenuOpen.update((v) => !v);
+  }
+
+  protected closeAccountMenu(): void {
+    this.accountMenuOpen.set(false);
+  }
+
+  protected openProfileFromMenu(): void {
+    this.accountMenuOpen.set(false);
+    this.profileOpen.set(true);
+  }
+
   protected connectDrive(): void {
     void this.drive.connectAndScan();
   }
@@ -126,6 +143,7 @@ export class TopNav {
     this.account.logout();
     this.auth.signOut();
     this.profileOpen.set(false);
+    this.accountMenuOpen.set(false);
   }
 
   protected openAccountModal(): void {
@@ -150,5 +168,11 @@ export class TopNav {
     if (accountUser) return accountUser.displayName || accountUser.email;
     const user = this.auth.user();
     return user?.displayName || user?.emailAddress || 'Not Logged In';
+  }
+
+  /** Single-letter avatar fallback (matches hextune's profile-btn/avatar-circle) when the
+   *  account has no photoUrl. */
+  protected accountInitial(): string {
+    return this.userLabel().charAt(0).toUpperCase();
   }
 }
