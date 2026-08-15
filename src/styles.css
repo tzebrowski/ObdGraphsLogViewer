@@ -238,7 +238,8 @@ body:not(.dark-theme) .sidebar h2 {
   float: right;
 }
 
-.control-group.collapsed > :not(h3, .group-header, .group-header-row) {
+.control-group.collapsed
+  > :not(h3, .group-header, .group-header-row, app-signal-list-panel) {
   display: none !important;
 }
 
