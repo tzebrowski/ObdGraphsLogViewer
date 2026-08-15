@@ -37,7 +37,7 @@ export class AuthService {
   readonly gisInited = signal(false);
 
   private tokenClient: GoogleTokenClient | null = null;
-  private pendingSignInResolvers: Array<() => void> = [];
+  private pendingSignInResolvers: Array<(success: boolean) => void> = [];
 
   constructor(
     private readonly preferences: PreferencesService,
@@ -98,13 +98,28 @@ export class AuthService {
     }
 
     return new Promise<void>((resolve) => {
-      this.pendingSignInResolvers.push(resolve);
+      this.pendingSignInResolvers.push(() => resolve());
       if (this.tokenClient) {
         this.tokenClient.requestAccessToken({ prompt: '' });
       } else {
         console.error('Token client not ready.');
-        this.resolvePendingSignIns();
+        this.resolvePendingSignIns(false);
       }
+    });
+  }
+
+  /**
+   * Requests a fresh Drive access token without a popup, relying on the browser's existing
+   * Google session. GIS access tokens expire hourly even while the user's underlying Google
+   * session is still valid, so DriveService calls this to recover from an expired token before
+   * falling back to a full sign-out -- avoids logging the user out of the whole My Giulia account
+   * (see AccountService) on every routine hourly expiry.
+   */
+  silentRefresh(): Promise<boolean> {
+    if (!this.tokenClient) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      this.pendingSignInResolvers.push(resolve);
+      this.tokenClient!.requestAccessToken({ prompt: '' });
     });
   }
 
@@ -211,7 +226,7 @@ export class AuthService {
       callback: (resp) => {
         if (resp.error !== undefined) {
           console.error('Auth Error:', resp.error);
-          this.resolvePendingSignIns();
+          this.resolvePendingSignIns(false);
           return;
         }
 
@@ -244,12 +259,12 @@ export class AuthService {
 
   private async onTokenReceived(): Promise<void> {
     await this.fetchUserDetails();
-    this.resolvePendingSignIns();
+    this.resolvePendingSignIns(this.isLoggedIn());
   }
 
-  private resolvePendingSignIns(): void {
+  private resolvePendingSignIns(success: boolean): void {
     const resolvers = this.pendingSignInResolvers;
     this.pendingSignInResolvers = [];
-    resolvers.forEach((resolve) => resolve());
+    resolvers.forEach((resolve) => resolve(success));
   }
 }

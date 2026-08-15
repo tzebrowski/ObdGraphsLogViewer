@@ -174,10 +174,16 @@ export class DriveService {
     private readonly dataProcessor: DataProcessorService,
     private readonly bus: EventBusService
   ) {
+    /**
+     * Only clears `files` here, not `error` -- error clearing is left to the specific signOut
+     * call sites (DrivePanel's manual "Sign out", TopNav's account-menu sign-out, both via
+     * `resetError()`) so it doesn't race handleApiError(), which sets a "session expired"
+     * message in the same tick it calls auth.signOut(); this effect flushes asynchronously and
+     * would otherwise wipe that message right back out.
+     */
     effect(() => {
       if (!this.auth.isLoggedIn()) {
         this.files.set([]);
-        this.error.set(null);
       }
     });
 
@@ -309,6 +315,11 @@ export class DriveService {
     }
   }
 
+  /** Clears a stale error banner on a deliberate manual sign-out (DrivePanel, TopNav), as opposed to handleApiError()'s automatic one, which sets its own message. */
+  resetError(): void {
+    this.error.set(null);
+  }
+
   clearRecentHistory(): void {
     localStorage.removeItem(RECENT_KEY);
     this.recentIds.set([]);
@@ -379,24 +390,41 @@ export class DriveService {
     this.files.set([]);
 
     try {
-      const rootId = await this.findFolderId(DRIVE_ROOT_FOLDER);
-      const subFolderId = rootId
-        ? await this.findFolderId(DRIVE_SUB_FOLDER, rootId)
-        : null;
-
-      if (!subFolderId) {
-        this.error.set(
-          `Required Drive folders not found ("${DRIVE_ROOT_FOLDER}/${DRIVE_SUB_FOLDER}").`
-        );
-        return;
-      }
-
-      await this.fetchJsonFiles(subFolderId);
+      await this.scanTripsFolder();
     } catch (error) {
-      this.handleApiError(error);
+      if (this.isAuthError(error) && (await this.auth.silentRefresh())) {
+        try {
+          await this.scanTripsFolder();
+        } catch (retryError) {
+          this.handleApiError(retryError);
+        }
+      } else {
+        this.handleApiError(error);
+      }
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private async scanTripsFolder(): Promise<void> {
+    const rootId = await this.findFolderId(DRIVE_ROOT_FOLDER);
+    const subFolderId = rootId
+      ? await this.findFolderId(DRIVE_SUB_FOLDER, rootId)
+      : null;
+
+    if (!subFolderId) {
+      this.error.set(
+        `Required Drive folders not found ("${DRIVE_ROOT_FOLDER}/${DRIVE_SUB_FOLDER}").`
+      );
+      return;
+    }
+
+    await this.fetchJsonFiles(subFolderId);
+  }
+
+  private isAuthError(error: unknown): boolean {
+    const status = (error as { status?: number } | undefined)?.status;
+    return status === 401 || status === 403;
   }
 
   async loadFile(fileName: string, id: string): Promise<void> {
@@ -471,31 +499,34 @@ export class DriveService {
     return `${h}h ${remainingM}m`;
   }
 
+  /**
+   * Deliberate deviation from legacy/src/drive.js's `findFolderId`: legacy swallows every
+   * error here (including 401/403) and returns null, which listFiles() then reports as
+   * "Required folders not found" -- masking an expired/invalid token as a data problem, so
+   * AuthService.signOut() never fires and the app is stuck logged-in with an empty file list
+   * until the user manually logs out and back in. Real API errors now propagate to
+   * listFiles()'s catch so expired-session handling (silent refresh, then sign-out) can run.
+   */
   private async findFolderId(
     name: string,
     parentId = 'root'
   ): Promise<string | null> {
-    try {
-      const variants = [
-        name,
-        name.toLowerCase(),
-        name.charAt(0).toUpperCase() + name.slice(1),
-      ];
-      const nameQuery = variants.map((v) => `name = '${v}'`).join(' or ');
-      const query = `mimeType='application/vnd.google-apps.folder' and (${nameQuery}) and '${parentId}' in parents and trashed=false`;
+    const variants = [
+      name,
+      name.toLowerCase(),
+      name.charAt(0).toUpperCase() + name.slice(1),
+    ];
+    const nameQuery = variants.map((v) => `name = '${v}'`).join(' or ');
+    const query = `mimeType='application/vnd.google-apps.folder' and (${nameQuery}) and '${parentId}' in parents and trashed=false`;
 
-      const response = await window.gapi!.client.drive.files.list({
-        q: query,
-        fields: 'files(id, name)',
-        pageSize: 1,
-      });
-      return response.result.files.length > 0
-        ? response.result.files[0].id
-        : null;
-    } catch (error) {
-      console.error(`Drive: Error locating folder "${name}":`, error);
-      return null;
-    }
+    const response = await window.gapi!.client.drive.files.list({
+      q: query,
+      fields: 'files(id, name)',
+      pageSize: 1,
+    });
+    return response.result.files.length > 0
+      ? response.result.files[0].id
+      : null;
   }
 
   private async fetchJsonFiles(folderId: string): Promise<void> {
@@ -543,6 +574,14 @@ export class DriveService {
     return match ? parseInt(match[1], 10) : 0;
   }
 
+  /**
+   * On 401/403, listFiles() has already tried AuthService.silentRefresh() and failed, so the
+   * Drive session is unrecoverable without user interaction. The whole app is Google-only (see
+   * AccountService), so there's no separate identity to preserve -- sign out of both AuthService
+   * (Drive) and AccountService (My Giulia account/top-nav) together, otherwise the top-nav keeps
+   * showing the user as signed in while their Drive files are gone with no way to recover short
+   * of a manual logout/login.
+   */
   private handleApiError(error: unknown): void {
     const err = error as {
       status?: number;
@@ -552,12 +591,11 @@ export class DriveService {
     if (err.status === 401 || err.status === 403) {
       window.gapi?.client?.setToken(null);
       this.auth.signOut();
+      this.account.logout();
+      this.error.set('Your Google session expired. Please sign in again.');
+      return;
     }
     const msg = err.result?.error?.message || err.message || 'Unknown error';
-    this.error.set(
-      err.status === 401
-        ? 'Session expired. Please sign in again.'
-        : `Drive error: ${msg}`
-    );
+    this.error.set(`Drive error: ${msg}`);
   }
 }
