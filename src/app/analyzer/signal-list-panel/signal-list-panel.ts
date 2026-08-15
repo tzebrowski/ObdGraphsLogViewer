@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, inject, input, output, signal } from '@angular/core';
 import { AppStateService } from '../../core/app-state.service';
 import { LoadedFile } from '../../core/models';
 import { PreferencesService } from '../../core/preferences.service';
@@ -33,6 +33,18 @@ interface CategoryGroup {
 })
 export class SignalListPanel {
   readonly idPrefix = input('chk');
+
+  /**
+   * Whether the caller's wrapping section is collapsed. This component owns its own "Signals"
+   * title (shared with SignalsEdgePanel, which never collapses it), so Sidebar can't just hide
+   * this whole element the way it does for its other sections -- instead it passes the collapsed
+   * state in and this component hides its own body while keeping the header (and the way back
+   * to expand it) visible.
+   */
+  readonly collapsed = input(false);
+
+  /** Emitted when the title row is clicked; Sidebar wires this to its own toggleSection('signals'). */
+  readonly titleClick = output<void>();
 
   protected readonly appState = inject(AppStateService);
   protected readonly preferences = inject(PreferencesService);

@@ -1,10 +1,23 @@
-<div class="group-header-row">
+<div class="group-header-row" (click)="titleClick.emit()">
   <h3>Signals</h3>
+  @if (!collapsed()) {
   <div class="button-row-sw">
-    <button class="btn btn-sm" (click)="toggleAllSignals(true)">All</button>
-    <button class="btn btn-sm" (click)="toggleAllSignals(false)">None</button>
+    <button
+      class="btn btn-sm"
+      (click)="toggleAllSignals(true); $event.stopPropagation()"
+    >
+      All
+    </button>
+    <button
+      class="btn btn-sm"
+      (click)="toggleAllSignals(false); $event.stopPropagation()"
+    >
+      None
+    </button>
   </div>
+  }
 </div>
+@if (!collapsed()) {
 <p class="section-description">
   Search and select signals to display on the chart.
 </p>
@@ -169,3 +182,4 @@
   </div>
   } }
 </div>
+}

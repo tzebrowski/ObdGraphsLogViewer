@@ -40,7 +40,11 @@
     class="control-group flex-grow gray-box"
     [class.collapsed]="isSectionCollapsed('signals')"
   >
-    <app-signal-list-panel idPrefix="chk-left"></app-signal-list-panel>
+    <app-signal-list-panel
+      idPrefix="chk-left"
+      [collapsed]="isSectionCollapsed('signals')"
+      (titleClick)="toggleSection('signals')"
+    ></app-signal-list-panel>
   </div>
 
   <div
