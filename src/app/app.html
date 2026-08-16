@@ -1,5 +1,28 @@
 <app-top-nav [route]="route()"></app-top-nav>
-@if (route() === 'landing') {
+@if (versionCheck.updateAvailable()) {
+<div class="update-banner">
+  <span class="update-banner-dot"></span>
+  <span class="update-banner-msg">
+    <strong>A newer version of this app is available.</strong>
+    Your loaded files are saved — reloading won't lose your data.
+  </span>
+  <button
+    type="button"
+    class="update-banner-reload"
+    (click)="versionCheck.reload()"
+  >
+    Reload
+  </button>
+  <button
+    type="button"
+    class="update-banner-dismiss"
+    (click)="versionCheck.dismiss()"
+    aria-label="Dismiss"
+  >
+    &times;
+  </button>
+</div>
+} @if (route() === 'landing') {
 <main id="landing-page">
   <app-landing></app-landing>
   <div class="app-page-footer">

@@ -1,0 +1,4 @@
+dist
+coverage
+src/app/core/version.generated.ts
+public/version.json

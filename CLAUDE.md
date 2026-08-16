@@ -21,6 +21,10 @@ It is deployed as a static site to GitHub Pages (https://my-giulia.com/) — web
 
 The app is a **standalone Angular application** (Angular 21, `bootstrapApplication`, no NgModules). It is a from-scratch rewrite of a prior plain-ES-modules app, which is preserved untouched under `legacy/` for reference — `legacy/` has its own `vite.config.mjs`/`jest.config.js`/`package.json`-scripts (`legacy:dev`, `legacy:test`, `legacy:test:coverage`) and is excluded from ESLint/the Angular build. Don't edit `legacy/` except to consult it as the behavioral spec when porting a not-yet-ported feature.
 
+## Related repos
+
+This repo and `/home/tzebrowski/github/tuning-tools` (the "hextune" webapp, same author) should stay **architecturally aligned** — shared UX patterns (e.g. update/release notifications, general app-shell conventions) should look and behave consistently across both. Before designing or implementing any cross-cutting UX/architecture feature here, check how `tuning-tools` (its `webapp/` dir and its own `CLAUDE.md`) already does it, and propose matching that rather than inventing a new pattern from scratch. Flag it to the user if matching isn't feasible.
+
 ## Commands
 
 ```bash
@@ -62,6 +66,6 @@ CI (`.github/workflows/static.yml`) runs, in order: ESLint → Prettier check �
 
 **Styling**: `src/styles.css` (~6900 lines) is still one large global stylesheet carried over from legacy; individual components additionally have their own scoped `<component>.css`. There isn't yet a hard rule about where new styles should go — check whether the pattern already exists in `styles.css` before adding a component-scoped file.
 
-**Versioning note**: unlike legacy (which injected a git tag at build time via Vite's `VITE_GIT_TAG`), the Angular app has no build-time git-describe injection set up, so `App.appVersion` just reads `package.json`'s `version` field directly (see the comment in `src/app/app.ts`) — don't assume `VITE_GIT_TAG`/`import.meta.env` exist anywhere in `src/app`.
+**Versioning note**: unlike legacy (which injected a git tag at build time via Vite's `VITE_GIT_TAG`), the Angular app has no build-time git-describe injection set up, so `App.appVersion` just reads `package.json`'s `version` field directly (see the comment in `src/app/app.ts`) — don't assume `VITE_GIT_TAG`/`import.meta.env` exist anywhere in `src/app`. Separately, `scripts/gen-version.js` (run via the `postinstall`/`prebuild` npm hooks, mirroring hextune's `tuning-tools/webapp/scripts/gen-version.js`) stamps a plain ISO-timestamp build id into two **generated, gitignored** files — `src/app/core/version.generated.ts` and `public/version.json` — purely so `VersionCheckService` can detect a redeploy at runtime; this is unrelated to the `appVersion` footer badge above and isn't a git-describe mechanism.
 
 **Porting-in-progress convention**: several files carry JSDoc comments explicitly noting where the Angular port deliberately deviates from `legacy/` behavior (e.g. `src/app/app.ts`'s routing, the version-badge note above). When you spot one of these, treat it as the source of truth over what `legacy/` does — read it before "fixing" an apparent behavioral mismatch.
