@@ -30,6 +30,7 @@ export class DrivePanel {
   protected disconnect(): void {
     this.auth.signOut();
     this.account.logout();
+    this.drive.resetError();
   }
 
   protected rescan(): void {

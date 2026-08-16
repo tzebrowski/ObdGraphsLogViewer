@@ -15,6 +15,7 @@ function makeAuthFake(isLoggedInInitial = true) {
     user: vi.fn().mockReturnValue(null),
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn(),
+    silentRefresh: vi.fn().mockResolvedValue(false),
     getAccessToken: vi.fn().mockReturnValue('token-abc'),
   } as unknown as AuthService;
 }
@@ -23,6 +24,7 @@ function makeAccountFake(hasDriveFeature = true) {
   return {
     hasFeature: vi.fn().mockReturnValue(hasDriveFeature),
     loginWithGoogle: vi.fn().mockResolvedValue({ ok: true }),
+    logout: vi.fn(),
   } as unknown as AccountService;
 }
 
@@ -180,7 +182,7 @@ describe('DriveService', () => {
     expect(drive.error()).toContain('Required Drive folders not found');
   });
 
-  it('listFiles() signs out and reports a session-expired error on 401', async () => {
+  it('listFiles() signs out of Drive and the account, and reports a session-expired error on 401 when silent refresh fails', async () => {
     const list = vi
       .fn()
       .mockResolvedValueOnce({
@@ -196,9 +198,43 @@ describe('DriveService', () => {
     const drive = create();
     await drive.listFiles();
 
+    expect(auth.silentRefresh).toHaveBeenCalled();
     expect(setToken).toHaveBeenCalledWith(null);
     expect(auth.signOut).toHaveBeenCalled();
-    expect(drive.error()).toContain('Session expired');
+    expect(account.logout).toHaveBeenCalled();
+    expect(drive.error()).toContain('session expired');
+  });
+
+  it('listFiles() recovers from a 401 via silent refresh without signing out', async () => {
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({
+        result: { files: [{ id: 'root-1', name: 'mygiulia' }] },
+      })
+      .mockResolvedValueOnce({
+        result: { files: [{ id: 'sub-1', name: 'trips' }] },
+      })
+      .mockRejectedValueOnce({ status: 401, message: 'nope' })
+      .mockResolvedValueOnce({
+        result: { files: [{ id: 'root-1', name: 'mygiulia' }] },
+      })
+      .mockResolvedValueOnce({
+        result: { files: [{ id: 'sub-1', name: 'trips' }] },
+      })
+      .mockResolvedValueOnce({
+        result: { files: [{ id: 'f1', name: 'trip-1700000000000-120.json' }] },
+      });
+    vi.stubGlobal('gapi', { client: { drive: { files: { list } } } });
+    (auth.silentRefresh as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    const drive = create();
+    await drive.listFiles();
+
+    expect(auth.silentRefresh).toHaveBeenCalled();
+    expect(auth.signOut).not.toHaveBeenCalled();
+    expect(account.logout).not.toHaveBeenCalled();
+    expect(drive.files()).toHaveLength(1);
+    expect(drive.error()).toBeNull();
   });
 
   it('filteredSortedFiles() filters by name and sorts by timestamp', () => {
