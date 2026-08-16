@@ -8,6 +8,7 @@ import { Route } from './core/models';
 import { PreferencesService } from './core/preferences.service';
 import { ProjectManagerService } from './core/project-manager.service';
 import { SignalRegistryService } from './core/signal-registry.service';
+import { VersionCheckService } from './core/version-check.service';
 import { Landing } from './landing/landing';
 import { TopNav } from './top-nav/top-nav';
 
@@ -27,6 +28,7 @@ import { TopNav } from './top-nav/top-nav';
 export class App {
   private readonly deepLink = inject(DeepLinkService);
   private readonly preferences = inject(PreferencesService);
+  protected readonly versionCheck = inject(VersionCheckService);
   protected readonly route = signal<Route>(this.routeFromHash());
   /**
    * Deliberate deviation from legacy/src/ui.js's `initVersionInfo` (a git
@@ -49,6 +51,7 @@ export class App {
     inject(AccountService).init();
     inject(SignalRegistryService).init();
     this.deepLink.init();
+    this.versionCheck.start();
 
     effect(() => {
       const isAnalyzer = this.route() === 'analyzer';

@@ -44,3 +44,54 @@ main#landing-page {
   padding-bottom: 20px;
   text-align: center;
 }
+
+/**
+ * Matches tuning-tools/webapp's (hextune's) update banner: a warn-colored
+ * bar docked under the top nav rather than a corner toast, so the two apps
+ * in the product line notify about redeploys the same way.
+ */
+.update-banner {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--warn) 16%, var(--surface-1));
+  border-bottom: 1px solid var(--warn);
+  font-size: 0.9em;
+  color: var(--text-primary);
+}
+
+.update-banner-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+.update-banner-msg {
+  flex: 1 1 auto;
+}
+
+.update-banner-reload {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: var(--btn-radius);
+  padding: 6px 14px;
+  font-weight: var(--btn-font-weight);
+  color: #1a1a1a;
+  background: var(--warn);
+  cursor: pointer;
+}
+
+.update-banner-dismiss {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.2em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}

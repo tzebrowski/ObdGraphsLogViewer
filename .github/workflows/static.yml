@@ -42,7 +42,7 @@ jobs:
         run: npx ng test --watch=false
 
       - name: Build Application
-        run: npx ng build
+        run: npm run build
 
       - name: ZIP Build Artifacts
         if: startsWith(github.ref, 'refs/tags/v')

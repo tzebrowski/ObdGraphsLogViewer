@@ -5,6 +5,8 @@
   "description": "Browser-based Telemetry Log Viewer for Alfa Romeo (Angular rewrite in progress)",
   "scripts": {
     "ng": "ng",
+    "postinstall": "node scripts/gen-version.js",
+    "prebuild": "node scripts/gen-version.js",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",

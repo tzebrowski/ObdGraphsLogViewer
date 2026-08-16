@@ -13,6 +13,7 @@ export default [
       'build/**',
       '.angular/**',
       '**/*.min.js',
+      'src/app/core/version.generated.ts',
     ],
   },
   {
