@@ -306,43 +306,41 @@ input[type='text'] {
   box-shadow: 0 6px 20px #01804f66;
 }
 
+/*
+ * Dialog/panel action buttons -- pill schema aligned with hextune's topbar
+ * button (see /home/tzebrowski/github/tuning-tools, webapp/src/styles.css):
+ * bordered pill, muted text that brightens on hover, no lift/shadow. Solid
+ * accent fill (.btn-primary/.btn-secondary/.btn-add) is reserved for the
+ * one true call-to-action in a given dialog, same as hextune's button.primary.
+ */
 .btn {
-  border-radius: var(--btn-radius);
-  padding: 10px 16px;
-  font-size: 0.9rem;
-  font-weight: var(--btn-font-weight);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: #fff;
-  color: #333;
-  border: 1px solid var(--grid);
-  box-shadow: var(--btn-shadow);
+  background-color: var(--surface-1);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 .btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--btn-hover-shadow);
-  background-color: #f8f9fa;
-}
-
-.btn:active:not(:disabled) {
-  transform: translateY(0);
+  color: var(--text-primary);
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  box-shadow: none;
   filter: grayscale(0.4);
   pointer-events: none;
-}
-
-.btn:hover {
-  background: #f0f0f0;
 }
 
 .btn-primary {
@@ -352,11 +350,8 @@ input[type='text'] {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #1c5aa8;
-}
-
-.btn-primary:hover {
-  background: #164a8c;
+  filter: brightness(1.1);
+  color: #fff;
 }
 
 .btn-add,
@@ -371,13 +366,13 @@ input[type='text'] {
 
 .btn-add:hover:not(:disabled),
 .btn-secondary:hover:not(:disabled) {
-  background-color: #152e56;
+  filter: brightness(1.1);
+  color: #fff;
 }
 
 .btn-sm {
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 0.8rem;
-  border-radius: 6px;
 }
 
 .btn-add {
@@ -389,7 +384,7 @@ input[type='text'] {
 }
 
 .btn-add:hover {
-  background: #152e56;
+  filter: brightness(1.1);
 }
 
 .button-row-sm {
@@ -1686,15 +1681,14 @@ input:checked + .slider-round::before {
   background-color: var(--brand-red);
   color: #fff;
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 999px;
   font-weight: 600;
   font-size: 0.9rem;
   text-decoration: none;
-  transition: transform 0.2s;
+  transition: filter 0.15s ease;
 }
 
 .nav-btn-primary:hover {
-  transform: translateY(-1px);
   filter: brightness(1.1);
 }
 
@@ -2632,71 +2626,67 @@ body.analyzer-active .view-switcher-container {
   display: flex !important;
 }
 
-.integrated-toolbar .nav-icon-btn {
-  width: 38px !important;
-}
-
-.integrated-toolbar .nav-icon-btn,
-.integrated-toolbar .tool-btn,
-.view-switcher-container .view-btn {
-  background: 0 0 !important;
-  border: 0 !important;
-  border-radius: 8px !important;
+/*
+ * Toolbar buttons (top-nav) -- pill schema aligned with hextune's topbar
+ * (see /home/tzebrowski/github/tuning-tools, webapp/src/app/features/shell/topbar.css):
+ * bordered pill, muted text that brightens on hover, no lift/shadow, and a
+ * tinted (not solid) accent state for toggled-on buttons so the one true
+ * primary action (.nav-btn-primary) stays visually distinct. Deliberately
+ * unscoped to .integrated-toolbar/.view-switcher-container so the same rule
+ * also styles the "Sign in" .tool-btn that lives in .nav-links.
+ */
+.nav-icon-btn,
+.tool-btn,
+.view-btn {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
   color: var(--text-secondary) !important;
-  height: 38px !important;
-  display: flex !important;
+  height: 34px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  transition: all 0.2s ease !important;
+  gap: 6px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease !important;
   cursor: pointer !important;
   box-shadow: none !important;
   margin: 0 !important;
 }
 
-.view-switcher-container .view-btn {
-  width: 38px !important;
-}
-
-.integrated-toolbar .tool-btn {
-  width: auto !important;
-  padding: 0 12px !important;
-  font-size: 0.85rem !important;
-  font-weight: 600 !important;
-}
-
-.integrated-toolbar .tool-btn i {
-  margin-right: 6px !important;
+.nav-icon-btn i,
+.tool-btn i,
+.view-btn i {
   pointer-events: none;
+  font-size: 0.95rem;
 }
 
-.integrated-toolbar .nav-icon-btn:hover,
-.integrated-toolbar .tool-btn:hover,
-.view-switcher-container .view-btn:hover {
+.nav-icon-btn:hover,
+.tool-btn:hover,
+.view-btn:hover {
+  color: var(--text-primary) !important;
+}
+
+.view-btn.active {
   background-color: color-mix(
     in srgb,
     var(--accent) 15%,
     transparent
   ) !important;
   color: var(--accent) !important;
-  box-shadow: 0 4px 12px #0000001a !important;
-  transform: translateY(-2px) !important;
-}
-
-.view-switcher-container .view-btn.active {
-  background-color: color-mix(
-    in srgb,
-    var(--accent) 15%,
-    transparent
-  ) !important;
-  color: var(--accent) !important;
-  box-shadow: 0 2px 6px #0000001a !important;
-  font-weight: 700;
+  border-color: var(--accent) !important;
+  font-weight: 700 !important;
 }
 
 .toolbar-separator {
   width: 1px;
-  height: 24px;
-  background: #dee2e6;
+  height: 22px;
+  background: var(--border);
   margin: 0 6px;
   flex-shrink: 0;
 }

@@ -2,11 +2,15 @@
   display: contents;
 }
 
-button.nav-btn-primary,
+button.nav-btn-primary {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 button.nav-icon-btn,
 button.tool-btn,
 button.view-btn {
-  border: none;
   font-family: inherit;
   cursor: pointer;
 }
@@ -46,7 +50,9 @@ label.tool-btn {
 }
 
 .account-pill-btn.active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 .account-pill-avatar-img {
