@@ -61,9 +61,13 @@ export class PreferencesService {
     localStorage.getItem(SHOW_AREA_FILLS_KEY) !== 'false'
   );
 
-  /** Interpolates line segments for smoother curves. Defaults to false, matching legacy. */
+  /**
+   * Interpolates line segments for smoother curves. Deliberate deviation
+   * from legacy/src/preferences.js's defaultPrefs (smoothLines: false):
+   * defaults to true here instead.
+   */
   readonly smoothLines = signal(
-    localStorage.getItem(SMOOTH_LINES_KEY) === 'true'
+    localStorage.getItem(SMOOTH_LINES_KEY) !== 'false'
   );
 
   /** Shows per-point value labels when zoomed in close enough. Defaults to false, matching legacy. */

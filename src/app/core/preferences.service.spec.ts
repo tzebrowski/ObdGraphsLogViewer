@@ -46,13 +46,13 @@ describe('PreferencesService', () => {
     expect(reloaded.googleClientId).toBe('abc123');
   });
 
-  it('defaults area-fills/rememberFiles/persistence/rescaleOnZoom to true and smooth-lines/labels/performance to false', () => {
+  it('defaults area-fills/rememberFiles/persistence/rescaleOnZoom/smoothLines to true and labels/performance to false', () => {
     const preferences = new PreferencesService();
     expect(preferences.rememberFiles()).toBe(true);
     expect(preferences.showAreaFills()).toBe(true);
     expect(preferences.persistence()).toBe(true);
     expect(preferences.rescaleOnZoom()).toBe(true);
-    expect(preferences.smoothLines()).toBe(false);
+    expect(preferences.smoothLines()).toBe(true);
     expect(preferences.showLabels()).toBe(false);
     expect(preferences.performance()).toBe(false);
   });
@@ -60,14 +60,14 @@ describe('PreferencesService', () => {
   it('persists showAreaFills/smoothLines/showLabels/performance/rescaleOnZoom across instances', () => {
     const preferences = new PreferencesService();
     preferences.setShowAreaFills(false);
-    preferences.setSmoothLines(true);
+    preferences.setSmoothLines(false);
     preferences.setShowLabels(true);
     preferences.setPerformance(true);
     preferences.setRescaleOnZoom(false);
 
     const reloaded = new PreferencesService();
     expect(reloaded.showAreaFills()).toBe(false);
-    expect(reloaded.smoothLines()).toBe(true);
+    expect(reloaded.smoothLines()).toBe(false);
     expect(reloaded.showLabels()).toBe(true);
     expect(reloaded.performance()).toBe(true);
     expect(reloaded.rescaleOnZoom()).toBe(false);
