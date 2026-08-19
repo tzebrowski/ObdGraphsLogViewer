@@ -650,6 +650,15 @@ export class ChartView {
   }
 
   /**
+   * Tracks, per chart, the visible-range width (ms) its datasets were last
+   * normalized against -- lets renormalizeVisibleRange tell an actual zoom
+   * (width change) apart from a pure pan at the same width, so panning
+   * doesn't reshape/jump every line on every step. WeakMap keys are cleared
+   * automatically as charts get destroyed/rebuilt.
+   */
+  private readonly lastNormalizedWidth = new WeakMap<Chart, number>();
+
+  /**
    * Re-normalizes every dataset on `chart` against just its currently
    * visible x-range instead of the whole file: each line only reaches the
    * top of the chart when it's near ITS OWN peak for what's actually in
@@ -662,14 +671,28 @@ export class ChartView {
    * (which was rendering as near-straight lines when zoomed in close).
    * Falls back to the signal's full range when the visible window contains
    * none of its samples (sparser event-based signals), so normalization
-   * never divides by an empty set. Called after every pan/zoom/reset.
+   * never divides by an empty set. Called after every pan/zoom/reset, but
+   * only actually recomputes when the visible width changed (a zoom) --
+   * a pure pan at an unchanged width just moves the x-range, keeping the
+   * existing normalization so lines stay visually stable while scrolling.
    */
   private renormalizeVisibleRange(chart: Chart, mode: ViewMode): void {
-    const files = this.appState.files();
     const xMin = chart.scales['x'].min as number;
     const xMax = chart.scales['x'].max as number;
     if (xMin === undefined || xMax === undefined) return;
 
+    const width = xMax - xMin;
+    const lastWidth = this.lastNormalizedWidth.get(chart);
+    if (
+      lastWidth !== undefined &&
+      Math.abs(width - lastWidth) < lastWidth * 0.01
+    ) {
+      chart.update('none');
+      return;
+    }
+    this.lastNormalizedWidth.set(chart, width);
+
+    const files = this.appState.files();
     const baseStartTime = files[0]?.startTime ?? 0;
 
     chart.data.datasets.forEach((ds) => {
@@ -783,7 +806,7 @@ export class ChartView {
 
     this.attachCanvasListeners(canvas, fileIdx, 'stack');
 
-    return new Chart(ctx, {
+    const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       options: this.getChartOptions(
@@ -801,6 +824,8 @@ export class ChartView {
         ),
       ],
     });
+    this.lastNormalizedWidth.set(chart, file.duration * 1000);
+    return chart;
   }
 
   private buildOverlayChart(
@@ -829,7 +854,7 @@ export class ChartView {
       })
     );
 
-    return new Chart(ctx, {
+    const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       options: this.getChartOptions(
@@ -843,6 +868,8 @@ export class ChartView {
         this.buildAnnotationPlugin(() => this.appState.files()[0], null, 0),
       ],
     });
+    this.lastNormalizedWidth.set(chart, maxDuration * 1000);
+    return chart;
   }
 
   /**
