@@ -11,6 +11,7 @@ const SMOOTH_LINES_KEY = 'giulia_smooth_lines';
 const SHOW_LABELS_KEY = 'giulia_show_labels';
 const PERSISTENCE_KEY = 'giulia_persistence';
 const PERFORMANCE_KEY = 'giulia_performance';
+const RESCALE_ON_ZOOM_KEY = 'giulia_rescale_on_zoom';
 
 /** Shared with Sidebar's collapsed-section persistence, gated on the `persistence` preference. */
 export const SIDEBAR_STATE_KEY = 'sidebar_collapsed_states';
@@ -85,6 +86,17 @@ export class PreferencesService {
     localStorage.getItem(PERFORMANCE_KEY) === 'true'
   );
 
+  /**
+   * Re-normalizes each signal to just the currently visible time window on
+   * zoom, instead of always scaling against the whole file. Defaults to
+   * true (the fix this was added for); off reverts to the original
+   * whole-file-relative scaling for anyone who prefers a stable per-signal
+   * scale across zoom levels over maximum in-view readability.
+   */
+  readonly rescaleOnZoom = signal(
+    localStorage.getItem(RESCALE_ON_ZOOM_KEY) !== 'false'
+  );
+
   setLoadMap(value: boolean): void {
     localStorage.setItem(LOAD_MAP_KEY, String(value));
     this.loadMap.set(value);
@@ -138,6 +150,11 @@ export class PreferencesService {
   setPerformance(value: boolean): void {
     localStorage.setItem(PERFORMANCE_KEY, String(value));
     this.performance.set(value);
+  }
+
+  setRescaleOnZoom(value: boolean): void {
+    localStorage.setItem(RESCALE_ON_ZOOM_KEY, String(value));
+    this.rescaleOnZoom.set(value);
   }
 
   get googleClientId(): string {

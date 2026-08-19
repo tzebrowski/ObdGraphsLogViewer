@@ -214,6 +214,7 @@ export class ChartView {
       this.preferences.showAreaFills();
       this.preferences.smoothLines();
       this.preferences.showLabels();
+      this.preferences.rescaleOnZoom();
 
       const expectedCanvases =
         files.length === 0 ? 0 : mode === 'overlay' ? 1 : files.length;
@@ -672,14 +673,24 @@ export class ChartView {
    * Falls back to the signal's full range when the visible window contains
    * none of its samples (sparser event-based signals), so normalization
    * never divides by an empty set. Called after every pan/zoom/reset, but
-   * only actually recomputes when the visible width changed (a zoom) --
-   * a pure pan at an unchanged width just moves the x-range, keeping the
-   * existing normalization so lines stay visually stable while scrolling.
+   * only actually recomputes when the "Rescale on Zoom" preference is on
+   * AND the visible width changed (a zoom) -- a pure pan at an unchanged
+   * width just moves the x-range, keeping the existing normalization so
+   * lines stay visually stable while scrolling.
    */
   private renormalizeVisibleRange(chart: Chart, mode: ViewMode): void {
     const xMin = chart.scales['x'].min as number;
     const xMax = chart.scales['x'].max as number;
     if (xMin === undefined || xMax === undefined) return;
+
+    // "Rescale on Zoom" preference (Settings & Preferences): off reverts to
+    // the original whole-file-relative normalization built at chart-build
+    // time, for anyone who prefers a stable per-signal scale across zoom
+    // levels over maximum in-view readability.
+    if (!this.preferences.rescaleOnZoom()) {
+      chart.update('none');
+      return;
+    }
 
     const width = xMax - xMin;
     const lastWidth = this.lastNormalizedWidth.get(chart);
