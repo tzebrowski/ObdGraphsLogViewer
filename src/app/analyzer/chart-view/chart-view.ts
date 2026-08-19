@@ -214,6 +214,7 @@ export class ChartView {
       this.preferences.showAreaFills();
       this.preferences.smoothLines();
       this.preferences.showLabels();
+      this.preferences.rescaleOnZoom();
 
       const expectedCanvases =
         files.length === 0 ? 0 : mode === 'overlay' ? 1 : files.length;
@@ -258,7 +259,7 @@ export class ChartView {
       if (!chart) return;
       this.lastHoverTime.set(0, relativeTime);
       this.syncTooltipActiveElements(chart, relativeTime);
-      this.panIntoView(chart, relativeTime);
+      this.panIntoView(chart, relativeTime, mode);
       return;
     }
 
@@ -266,18 +267,18 @@ export class ChartView {
     if (!chart) return;
     this.lastHoverTime.set(fileIndex, time);
     this.syncTooltipActiveElements(chart, time);
-    this.panIntoView(chart, time);
+    this.panIntoView(chart, time, mode);
   }
 
   /** Shifts the chart's visible x-range to keep `time` in view, keeping the same zoom width, matching legacy's MAP_SELECTED range check. */
-  private panIntoView(chart: Chart, time: number): void {
+  private panIntoView(chart: Chart, time: number, mode: ViewMode): void {
     const xScale = chart.scales['x'];
     if (time >= xScale.min && time <= xScale.max) return;
 
     const range = xScale.max - xScale.min;
     chart.options.scales!['x']!.min = time - range / 2;
     chart.options.scales!['x']!.max = time + range / 2;
-    chart.update('none');
+    this.renormalizeVisibleRange(chart, mode);
   }
 
   /** Port of legacy/src/chartmanager.js's `reset()` — TopNav's global "Reset Zoom" button. */
@@ -333,13 +334,15 @@ export class ChartView {
     chart.options.scales!['x']!.min = min;
     chart.options.scales!['x']!.max = max;
     chart.resetZoom();
-    chart.update('none');
+    this.renormalizeVisibleRange(chart, mode);
     this.syncSliderFromChart(index);
     this.syncMapBounds(index, mode);
   }
 
   protected manualZoom(index: number, zoomLevel: number): void {
-    this.charts[index]?.zoom(zoomLevel);
+    const chart = this.charts[index];
+    chart?.zoom(zoomLevel);
+    if (chart) this.renormalizeVisibleRange(chart, this.appState.viewMode());
     this.syncSliderFromChart(index);
     this.syncMapBounds(index, this.appState.viewMode());
   }
@@ -395,7 +398,7 @@ export class ChartView {
     }
 
     if (viewChanged) {
-      chart.update('none');
+      this.renormalizeVisibleRange(chart, mode);
       this.syncSliderFromChart(index);
       this.syncMapBounds(chartIdx, mode);
     }
@@ -623,7 +626,7 @@ export class ChartView {
     if (!chart) return;
     chart.options.scales!['x']!.min = file.startTime + start * 1000;
     chart.options.scales!['x']!.max = file.startTime + end * 1000;
-    chart.update('none');
+    this.renormalizeVisibleRange(chart, this.appState.viewMode());
     this.setSliderRange(index, start, end);
   }
 
@@ -645,6 +648,89 @@ export class ChartView {
     } else {
       this.mapService.setStackZoomRange(index, min, max);
     }
+  }
+
+  /**
+   * Tracks, per chart, the visible-range width (ms) its datasets were last
+   * normalized against -- lets renormalizeVisibleRange tell an actual zoom
+   * (width change) apart from a pure pan at the same width, so panning
+   * doesn't reshape/jump every line on every step. WeakMap keys are cleared
+   * automatically as charts get destroyed/rebuilt.
+   */
+  private readonly lastNormalizedWidth = new WeakMap<Chart, number>();
+
+  /**
+   * Re-normalizes every dataset on `chart` against just its currently
+   * visible x-range instead of the whole file: each line only reaches the
+   * top of the chart when it's near ITS OWN peak for what's actually in
+   * view (rather than its peak anywhere in the whole trip, which made
+   * unrelated signals appear to cluster at the ceiling together whenever
+   * the visible window happened to contain each of their individual
+   * whole-trip peaks), and the visible slice gets its own full
+   * MAX_POINTS_PER_DATASET budget instead of inheriting whatever sparse
+   * points the whole-file downsampling happened to keep in that window
+   * (which was rendering as near-straight lines when zoomed in close).
+   * Falls back to the signal's full range when the visible window contains
+   * none of its samples (sparser event-based signals), so normalization
+   * never divides by an empty set. Called after every pan/zoom/reset, but
+   * only actually recomputes when the "Rescale on Zoom" preference is on
+   * AND the visible width changed (a zoom) -- a pure pan at an unchanged
+   * width just moves the x-range, keeping the existing normalization so
+   * lines stay visually stable while scrolling.
+   */
+  private renormalizeVisibleRange(chart: Chart, mode: ViewMode): void {
+    const xMin = chart.scales['x'].min as number;
+    const xMax = chart.scales['x'].max as number;
+    if (xMin === undefined || xMax === undefined) return;
+
+    // "Rescale on Zoom" preference (Settings & Preferences): off reverts to
+    // the original whole-file-relative normalization built at chart-build
+    // time, for anyone who prefers a stable per-signal scale across zoom
+    // levels over maximum in-view readability.
+    if (!this.preferences.rescaleOnZoom()) {
+      chart.update('none');
+      return;
+    }
+
+    const width = xMax - xMin;
+    const lastWidth = this.lastNormalizedWidth.get(chart);
+    if (
+      lastWidth !== undefined &&
+      Math.abs(width - lastWidth) < lastWidth * 0.01
+    ) {
+      chart.update('none');
+      return;
+    }
+    this.lastNormalizedWidth.set(chart, width);
+
+    const files = this.appState.files();
+    const baseStartTime = files[0]?.startTime ?? 0;
+
+    chart.data.datasets.forEach((ds) => {
+      const extra = ds as unknown as ChartDatasetExtra;
+      const file = files[extra._fileIdx];
+      if (!file) return;
+      const raw = file.signals[extra._signalKey] ?? [];
+
+      // Overlay mode shifts each file's x-values to align their start times
+      // (see buildOverlayChart) -- undo that shift to get back to this
+      // file's own raw timestamp space before filtering its raw signal.
+      const offset = mode === 'overlay' ? baseStartTime - file.startTime : 0;
+      const windowMin = xMin - offset;
+      const windowMax = xMax - offset;
+
+      const visible = raw.filter((p) => p.x >= windowMin && p.x <= windowMax);
+      const { data, min, max } = this.downsampleAndNormalize(
+        visible.length ? visible : raw
+      );
+
+      (ds as LineDataset).data =
+        offset === 0 ? data : data.map((p) => ({ x: p.x + offset, y: p.y }));
+      extra.originalMin = min;
+      extra.originalMax = max;
+    });
+
+    chart.update('none');
   }
 
   /** Recomputes the slider thumbs from the chart's current zoom/pan window. No-op in overlay mode, matching legacy. */
@@ -690,7 +776,7 @@ export class ChartView {
       file.startTime + Math.max(0, highlight.start - padding) * 1000;
     chart.options.scales!['x']!.max =
       file.startTime + Math.min(file.duration, highlight.end + padding) * 1000;
-    chart.update('none');
+    this.renormalizeVisibleRange(chart, 'stack');
   }
 
   private rebuild(
@@ -731,7 +817,7 @@ export class ChartView {
 
     this.attachCanvasListeners(canvas, fileIdx, 'stack');
 
-    return new Chart(ctx, {
+    const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       options: this.getChartOptions(
@@ -749,6 +835,8 @@ export class ChartView {
         ),
       ],
     });
+    this.lastNormalizedWidth.set(chart, file.duration * 1000);
+    return chart;
   }
 
   private buildOverlayChart(
@@ -777,7 +865,7 @@ export class ChartView {
       })
     );
 
-    return new Chart(ctx, {
+    const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
       options: this.getChartOptions(
@@ -791,6 +879,8 @@ export class ChartView {
         this.buildAnnotationPlugin(() => this.appState.files()[0], null, 0),
       ],
     });
+    this.lastNormalizedWidth.set(chart, maxDuration * 1000);
+    return chart;
   }
 
   /**
@@ -1268,7 +1358,12 @@ export class ChartView {
         return;
     }
 
-    chart.update('none');
+    // ArrowLeft/ArrowRight pan via chart.pan() above, which only fires the
+    // zoom plugin's onPan (unconfigured), not onPanComplete -- unlike
+    // chart.zoom() (the +/- cases), which does fire onZoomComplete and so
+    // already renormalized. Renormalizing again here is a harmless no-op
+    // for the zoom cases and required for the pan ones.
+    this.renormalizeVisibleRange(chart, mode);
     this.syncSliderFromChart(fileIdx);
     this.syncMapBounds(chartIdx, mode);
   }
@@ -1344,23 +1439,25 @@ export class ChartView {
     return result;
   }
 
-  private buildDataset(
-    file: LoadedFile,
-    key: string,
-    fileIdx: number,
-    sigIdx: number,
-    label: string
-  ): LineDataset {
-    const rawData = this.downsampleMinMax(
-      file.signals[key],
-      MAX_POINTS_PER_DATASET
-    );
+  /**
+   * Downsamples `rawPoints` and min-max normalizes their y-values to [0,1]
+   * against just that point set's own range. Shared by `buildDataset` (the
+   * whole signal, at chart build time) and `renormalizeVisibleRange` (just
+   * the currently-visible time slice, on pan/zoom), so both normalize the
+   * exact same way against whatever range they're handed.
+   */
+  private downsampleAndNormalize(rawPoints: SignalPoint[]): {
+    data: Point[];
+    min: number;
+    max: number;
+  } {
+    const rawData = this.downsampleMinMax(rawPoints, MAX_POINTS_PER_DATASET);
     const yValues = rawData.map((d) => parseFloat(String(d.y)) || 0);
     const min = Math.min(...yValues);
     const max = Math.max(...yValues);
     const range = max - min;
 
-    const normalizedData = rawData.map((d) => ({
+    const data = rawData.map((d) => ({
       x: d.x,
       y:
         range === 0
@@ -1369,6 +1466,21 @@ export class ChartView {
             : 0
           : (parseFloat(String(d.y)) - min) / range,
     }));
+    return { data, min, max };
+  }
+
+  private buildDataset(
+    file: LoadedFile,
+    key: string,
+    fileIdx: number,
+    sigIdx: number,
+    label: string
+  ): LineDataset {
+    const {
+      data: normalizedData,
+      min,
+      max,
+    } = this.downsampleAndNormalize(file.signals[key]);
 
     const color = this.palette.getColorForSignal(fileIdx, sigIdx);
     // untracked: visibility toggles are handled incrementally by the dedicated
@@ -1567,7 +1679,8 @@ export class ChartView {
             // shifts the x-scale mid-drag, corrupting the selected range.
             onPanStart: ({ event }) =>
               (event.srcEvent as MouseEvent).shiftKey ? false : undefined,
-            onPanComplete: () => {
+            onPanComplete: ({ chart }) => {
+              this.renormalizeVisibleRange(chart, mode);
               this.syncSliderFromChart(hoverFileIdx);
               this.syncMapBounds(hoverFileIdx, mode);
             },
@@ -1585,7 +1698,8 @@ export class ChartView {
               const e = event as MouseEvent & { srcEvent?: MouseEvent };
               return e.shiftKey || e.srcEvent?.shiftKey ? false : undefined;
             },
-            onZoomComplete: () => {
+            onZoomComplete: ({ chart }) => {
+              this.renormalizeVisibleRange(chart, mode);
               this.syncSliderFromChart(hoverFileIdx);
               this.syncMapBounds(hoverFileIdx, mode);
             },
