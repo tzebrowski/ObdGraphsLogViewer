@@ -10,6 +10,7 @@
 - **Tooling Reliance:** Do not act as a syntax linter or formatter. Rely on ESLint, Stylelint, and Prettier (see Commands below) and CI to catch formatting/lint issues.
 - **Never amend commits:** Always create a new commit instead of `git commit --amend`, even for a small immediate follow-up fix (e.g. a lint/format correction) to a commit made moments earlier. This holds regardless of whether the original commit has been pushed.
 - **Run Prettier before committing:** Run `npx prettier --write` on changed files (or `npm run format`) before creating a commit, so CI's Prettier check doesn't fail on avoidable formatting issues.
+- **No AI co-author trailer:** Never add a `Co-Authored-By: Claude ...` (or similar AI-attribution) line to commit messages.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
