@@ -11,6 +11,7 @@
 - **Never amend commits:** Always create a new commit instead of `git commit --amend`, even for a small immediate follow-up fix (e.g. a lint/format correction) to a commit made moments earlier. This holds regardless of whether the original commit has been pushed.
 - **Run Prettier before committing:** Run `npx prettier --write` on changed files (or `npm run format`) before creating a commit, so CI's Prettier check doesn't fail on avoidable formatting issues.
 - **No AI co-author trailer:** Never add a `Co-Authored-By: Claude ...` (or similar AI-attribution) line to commit messages.
+- **Branch from a local ref, not a remote-tracking ref:** Never run `git checkout -b <branch> origin/main` (or `origin/<anything>`) to create a feature branch. Passing a remote-tracking ref as the start-point makes git auto-set that branch's upstream to it (`branch.autoSetupMerge`), so a later push with no explicit destination silently targets `main`/that remote branch instead of creating `origin/<branch>` — this already caused a rejected push straight to `main`. Instead branch from local `main` (`git checkout -b <branch> main`, after `git fetch`/`git pull` if it needs to be current) so no upstream is auto-configured, and only set one explicitly via `git push -u origin <branch>` when actually pushing.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
