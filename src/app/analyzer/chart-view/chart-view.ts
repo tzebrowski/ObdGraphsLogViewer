@@ -91,6 +91,18 @@ const TOOLTIP_MATCH_THRESHOLD_MS = 5000;
  */
 const MAX_POINTS_PER_DATASET = 4000;
 
+/**
+ * Above this combined raw point count (`LoadedFile.size` -- the same
+ * "dense wide-CSV export" case MAX_POINTS_PER_DATASET guards against),
+ * a trip is treated as too dense to usefully show start-to-end on first
+ * paint: hundreds of signal transitions get crammed into one view and
+ * read as an unreadable tangle rather than a chart. `defaultRange` opens
+ * (and Reset Zoom returns to) a bounded initial window from the start
+ * instead of the whole trip in that case.
+ */
+const DENSE_TRIP_POINT_THRESHOLD = 150_000;
+const DENSE_TRIP_INITIAL_WINDOW_SECONDS = 60;
+
 interface ChartDatasetExtra {
   originalMin: number;
   originalMax: number;
@@ -324,12 +336,19 @@ export class ChartView {
     // coordinates once the view has moved on.
     this.appState.clearActiveHighlight();
 
-    const min = file.startTime;
-    const max =
-      file.startTime +
-      (mode === 'overlay'
-        ? Math.max(...files.map((f) => f.duration)) * 1000
-        : file.duration * 1000);
+    const duration =
+      mode === 'overlay'
+        ? Math.max(...files.map((f) => f.duration))
+        : file.duration;
+    const pointCount =
+      mode === 'overlay'
+        ? files.reduce((sum, f) => sum + f.size, 0)
+        : file.size;
+    const { min, max } = this.defaultRange(
+      file.startTime,
+      duration,
+      pointCount
+    );
 
     chart.options.scales!['x']!.min = min;
     chart.options.scales!['x']!.max = max;
@@ -800,9 +819,34 @@ export class ChartView {
         this.charts.push(
           this.buildStackChart(file, idx, canvases[idx].nativeElement)
         );
-        this.setSliderRange(idx, 0, file.duration);
+        const { min, max } = this.defaultRange(
+          file.startTime,
+          file.duration,
+          file.size
+        );
+        this.setSliderRange(idx, 0, (max - min) / 1000);
       });
     }
+  }
+
+  /**
+   * Picks the chart's initial x-range (and what Reset Zoom returns to):
+   * the whole trip normally, but a bounded window from the start for a
+   * dense trip -- see DENSE_TRIP_POINT_THRESHOLD.
+   */
+  private defaultRange(
+    startTime: number,
+    duration: number,
+    pointCount: number
+  ): { min: number; max: number } {
+    const min = startTime;
+    if (
+      pointCount <= DENSE_TRIP_POINT_THRESHOLD ||
+      duration <= DENSE_TRIP_INITIAL_WINDOW_SECONDS
+    ) {
+      return { min, max: min + duration * 1000 };
+    }
+    return { min, max: min + DENSE_TRIP_INITIAL_WINDOW_SECONDS * 1000 };
   }
 
   private buildStackChart(
@@ -817,16 +861,15 @@ export class ChartView {
 
     this.attachCanvasListeners(canvas, fileIdx, 'stack');
 
+    const { min, max } = this.defaultRange(
+      file.startTime,
+      file.duration,
+      file.size
+    );
     const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
-      options: this.getChartOptions(
-        file,
-        file.startTime,
-        file.startTime + file.duration * 1000,
-        'stack',
-        fileIdx
-      ),
+      options: this.getChartOptions(file, min, max, 'stack', fileIdx),
       plugins: [
         this.buildAnnotationPlugin(
           () => this.appState.files()[fileIdx],
@@ -835,7 +878,7 @@ export class ChartView {
         ),
       ],
     });
-    this.lastNormalizedWidth.set(chart, file.duration * 1000);
+    this.lastNormalizedWidth.set(chart, max - min);
     return chart;
   }
 
@@ -865,21 +908,20 @@ export class ChartView {
       })
     );
 
+    const { min, max } = this.defaultRange(
+      baseStartTime,
+      maxDuration,
+      files.reduce((sum, f) => sum + f.size, 0)
+    );
     const chart = new Chart(ctx, {
       type: 'line',
       data: { datasets },
-      options: this.getChartOptions(
-        files[0],
-        baseStartTime,
-        baseStartTime + maxDuration * 1000,
-        'overlay',
-        0
-      ),
+      options: this.getChartOptions(files[0], min, max, 'overlay', 0),
       plugins: [
         this.buildAnnotationPlugin(() => this.appState.files()[0], null, 0),
       ],
     });
-    this.lastNormalizedWidth.set(chart, maxDuration * 1000);
+    this.lastNormalizedWidth.set(chart, max - min);
     return chart;
   }
 
