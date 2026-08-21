@@ -24,3 +24,23 @@
   background: rgba(0, 0, 0, 0.85);
   color: #fff;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.embedded-map-container {
+  width: 30%;
+  min-width: 300px;
+  border-left: 1px solid #ddd;
+  position: relative;
+  display: none;
+  background: #fdfdfd;
+}
+
+@media (width <= 768px) {
+  .embedded-map-container {
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid #ddd;
+  }
+}

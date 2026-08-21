@@ -29,3 +29,14 @@
   background: rgba(0, 0, 0, 0.85);
   color: #fff;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.chm-overlay-map {
+  flex: 2;
+  min-height: 0;
+  margin-top: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f0f0f0;
+}

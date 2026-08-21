@@ -95,3 +95,34 @@ main#landing-page {
   cursor: pointer;
   padding: 0 4px;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.version {
+  font-size: 0.5em;
+  opacity: 0.6;
+}
+
+.app-version-container {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.docs-body {
+  background-color: var(--dark-bg);
+  color: var(--light-text);
+}
+
+.footer-links-container {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.footer-link-item {
+  font-size: 1.1em;
+}

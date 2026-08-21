@@ -1,3 +1,167 @@
 :host {
   display: block;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.btn-green {
+  display: inline-block;
+  background-color: var(--brand-green);
+  color: #fff;
+  padding: 15px 35px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.1rem;
+  transition:
+    transform 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
+  box-shadow: 0 4px 15px #01804f4d;
+}
+
+.btn-green:hover {
+  background-color: #01a163;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px #01804f66;
+}
+
+.hero {
+  padding: 100px 20px;
+  text-align: center;
+  background:
+    linear-gradient(#1c3d72d9, #0a0a0ae5), url('/resources/background.png');
+  background-size: cover;
+  background-position: center;
+  border-bottom: 4px solid var(--brand-red);
+}
+
+.hero h1 {
+  font-size: 3.5rem;
+  margin-bottom: 10px;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  max-width: 700px;
+  margin: 0 auto 30px;
+}
+
+.feature-card {
+  background: #161616;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  border-top: 3px solid var(--brand-blue);
+  transition: 0.3s;
+}
+
+.feature-card:hover {
+  border-top-color: var(--brand-green);
+  transform: translateY(-5px);
+}
+
+.feature-card i {
+  font-size: 3rem;
+  color: var(--brand-red);
+  margin-bottom: 20px;
+}
+
+.tech-specs {
+  background-color: var(--brand-blue);
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.btn-brand-red {
+  background-color: var(--brand-red) !important;
+}
+
+@media (width <= 768px) {
+  .tech-specs {
+    padding: 20px 15px !important;
+  }
+
+  .hero h1,
+  .tech-specs h2 {
+    font-size: 1.4rem !important;
+    margin-bottom: 8px;
+  }
+
+  .tech-specs p {
+    font-size: 0.9rem !important;
+    margin-bottom: 20px;
+    line-height: 1.4;
+  }
+
+  .spec-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .feature-card {
+    padding: 15px 20px !important;
+  }
+
+  .feature-card i {
+    font-size: 2rem !important;
+  }
+
+  .feature-card h3 {
+    font-size: 1.05rem !important;
+    margin-bottom: 5px !important;
+  }
+
+  .feature-card p {
+    font-size: 0.85rem !important;
+  }
+
+  .hero {
+    padding: 60px 15px 40px !important;
+    border-bottom-width: 3px;
+  }
+
+  .hero h1 {
+    font-size: 2.2rem !important;
+    letter-spacing: 1px;
+  }
+
+  .hero p {
+    line-height: 1.4;
+    margin-bottom: 25px;
+    color: #ffffffe5;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .btn-green,
+  .hero p {
+    font-size: 1rem !important;
+  }
+
+  .btn-green {
+    width: 100%;
+    padding: 12px 20px !important;
+    box-sizing: border-box;
+  }
+}

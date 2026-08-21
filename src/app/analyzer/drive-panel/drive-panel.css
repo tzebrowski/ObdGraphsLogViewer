@@ -156,3 +156,143 @@
 .share-file-btn:hover {
   background: #4285f415;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.drive-file-card {
+  display: flex;
+  align-items: flex-start;
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--grid, #ddd);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drive-file-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px #0000001a;
+}
+
+.file-card-icon {
+  font-size: 1.4em;
+  color: #4285f4;
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.file-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name-title {
+  font-weight: 700;
+  font-size: 0.95em;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.file-card-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75em;
+  color: var(--text-muted, #666);
+}
+
+.meta-item i {
+  color: var(--text-secondary);
+  width: 14px;
+  text-align: center;
+}
+
+.recent-section {
+  padding: 1px !important;
+}
+
+.month-header {
+  color: #4285f4;
+  border-left-color: #4285f4;
+  background: #4285f40d;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px !important;
+}
+
+.drv-recent-header {
+  color: var(--text-primary);
+  border-left-color: var(--grid);
+  background: transparent;
+}
+
+.empty-drive-msg {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.empty-drive-msg i {
+  font-size: 2em;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.drv-date-input {
+  flex: 1;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--grid);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.drv-recent-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.drv-icon-margin {
+  margin-right: 8px;
+}
+
+.drv-clear-history {
+  font-size: 0.8em;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.drv-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 10px;
+  border-top: 1px solid var(--grid);
+  margin-top: 10px;
+  font-size: 0.8em;
+}
+
+.drv-page-info {
+  color: var(--text-secondary);
+}
+
+.drv-recent-card {
+  border-left: 3px solid #4285f4;
+  margin-bottom: 8px;
+}

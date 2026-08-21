@@ -13,3 +13,31 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.remove-row {
+  color: #f44;
+  font-weight: 700;
+  font-size: 1.2em;
+  transition: transform 0.2s;
+}
+
+.remove-row:hover {
+  transform: scale(1.2);
+  color: #c00;
+}
+
+.result-item {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+}
+
+.result-item:hover {
+  background: var(--active-bg);
+  color: var(--accent);
+}

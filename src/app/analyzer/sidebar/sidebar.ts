@@ -20,6 +20,7 @@ import { SignalListPanel } from '../signal-list-panel/signal-list-panel';
   selector: 'app-sidebar',
   imports: [DrivePanel, LibraryPanel, AnomalyScanner, SignalListPanel],
   templateUrl: './sidebar.html',
+  styleUrl: './sidebar.css',
 })
 export class Sidebar {
   protected readonly appState = inject(AppStateService);

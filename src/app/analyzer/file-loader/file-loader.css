@@ -1,3 +1,40 @@
 :host {
   display: contents;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.drop-zone {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  border: 2px dashed var(--grid);
+  border-radius: 8px;
+  padding: 4px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+
+.drop-zone.drag-over {
+  border-color: var(--accent);
+  background: #ff00000d;
+  transform: scale(1.01);
+}
+
+.drop-zone-content i {
+  font-size: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.drop-zone-content p span,
+a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.fa-file-upload {
+  color: var(--text-secondary);
+}

@@ -69,3 +69,23 @@
   font-size: 0.85em;
   padding: 6px 4px;
 }
+
+/* --- Migrated from global src/styles.css --- */
+
+.math-input-wrapper {
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.math-section-label {
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.math-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
