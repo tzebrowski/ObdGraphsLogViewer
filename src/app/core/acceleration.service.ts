@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, isDevMode, signal } from '@angular/core';
 import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
 import { LoadedFile, SignalPoint } from './models';
@@ -41,7 +41,11 @@ export interface AccelerationRun {
  * DriveService uses for `google-drive-access`, checked at call time rather
  * than pre-computed as a template-disabled state (DriveService doesn't
  * pre-disable its own UI on entitlement either; it alerts when the gated
- * action is actually attempted).
+ * action is actually attempted). Skipped entirely under isDevMode() so
+ * `ng serve` can exercise the feature without a local backend + real
+ * Google sign-in -- the gate itself still needs testing against the real
+ * API (see the local-dev instructions), this only unblocks iterating on
+ * everything past the gate.
  */
 @Injectable({ providedIn: 'root' })
 export class AccelerationService {
@@ -57,18 +61,30 @@ export class AccelerationService {
     private readonly account: AccountService
   ) {}
 
+  /**
+   * Thin wrapper around Angular's isDevMode() so tests can stub it --
+   * Vitest can't spy on '@angular/core's own export directly (frozen ESM
+   * module namespace), but a mutable prototype method is easy to stub.
+   * Matches VersionCheckService's identical wrapper.
+   */
+  protected isDevMode(): boolean {
+    return isDevMode();
+  }
+
   openSetup(): void {
-    if (!this.account.isSignedIn()) {
-      this.appState.showAlert(
-        'Please sign in with Google to use Acceleration Runs.'
-      );
-      return;
-    }
-    if (!this.account.hasFeature(ACCELERATION_FEATURE_NAME)) {
-      this.appState.showAlert(
-        "Your My Giulia account doesn't have access to Acceleration Runs. Please contact support if you believe this is a mistake."
-      );
-      return;
+    if (!this.isDevMode()) {
+      if (!this.account.isSignedIn()) {
+        this.appState.showAlert(
+          'Please sign in with Google to use Acceleration Runs.'
+        );
+        return;
+      }
+      if (!this.account.hasFeature(ACCELERATION_FEATURE_NAME)) {
+        this.appState.showAlert(
+          "Your My Giulia account doesn't have access to Acceleration Runs. Please contact support if you believe this is a mistake."
+        );
+        return;
+      }
     }
     if (this.appState.files().length === 0) {
       this.appState.showAlert('Please load a log file first.');

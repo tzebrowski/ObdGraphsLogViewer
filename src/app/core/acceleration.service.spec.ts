@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AccelerationConfig,
   AccelerationService,
@@ -19,6 +19,15 @@ function makeAccountFake(
     isSignedIn: vi.fn().mockReturnValue(opts.signedIn ?? true),
     hasFeature: vi.fn().mockReturnValue(opts.hasFeature ?? true),
   } as unknown as AccountService;
+}
+
+/** Matches VersionCheckService's spec: stubs the protected isDevMode()
+ * wrapper, since Vitest can't spy on '@angular/core's own export. */
+function stubDevMode(devMode: boolean): void {
+  vi.spyOn(
+    AccelerationService.prototype as unknown as { isDevMode(): boolean },
+    'isDevMode'
+  ).mockReturnValue(devMode);
 }
 
 function makeFile(
@@ -62,10 +71,20 @@ describe('AccelerationService', () => {
 
   beforeEach(() => {
     appState = new AppStateService(new EventBusService());
+    // Real isDevMode() would likely read true in this bare (non-TestBed)
+    // unit test environment, silently bypassing the entitlement gate for
+    // the wrong reason -- pin it to false so gating tests below actually
+    // exercise the account checks, and let the dedicated dev-mode tests
+    // override this.
+    stubDevMode(false);
     // Most tests below exercise detection/modal-state logic that isn't
     // about the entitlement gate itself, so default to signed-in +
     // entitled, and let the dedicated gating tests override this.
     service = new AccelerationService(appState, makeAccountFake());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('extractRuns', () => {
@@ -279,6 +298,33 @@ describe('AccelerationService', () => {
 
       expect(service.isSetupOpen()).toBe(false);
       expect(appState.alertMessage()).toContain("doesn't have access");
+    });
+
+    it('openSetup skips the entitlement gate entirely under isDevMode(), even signed out with no entitlement', () => {
+      stubDevMode(true);
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: false, hasFeature: false })
+      );
+      appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
+
+      service.openSetup();
+
+      expect(service.isSetupOpen()).toBe(true);
+      expect(appState.alertMessage()).toBeNull();
+    });
+
+    it('openSetup still enforces the "no file loaded" check under isDevMode()', () => {
+      stubDevMode(true);
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: false, hasFeature: false })
+      );
+
+      service.openSetup();
+
+      expect(service.isSetupOpen()).toBe(false);
+      expect(appState.alertMessage()).toContain('load a log file');
     });
 
     it('generate() reports failure with no matching runs and does not open the modal', () => {
