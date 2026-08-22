@@ -12,6 +12,17 @@ export interface AccelerationConfig {
   targetSpeed: number;
   maxDuration: number;
   backslideTolerance: number;
+  /** Optional secondary checkpoint speed (e.g. 60) reported as a split time alongside the full run -- skipped when unset or never reached within the run window. */
+  splitSpeed?: number;
+  /** Optional engine RPM signal; when set (with gearShiftRpmDrop), enables gear-shift detection over the run window. */
+  rpmKey?: string;
+  gearShiftRpmDrop?: number;
+}
+
+export interface GearShift {
+  time: number;
+  elapsedSeconds: number;
+  rpm: number;
 }
 
 export interface AccelerationRun {
@@ -20,6 +31,8 @@ export interface AccelerationRun {
   startTime: number;
   targetTime: number;
   elapsedSeconds: number;
+  splitElapsedSeconds: number | null;
+  gearShifts: GearShift[];
 }
 
 /**
@@ -245,6 +258,18 @@ export class AccelerationService {
           startTime: launchTime,
           targetTime,
           elapsedSeconds: (targetTime - launchTime) / 1000,
+          splitElapsedSeconds: this.computeSplitElapsedSeconds(
+            windowPoints,
+            launchTime,
+            config.splitSpeed
+          ),
+          gearShifts: this.detectGearShifts(
+            file,
+            launchTime,
+            targetTime,
+            config.rpmKey,
+            config.gearShiftRpmDrop
+          ),
         });
         i = targetIdx + 1;
       } else {
@@ -263,5 +288,80 @@ export class AccelerationService {
     if (after.x === before.x || after.y === before.y) return after.x;
     const frac = (threshold - before.y) / (after.y - before.y);
     return before.x + frac * (after.x - before.x);
+  }
+
+  /** Elapsed seconds from launch to the first crossing of splitSpeed within the run window (e.g. the "0-60" split inside a 0-100 run), or null if unset/never reached. */
+  private computeSplitElapsedSeconds(
+    windowPoints: SignalPoint[],
+    launchTime: number,
+    splitSpeed?: number
+  ): number | null {
+    if (!splitSpeed) return null;
+    for (let k = 1; k < windowPoints.length; k++) {
+      if (
+        windowPoints[k - 1].y < splitSpeed &&
+        windowPoints[k].y >= splitSpeed
+      ) {
+        const crossing = this.interpolateCrossing(
+          windowPoints[k - 1],
+          windowPoints[k],
+          splitSpeed
+        );
+        return (crossing - launchTime) / 1000;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Locates gear shifts as RPM peaks within the run window: under full
+   * throttle, RPM climbs through a gear then drops sharply as the next gear
+   * engages, then climbs again. A zig-zag/hysteresis walk (rather than a
+   * naive "any decrease" check) treats a peak as confirmed only once RPM has
+   * fallen at least `minDropRpm` below it -- and symmetrically waits for an
+   * equal rebound before arming the next peak -- so sensor noise or brief
+   * RPM jitter can't masquerade as a shift. Mirrors DynoService's rpmDelta
+   * noise-filtering role for pull detection.
+   */
+  private detectGearShifts(
+    file: LoadedFile,
+    launchTime: number,
+    targetTime: number,
+    rpmKey?: string,
+    minDropRpm?: number
+  ): GearShift[] {
+    if (!rpmKey || !minDropRpm || minDropRpm <= 0) return [];
+    const rpmData = file.signals[rpmKey] || [];
+    const windowed = rpmData.filter(
+      (p) => p.x >= launchTime && p.x <= targetTime
+    );
+    if (windowed.length < 2) return [];
+
+    const shifts: GearShift[] = [];
+    let extremum = windowed[0];
+    let rising = true;
+
+    for (let k = 1; k < windowed.length; k++) {
+      const point = windowed[k];
+      if (rising) {
+        if (point.y >= extremum.y) {
+          extremum = point;
+        } else if (extremum.y - point.y >= minDropRpm) {
+          shifts.push({
+            time: extremum.x,
+            elapsedSeconds: (extremum.x - launchTime) / 1000,
+            rpm: extremum.y,
+          });
+          rising = false;
+          extremum = point;
+        }
+      } else if (point.y <= extremum.y) {
+        extremum = point;
+      } else if (point.y - extremum.y >= minDropRpm) {
+        rising = true;
+        extremum = point;
+      }
+    }
+    return shifts;
   }
 }

@@ -230,6 +230,101 @@ describe('AccelerationService', () => {
         )
       ).toHaveLength(0);
     });
+
+    it('leaves splitElapsedSeconds null when splitSpeed is unset', () => {
+      const file = makeFile({ 'Vehicle Speed': cleanRunSpeeds() });
+      const runs = service.extractRuns(file, CONFIG);
+      expect(runs[0].splitElapsedSeconds).toBeNull();
+    });
+
+    it('reports a split time (e.g. 0-60) reached partway through the run', () => {
+      // Clean 0-100 launch, 10 km/h per second -- crosses 60 km/h at s=6.
+      const file = makeFile({ 'Vehicle Speed': cleanRunSpeeds() });
+      const runs = service.extractRuns(file, {
+        ...CONFIG,
+        splitSpeed: 60,
+      });
+      expect(runs[0].splitElapsedSeconds).toBeCloseTo(5.8, 1);
+    });
+
+    it('leaves splitElapsedSeconds null when the split speed is never reached within the run window', () => {
+      const points: SignalPoint[] = [];
+      for (let s = 0; s <= 5; s++) points.push({ x: s * 1000, y: s * 10 });
+      const file = makeFile({ 'Vehicle Speed': points });
+      const runs = service.extractRuns(file, {
+        ...CONFIG,
+        targetSpeed: 50,
+        splitSpeed: 60,
+      });
+      expect(runs).toHaveLength(1);
+      expect(runs[0].splitElapsedSeconds).toBeNull();
+    });
+
+    it('returns no gear shifts when rpmKey is unset', () => {
+      const file = makeFile({ 'Vehicle Speed': cleanRunSpeeds() });
+      const runs = service.extractRuns(file, CONFIG);
+      expect(runs[0].gearShifts).toEqual([]);
+    });
+
+    it('detects gear shifts as confirmed RPM peaks within the run window', () => {
+      const rpm: SignalPoint[] = [
+        { x: 0, y: 800 }, // before the run window -- ignored
+        { x: 500, y: 2000 },
+        { x: 1000, y: 3000 },
+        { x: 1500, y: 4500 },
+        { x: 2000, y: 6000 }, // peak 1
+        { x: 2500, y: 3200 }, // confirmed drop -> shift 1
+        { x: 3000, y: 4000 },
+        { x: 3500, y: 5000 },
+        { x: 4000, y: 6200 }, // peak 2
+        { x: 4500, y: 3300 }, // confirmed drop -> shift 2
+        { x: 5000, y: 4200 },
+        { x: 5500, y: 5200 },
+        { x: 6000, y: 6500 },
+        { x: 6500, y: 6600 },
+        { x: 7000, y: 6700 },
+        { x: 10000, y: 7000 },
+      ];
+      const file = makeFile({
+        'Vehicle Speed': cleanRunSpeeds(),
+        'Engine RPM': rpm,
+      });
+
+      const runs = service.extractRuns(file, {
+        ...CONFIG,
+        rpmKey: 'Engine RPM',
+        gearShiftRpmDrop: 400,
+      });
+
+      expect(runs[0].gearShifts).toHaveLength(2);
+      expect(runs[0].gearShifts[0].rpm).toBe(6000);
+      expect(runs[0].gearShifts[0].elapsedSeconds).toBeCloseTo(1.8, 1);
+      expect(runs[0].gearShifts[1].rpm).toBe(6200);
+      expect(runs[0].gearShifts[1].elapsedSeconds).toBeCloseTo(3.8, 1);
+    });
+
+    it('ignores RPM dips smaller than the configured drop threshold as noise', () => {
+      const rpm: SignalPoint[] = [
+        { x: 500, y: 2000 },
+        { x: 1000, y: 4000 },
+        { x: 1500, y: 6000 },
+        { x: 2000, y: 5900 }, // 100 rpm dip -- well under the 400 threshold
+        { x: 2500, y: 6100 },
+        { x: 3000, y: 6300 },
+      ];
+      const file = makeFile({
+        'Vehicle Speed': cleanRunSpeeds(),
+        'Engine RPM': rpm,
+      });
+
+      const runs = service.extractRuns(file, {
+        ...CONFIG,
+        rpmKey: 'Engine RPM',
+        gearShiftRpmDrop: 400,
+      });
+
+      expect(runs[0].gearShifts).toEqual([]);
+    });
   });
 
   describe('suggestSignal', () => {

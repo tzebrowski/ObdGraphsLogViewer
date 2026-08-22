@@ -77,9 +77,16 @@ export class AccelerationModal {
   protected readonly setupTargetSpeed = signal(100);
   protected readonly setupMaxDuration = signal(30);
   protected readonly setupBackslideTolerance = signal(5);
+  protected readonly setupSplitSpeed = signal(60);
+  protected readonly setupRpmKey = signal('');
+  protected readonly setupGearShiftRpmDrop = signal(400);
   protected readonly signalSearch = signal('');
 
   protected readonly currentFile = computed(() => this.appState.files()[0]);
+
+  protected readonly activeRun = computed(
+    () => this.accel.runs()[this.accel.selectedRunIndex()]
+  );
 
   protected readonly availableSignals = computed(() =>
     [...(this.currentFile()?.availableSignals ?? [])].sort()
@@ -109,7 +116,12 @@ export class AccelerationModal {
   }
 
   protected runLabel(run: AccelerationRun, idx: number): string {
-    return `Run ${idx + 1}: ${run.elapsedSeconds.toFixed(2)}s`;
+    const splitSpeed = this.accel.config()?.splitSpeed;
+    const split =
+      run.splitElapsedSeconds != null && splitSpeed
+        ? ` (0-${splitSpeed}: ${run.splitElapsedSeconds.toFixed(2)}s)`
+        : '';
+    return `Run ${idx + 1}: ${run.elapsedSeconds.toFixed(2)}s${split}`;
   }
 
   protected generate(): void {
@@ -124,6 +136,9 @@ export class AccelerationModal {
       targetSpeed: this.setupTargetSpeed(),
       maxDuration: this.setupMaxDuration(),
       backslideTolerance: this.setupBackslideTolerance(),
+      splitSpeed: this.setupSplitSpeed() || undefined,
+      rpmKey: this.setupRpmKey() || undefined,
+      gearShiftRpmDrop: this.setupGearShiftRpmDrop(),
     });
 
     if (!result.success) {
@@ -183,6 +198,11 @@ export class AccelerationModal {
     this.setupTargetSpeed.set(100);
     this.setupMaxDuration.set(30);
     this.setupBackslideTolerance.set(5);
+    this.setupSplitSpeed.set(60);
+    this.setupRpmKey.set(
+      this.accel.suggestSignal(signals, ['engine speed', 'rpm'])
+    );
+    this.setupGearShiftRpmDrop.set(400);
     this.signalSearch.set('');
   }
 
@@ -230,6 +250,32 @@ export class AccelerationModal {
       { x: runEnd, y: 0 },
       { x: runEnd, y: yMax },
     ];
+    const splitSpeed = config.splitSpeed;
+    const splitLine: Point[] | null =
+      run.splitElapsedSeconds != null && splitSpeed
+        ? [
+            { x: run.splitElapsedSeconds, y: 0 },
+            { x: run.splitElapsedSeconds, y: yMax },
+          ]
+        : null;
+
+    // Gear-shift markers sit on the speed curve itself (nearest sample at
+    // or before the shift time) so they read as points-of-interest along
+    // the run rather than a separate scale -- RPM is only surfaced via the
+    // tooltip (see the tooltip callback below).
+    let gearShiftScanIdx = 0;
+    const gearShiftPoints: Point[] = run.gearShifts.map((shift) => {
+      while (
+        gearShiftScanIdx < displayPoints.length - 1 &&
+        displayPoints[gearShiftScanIdx + 1].x <= shift.time
+      ) {
+        gearShiftScanIdx++;
+      }
+      return {
+        x: shift.elapsedSeconds,
+        y: displayPoints[gearShiftScanIdx]?.y ?? 0,
+      };
+    });
 
     const datasets: ChartDataset<'line', Point[]>[] = [
       {
@@ -272,6 +318,33 @@ export class AccelerationModal {
       },
     ];
 
+    if (splitLine) {
+      datasets.push({
+        label: `Split (${splitSpeed} km/h)`,
+        data: splitLine,
+        borderColor: '#f39c12',
+        yAxisID: 'ySpeed',
+        borderDash: [2, 4],
+        pointRadius: 0,
+        borderWidth: 1.5,
+      });
+    }
+
+    if (gearShiftPoints.length > 0) {
+      datasets.push({
+        label: 'Gear Shift',
+        data: gearShiftPoints,
+        borderColor: '#8e44ad',
+        backgroundColor: '#8e44ad',
+        yAxisID: 'ySpeed',
+        showLine: false,
+        pointStyle: 'triangle',
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        borderWidth: 0,
+      });
+    }
+
     extraSignals.forEach((sig) => {
       const sigIdx = file.availableSignals.indexOf(sig);
       const color = this.palette.getColorForSignal(0, sigIdx);
@@ -312,10 +385,22 @@ export class AccelerationModal {
           datalabels: { display: false },
           title: {
             display: true,
-            text: `${config.startSpeed} → ${config.targetSpeed} km/h: ${run.elapsedSeconds.toFixed(2)}s`,
+            text:
+              `${config.startSpeed} → ${config.targetSpeed} km/h: ${run.elapsedSeconds.toFixed(2)}s` +
+              (run.splitElapsedSeconds != null && splitSpeed
+                ? `   |   0-${splitSpeed}: ${run.splitElapsedSeconds.toFixed(2)}s`
+                : ''),
             font: { size: 16, weight: 'bold' },
           },
           tooltip: {
+            // Gear Shift is a sparse 2-point-per-shift dataset overlaid on
+            // the dense speed curve; Chart.js's index-mode tooltip aligns
+            // items by array position rather than x-value, so an included
+            // entry would almost always describe the wrong x. Filtered out
+            // entirely -- its RPM is surfaced reliably via the chip list
+            // below the chart instead (see acceleration-modal.html); the
+            // marker here is purely a "where on the curve" visual cue.
+            filter: (item) => item.dataset.label !== 'Gear Shift',
             callbacks: {
               label: (context) =>
                 `${context.dataset.label}: ${(context.parsed.y ?? 0).toFixed(1)}`,
