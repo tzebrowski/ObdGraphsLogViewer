@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { UiStateService } from '../core/ui-state.service';
+import { AccelerationModal } from './acceleration-modal/acceleration-modal';
 import { ChartView } from './chart-view/chart-view';
 import { DynoModal } from './dyno-modal/dyno-modal';
 import { FileLoader } from './file-loader/file-loader';
@@ -27,6 +28,7 @@ import { XyModal } from './xy-modal/xy-modal';
     LoadingOverlay,
     MathChannelModal,
     DynoModal,
+    AccelerationModal,
     XyModal,
     HistogramModal,
     RightSignalsPanel,
