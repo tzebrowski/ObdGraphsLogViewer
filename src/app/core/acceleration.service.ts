@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { AppStateService } from './app-state.service';
+import { AuthService } from './auth.service';
 import { LoadedFile, SignalPoint } from './models';
 
 export interface AccelerationConfig {
@@ -31,6 +32,10 @@ export interface AccelerationRun {
  * lifts off before reaching the target (speed sagging more than
  * `backslideTolerance` below its best-so-far) or if `targetSpeed` isn't
  * reached in time.
+ *
+ * Gated to signed-in users, same as the Google Drive integration -- both
+ * share the single Google consent screen AuthService drives, so
+ * `auth.isLoggedIn()` doubles as the account-sign-in check here.
  */
 @Injectable({ providedIn: 'root' })
 export class AccelerationService {
@@ -41,9 +46,18 @@ export class AccelerationService {
   readonly selectedRunIndex = signal(0);
   readonly selectedExtraSignals = signal<string[]>([]);
 
-  constructor(private readonly appState: AppStateService) {}
+  constructor(
+    private readonly appState: AppStateService,
+    private readonly auth: AuthService
+  ) {}
 
   openSetup(): void {
+    if (!this.auth.isLoggedIn()) {
+      this.appState.showAlert(
+        'Please sign in with Google to use Acceleration Runs.'
+      );
+      return;
+    }
     if (this.appState.files().length === 0) {
       this.appState.showAlert('Please load a log file first.');
       return;

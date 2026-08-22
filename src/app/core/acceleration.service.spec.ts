@@ -4,8 +4,10 @@ import {
   AccelerationService,
 } from './acceleration.service';
 import { AppStateService } from './app-state.service';
+import { AuthService } from './auth.service';
 import { EventBusService } from './event-bus.service';
 import { LoadedFile, SignalPoint } from './models';
+import { PreferencesService } from './preferences.service';
 
 function makeFile(
   signals: Record<string, SignalPoint[]>,
@@ -44,11 +46,17 @@ function cleanRunSpeeds(): SignalPoint[] {
 
 describe('AccelerationService', () => {
   let appState: AppStateService;
+  let auth: AuthService;
   let service: AccelerationService;
 
   beforeEach(() => {
     appState = new AppStateService(new EventBusService());
-    service = new AccelerationService(appState);
+    auth = new AuthService(new PreferencesService(), appState);
+    // Most tests below exercise detection/modal-state logic that isn't
+    // about the sign-in gate itself, so default to signed-in and let the
+    // dedicated 'not signed in' test override this.
+    auth.isLoggedIn.set(true);
+    service = new AccelerationService(appState, auth);
   });
 
   describe('extractRuns', () => {
@@ -236,6 +244,16 @@ describe('AccelerationService', () => {
       service.openSetup();
       expect(service.isSetupOpen()).toBe(false);
       expect(appState.alertMessage()).toContain('load a log file');
+    });
+
+    it('openSetup alerts and stays closed when not signed in, even with a file loaded', () => {
+      auth.isLoggedIn.set(false);
+      appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
+
+      service.openSetup();
+
+      expect(service.isSetupOpen()).toBe(false);
+      expect(appState.alertMessage()).toContain('sign in with Google');
     });
 
     it('generate() reports failure with no matching runs and does not open the modal', () => {
