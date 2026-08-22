@@ -1,13 +1,25 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AccelerationConfig,
   AccelerationService,
 } from './acceleration.service';
+import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
-import { AuthService } from './auth.service';
 import { EventBusService } from './event-bus.service';
 import { LoadedFile, SignalPoint } from './models';
-import { PreferencesService } from './preferences.service';
+
+/** Matches DriveService's spec fake: a mocked AccountService rather than the
+ * real class, since isSignedIn/hasFeature are backed by private signals
+ * with no public setter -- only loginWithGoogle()/logout() (real network
+ * calls) mutate them on a real instance. */
+function makeAccountFake(
+  opts: { signedIn?: boolean; hasFeature?: boolean } = {}
+) {
+  return {
+    isSignedIn: vi.fn().mockReturnValue(opts.signedIn ?? true),
+    hasFeature: vi.fn().mockReturnValue(opts.hasFeature ?? true),
+  } as unknown as AccountService;
+}
 
 function makeFile(
   signals: Record<string, SignalPoint[]>,
@@ -46,17 +58,14 @@ function cleanRunSpeeds(): SignalPoint[] {
 
 describe('AccelerationService', () => {
   let appState: AppStateService;
-  let auth: AuthService;
   let service: AccelerationService;
 
   beforeEach(() => {
     appState = new AppStateService(new EventBusService());
-    auth = new AuthService(new PreferencesService(), appState);
     // Most tests below exercise detection/modal-state logic that isn't
-    // about the sign-in gate itself, so default to signed-in and let the
-    // dedicated 'not signed in' test override this.
-    auth.isLoggedIn.set(true);
-    service = new AccelerationService(appState, auth);
+    // about the entitlement gate itself, so default to signed-in +
+    // entitled, and let the dedicated gating tests override this.
+    service = new AccelerationService(appState, makeAccountFake());
   });
 
   describe('extractRuns', () => {
@@ -247,13 +256,29 @@ describe('AccelerationService', () => {
     });
 
     it('openSetup alerts and stays closed when not signed in, even with a file loaded', () => {
-      auth.isLoggedIn.set(false);
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: false })
+      );
       appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
 
       service.openSetup();
 
       expect(service.isSetupOpen()).toBe(false);
       expect(appState.alertMessage()).toContain('sign in with Google');
+    });
+
+    it("openSetup alerts and stays closed when signed in but the account isn't entitled to Acceleration Runs", () => {
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: true, hasFeature: false })
+      );
+      appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
+
+      service.openSetup();
+
+      expect(service.isSetupOpen()).toBe(false);
+      expect(appState.alertMessage()).toContain("doesn't have access");
     });
 
     it('generate() reports failure with no matching runs and does not open the modal', () => {

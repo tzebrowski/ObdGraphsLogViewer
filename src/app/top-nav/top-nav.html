@@ -111,12 +111,8 @@
       </button>
       <button
         class="view-btn"
-        [title]="
-          auth.isLoggedIn()
-            ? 'Acceleration Runs (0-100)'
-            : 'Sign in with Google to use Acceleration Runs'
-        "
-        [disabled]="!appState.dataLoaded() || !auth.isLoggedIn()"
+        title="Acceleration Runs (0-100)"
+        [disabled]="!appState.dataLoaded()"
         (click)="acceleration.openSetup()"
       >
         <i class="fas fa-stopwatch"></i>

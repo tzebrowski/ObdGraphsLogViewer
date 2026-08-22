@@ -1,7 +1,10 @@
 import { Injectable, signal } from '@angular/core';
+import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
-import { AuthService } from './auth.service';
 import { LoadedFile, SignalPoint } from './models';
+
+/** Matches DriveService's DRIVE_FEATURE_NAME convention -- a mygiulia-backend feature name, resolved via AccountService.hasFeature(). */
+const ACCELERATION_FEATURE_NAME = 'acceleration-runs';
 
 export interface AccelerationConfig {
   speedKey: string;
@@ -33,9 +36,12 @@ export interface AccelerationRun {
  * `backslideTolerance` below its best-so-far) or if `targetSpeed` isn't
  * reached in time.
  *
- * Gated to signed-in users, same as the Google Drive integration -- both
- * share the single Google consent screen AuthService drives, so
- * `auth.isLoggedIn()` doubles as the account-sign-in check here.
+ * Gated behind the `acceleration-runs` mygiulia-backend feature, resolved
+ * via AccountService.hasFeature() -- same entitlement-check pattern
+ * DriveService uses for `google-drive-access`, checked at call time rather
+ * than pre-computed as a template-disabled state (DriveService doesn't
+ * pre-disable its own UI on entitlement either; it alerts when the gated
+ * action is actually attempted).
  */
 @Injectable({ providedIn: 'root' })
 export class AccelerationService {
@@ -48,13 +54,19 @@ export class AccelerationService {
 
   constructor(
     private readonly appState: AppStateService,
-    private readonly auth: AuthService
+    private readonly account: AccountService
   ) {}
 
   openSetup(): void {
-    if (!this.auth.isLoggedIn()) {
+    if (!this.account.isSignedIn()) {
       this.appState.showAlert(
         'Please sign in with Google to use Acceleration Runs.'
+      );
+      return;
+    }
+    if (!this.account.hasFeature(ACCELERATION_FEATURE_NAME)) {
+      this.appState.showAlert(
+        "Your My Giulia account doesn't have access to Acceleration Runs. Please contact support if you believe this is a mistake."
       );
       return;
     }
