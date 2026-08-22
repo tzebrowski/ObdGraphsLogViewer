@@ -95,6 +95,65 @@
           <strong>Target Speed</strong>.
         </div>
       </div>
+
+      <div class="accel-run-config">
+        <label class="math-label-small">Split Time (optional)</label>
+        <div class="accel-run-row">
+          <div>
+            <label
+              class="accel-sub-label"
+              title="Reports the elapsed time to this intermediate speed alongside the full run, e.g. a 0-60 split inside a 0-100 run. Leave at 0 to disable."
+            >
+              Split Speed (km/h)
+            </label>
+            <input
+              type="number"
+              class="template-select"
+              min="0"
+              [value]="setupSplitSpeed()"
+              (input)="setupSplitSpeed.set(+$any($event.target).value)"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="accel-run-config">
+        <label class="math-label-small">Gear Shift Detection (optional)</label>
+        <div class="control-group">
+          <label class="accel-sub-label">Engine RPM Signal</label>
+          <select
+            class="template-select"
+            (change)="setupRpmKey.set($any($event.target).value)"
+          >
+            <option value="" [selected]="!setupRpmKey()">
+              -- None (disable) --
+            </option>
+            @for (sig of availableSignals(); track sig) {
+            <option [value]="sig" [selected]="sig === setupRpmKey()">
+              {{ sig }}
+            </option>
+            }
+          </select>
+        </div>
+        <div class="accel-run-row">
+          <div>
+            <label
+              class="accel-sub-label"
+              title="Minimum RPM drop from a local peak, confirmed by an equal rebound, before it's counted as a gear shift rather than sensor noise."
+            >
+              Min RPM Drop
+            </label>
+            <input
+              type="number"
+              class="template-select"
+              min="1"
+              step="50"
+              [value]="setupGearShiftRpmDrop()"
+              (input)="setupGearShiftRpmDrop.set(+$any($event.target).value)"
+            />
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" (click)="generate()">Find Runs</button>
@@ -162,6 +221,16 @@
         <div class="accel-canvas-wrapper">
           <canvas #accelCanvas></canvas>
         </div>
+        @if (activeRun(); as run) { @if (run.gearShifts.length) {
+        <div class="accel-gearshift-list">
+          @for (shift of run.gearShifts; track $index; let i = $index) {
+          <span class="accel-gearshift-chip">
+            {{ i + 1 }}→{{ i + 2 }}: {{ shift.elapsedSeconds.toFixed(2) }}s @ {{
+            shift.rpm.toFixed(0) }} RPM
+          </span>
+          }
+        </div>
+        } }
         <div class="accel-footnote">
           * Detected as standing-start runs: speed rising from rest to the
           target speed without a significant throttle lift in between.
