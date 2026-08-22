@@ -39,6 +39,15 @@ Chart.register(
 type Point = { x: number; y: number };
 
 /**
+ * Purely cosmetic: how many seconds of standstill to show before the
+ * detected launch, so the chart reads as "car sitting still, then goes"
+ * rather than starting mid-motion. Never affects run detection or the
+ * elapsedSeconds timing -- AccelerationService's launch/target crossings
+ * are computed independently of what the chart happens to display.
+ */
+const CHART_PRE_ROLL_SECONDS = 3;
+
+/**
  * No legacy counterpart. UI twin of DynoModal: a setup step (signal picker
  * + run-detection thresholds) then a chart modal (speed vs. elapsed time,
  * with optional extra-signal overlays, run selector, "View on Chart", and
@@ -184,12 +193,23 @@ export class AccelerationModal {
     this.chart?.destroy();
 
     const extraSignals = this.accel.selectedExtraSignals();
-    const speedData: Point[] = run.time.map((t, idx) => ({
-      x: (t - run.startTime) / 1000,
-      y: run.speed[idx],
+
+    // Pull straight from the file's raw speed signal (not run.time/speed,
+    // which only cover the launch->target detection window) so the chart
+    // can show a few seconds of standstill before the launch.
+    const speedSignal = file.signals[config.speedKey] || [];
+    const displayStart = run.startTime - CHART_PRE_ROLL_SECONDS * 1000;
+    const displayPoints = speedSignal.filter(
+      (p) => p.x >= displayStart && p.x <= run.targetTime
+    );
+
+    const speedData: Point[] = displayPoints.map((p) => ({
+      x: (p.x - run.startTime) / 1000,
+      y: p.y,
     }));
+    const chartStart = speedData.length > 0 ? speedData[0].x : 0;
     const targetLine: Point[] = [
-      { x: 0, y: config.targetSpeed },
+      { x: chartStart, y: config.targetSpeed },
       { x: (run.targetTime - run.startTime) / 1000, y: config.targetSpeed },
     ];
 
@@ -222,12 +242,12 @@ export class AccelerationModal {
       const raw = file.signals[sig] || [];
       let rIdx = 0;
       let lastVal = 0;
-      const extraData: Point[] = run.time.map((t) => {
-        while (rIdx < raw.length && raw[rIdx].x <= t) {
+      const extraData: Point[] = displayPoints.map((p) => {
+        while (rIdx < raw.length && raw[rIdx].x <= p.x) {
           lastVal = raw[rIdx].y;
           rIdx++;
         }
-        return { x: (t - run.startTime) / 1000, y: lastVal };
+        return { x: (p.x - run.startTime) / 1000, y: lastVal };
       });
       datasets.push({
         label: sig,
@@ -271,7 +291,7 @@ export class AccelerationModal {
             type: 'linear',
             title: { display: true, text: 'Elapsed Time (s)' },
             grid: { color: 'rgba(128,128,128,0.1)' },
-            min: 0,
+            min: chartStart,
           },
           ySpeed: {
             type: 'linear',
