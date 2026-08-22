@@ -59,6 +59,9 @@ export class TopNav {
    *  topbar (avatar+name button opens this menu; the actual profile info lives in a separate
    *  modal opened from within it). */
   protected readonly accountMenuOpen = signal(false);
+  /** Dropdown grouping the two Acceleration entry points (0-100 detection, Acceleration
+   *  Registry) under one toolbar button instead of two separate ones. */
+  protected readonly accelerationMenuOpen = signal(false);
 
   protected toggleFullScreen(): void {
     const el = document.getElementById('mainContent') ?? document.body;
@@ -112,6 +115,24 @@ export class TopNav {
   protected openProfileFromMenu(): void {
     this.accountMenuOpen.set(false);
     this.profileOpen.set(true);
+  }
+
+  protected toggleAccelerationMenu(): void {
+    this.accelerationMenuOpen.update((v) => !v);
+  }
+
+  protected closeAccelerationMenu(): void {
+    this.accelerationMenuOpen.set(false);
+  }
+
+  protected openAccelerationSetup(): void {
+    this.accelerationMenuOpen.set(false);
+    this.acceleration.openSetup();
+  }
+
+  protected openAccelerationRegistry(): void {
+    this.accelerationMenuOpen.set(false);
+    void this.acceleration.openRegistry();
   }
 
   protected fileInputChange(event: Event): void {

@@ -93,13 +93,13 @@ label.tool-btn {
   stroke-linejoin: round;
 }
 
-.account-dropdown-backdrop {
+.nav-dropdown-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
 }
 
-.account-dropdown {
+.nav-dropdown {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -115,7 +115,12 @@ label.tool-btn {
   gap: 2px;
 }
 
-.account-dropdown-item {
+.nav-dropdown.nav-dropdown-left {
+  right: auto;
+  left: 0;
+}
+
+.nav-dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -129,8 +134,20 @@ label.tool-btn {
   cursor: pointer;
 }
 
-.account-dropdown-item:hover {
+.nav-dropdown-item:hover {
   background: var(--surface-2, rgba(255, 255, 255, 0.06));
+}
+
+.nav-dropdown-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Wraps the Acceleration toolbar button so its dropdown (0-100 / Acceleration
+   Registry) can be positioned relative to it, mirroring .account-pill-wrap. */
+.accel-menu-wrap {
+  position: relative;
 }
 
 /* Profile modal -- avatar, name, email, Features list. */

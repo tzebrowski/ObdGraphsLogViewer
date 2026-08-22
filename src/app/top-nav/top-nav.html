@@ -109,23 +109,38 @@
         <i class="fas fa-tachometer-alt"></i>
         <span class="desktop-label">Dyno</span>
       </button>
-      <button
-        class="view-btn"
-        title="Acceleration Runs (0-100)"
-        [disabled]="!appState.dataLoaded()"
-        (click)="acceleration.openSetup()"
-      >
-        <i class="fas fa-stopwatch"></i>
-        <span class="desktop-label">0-100</span>
-      </button>
-      <button
-        class="view-btn"
-        title="Acceleration Runs Registry"
-        (click)="acceleration.openRegistry()"
-      >
-        <i class="fas fa-trophy"></i>
-        <span class="desktop-label">Registry</span>
-      </button>
+      <div class="accel-menu-wrap">
+        <button
+          class="view-btn"
+          [class.active]="accelerationMenuOpen()"
+          title="Acceleration"
+          (click)="toggleAccelerationMenu()"
+        >
+          <i class="fas fa-stopwatch"></i>
+          <span class="desktop-label">Acceleration</span>
+        </button>
+        @if (accelerationMenuOpen()) {
+        <div
+          class="nav-dropdown-backdrop"
+          (click)="closeAccelerationMenu()"
+        ></div>
+        <div class="nav-dropdown nav-dropdown-left">
+          <button
+            class="nav-dropdown-item"
+            [disabled]="!appState.dataLoaded()"
+            (click)="openAccelerationSetup()"
+          >
+            <i class="fas fa-stopwatch"></i> 0-100
+          </button>
+          <button
+            class="nav-dropdown-item"
+            (click)="openAccelerationRegistry()"
+          >
+            <i class="fas fa-trophy"></i> Acceleration Registry
+          </button>
+        </div>
+        }
+      </div>
     </div>
     }
 
@@ -155,15 +170,12 @@
           </svg>
         </button>
         @if (accountMenuOpen()) {
-        <div
-          class="account-dropdown-backdrop"
-          (click)="closeAccountMenu()"
-        ></div>
-        <div class="account-dropdown">
-          <button class="account-dropdown-item" (click)="openProfileFromMenu()">
+        <div class="nav-dropdown-backdrop" (click)="closeAccountMenu()"></div>
+        <div class="nav-dropdown">
+          <button class="nav-dropdown-item" (click)="openProfileFromMenu()">
             <i class="fas fa-user-circle"></i> View profile
           </button>
-          <button class="account-dropdown-item" (click)="signOut()">
+          <button class="nav-dropdown-item" (click)="signOut()">
             <i class="fas fa-sign-out-alt"></i> Sign out
           </button>
         </div>
