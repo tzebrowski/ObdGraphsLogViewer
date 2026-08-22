@@ -547,6 +547,47 @@ describe('AccelerationService', () => {
       expect(service.compareIds()).toEqual([]);
     });
 
+    it('openRegistry alerts and stays closed when not signed in', async () => {
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: false }),
+        db
+      );
+
+      await service.openRegistry();
+
+      expect(service.isRegistryOpen()).toBe(false);
+      expect(appState.alertMessage()).toContain('sign in with Google');
+      expect(db.getAllAccelerationRuns).not.toHaveBeenCalled();
+    });
+
+    it('openRegistry alerts and stays closed when signed in but not entitled to Acceleration Runs', async () => {
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: true, hasFeature: false }),
+        db
+      );
+
+      await service.openRegistry();
+
+      expect(service.isRegistryOpen()).toBe(false);
+      expect(appState.alertMessage()).toContain("doesn't have access");
+    });
+
+    it('openRegistry skips the entitlement gate entirely under isDevMode()', async () => {
+      stubDevMode(true);
+      service = new AccelerationService(
+        appState,
+        makeAccountFake({ signedIn: false, hasFeature: false }),
+        db
+      );
+
+      await service.openRegistry();
+
+      expect(service.isRegistryOpen()).toBe(true);
+      expect(appState.alertMessage()).toBeNull();
+    });
+
     it('refreshRegistry sorts saved runs newest first', async () => {
       db = makeDbFake({
         runs: [

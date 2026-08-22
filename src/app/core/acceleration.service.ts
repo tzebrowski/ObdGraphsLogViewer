@@ -107,21 +107,33 @@ export class AccelerationService {
     return isDevMode();
   }
 
-  openSetup(): void {
-    if (!this.isDevMode()) {
-      if (!this.account.isSignedIn()) {
-        this.appState.showAlert(
-          'Please sign in with Google to use Acceleration Runs.'
-        );
-        return;
-      }
-      if (!this.account.hasFeature(ACCELERATION_FEATURE_NAME)) {
-        this.appState.showAlert(
-          "Your My Giulia account doesn't have access to Acceleration Runs. Please contact support if you believe this is a mistake."
-        );
-        return;
-      }
+  /**
+   * Shared entitlement gate for openSetup() and openRegistry() alike --
+   * Acceleration Registry only reads/writes local IndexedDB, but it's
+   * still part of the same gated feature area, so it shouldn't be
+   * reachable by someone who couldn't generate a run to save there in the
+   * first place. Shows the appropriate alert and returns false when the
+   * gate isn't met; see the class doc comment for the isDevMode() bypass.
+   */
+  private hasAccelerationAccess(): boolean {
+    if (this.isDevMode()) return true;
+    if (!this.account.isSignedIn()) {
+      this.appState.showAlert(
+        'Please sign in with Google to use Acceleration Runs.'
+      );
+      return false;
     }
+    if (!this.account.hasFeature(ACCELERATION_FEATURE_NAME)) {
+      this.appState.showAlert(
+        "Your My Giulia account doesn't have access to Acceleration Runs. Please contact support if you believe this is a mistake."
+      );
+      return false;
+    }
+    return true;
+  }
+
+  openSetup(): void {
+    if (!this.hasAccelerationAccess()) return;
     if (this.appState.files().length === 0) {
       this.appState.showAlert('Please load a log file first.');
       return;
@@ -203,12 +215,8 @@ export class AccelerationService {
     );
   }
 
-  /**
-   * Browsing/comparing previously-saved runs isn't gated the way
-   * openSetup() is -- it's reading the user's own local IndexedDB data, not
-   * calling the backend, so there's nothing to entitlement-check.
-   */
   async openRegistry(): Promise<void> {
+    if (!this.hasAccelerationAccess()) return;
     this.isRegistryOpen.set(true);
     await this.refreshRegistry();
   }
