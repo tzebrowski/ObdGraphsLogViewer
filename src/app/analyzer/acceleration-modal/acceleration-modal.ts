@@ -39,13 +39,16 @@ Chart.register(
 type Point = { x: number; y: number };
 
 /**
- * Purely cosmetic: how many seconds of standstill to show before the
- * detected launch, so the chart reads as "car sitting still, then goes"
- * rather than starting mid-motion. Never affects run detection or the
- * elapsedSeconds timing -- AccelerationService's launch/target crossings
- * are computed independently of what the chart happens to display.
+ * Purely cosmetic: how many seconds of extra context to show before the
+ * launch and after the target is reached, so the chart reads as "car
+ * sitting still, then goes, then a moment after" rather than starting and
+ * ending mid-motion. Never affects run detection or the elapsedSeconds
+ * timing -- AccelerationService's launch/target crossings are computed
+ * independently of what the chart happens to display. The vertical Start/
+ * End lines mark exactly where the timed window itself begins and ends,
+ * so the roll-off on either side reads as context, not part of the run.
  */
-const CHART_PRE_ROLL_SECONDS = 3;
+const CHART_ROLL_SECONDS = 3;
 
 /**
  * No legacy counterpart. UI twin of DynoModal: a setup step (signal picker
@@ -196,11 +199,13 @@ export class AccelerationModal {
 
     // Pull straight from the file's raw speed signal (not run.time/speed,
     // which only cover the launch->target detection window) so the chart
-    // can show a few seconds of standstill before the launch.
+    // can show a few seconds of standstill before the launch and a few
+    // seconds of context after the target is reached.
     const speedSignal = file.signals[config.speedKey] || [];
-    const displayStart = run.startTime - CHART_PRE_ROLL_SECONDS * 1000;
+    const displayStart = run.startTime - CHART_ROLL_SECONDS * 1000;
+    const displayEnd = run.targetTime + CHART_ROLL_SECONDS * 1000;
     const displayPoints = speedSignal.filter(
-      (p) => p.x >= displayStart && p.x <= run.targetTime
+      (p) => p.x >= displayStart && p.x <= displayEnd
     );
 
     const speedData: Point[] = displayPoints.map((p) => ({
@@ -208,9 +213,22 @@ export class AccelerationModal {
       y: p.y,
     }));
     const chartStart = speedData.length > 0 ? speedData[0].x : 0;
+    const runEnd = (run.targetTime - run.startTime) / 1000;
+    const yMax = Math.ceil((config.targetSpeed * 1.1) / 10) * 10;
     const targetLine: Point[] = [
       { x: chartStart, y: config.targetSpeed },
-      { x: (run.targetTime - run.startTime) / 1000, y: config.targetSpeed },
+      { x: runEnd, y: config.targetSpeed },
+    ];
+    // Vertical markers for exactly where the timed 0->target window begins
+    // and ends, so the pre/post roll-off reads as surrounding context
+    // rather than being mistaken for part of the run itself.
+    const startLine: Point[] = [
+      { x: 0, y: 0 },
+      { x: 0, y: yMax },
+    ];
+    const endLine: Point[] = [
+      { x: runEnd, y: 0 },
+      { x: runEnd, y: yMax },
     ];
 
     const datasets: ChartDataset<'line', Point[]>[] = [
@@ -231,6 +249,24 @@ export class AccelerationModal {
         borderColor: '#c22636',
         yAxisID: 'ySpeed',
         borderDash: [6, 6],
+        pointRadius: 0,
+        borderWidth: 1.5,
+      },
+      {
+        label: 'Start',
+        data: startLine,
+        borderColor: '#2e7d32',
+        yAxisID: 'ySpeed',
+        borderDash: [3, 3],
+        pointRadius: 0,
+        borderWidth: 1.5,
+      },
+      {
+        label: 'End',
+        data: endLine,
+        borderColor: '#2e7d32',
+        yAxisID: 'ySpeed',
+        borderDash: [3, 3],
         pointRadius: 0,
         borderWidth: 1.5,
       },
@@ -298,7 +334,7 @@ export class AccelerationModal {
             position: 'left',
             title: { display: true, text: 'Speed (km/h)' },
             min: 0,
-            max: Math.ceil((config.targetSpeed * 1.1) / 10) * 10,
+            max: yMax,
             grid: { color: 'rgba(128,128,128,0.1)' },
           },
           yExtra: {
