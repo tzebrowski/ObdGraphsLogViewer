@@ -1,0 +1,85 @@
+.accel-registry-content {
+  width: 90vw;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.accel-registry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.accel-registry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-1);
+}
+
+.accel-registry-checkbox {
+  display: flex;
+  cursor: pointer;
+}
+
+.accel-registry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.accel-registry-primary {
+  font-size: 0.95em;
+}
+
+.accel-registry-secondary {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accel-registry-compare {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--grid);
+}
+
+.accel-registry-chart-wrapper {
+  position: relative;
+  height: 320px;
+}
+
+.accel-registry-stats-table {
+  width: 100%;
+  margin-top: 15px;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.accel-registry-stats-table th,
+.accel-registry-stats-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.accel-registry-stats-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.accel-registry-hint {
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  margin-top: 15px;
+}

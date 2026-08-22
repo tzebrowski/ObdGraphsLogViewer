@@ -175,6 +175,10 @@ export class AccelerationModal {
     link.click();
   }
 
+  protected saveToRegistry(): void {
+    void this.accel.saveActiveRunToRegistry();
+  }
+
   protected closeSetup(): void {
     this.accel.closeSetup();
   }

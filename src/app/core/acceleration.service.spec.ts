@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AccelerationConfig,
   AccelerationService,
+  SavedAccelerationRun,
 } from './acceleration.service';
 import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
+import { DbManagerService } from './db-manager.service';
 import { EventBusService } from './event-bus.service';
 import { LoadedFile, SignalPoint } from './models';
 
@@ -19,6 +21,15 @@ function makeAccountFake(
     isSignedIn: vi.fn().mockReturnValue(opts.signedIn ?? true),
     hasFeature: vi.fn().mockReturnValue(opts.hasFeature ?? true),
   } as unknown as AccountService;
+}
+
+/** Matches project-manager.service.spec.ts's DbManagerService fake pattern. */
+function makeDbFake(opts: { runs?: SavedAccelerationRun[] } = {}) {
+  return {
+    getAllAccelerationRuns: vi.fn().mockResolvedValue(opts.runs ?? []),
+    saveAccelerationRun: vi.fn().mockResolvedValue(1),
+    deleteAccelerationRun: vi.fn().mockResolvedValue(undefined),
+  } as unknown as DbManagerService;
 }
 
 /** Matches VersionCheckService's spec: stubs the protected isDevMode()
@@ -67,10 +78,12 @@ function cleanRunSpeeds(): SignalPoint[] {
 
 describe('AccelerationService', () => {
   let appState: AppStateService;
+  let db: DbManagerService;
   let service: AccelerationService;
 
   beforeEach(() => {
     appState = new AppStateService(new EventBusService());
+    db = makeDbFake();
     // Real isDevMode() would likely read true in this bare (non-TestBed)
     // unit test environment, silently bypassing the entitlement gate for
     // the wrong reason -- pin it to false so gating tests below actually
@@ -80,7 +93,7 @@ describe('AccelerationService', () => {
     // Most tests below exercise detection/modal-state logic that isn't
     // about the entitlement gate itself, so default to signed-in +
     // entitled, and let the dedicated gating tests override this.
-    service = new AccelerationService(appState, makeAccountFake());
+    service = new AccelerationService(appState, makeAccountFake(), db);
   });
 
   afterEach(() => {
@@ -372,7 +385,8 @@ describe('AccelerationService', () => {
     it('openSetup alerts and stays closed when not signed in, even with a file loaded', () => {
       service = new AccelerationService(
         appState,
-        makeAccountFake({ signedIn: false })
+        makeAccountFake({ signedIn: false }),
+        db
       );
       appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
 
@@ -385,7 +399,8 @@ describe('AccelerationService', () => {
     it("openSetup alerts and stays closed when signed in but the account isn't entitled to Acceleration Runs", () => {
       service = new AccelerationService(
         appState,
-        makeAccountFake({ signedIn: true, hasFeature: false })
+        makeAccountFake({ signedIn: true, hasFeature: false }),
+        db
       );
       appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
 
@@ -399,7 +414,8 @@ describe('AccelerationService', () => {
       stubDevMode(true);
       service = new AccelerationService(
         appState,
-        makeAccountFake({ signedIn: false, hasFeature: false })
+        makeAccountFake({ signedIn: false, hasFeature: false }),
+        db
       );
       appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
 
@@ -413,7 +429,8 @@ describe('AccelerationService', () => {
       stubDevMode(true);
       service = new AccelerationService(
         appState,
-        makeAccountFake({ signedIn: false, hasFeature: false })
+        makeAccountFake({ signedIn: false, hasFeature: false }),
+        db
       );
 
       service.openSetup();
@@ -491,6 +508,118 @@ describe('AccelerationService', () => {
     it('returns null when there are no runs', () => {
       const file = makeFile({});
       expect(service.highlightRangeForActiveRun(file)).toBeNull();
+    });
+  });
+
+  describe('registry', () => {
+    function makeSavedRun(
+      overrides: Partial<SavedAccelerationRun> = {}
+    ): SavedAccelerationRun {
+      return {
+        id: 1,
+        savedAt: 1000,
+        sourceFileName: 'trip.json',
+        startSpeed: 2,
+        targetSpeed: 100,
+        splitSpeed: 60,
+        elapsedSeconds: 10,
+        splitElapsedSeconds: 5,
+        gearShifts: [],
+        points: [
+          { x: 0, y: 0 },
+          { x: 10000, y: 100 },
+        ],
+        ...overrides,
+      };
+    }
+
+    it('openRegistry loads the saved runs and closeRegistry resets selection', async () => {
+      db = makeDbFake({ runs: [makeSavedRun()] });
+      service = new AccelerationService(appState, makeAccountFake(), db);
+
+      await service.openRegistry();
+      expect(service.isRegistryOpen()).toBe(true);
+      expect(service.registry()).toHaveLength(1);
+
+      service.toggleCompare(1);
+      service.closeRegistry();
+      expect(service.isRegistryOpen()).toBe(false);
+      expect(service.compareIds()).toEqual([]);
+    });
+
+    it('refreshRegistry sorts saved runs newest first', async () => {
+      db = makeDbFake({
+        runs: [
+          makeSavedRun({ id: 1, savedAt: 1000 }),
+          makeSavedRun({ id: 2, savedAt: 3000 }),
+          makeSavedRun({ id: 3, savedAt: 2000 }),
+        ],
+      });
+      service = new AccelerationService(appState, makeAccountFake(), db);
+
+      await service.refreshRegistry();
+
+      expect(service.registry().map((r) => r.id)).toEqual([2, 3, 1]);
+    });
+
+    it('saveActiveRunToRegistry does nothing without an active run/config/file', async () => {
+      await service.saveActiveRunToRegistry();
+      expect(db.saveAccelerationRun).not.toHaveBeenCalled();
+    });
+
+    it('saveActiveRunToRegistry persists a snapshot of the active run and refreshes the registry', async () => {
+      appState.addFile(makeFile({ 'Vehicle Speed': cleanRunSpeeds() }));
+      service.generate({ ...CONFIG, splitSpeed: 60 });
+
+      await service.saveActiveRunToRegistry();
+
+      expect(db.saveAccelerationRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceFileName: 'trip.json',
+          startSpeed: 2,
+          targetSpeed: 100,
+          splitSpeed: 60,
+          elapsedSeconds: expect.any(Number),
+          splitElapsedSeconds: expect.any(Number),
+          points: expect.arrayContaining([
+            expect.objectContaining({
+              x: expect.any(Number),
+              y: expect.any(Number),
+            }),
+          ]),
+        })
+      );
+      expect(appState.alertMessage()).toContain('Saved to Registry');
+      expect(db.getAllAccelerationRuns).toHaveBeenCalled();
+    });
+
+    it('deleteFromRegistry removes the run from the DB, the registry, and any active comparison', async () => {
+      db = makeDbFake({
+        runs: [makeSavedRun({ id: 1 }), makeSavedRun({ id: 2 })],
+      });
+      service = new AccelerationService(appState, makeAccountFake(), db);
+      await service.refreshRegistry();
+      service.toggleCompare(1);
+
+      await service.deleteFromRegistry(1);
+
+      expect(db.deleteAccelerationRun).toHaveBeenCalledWith(1);
+      expect(service.compareIds()).toEqual([]);
+    });
+
+    it('toggleCompare adds and removes ids, capping the selection at 4', () => {
+      service.toggleCompare(1);
+      service.toggleCompare(2);
+      service.toggleCompare(3);
+      service.toggleCompare(4);
+      expect(service.compareIds()).toEqual([1, 2, 3, 4]);
+
+      service.toggleCompare(5);
+      expect(service.compareIds()).toEqual([1, 2, 3, 4]);
+      expect(appState.alertMessage()).toContain('Compare up to 4 runs');
+
+      service.toggleCompare(2);
+      expect(service.compareIds()).toEqual([1, 3, 4]);
     });
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable, isDevMode, signal } from '@angular/core';
 import { AccountService } from './account.service';
 import { AppStateService } from './app-state.service';
+import { DbManagerService } from './db-manager.service';
 import { LoadedFile, SignalPoint } from './models';
 
 /** Matches DriveService's DRIVE_FEATURE_NAME convention -- a mygiulia-backend feature name, resolved via AccountService.hasFeature(). */
@@ -34,6 +35,23 @@ export interface AccelerationRun {
   splitElapsedSeconds: number | null;
   gearShifts: GearShift[];
 }
+
+/** A run persisted to the registry (see AccelerationService.saveActiveRunToRegistry) so it can be browsed/compared independently of whatever file is currently loaded. */
+export interface SavedAccelerationRun {
+  id: number;
+  savedAt: number;
+  sourceFileName: string;
+  startSpeed: number;
+  targetSpeed: number;
+  splitSpeed?: number;
+  elapsedSeconds: number;
+  splitElapsedSeconds: number | null;
+  gearShifts: GearShift[];
+  /** x = ms elapsed since launch (0 at launch), y = speed -- detached from the source file's absolute timestamps since that file may not be loaded when this is compared later. */
+  points: SignalPoint[];
+}
+
+const MAX_COMPARE_RUNS = 4;
 
 /**
  * No legacy counterpart -- new feature. Mirrors DynoService's shape
@@ -69,9 +87,14 @@ export class AccelerationService {
   readonly selectedRunIndex = signal(0);
   readonly selectedExtraSignals = signal<string[]>([]);
 
+  readonly registry = signal<SavedAccelerationRun[]>([]);
+  readonly isRegistryOpen = signal(false);
+  readonly compareIds = signal<number[]>([]);
+
   constructor(
     private readonly appState: AppStateService,
-    private readonly account: AccountService
+    private readonly account: AccountService,
+    private readonly db: DbManagerService
   ) {}
 
   /**
@@ -178,6 +201,83 @@ export class AccelerationService {
     this.selectedExtraSignals.update((sigs) =>
       sigs.includes(sig) ? sigs.filter((s) => s !== sig) : [...sigs, sig]
     );
+  }
+
+  /**
+   * Browsing/comparing previously-saved runs isn't gated the way
+   * openSetup() is -- it's reading the user's own local IndexedDB data, not
+   * calling the backend, so there's nothing to entitlement-check.
+   */
+  async openRegistry(): Promise<void> {
+    this.isRegistryOpen.set(true);
+    await this.refreshRegistry();
+  }
+
+  closeRegistry(): void {
+    this.isRegistryOpen.set(false);
+    this.compareIds.set([]);
+  }
+
+  async refreshRegistry(): Promise<void> {
+    const runs = await this.db.getAllAccelerationRuns();
+    this.registry.set([...runs].sort((a, b) => b.savedAt - a.savedAt));
+  }
+
+  /**
+   * Persists the currently-selected run (with its config and source file
+   * name) so it can be browsed/compared later independently of whatever
+   * file happens to be loaded at the time. `points` are detached from the
+   * source file's absolute timestamps -- x becomes ms elapsed since launch
+   * -- since that file may no longer be loaded when this run is compared.
+   */
+  async saveActiveRunToRegistry(): Promise<void> {
+    const run = this.runs()[this.selectedRunIndex()];
+    const config = this.config();
+    const fileName = this.appState.files()[0]?.name;
+    if (!run || !config || !fileName) return;
+
+    const saved: Omit<SavedAccelerationRun, 'id'> = {
+      savedAt: Date.now(),
+      sourceFileName: fileName,
+      startSpeed: config.startSpeed,
+      targetSpeed: config.targetSpeed,
+      splitSpeed: config.splitSpeed,
+      elapsedSeconds: run.elapsedSeconds,
+      splitElapsedSeconds: run.splitElapsedSeconds,
+      gearShifts: run.gearShifts,
+      points: run.time.map((t, i) => ({
+        x: t - run.startTime,
+        y: run.speed[i],
+      })),
+    };
+
+    const id = await this.db.saveAccelerationRun(saved);
+    if (id === null) {
+      this.appState.showAlert('Failed to save to registry.');
+      return;
+    }
+    this.appState.showAlert('Saved to Registry.');
+    await this.refreshRegistry();
+  }
+
+  async deleteFromRegistry(id: number): Promise<void> {
+    await this.db.deleteAccelerationRun(id);
+    this.compareIds.update((ids) => ids.filter((i) => i !== id));
+    await this.refreshRegistry();
+  }
+
+  toggleCompare(id: number): void {
+    if (this.compareIds().includes(id)) {
+      this.compareIds.update((ids) => ids.filter((i) => i !== id));
+      return;
+    }
+    if (this.compareIds().length >= MAX_COMPARE_RUNS) {
+      this.appState.showAlert(
+        `Compare up to ${MAX_COMPARE_RUNS} runs at a time.`
+      );
+      return;
+    }
+    this.compareIds.update((ids) => [...ids, id]);
   }
 
   /** Relative-second range for the active run, for AppStateService.setActiveHighlight. */

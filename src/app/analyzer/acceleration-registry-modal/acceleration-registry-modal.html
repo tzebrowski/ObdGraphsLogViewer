@@ -1,0 +1,91 @@
+@if (accel.isRegistryOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="close()">
+  <div
+    class="modal-content accel-registry-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2>Acceleration Runs Registry</h2>
+      <button class="btn-close" (click)="close()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (accel.registry().length === 0) {
+      <p class="section-description">
+        No saved runs yet. Save a run from the Acceleration Runs chart to start
+        comparing.
+      </p>
+      } @else {
+      <div class="accel-registry-list">
+        @for (run of accel.registry(); track run.id) {
+        <div class="accel-registry-row">
+          <label class="accel-registry-checkbox" title="Select for comparison">
+            <input
+              type="checkbox"
+              [checked]="accel.compareIds().includes(run.id)"
+              (change)="accel.toggleCompare(run.id)"
+            />
+          </label>
+          <div class="accel-registry-info">
+            <div class="accel-registry-primary">
+              {{ run.startSpeed }} → {{ run.targetSpeed }} km/h:
+              <strong>{{ run.elapsedSeconds.toFixed(2) }}s</strong>
+              @if (run.splitElapsedSeconds != null && run.splitSpeed) { (0-{{
+              run.splitSpeed }}: {{ run.splitElapsedSeconds.toFixed(2) }}s) }
+              @if (run.gearShifts.length > 0) { · {{ run.gearShifts.length }}
+              shift{{ run.gearShifts.length === 1 ? '' : 's' }} }
+            </div>
+            <div class="accel-registry-secondary">
+              {{ formatDate(run.savedAt) }} · {{ run.sourceFileName }}
+            </div>
+          </div>
+          <button
+            class="btn-close"
+            title="Delete"
+            (click)="accel.deleteFromRegistry(run.id)"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        }
+      </div>
+      } @if (selectedRuns().length >= 2) {
+      <div class="accel-registry-compare">
+        <div class="accel-registry-chart-wrapper">
+          <canvas #compareCanvas></canvas>
+        </div>
+        <table class="accel-registry-stats-table">
+          <thead>
+            <tr>
+              <th>Saved</th>
+              <th>Time</th>
+              <th>Split</th>
+              <th>Shifts</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of selectedRuns(); track run.id) {
+            <tr>
+              <td>{{ formatDate(run.savedAt) }}</td>
+              <td>
+                {{ run.startSpeed }}→{{ run.targetSpeed }}: {{
+                run.elapsedSeconds.toFixed(2) }}s
+              </td>
+              <td>
+                {{ run.splitElapsedSeconds != null ?
+                run.splitElapsedSeconds.toFixed(2) + 's' : '—' }}
+              </td>
+              <td>{{ run.gearShifts.length }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      } @else if (accel.registry().length > 0) {
+      <p class="accel-registry-hint">
+        Select 2 or more runs to compare them on one chart.
+      </p>
+      }
+    </div>
+  </div>
+</div>
+}

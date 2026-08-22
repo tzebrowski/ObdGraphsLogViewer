@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import type { SavedAccelerationRun } from './acceleration.service';
 import { LoadedFile } from './models';
 
 export interface FileMetadata {
@@ -13,7 +14,7 @@ export interface FileMetadata {
 }
 
 const DB_NAME = 'GiuliaTelemetryDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 /** Port of legacy/src/dbmanager.js — same DB name/stores so a user's existing data still loads. */
 @Injectable({ providedIn: 'root' })
@@ -39,6 +40,12 @@ export class DbManagerService {
         }
         if (!db.objectStoreNames.contains('signals')) {
           db.createObjectStore('signals', { keyPath: 'fileId' });
+        }
+        if (!db.objectStoreNames.contains('accelerationRuns')) {
+          db.createObjectStore('accelerationRuns', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
         }
       };
 
@@ -134,5 +141,45 @@ export class DbManagerService {
     const transaction = this.db.transaction(['files', 'signals'], 'readwrite');
     transaction.objectStore('files').clear();
     transaction.objectStore('signals').clear();
+  }
+
+  async saveAccelerationRun(
+    run: Omit<SavedAccelerationRun, 'id'>
+  ): Promise<number | null> {
+    if (!this.isSupported) return null;
+    if (!this.db) await this.init();
+    if (!this.db) return null;
+
+    const db = this.db;
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('accelerationRuns', 'readwrite');
+      const request = transaction.objectStore('accelerationRuns').add(run);
+      request.onsuccess = () => resolve(request.result as number);
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async getAllAccelerationRuns(): Promise<SavedAccelerationRun[]> {
+    if (!this.isSupported) return [];
+    if (!this.db) await this.init();
+    if (!this.db) return [];
+
+    const db = this.db;
+    return new Promise((resolve) => {
+      const transaction = db.transaction('accelerationRuns', 'readonly');
+      const request = transaction.objectStore('accelerationRuns').getAll();
+      request.onsuccess = () =>
+        resolve(request.result as SavedAccelerationRun[]);
+      request.onerror = () => resolve([]);
+    });
+  }
+
+  async deleteAccelerationRun(id: number): Promise<void> {
+    if (!this.isSupported) return;
+    if (!this.db) await this.init();
+    if (!this.db) return;
+
+    const transaction = this.db.transaction('accelerationRuns', 'readwrite');
+    transaction.objectStore('accelerationRuns').delete(id);
   }
 }

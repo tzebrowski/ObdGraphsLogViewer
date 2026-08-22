@@ -72,7 +72,7 @@ describe('DbManagerService', () => {
 
   it('init() opens the database and creates the schema on upgrade', async () => {
     const initPromise = dbManager.init();
-    expect(mockIdb.open).toHaveBeenCalledWith('GiuliaTelemetryDB', 1);
+    expect(mockIdb.open).toHaveBeenCalledWith('GiuliaTelemetryDB', 2);
 
     mockOpenRequest.result = mockDbInstance;
     mockOpenRequest.onupgradeneeded?.({ target: { result: mockDbInstance } });
@@ -83,6 +83,10 @@ describe('DbManagerService', () => {
     expect(mockDbInstance.createObjectStore).toHaveBeenCalledWith(
       'signals',
       expect.objectContaining({ keyPath: 'fileId' })
+    );
+    expect(mockDbInstance.createObjectStore).toHaveBeenCalledWith(
+      'accelerationRuns',
+      expect.objectContaining({ keyPath: 'id', autoIncrement: true })
     );
 
     mockOpenRequest.result = mockDbInstance;
@@ -188,7 +192,58 @@ describe('DbManagerService', () => {
   it('clearAll() wipes both stores', async () => {
     await initDb();
     await dbManager.clearAll();
+    // Deliberately doesn't touch accelerationRuns -- "purge library" is
+    // about telemetry files, not the (longer-lived) saved-runs registry.
     expect(mockObjectStore.clear).toHaveBeenCalledTimes(2);
+  });
+
+  it('saveAccelerationRun() writes to the accelerationRuns store', async () => {
+    await initDb();
+    const mockReq: { onsuccess: (() => void) | null; result: number } = {
+      onsuccess: null,
+      result: 7,
+    };
+    mockObjectStore.add.mockReturnValue(mockReq);
+
+    const run = { savedAt: 1000, sourceFileName: 'trip.json' } as never;
+    const savePromise = dbManager.saveAccelerationRun(run);
+    expect(mockDbInstance.transaction).toHaveBeenCalledWith(
+      'accelerationRuns',
+      'readwrite'
+    );
+    expect(mockObjectStore.add).toHaveBeenCalledWith(run);
+    mockReq.onsuccess?.();
+
+    expect(await savePromise).toBe(7);
+  });
+
+  it('getAllAccelerationRuns() returns the resolved list', async () => {
+    await initDb();
+    const mockReq = {
+      onsuccess: null as (() => void) | null,
+      result: [{ id: 1, sourceFileName: 'trip.json' }],
+    };
+    mockObjectStore.getAll.mockReturnValue(mockReq);
+
+    const promise = dbManager.getAllAccelerationRuns();
+    mockReq.onsuccess?.();
+
+    const result = await promise;
+    expect(result).toHaveLength(1);
+    expect(mockDbInstance.transaction).toHaveBeenCalledWith(
+      'accelerationRuns',
+      'readonly'
+    );
+  });
+
+  it('deleteAccelerationRun() removes it from the store', async () => {
+    await initDb();
+    await dbManager.deleteAccelerationRun(9);
+    expect(mockDbInstance.transaction).toHaveBeenCalledWith(
+      'accelerationRuns',
+      'readwrite'
+    );
+    expect(mockObjectStore.delete).toHaveBeenCalledWith(9);
   });
 
   it('gracefully no-ops when IndexedDB is unavailable', async () => {
