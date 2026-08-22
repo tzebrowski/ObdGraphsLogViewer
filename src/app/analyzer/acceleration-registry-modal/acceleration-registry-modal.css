@@ -47,7 +47,12 @@
   white-space: nowrap;
 }
 
-.accel-registry-compare {
+.accel-registry-view-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.accel-registry-result {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--grid);
@@ -82,4 +87,21 @@
   font-size: 0.85em;
   color: var(--text-secondary);
   margin-top: 15px;
+}
+
+.accel-gearshift-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.accel-gearshift-chip {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
 }

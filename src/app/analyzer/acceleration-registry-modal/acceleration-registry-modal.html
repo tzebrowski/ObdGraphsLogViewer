@@ -11,8 +11,8 @@
     <div class="modal-body">
       @if (accel.registry().length === 0) {
       <p class="section-description">
-        No saved runs yet. Save a run from the Acceleration Runs chart to start
-        comparing.
+        No saved runs yet. Save a run from the Acceleration Runs chart to see it
+        here.
       </p>
       } @else {
       <div class="accel-registry-list">
@@ -39,6 +39,14 @@
             </div>
           </div>
           <button
+            class="btn-close accel-registry-view-btn"
+            [class.active]="viewingRunId() === run.id"
+            title="View this run"
+            (click)="toggleView(run.id)"
+          >
+            <i class="fas fa-chart-line"></i>
+          </button>
+          <button
             class="btn-close"
             title="Delete"
             (click)="accel.deleteFromRegistry(run.id)"
@@ -48,10 +56,26 @@
         </div>
         }
       </div>
-      } @if (selectedRuns().length >= 2) {
-      <div class="accel-registry-compare">
+      } @if (viewingRun(); as run) {
+      <div class="accel-registry-result">
         <div class="accel-registry-chart-wrapper">
-          <canvas #compareCanvas></canvas>
+          <canvas #resultCanvas></canvas>
+        </div>
+        @if (run.gearShifts.length > 0) {
+        <div class="accel-gearshift-list">
+          @for (shift of run.gearShifts; track $index; let i = $index) {
+          <span class="accel-gearshift-chip">
+            {{ i + 1 }}→{{ i + 2 }}: {{ shift.elapsedSeconds.toFixed(2) }}s @ {{
+            shift.rpm.toFixed(0) }} RPM
+          </span>
+          }
+        </div>
+        }
+      </div>
+      } @else if (selectedRuns().length >= 2) {
+      <div class="accel-registry-result">
+        <div class="accel-registry-chart-wrapper">
+          <canvas #resultCanvas></canvas>
         </div>
         <table class="accel-registry-stats-table">
           <thead>
@@ -82,7 +106,8 @@
       </div>
       } @else if (accel.registry().length > 0) {
       <p class="accel-registry-hint">
-        Select 2 or more runs to compare them on one chart.
+        Click <i class="fas fa-chart-line"></i> on a run to view it, or select 2
+        or more to compare them on one chart.
       </p>
       }
     </div>
