@@ -16,6 +16,16 @@ const SAMPLE_TRIP_URL =
   'https://raw.githubusercontent.com/tzebrowski/ObdGraphsLogViewer/main/resources/trip-profile_5-1766517188873-589.json';
 
 /**
+ * A dense wide-CSV export (see chart-view.ts's DENSE_TRIP_POINT_THRESHOLD)
+ * can produce millions of raw points; mapping/cleaning them in one
+ * unbroken synchronous pass was measured to block the main thread for
+ * several seconds with no opportunity for the browser to paint the
+ * loading spinner or process input. Processing in chunks with a yield
+ * between them keeps the tab responsive during ingestion.
+ */
+export const MAPPING_CHUNK_SIZE = 20_000;
+
+/**
  * Port of legacy/src/dataprocessor.js. `handleFiles` is the local-file
  * ingestion path (drag-drop / file picker); `processExternal` is the same
  * normalize+persist+register pipeline for data fetched from elsewhere (e.g.
@@ -40,6 +50,9 @@ export class DataProcessorService {
 
     this.appState.loading.set(true);
     this.appState.loadingMessage.set(`Parsing ${files.length} Files...`);
+    // Let the loading spinner actually paint before the (possibly
+    // multi-second, synchronous) parse/normalize work below begins.
+    await this.yieldToMain();
 
     let loadedCount = 0;
 
@@ -150,9 +163,13 @@ export class DataProcessorService {
       }
 
       const schema = this.detectSchema(telemetryPoints[0]);
-      const processedPoints = telemetryPoints.flatMap((item) =>
-        this.applyMappingAndCleaning(item, schema)
+      const processedPoints = await this.mapAndCleanChunked(
+        telemetryPoints,
+        schema
       );
+      // One more yield before the (still-synchronous) sort/bucketing pass,
+      // so the browser gets a paint/input opportunity right before it too.
+      await this.yieldToMain();
       const result = this.transformRawData(processedPoints, fileName);
       result.metadata = fileMetadata;
       result.size = telemetryPoints.length;
@@ -328,6 +345,44 @@ export class DataProcessorService {
     if (!samplePoint) return SCHEMA_REGISTRY.JSON;
     if ('SensorName' in samplePoint) return SCHEMA_REGISTRY.CSV;
     return SCHEMA_REGISTRY.JSON;
+  }
+
+  /**
+   * Runs applyMappingAndCleaning over `points` in MAPPING_CHUNK_SIZE-sized
+   * batches, yielding to the browser between batches instead of doing the
+   * whole (potentially multi-million-row) pass in one synchronous stretch.
+   */
+  private async mapAndCleanChunked(
+    points: Array<Record<string, unknown>>,
+    schema: { signal: string; timestamp: string; value: string }
+  ): Promise<RawDataPoint[]> {
+    const result: RawDataPoint[] = [];
+    for (let i = 0; i < points.length; i += MAPPING_CHUNK_SIZE) {
+      const end = Math.min(i + MAPPING_CHUNK_SIZE, points.length);
+      for (let j = i; j < end; j++) {
+        const mapped = this.applyMappingAndCleaning(points[j], schema);
+        if (mapped.length > 0) result.push(...mapped);
+      }
+      if (end < points.length) await this.yieldToMain();
+    }
+    return result;
+  }
+
+  /**
+   * Yields to the browser's event loop (letting it paint and process
+   * input) between chunks. Uses a MessageChannel round-trip rather than
+   * `setTimeout(0)` -- Chrome throttles setTimeout in backgrounded/hidden
+   * tabs (down to ~1 call/sec), which turned the ~140 yields a dense
+   * multi-million-point file needs into a multi-minute stall if the user
+   * switched tabs mid-load. postMessage scheduling isn't subject to that
+   * background-tab timer throttling.
+   */
+  private yieldToMain(): Promise<void> {
+    return new Promise((resolve) => {
+      const channel = new MessageChannel();
+      channel.port2.onmessage = () => resolve();
+      channel.port1.postMessage(null);
+    });
   }
 
   private applyMappingAndCleaning(
