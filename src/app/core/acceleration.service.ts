@@ -57,16 +57,29 @@ export class AccelerationService {
 
   /**
    * Best-match default for a signal picker, e.g. suggestSignal(signals,
-   * ['vehicle speed', 'speed']). Tries each search term in order across
-   * all signals before falling through to the next term, so an earlier
-   * (more specific) term always wins over a later, more generic one --
-   * without this, a generic fallback like 'speed' could match an
-   * alphabetically-earlier signal (e.g. "Engine Speed") before the
-   * intended "Vehicle Speed" is ever considered.
+   * ['vehicle speed', 'wheel speed', 'speed'], ['engine', 'rpm']). Tries
+   * each search term in order across all signals before falling through to
+   * the next term, so an earlier (more specific) term always wins over a
+   * later, more generic one -- without this, a generic fallback like
+   * 'speed' could match an alphabetically-earlier signal (e.g. "Engine
+   * Speed") before the intended "Vehicle Speed" is ever considered.
+   * `excludeTerms` additionally disqualifies any candidate containing one
+   * of those substrings, even under a generic search term -- e.g. so a
+   * bare 'speed' fallback can never suggest an RPM channel just because
+   * its name happens to contain the word "Speed".
    */
-  suggestSignal(signals: string[], searchTerms: string[]): string {
+  suggestSignal(
+    signals: string[],
+    searchTerms: string[],
+    excludeTerms: string[] = []
+  ): string {
     for (const term of searchTerms) {
-      const match = signals.find((sig) => sig.toLowerCase().includes(term));
+      const match = signals.find((sig) => {
+        const lower = sig.toLowerCase();
+        return (
+          lower.includes(term) && !excludeTerms.some((ex) => lower.includes(ex))
+        );
+      });
       if (match) return match;
     }
     return '';
@@ -161,6 +174,13 @@ export class AccelerationService {
       while (j < speedData.length) {
         const point = speedData[j];
         if (point.x - launchTime > maxDuration * 1000) break;
+        // Speed settled back to (near) rest before reaching target -- a
+        // false start (e.g. sensor noise ticking briefly above startSpeed
+        // while stationary), not a pull in progress. Bail so the outer
+        // loop re-anchors on whatever later crossing is the real launch,
+        // rather than keeping this stale launchTime and folding the idle
+        // gap into the reported elapsed time.
+        if (point.y <= startSpeed) break;
         if (point.y > peak) peak = point.y;
         if (peak - point.y > backslideTolerance) break;
         if (point.y >= targetSpeed) {

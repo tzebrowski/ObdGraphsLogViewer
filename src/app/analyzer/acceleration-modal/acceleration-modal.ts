@@ -161,7 +161,11 @@ export class AccelerationModal {
   private resetSetupForm(): void {
     const signals = this.availableSignals();
     this.setupSpeedKey.set(
-      this.accel.suggestSignal(signals, ['vehicle speed', 'speed'])
+      this.accel.suggestSignal(
+        signals,
+        ['vehicle speed', 'wheel speed', 'gps speed', 'road speed', 'speed'],
+        ['engine', 'rpm']
+      )
     );
     this.setupStartSpeed.set(2);
     this.setupTargetSpeed.set(100);

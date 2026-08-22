@@ -144,6 +144,33 @@ describe('AccelerationService', () => {
       expect(runs[1].elapsedSeconds).toBeCloseTo(8, 0);
     });
 
+    it('re-anchors on the real launch instead of a sensor-noise blip while stationary', () => {
+      // Matches a real bug: speed reads ~2.1 km/h for a moment right at
+      // t=0 (noise on an at-rest sensor), settles back to ~0 for several
+      // seconds, then launches cleanly to 100 km/h over ~5s starting at
+      // t=10s. The reported run must be anchored to the real launch
+      // (~10s), not the initial noise blip -- otherwise the idle gap gets
+      // folded into elapsedSeconds and a ~5s run is reported as ~15s.
+      const points: SignalPoint[] = [
+        { x: 0, y: 0 },
+        { x: 500, y: 2.1 }, // noise blip just over startSpeed=2
+        { x: 1000, y: 0.5 },
+        { x: 2000, y: 0 },
+        { x: 9000, y: 0 },
+        { x: 9700, y: 0 },
+      ];
+      for (let s = 1; s <= 10; s++) {
+        points.push({ x: 9700 + s * 500, y: (s / 10) * 100 });
+      }
+
+      const file = makeFile({ 'Vehicle Speed': points });
+      const runs = service.extractRuns(file, CONFIG);
+
+      expect(runs).toHaveLength(1);
+      expect(runs[0].elapsedSeconds).toBeCloseTo(5, 0);
+      expect(runs[0].startTime).toBeGreaterThan(9000);
+    });
+
     it('returns no runs when the target speed is never reached', () => {
       const file = makeFile({
         'Vehicle Speed': [
@@ -186,6 +213,21 @@ describe('AccelerationService', () => {
       expect(service.suggestSignal(signals, ['vehicle speed', 'speed'])).toBe(
         'Vehicle Speed'
       );
+    });
+
+    it('excludes disqualified candidates even under a generic fallback term', () => {
+      // No signal contains 'vehicle speed'/'wheel speed', so this falls
+      // through to the bare 'speed' term -- which must skip "Engine Speed"
+      // (an RPM channel, not km/h) via the exclude list rather than
+      // wrongly suggesting it just because its name contains "Speed".
+      const signals = ['Coolant Temp', 'Engine Speed', 'Wheel RPM'];
+      expect(
+        service.suggestSignal(
+          signals,
+          ['vehicle speed', 'wheel speed', 'speed'],
+          ['engine', 'rpm']
+        )
+      ).toBe('');
     });
   });
 
