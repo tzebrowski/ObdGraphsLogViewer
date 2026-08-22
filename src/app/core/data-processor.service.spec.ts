@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStateService } from './app-state.service';
-import { DataProcessorService } from './data-processor.service';
+import {
+  DataProcessorService,
+  MAPPING_CHUNK_SIZE,
+} from './data-processor.service';
 import { DbManagerService } from './db-manager.service';
 import { EventBusService } from './event-bus.service';
 import { MathChannelsService } from './math-channels.service';
@@ -173,6 +176,75 @@ describe('DataProcessorService', () => {
   it('clears the loading state once all files in the batch finish', async () => {
     await service.handleFiles([jsonFile('a.json', [{ s: 'RPM', t: 1, v: 1 }])]);
     expect(appState.loading()).toBe(false);
+  });
+
+  describe('chunked mapping for large batches', () => {
+    it('processes a batch spanning multiple mapping chunks without dropping or reordering points', async () => {
+      const totalPoints = MAPPING_CHUNK_SIZE * 2 + 500;
+      const data = Array.from({ length: totalPoints }, (_, i) => ({
+        s: 'RPM',
+        t: i,
+        v: i,
+      }));
+
+      await service.handleFiles([jsonFile('huge.json', data)]);
+
+      const file = appState.files()[0];
+      expect(file.size).toBe(totalPoints);
+      expect(file.signals['RPM']).toHaveLength(totalPoints);
+      expect(file.signals['RPM'][0]).toEqual({ x: 0, y: 0 });
+      expect(file.signals['RPM'][totalPoints - 1]).toEqual({
+        x: totalPoints - 1,
+        y: totalPoints - 1,
+      });
+    });
+
+    it('yields to the event loop between mapping chunks instead of blocking in one synchronous pass', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const yieldSpy = vi.spyOn(service as any, 'yieldToMain');
+
+      const totalPoints = MAPPING_CHUNK_SIZE * 2 + 500; // 3 chunks
+      const data = Array.from({ length: totalPoints }, (_, i) => ({
+        s: 'RPM',
+        t: i,
+        v: i,
+      }));
+
+      await service.handleFiles([jsonFile('huge.json', data)]);
+
+      // 1 yield so the loading spinner can paint + 2 yields between the 3
+      // mapping chunks (none after the last chunk) + 1 yield before the
+      // sort/bucketing pass.
+      expect(yieldSpy).toHaveBeenCalledTimes(4);
+      expect(appState.files()[0].signals['RPM']).toHaveLength(totalPoints);
+    });
+
+    it('does not yield between mapping chunks when the batch fits in a single chunk', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const yieldSpy = vi.spyOn(service as any, 'yieldToMain');
+
+      const data = [{ s: 'RPM', t: 1, v: 100 }];
+      await service.handleFiles([jsonFile('small.json', data)]);
+
+      // 1 yield for the loading spinner + 1 yield before the sort pass;
+      // no additional yields since there's only one chunk.
+      expect(yieldSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("uses MessageChannel-based yielding rather than setTimeout, which Chrome throttles to ~1/sec in backgrounded tabs and would otherwise turn a dense file's ~100+ chunk yields into a multi-minute stall", async () => {
+      const MessageChannelSpy = vi.spyOn(globalThis, 'MessageChannel');
+
+      const totalPoints = MAPPING_CHUNK_SIZE * 2 + 500; // 3 chunks -> 4 yields
+      const data = Array.from({ length: totalPoints }, (_, i) => ({
+        s: 'RPM',
+        t: i,
+        v: i,
+      }));
+
+      await service.handleFiles([jsonFile('huge.json', data)]);
+
+      expect(MessageChannelSpy).toHaveBeenCalledTimes(4);
+    });
   });
 
   describe('loadSampleTrip', () => {
