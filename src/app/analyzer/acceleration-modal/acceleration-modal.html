@@ -1,0 +1,173 @@
+@if (accel.isSetupOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="closeSetup()">
+  <div
+    class="modal-content"
+    style="max-width: 500px"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2>Acceleration Run Detection</h2>
+      <button class="btn-close" (click)="closeSetup()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="section-description">
+        Select the vehicle speed signal and run criteria to find standing-start
+        acceleration runs in this log.
+      </p>
+
+      <div class="control-group">
+        <label class="math-label-small">Vehicle Speed</label>
+        <select
+          class="template-select"
+          (change)="setupSpeedKey.set($any($event.target).value)"
+        >
+          <option value="" [selected]="!setupSpeedKey()">
+            -- Select Signal --
+          </option>
+          @for (sig of availableSignals(); track sig) {
+          <option [value]="sig" [selected]="sig === setupSpeedKey()">
+            {{ sig }}
+          </option>
+          }
+        </select>
+      </div>
+
+      <div class="accel-run-config">
+        <label class="math-label-small">Run Detection Criteria</label>
+        <div class="accel-run-row">
+          <div>
+            <label class="accel-sub-label">Start Speed (km/h)</label>
+            <input
+              type="number"
+              class="template-select"
+              min="0"
+              max="50"
+              [value]="setupStartSpeed()"
+              (input)="setupStartSpeed.set(+$any($event.target).value)"
+            />
+          </div>
+          <div>
+            <label class="accel-sub-label">Target Speed (km/h)</label>
+            <input
+              type="number"
+              class="template-select"
+              min="1"
+              [value]="setupTargetSpeed()"
+              (input)="setupTargetSpeed.set(+$any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="accel-run-row">
+          <div>
+            <label
+              class="accel-sub-label"
+              title="A run is discarded if it takes longer than this to reach the target speed -- filters out slow traffic crawls, not real launches."
+            >
+              Max Duration (s)
+            </label>
+            <input
+              type="number"
+              class="template-select"
+              min="1"
+              [value]="setupMaxDuration()"
+              (input)="setupMaxDuration.set(+$any($event.target).value)"
+            />
+          </div>
+          <div>
+            <label
+              class="accel-sub-label"
+              title="A run is abandoned if speed sags this far below its best-so-far before reaching the target -- filters out throttle lifts, not clean pulls."
+            >
+              Backslide Tolerance (km/h)
+            </label>
+            <input
+              type="number"
+              class="template-select"
+              min="0"
+              [value]="setupBackslideTolerance()"
+              (input)="setupBackslideTolerance.set(+$any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="accel-run-hint">
+          * A run starts when speed rises above <strong>Start Speed</strong>
+          from rest, and finishes the moment it first reaches
+          <strong>Target Speed</strong>.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" (click)="generate()">Find Runs</button>
+    </div>
+  </div>
+</div>
+} @if (accel.isModalOpen()) {
+<div class="modal-overlay" style="display: flex" (click)="close()">
+  <div
+    class="modal-content accel-main-content"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="accel-sidebar">
+      <div class="modal-header accel-sidebar-header">
+        <h3>Overlay Signals</h3>
+      </div>
+      <div class="accel-sidebar-search">
+        <input
+          type="text"
+          class="template-select"
+          placeholder="Search signals..."
+          [value]="signalSearch()"
+          (input)="signalSearch.set($any($event.target).value)"
+        />
+      </div>
+      <div class="accel-sidebar-list">
+        @for (sig of extraSignalCandidates(); track sig) {
+        <label class="accel-checkbox-row">
+          <input
+            type="checkbox"
+            [checked]="accel.selectedExtraSignals().includes(sig)"
+            (change)="accel.toggleExtraSignal(sig)"
+          />
+          {{ sig }}
+        </label>
+        }
+      </div>
+    </div>
+
+    <div class="accel-main">
+      <div class="modal-header">
+        @if (accel.runs().length > 1) {
+        <select
+          class="template-select accel-run-select"
+          (change)="accel.selectRun(+$any($event.target).value)"
+        >
+          @for (run of accel.runs(); track $index; let i = $index) {
+          <option [value]="i" [selected]="i === accel.selectedRunIndex()">
+            {{ runLabel(run, i) }}
+          </option>
+          }
+        </select>
+        }
+        <div class="accel-actions">
+          <button class="btn btn-sm" (click)="viewOnChart()">
+            <i class="fas fa-search-plus"></i> View on Chart
+          </button>
+          <button class="btn btn-sm btn-primary" (click)="exportPng()">
+            <i class="fas fa-camera"></i> Save PNG
+          </button>
+        </div>
+        <button class="btn-close" (click)="close()">&times;</button>
+      </div>
+      <div class="modal-body accel-chart-body">
+        <div class="accel-canvas-wrapper">
+          <canvas #accelCanvas></canvas>
+        </div>
+        <div class="accel-footnote">
+          * Detected as standing-start runs: speed rising from rest to the
+          target speed without a significant throttle lift in between.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}

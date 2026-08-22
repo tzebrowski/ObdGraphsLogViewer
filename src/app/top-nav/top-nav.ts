@@ -1,5 +1,6 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { AccountModal } from '../account-modal/account-modal';
+import { AccelerationService } from '../core/acceleration.service';
 import { AccountService } from '../core/account.service';
 import { AppStateService } from '../core/app-state.service';
 import { AuthService } from '../core/auth.service';
@@ -42,6 +43,7 @@ export class TopNav {
   protected readonly appState = inject(AppStateService);
   protected readonly mathChannels = inject(MathChannelsService);
   protected readonly dyno = inject(DynoService);
+  protected readonly acceleration = inject(AccelerationService);
   protected readonly xy = inject(XyAnalysisService);
   protected readonly histogram = inject(HistogramService);
   private readonly dataProcessor = inject(DataProcessorService);
